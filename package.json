@@ -1,0 +1,15 @@
+{
+  "name": "shift",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "fmt": "prettier -w .",
+    "hh:compile": "pnpm -C packages/hardhat hardhat compile",
+    "hh:test": "pnpm -C packages/hardhat hardhat test",
+    "forge:test": "pnpm -C packages/foundry forge test -vvv",
+    "forge:cov": "pnpm -C packages/foundry forge coverage --report summary",
+    "cov:gate": "bash ./scripts/check-coverage.sh",
+    "build": "pnpm hh:compile && pnpm -C packages/foundry forge build"
+  },
+  "devDependencies": { "prettier": "^3.3.0" }
+}
