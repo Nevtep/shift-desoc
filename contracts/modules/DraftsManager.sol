@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IGovernorLike} from "../core/interfaces/IGovernorLike.sol";
+import {IGovernorLike} from "contracts/core/interfaces/IGovernorLike.sol";
 
 contract DraftsManager {
     enum DraftStatus { DRAFTING, ESCALATED, WON, LOST }

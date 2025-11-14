@@ -1,3 +1,64 @@
-node_modules
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+**/out/
+
+# Cache directories  
+.cache/
+cache/
+**/cache/
+.turbo/
+.next/
+.nuxt/
+
+# Foundry
+**/cache/
+**/out/
+foundry.lock
+lcov.info
+
+# Coverage reports
+coverage/
+coverage_summary.txt
+coverage_output.txt
+*.lcov
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment variables
 .env
-.next
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Temporary files
+tmp/
+temp/
+.tmp/

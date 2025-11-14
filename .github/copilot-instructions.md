@@ -1,106 +1,197 @@
-# Shift Governance Platform - AI Coding Instructions
+# Shift DeSoc - Smart Contract Development Guide
 
-## Project Architecture
+## Mission: On-Chain Governance Platform for Decentralized Community Work
 
-Shift is an on-chain governance platform with multi-choice voting built on a **dual-toolchain** Solidity setup (Hardhat + Foundry) and Next.js frontend. The core workflow: `requests → drafts → proposals (multi-choice voting) → timelock execution`.
+Shift DeSoc implements fully on-chain governance with multi-choice voting for community decision-making, work verification, and token economy. Core flow: `requests → drafts → proposals → timelock execution` with claims verification and soulbound token rewards.
 
-### Key Components
+## Architecture Overview
 
-- **Core Governance**: `ShiftGovernor` extends OpenZeppelin Governor with multi-choice voting via `CountingMultiChoice` 
-- **Workflow Modules**: `DraftsManager` (proposal creation), `Claims` (work verification), `RequestHub` (task requests)
-- **Token Economy**: `WorkerSBT` (soulbound tokens), `CommunityToken` (1:1 USDC backing), `MembershipTokenERC20Votes` (governance)
-- **Infrastructure**: `VerifierPool` (juror selection), `ActionTypeRegistry`, `Marketplace`, `HousingManager`
+### Core Governance Stack
+- **ShiftGovernor**: OpenZeppelin Governor + multi-choice voting extension
+- **CountingMultiChoice**: Custom counting module for weighted multi-option votes
+- **TimelockController**: Execution delays for governance decisions
+- **MembershipTokenERC20Votes**: Governance token with vote delegation
+
+### Work Verification System
+- **ActionTypeRegistry**: Configurable action types with verification parameters
+- **VerifierPool**: M-of-N juror selection with bonding and rewards
+- **Claims**: Work submission and verification workflow
+- **WorkerSBT**: Soulbound tokens minted on approved claims
+
+### Token Economy
+- **CommunityToken**: 1:1 USDC-backed stablecoin for payments
+- **RevenueRouter**: Configurable revenue splits (50/30/20 default)
+- **Marketplace**: Decentralized service marketplace
+- **ProjectFactory**: ERC-1155 crowdfunding with milestones
+
+### Additional Modules  
+- **DraftsManager**: Proposal creation and escalation workflow
+- **HousingManager**: Co-housing reservations (ERC-1155 per night)
+- **ParamController**: Centralized parameter management
 
 ## Development Workflow
 
-### Smart Contracts
-- **Dual toolchain**: Use Foundry for testing (`forge test -vvv`), Hardhat for deployment
-- **Coverage requirement**: ≥96% via `pnpm cov:gate` (enforced in CI)
-- **Contract structure**: `contracts/{core,modules,tokens,libs}` with shared `../../contracts` source
-- **Compilation**: `pnpm build` compiles both Hardhat and Foundry
-
-### Key Commands
+### Dual Toolchain (Hardhat + Foundry)
 ```bash
-pnpm hh:compile && pnpm forge:test    # Full contract build/test
-pnpm cov:gate                         # Coverage gate (≥96% required)
+# Foundry for testing (primary)
+pnpm forge:test -vvv                    # Run all tests with verbose output
+pnpm forge:cov                          # Generate coverage report
+pnpm cov:gate                          # Enforce ≥96% coverage gate
+
+# Hardhat for deployment
+pnpm hh:compile                        # Compile contracts
 pnpm -C packages/hardhat hardhat run scripts/deploy.ts --network base_sepolia
 ```
 
-### Testing Patterns
-- **Unit tests**: Foundry in `packages/foundry/test/` 
-- **Integration**: Use `MultiChoiceTest` pattern with `setUp()` and weight arrays
-- **Coverage**: Must hit ≥96% total via `scripts/check-coverage.sh`
+### Testing Strategy
+- **Unit tests**: Individual contract functionality in `packages/foundry/test/`
+- **Integration tests**: Cross-contract interactions
+- **Fuzz tests**: Edge cases and input validation
+- **Coverage target**: ≥96% enforced by `scripts/check-coverage.sh`
 
-## Solidity Conventions
+### Network Deployment Priority
+1. **Base Sepolia** (testnet) - Primary development target
+2. **Base** (production) - Main deployment target  
+3. **Ethereum Sepolia** (testnet) - Secondary target after Base success
+4. **Ethereum** (production) - Final deployment after proven on Base
 
-### Multi-Choice Voting Pattern
+## Smart Contract Patterns
+
+### Multi-Choice Voting Implementation
 ```solidity
-// Enable multi-choice on ShiftGovernor
-pid = governor.proposeMultiChoice(targets, values, calldatas, description, numOptions);
+// In ShiftGovernor.sol
+function proposeMultiChoice(
+    address[] memory targets,
+    uint256[] memory values, 
+    bytes[] memory calldatas,
+    string memory description,
+    uint8 numOptions
+) public returns (uint256 proposalId) {
+    proposalId = propose(targets, values, calldatas, description);
+    _numOptions[proposalId] = numOptions;
+    if (multiCounter != address(0)) {
+        ICountingMultiChoice(multiCounter).enableMulti(proposalId, numOptions);
+    }
+}
 
-// Vote with weight distribution (must sum ≤ 1e18)
-uint256[] memory weights = [6e17, 3e17, 1e17]; // 60%, 30%, 10%
-countingMulti.castVoteMulti(proposalId, voter, totalWeight, weights, reason);
+// In CountingMultiChoice.sol
+function castVoteMulti(
+    uint256 proposalId,
+    address voter,
+    uint256 weight,
+    uint256[] calldata weights,
+    string calldata reason
+) external returns (uint256 weightUsed) {
+    // weights array must sum ≤ 1e18 (100%)
+    require(_sumWeights(weights) <= 1e18, "Invalid weights");
+    // Apply voter's weight proportionally to each option
+}
 ```
 
-### Action Type System
-Use `Types.ActionType` struct for configurable verification:
-- `jurorsMin/panelSize` (M-of-N verification)  
-- `weight` (WorkerPoints reward)
-- `verifyWindow/cooldown` (timing constraints)
-- `evidenceSpecCID` (IPFS evidence requirements)
+### Claims Verification Flow
+```solidity
+// ActionType configuration
+struct ActionType {
+    uint32 weight;              // WorkerPoints reward
+    uint32 jurorsMin;           // M (minimum approvals)
+    uint32 panelSize;           // N (total jurors)
+    uint32 verifyWindow;        // Time limit for verification
+    uint32 cooldown;            // Cooldown between claims
+    uint32 rewardVerify;        // Verifier reward points
+    uint32 slashVerifierBps;    // Slashing rate for bad verifiers
+    bool revocable;             // Can be revoked by governance
+    string evidenceSpecCID;     // IPFS evidence requirements
+}
+
+// Claims workflow: submit → verify (M-of-N) → approve → mint SBT
+```
+
+### Token Economy Patterns
+```solidity
+// CommunityToken: 1:1 USDC backing
+function mint(uint256 usdcAmount) external {
+    USDC.transferFrom(msg.sender, address(this), usdcAmount);
+    _mint(msg.sender, usdcAmount);
+}
+
+function redeem(uint256 tokenAmount) external {
+    _burn(msg.sender, tokenAmount);
+    USDC.transfer(msg.sender, tokenAmount);
+}
+```
+
+## Development Guidelines
+
+### Code Standards
+- **Solidity**: ^0.8.24 with OpenZeppelin 5.x
+- **Gas optimization**: 200 optimizer runs, avoid unbounded loops
+- **Security**: CEI pattern, reentrancy guards, input validation
+- **Documentation**: Complete NatSpec for all public functions
 
 ### Error Handling
-Import from `contracts/libs/Errors.sol` and use custom errors, not strings.
+```solidity
+// Use custom errors from contracts/libs/Errors.sol
+error InvalidProposalId(uint256 proposalId);
+error InsufficientVotingPower(address voter, uint256 required, uint256 actual);
+error VotingPeriodEnded(uint256 proposalId, uint256 deadline);
+```
 
-## Frontend Architecture
+### Testing Patterns
+```solidity
+// Base test contract pattern
+contract TestBase is Test {
+    ShiftGovernor governor;
+    CountingMultiChoice counting;
+    MembershipToken token;
+    
+    function setUp() public {
+        token = new MembershipToken();
+        governor = new ShiftGovernor(address(token), address(timelock));
+        counting = new CountingMultiChoice();
+        governor.setCountingMulti(address(counting));
+    }
+}
+```
 
-### Marketing Site (Next.js 14)
-- **Location**: `apps/marketing/` with App Router + Storybook
-- **Component library**: `src/components/` with `.stories.tsx` files
-- **Design system**: Import from Figma via MCP servers (`mcp_figma_get_design_context`)
-- **Pages**: Home, Acciones Valorables, Proyectos, Token Comunitario, Marketplace, Co-housing, Roadmap, FAQ
-- **Development**: `pnpm -C apps/marketing storybook` for component development
+## Critical Implementation Tasks
 
-### Mobile dApp (Expo + React Native)
-- **Architecture**: Mobile-first with RN Web for cross-platform
-- **File naming**: `*.component.tsx` (visual), `*.container.tsx` (business logic), `*.datasource.tsx` (data layer)
-- **Styling**: Tailwind NativeWind or consistent utility styles
-- **Key screens**: Home feed, Request Detail, Draft Builder, Voting (multi-choice), Claims, Projects, Marketplace, Housing, Profile, Treasury
-- **Data layer**: ethers + Wagmi/WalletConnect on Base network, IPFS uploads, optimistic UI
+### Phase 1: Core Governance
+1. Complete `CountingMultiChoice` with weight snapshots and events
+2. Implement `ShiftGovernor` hooks and multi-choice integration
+3. Add comprehensive getters for UI integration
 
-### Figma Integration
-- **Design import**: Use `mcp_figma_get_design_context` tool for component generation
-- **Design tokens**: Extract variables with `mcp_figma_get_variable_defs`
-- **Workflow**: Figma → MCP extraction → Storybook components → implementation
+### Phase 2: Verification System  
+1. `ActionTypeRegistry` with configurable verification parameters
+2. `VerifierPool` with pseudo-random juror selection and bonding
+3. `Claims` end-to-end workflow with appeal windows
+4. `WorkerSBT` with WorkerPoints EMA tracking
 
-## Integration Points
+### Phase 3: Economic Modules
+1. `DraftsManager` with proposal lifecycle tracking
+2. `CommunityToken` with 1:1 USDC backing
+3. `RevenueRouter` with configurable splits
+4. `Marketplace` and `ProjectFactory` basic functionality
 
-### Governor Extensions
-`ShiftGovernor` integrates multi-choice via:
-1. `proposeMultiChoice()` - creates proposal with option count
-2. `CountingMultiChoice.enableMulti()` - activates multi-choice counting
-3. Vote weights must sum ≤ 1e18 (enforced in `CountingMultiChoice`)
+### Phase 4: Deployment & Testing
+1. Complete deployment scripts for all networks
+2. On-chain smoke tests covering full workflows
+3. Achieve ≥96% test coverage
+4. Base Sepolia deployment and verification
 
-### Module Communication
-- `DraftsManager` → `IGovernorLike` (proposal escalation)
-- `Claims` → `VerifierPool` (juror selection, bonds)
-- `WorkerSBT` ← `Claims` (mint on approval)
-- All modules configurable via `ParamController`
+## Quick Start Commands
 
-### Deployment Flow
-1. Deploy token contracts (`MembershipTokenERC20Votes`, `CommunityToken`)
-2. Deploy `TimelockController` 
-3. Deploy `ShiftGovernor` with token/timelock addresses
-4. Deploy and wire `CountingMultiChoice` via `setCountingMulti()`
-5. Deploy module contracts with governor/registry addresses
+```bash
+# Setup and test
+pnpm install
+pnpm build                    # Compile both toolchains
+pnpm forge:test              # Run Foundry tests
+pnpm cov:gate                # Check coverage
 
-## Critical Constraints
+# Deploy to testnet
+pnpm -C packages/hardhat hardhat run scripts/deploy.ts --network base_sepolia
 
-- **Solidity**: ^0.8.24, OpenZeppelin 5.x, CEI pattern, reentrancy guards
-- **Gas optimization**: 200 optimizer runs, avoid loops in view functions
-- **Testing**: All state transitions must be tested, especially multi-choice edge cases
-- **Documentation**: NatSpec required for all public functions
-- **Base Sepolia**: Target deployment network with verification enabled
+# Format code
+pnpm fmt
+```
 
-Use `pnpm fmt` before commits. The codebase expects immediate productivity on governance mechanics, token economics, and verification workflows.
+Focus on building robust, well-tested contracts that form the foundation of decentralized community governance and work verification.

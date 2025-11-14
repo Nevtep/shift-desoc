@@ -15,8 +15,9 @@ contract WorkerSBT is ERC721 {
         _safeMint(to, nextId++);
     }
 
-    function _update(address from, address to, uint256 tokenId, uint256) internal override {
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        address from = _ownerOf(tokenId);
         if (from != address(0) && to != address(0)) revert Soulbound();
-        super._update(from, to, tokenId, 1);
+        return super._update(to, tokenId, auth);
     }
 }

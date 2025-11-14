@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Types} from "../libs/Types.sol";
-import {Errors} from "../libs/Errors.sol";
+import {Types} from "contracts/libs/Types.sol";
+import {Errors} from "contracts/libs/Errors.sol";
 
 contract ActionTypeRegistry {
     event ActionTypeCreated(uint256 indexed id, Types.ActionType cfg, address indexed by);
@@ -12,7 +12,7 @@ contract ActionTypeRegistry {
     mapping(uint256 => Types.ActionType) public typesById;
     mapping(address => bool) public isModerator;
 
-    modifier onlyMod() { if (!isModerator[msg.sender]) revert Errors.NotAuthorized(); _; }
+    modifier onlyMod() { if (!isModerator[msg.sender]) revert Errors.NotAuthorized(msg.sender); _; }
 
     function setModerator(address who, bool val) external /* onlyGov */ { isModerator[who] = val; }
 

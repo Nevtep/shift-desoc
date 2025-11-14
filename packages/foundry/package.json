@@ -1,0 +1,9 @@
+{
+  "name": "shift-foundry",
+  "private": true,
+  "scripts": {
+    "test": "forge test -vvv",
+    "test:coverage": "forge coverage --report summary",
+    "build": "forge build"
+  }
+}

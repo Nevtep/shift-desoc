@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Types} from "../libs/Types.sol";
-import {Errors} from "../libs/Errors.sol";
+import {Types} from "contracts/libs/Types.sol";
+import {Errors} from "contracts/libs/Errors.sol";
 
 contract Claims {
     struct Claim { uint256 typeId; address worker; string cid; Types.ClaimStatus status; uint64 createdAt; }
