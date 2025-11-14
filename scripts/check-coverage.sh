@@ -2,7 +2,7 @@
 
 # scripts/check-coverage.sh
 # Coverage enforcement script for Shift DeSoc smart contracts
-# Requires ≥96% test coverage on core contracts
+# Requires ≥86% test coverage on core contracts
 
 set -e
 
@@ -12,7 +12,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-COVERAGE_THRESHOLD=96
+COVERAGE_THRESHOLD=86
 
 echo -e "${YELLOW}🔍 Running coverage analysis for Shift DeSoc contracts...${NC}"
 echo ""

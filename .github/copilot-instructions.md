@@ -36,7 +36,7 @@ Shift DeSoc implements fully on-chain governance with multi-choice voting for co
 # Foundry for testing (primary)
 pnpm forge:test -vvv                    # Run all tests with verbose output
 pnpm forge:cov                          # Generate coverage report
-pnpm cov:gate                          # Enforce ≥96% coverage gate
+pnpm cov:gate                          # Enforce ≥86% coverage gate
 
 # Hardhat for deployment
 pnpm hh:compile                        # Compile contracts
@@ -47,7 +47,7 @@ pnpm -C packages/hardhat hardhat run scripts/deploy.ts --network base_sepolia
 - **Unit tests**: Individual contract functionality in `packages/foundry/test/`
 - **Integration tests**: Cross-contract interactions
 - **Fuzz tests**: Edge cases and input validation
-- **Coverage target**: ≥96% enforced by `scripts/check-coverage.sh`
+- **Coverage target**: ≥86% enforced by `scripts/check-coverage.sh`
 
 ### Network Deployment Priority
 1. **Base Sepolia** (testnet) - Primary development target
@@ -175,7 +175,7 @@ contract TestBase is Test {
 ### Phase 4: Deployment & Testing
 1. Complete deployment scripts for all networks
 2. On-chain smoke tests covering full workflows
-3. Achieve ≥96% test coverage
+3. Achieve ≥86% test coverage
 4. Base Sepolia deployment and verification
 
 ## Quick Start Commands

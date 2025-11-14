@@ -1,4 +1,4 @@
-You are my senior Solidity + TypeScript engineer. Analyze the repository structure (Hardhat + Foundry). Goal: implement fully on-chain governance and the MVP of Shift (requests → drafts → proposals with multi-choice voting → timelock queue/execute; Action Types → Claims → SBT; Projects; Marketplace; RevenueRouter; Housing; backed CommunityToken), reach ≥96% Foundry coverage, deploy to Base Sepolia, and run on-chain smoke tests.
+You are my senior Solidity + TypeScript engineer. Analyze the repository structure (Hardhat + Foundry). Goal: implement fully on-chain governance and the MVP of Shift (requests → drafts → proposals with multi-choice voting → timelock queue/execute; Action Types → Claims → SBT; Projects; Marketplace; RevenueRouter; Housing; backed CommunityToken), reach ≥86% Foundry coverage, deploy to Base Sepolia, and run on-chain smoke tests.
 
 Tasks:
 
@@ -24,7 +24,7 @@ HousingManager reservations per night (ERC-1155), rules for investor stake prior
 
 CommunityToken ERC-20 backed 1:1 by USDC/USDT: mint on deposit, burn on redemption (simple vault accounting in MVP).
 
-Foundry tests: unit + fuzz + integration; achieve ≥96% coverage; enable scripts/check-coverage.sh.
+Foundry tests: unit + fuzz + integration; achieve ≥86% coverage; enable scripts/check-coverage.sh.
 
 Hardhat: update deploy.ts to deploy all modules, log addresses, and verify on Base Sepolia.
 

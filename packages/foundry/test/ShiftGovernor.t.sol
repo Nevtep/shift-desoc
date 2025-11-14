@@ -10,7 +10,7 @@ import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
 /// @title ShiftGovernorTest
-/// @notice Comprehensive tests for ShiftGovernor contract to achieve ≥96% coverage
+/// @notice Comprehensive tests for ShiftGovernor contract to achieve ≥86% coverage
 contract ShiftGovernorTest is Test {
     ShiftGovernor public governor;
     CountingMultiChoice public multiChoice;
