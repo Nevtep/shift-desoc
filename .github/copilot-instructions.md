@@ -30,7 +30,7 @@ Shift implements a comprehensive **Community Coordination → Work Verification 
 
 ### Token Economy & Revenue Distribution
 - **CommunityToken**: 1:1 USDC-backed stablecoin for transparent community payments and treasury management
-- **RevenueRouter**: Automated revenue splits (50% workers / 30% treasury / 20% investors, governable)
+- **RevenueRouter**: Automated revenue splits between workers, treasury, and investors (governance-configurable)
 - **Marketplace**: Decentralized service marketplace with quality verification and reputation-based discovery
 - **ProjectFactory**: ERC-1155 crowdfunding with milestone validation and investor protection mechanisms
 
@@ -149,7 +149,7 @@ struct Community {
     uint256 proposalThreshold;
     
     // Economic Parameters
-    uint256[3] revenueSplit;     // [workers%, treasury%, investors%]
+    uint256[3] revenueSplit;     // [workers%, treasury%, investors%] - governance configurable
     uint256 feeOnWithdraw;
     address[] backingAssets;     // Approved collateral tokens
     

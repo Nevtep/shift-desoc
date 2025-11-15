@@ -18,7 +18,7 @@ DraftsManager end-to-end: create → escalate (binary or multi) → link proposa
 
 ProjectFactory (ERC-1155 address param) and minimal milestones model.
 
-Marketplace purchase flow (stable & token); plug RevenueRouter with split 50/30/20 (configurable).
+Marketplace purchase flow (stable & token); plug RevenueRouter with configurable split (governance controlled).
 
 HousingManager reservations per night (ERC-1155), rules for investor stake priority and worker discounts (stub OK).
 

@@ -2,10 +2,10 @@
 pragma solidity ^0.8.24;
 
 contract RevenueRouter {
-    // Split por defecto: 50/30/20 (workers/treasury/investors)
-    uint16 public workersBps = 5000;
-    uint16 public treasuryBps = 3000;
-    uint16 public investorsBps = 2000;
+    // Revenue split configurable por governance (workers/treasury/investors)
+    uint16 public workersBps = 5000;    // Initial values
+    uint16 public treasuryBps = 3000;   // configurable by
+    uint16 public investorsBps = 2000;  // governance
 
     event RevenueReceived(address indexed token, uint256 amount);
     event RevenueSplit(uint256 workers, uint256 treasury, uint256 investors);

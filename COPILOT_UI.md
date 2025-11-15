@@ -30,7 +30,7 @@ Housing: unidades; calendario por noches (1155); reservar; ver reservas.
 
 Profile: SBTs, WorkerPoints, antigüedad, elegibilidad; delegación de voto.
 
-Treasury: ingresos/egresos, split 50/30/20; redenciones de CommunityToken.
+Treasury: ingresos/egresos, split configurable por governance; redenciones de CommunityToken.
 
 Data layer (*.datasource.tsx):
 

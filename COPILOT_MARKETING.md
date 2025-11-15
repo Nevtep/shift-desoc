@@ -8,7 +8,7 @@ Proyectos (crowdfunding stable, ERC-1155 por tiers, milestones).
 
 Token Comunitario (1:1 backed, mint on deposit, burn on redemption).
 
-Marketplace (pricing gobernado, revenue split 50/30/20).
+Marketplace (pricing gobernado, revenue split configurable por governance).
 
 Co-housing (reservas por noche, beneficios inversores/trabajadores).
 
