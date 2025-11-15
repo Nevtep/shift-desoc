@@ -7,12 +7,14 @@
   ],
   "scripts": {
     "fmt": "prettier -w .",
-    "hh:compile": "pnpm -C packages/hardhat hardhat compile",
-    "hh:test": "pnpm -C packages/hardhat hardhat test",
-    "forge:test": "pnpm -C packages/foundry forge test -vvv",
-    "forge:cov": "pnpm -C packages/foundry forge coverage --report summary",
+    "hh:compile": "pnpm --filter @shift/hardhat compile",
+    "hh:test": "pnpm --filter @shift/hardhat test",
+    "hh:deploy:base-sepolia": "pnpm --filter @shift/hardhat deploy:base-sepolia",
+    "forge:test": "pnpm --filter shift-foundry test",
+    "forge:build": "pnpm --filter shift-foundry build",
+    "forge:cov": "pnpm --filter shift-foundry test:coverage",
     "cov:gate": "bash ./scripts/check-coverage.sh",
-    "build": "pnpm hh:compile && pnpm -C packages/foundry forge build"
+    "build": "pnpm hh:compile && pnpm forge:build"
   },
   "devDependencies": {
     "prettier": "^3.3.0"

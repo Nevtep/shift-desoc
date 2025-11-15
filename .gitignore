@@ -22,6 +22,14 @@ cache/
 foundry.lock
 lcov.info
 
+# Hardhat
+artifacts/
+**/artifacts/
+typechain-types/
+**/typechain-types/
+deployments/
+**/deployments/
+
 # Coverage reports
 coverage/
 coverage_summary.txt
@@ -57,8 +65,18 @@ lerna-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.secret
+.privatekey
 
 # Temporary files
 tmp/
 temp/
 .tmp/
+
+# Hardhat network files
+.openzeppelin/
+*/.openzeppelin/
+
+# Gas usage reports
+gas-report.txt
+**/gas-report.txt

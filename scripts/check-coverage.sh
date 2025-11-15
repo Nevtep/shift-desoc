@@ -41,8 +41,8 @@ for CONTRACT in "${CORE_CONTRACTS[@]}"; do
     
     if [ -n "$CONTRACT_LINE" ]; then
         # Extract line coverage percentage - the format is: | path | XX.XX% (n/m) | ...
-        # Parse the second column which contains the line coverage
-        LINE_PCT=$(echo "$CONTRACT_LINE" | awk -F'|' '{gsub(/^ *| *$/,"",$2); print $2}' | grep -o '^[0-9]\+\.[0-9]\+' | head -1)
+        # Parse the third column which contains the line coverage percentage
+        LINE_PCT=$(echo "$CONTRACT_LINE" | awk -F'|' '{gsub(/^ *| *$/,"",$3); print $3}' | grep -o '[0-9]\+\.[0-9]\+' | head -1)
         
         if [ -n "$LINE_PCT" ]; then
             # Convert to integer for comparison

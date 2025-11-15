@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {IVerifierPool} from "contracts/core/interfaces/IVerifierPool.sol";
 
 /// @title Claims
 /// @notice Handles work claim submissions and M-of-N verification with juror panels
@@ -17,7 +18,8 @@ contract Claims {
         uint64 createdAt;           // Submission timestamp
         uint64 verifyDeadline;      // Verification window deadline
         address[] jurors;           // Assigned juror panel
-        mapping(address => bool) votes; // Juror votes (true = approve)
+        mapping(address => bool) hasVoted; // Whether juror has voted
+        mapping(address => bool) votes;    // Juror vote decisions (true = approve, false = reject)
         uint32 approvalsCount;      // Number of approvals received
         uint32 rejectionsCount;     // Number of rejections received
         bool resolved;              // Whether claim has been resolved
@@ -134,8 +136,20 @@ contract Claims {
         // For now using 24 hours as default
         claim.verifyDeadline = uint64(block.timestamp + 24 hours);
 
-        // Assign juror panel (would call VerifierPool.selectJurors())
-        // For now creating empty array - this would be populated by verifier pool
+        // Assign juror panel via VerifierPool (if available and has code)
+        if (verifierPool != address(0) && verifierPool.code.length > 0) {
+            try IVerifierPool(verifierPool).selectJurors(
+                claimId,
+                3, // Default panel size - would come from ActionTypeRegistry
+                uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, claimId)))
+            ) returns (address[] memory selectedJurors) {
+                claim.jurors = selectedJurors;
+                emit JurorsAssigned(claimId, selectedJurors);
+            } catch {
+                // If verifier selection fails, leave jurors empty for manual assignment
+                // This allows the system to still function with fallback mechanisms
+            }
+        }
         
         // Track pending claims
         pendingClaims[typeId].push(claimId);
@@ -167,10 +181,11 @@ contract Claims {
         
         if (claim.resolved) revert Errors.InvalidInput("Claim already resolved");
         if (block.timestamp > claim.verifyDeadline) revert Errors.InvalidInput("Verification deadline passed");
-        if (claim.votes[msg.sender]) revert Errors.InvalidInput("Juror already voted");
+        if (claim.hasVoted[msg.sender]) revert Errors.InvalidInput("Juror already voted");
 
-        // Record vote first
-        claim.votes[msg.sender] = true;
+        // Record vote
+        claim.hasVoted[msg.sender] = true;
+        claim.votes[msg.sender] = approve;
         
         if (approve) {
             claim.approvalsCount++;
@@ -245,6 +260,11 @@ contract Claims {
         claim.status = status;
         claim.resolved = true;
 
+        // Update verifier reputations based on their votes
+        if (verifierPool != address(0) && verifierPool.code.length > 0 && claim.jurors.length > 0) {
+            _updateVerifierReputations(claimId, status);
+        }
+
         if (status == Types.ClaimStatus.Approved) {
             // Set cooldown for worker
             // This would get cooldown period from ActionTypeRegistry
@@ -261,6 +281,54 @@ contract Claims {
         _removePendingClaim(claim.typeId, claimId);
 
         emit ClaimResolved(claimId, status, claim.approvalsCount, claim.rejectionsCount);
+    }
+
+    /// @notice Update verifier reputations based on claim resolution
+    /// @param claimId Claim ID that was resolved
+    /// @param finalStatus Final claim status (Approved or Rejected)
+    function _updateVerifierReputations(uint256 claimId, Types.ClaimStatus finalStatus) internal {
+        Claim storage claim = claims[claimId];
+        
+        if (claim.jurors.length == 0) return;
+        
+        bool[] memory successful = new bool[](claim.jurors.length);
+        
+        // TODO: FIX REPUTATION SYSTEM FLAW
+        // Current issue: Claims resolve immediately when M votes are reached, 
+        // causing N-M jurors who haven't voted yet to be unfairly penalized.
+        // This incentivizes rushed voting over thorough evidence review.
+        //
+        // Potential solutions:
+        // 1. Only update reputation for jurors who actually voted before resolution
+        // 2. Allow full voting window and resolve based on deadline expiry
+        // 3. Implement separate reputation logic for non-participation vs wrong decisions
+        // 4. Consider time-weighted voting where early accurate votes get bonus points
+        
+        // Determine which jurors voted with the majority (successfully)
+        for (uint256 i = 0; i < claim.jurors.length; i++) {
+            address juror = claim.jurors[i];
+            
+            // Only consider jurors who actually voted
+            if (!claim.hasVoted[juror]) {
+                successful[i] = false; // Didn't vote = unsuccessful
+                continue;
+            }
+            
+            // Get how the juror voted (true = approved, false = rejected)
+            bool jurorApproved = claim.votes[juror];
+            
+            // Juror was successful if they voted with the final outcome
+            successful[i] = (finalStatus == Types.ClaimStatus.Approved) ? jurorApproved : !jurorApproved;
+        }
+        
+        // Call VerifierPool to update reputations
+        if (verifierPool.code.length > 0) {
+            try IVerifierPool(verifierPool).updateReputations(claimId, claim.jurors, successful) {
+                // Reputation update successful
+            } catch {
+                // If reputation update fails, continue - this is not critical for claim resolution
+            }
+        }
     }
 
     /// @notice Remove claim from pending list
