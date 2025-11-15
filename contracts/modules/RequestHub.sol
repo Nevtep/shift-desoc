@@ -1,22 +1,416 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {Errors} from "../libs/Errors.sol";
+import {CommunityRegistry} from "./CommunityRegistry.sol";
+
+/// @title RequestHub
+/// @notice Decentralized discussion forum for community needs and collaborative solution development
+/// @dev On-chain discussion entry point where community members post needs/ideas and collaborate on solutions
 contract RequestHub {
-    enum Status { OPEN_DEBATE, FROZEN, ARCHIVED }
-    struct RequestMeta { address author; string title; string cid; Status status; uint64 createdAt; }
-    uint256 public lastId; mapping(uint256 => RequestMeta) public requests;
-
-    event RequestCreated(uint256 indexed id, address indexed author, string title, string cid);
-    event CommentPosted(uint256 indexed id, uint256 indexed commentId, address indexed author, string cid, uint256 parentId);
-    event RequestStatusChanged(uint256 indexed id, Status status);
-
-    function createRequest(string calldata title, string calldata cid) external returns (uint256 id) {
-        id = ++lastId; requests[id] = RequestMeta(msg.sender, title, cid, Status.OPEN_DEBATE, uint64(block.timestamp));
-        emit RequestCreated(id, msg.sender, title, cid);
+    
+    /*//////////////////////////////////////////////////////////////
+                                ENUMS
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Status of a request
+    enum Status { 
+        OPEN_DEBATE,  // Active discussion
+        FROZEN,       // Locked by moderators, no new posts
+        ARCHIVED      // Permanently archived
     }
-    function postComment(uint256 id, uint256 parentId, string calldata cid) external returns (uint256 cId) {
-        cId = uint256(keccak256(abi.encodePacked(id, msg.sender, cid, block.timestamp)));
-        emit CommentPosted(id, cId, msg.sender, cid, parentId);
+    
+    /*//////////////////////////////////////////////////////////////
+                                STRUCTS
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Request metadata and content
+    struct Request {
+        uint256 communityId;      // Community this request belongs to
+        address author;           // Request creator
+        string title;             // Request title
+        string cid;               // IPFS content hash
+        Status status;            // Current status
+        uint64 createdAt;         // Creation timestamp
+        uint64 lastActivity;      // Last comment timestamp
+        string[] tags;            // Categorization tags
+        uint256 commentCount;     // Number of comments
+        uint256 bountyAmount;     // Optional bounty (0 if none)
+        uint256 linkedActionType; // Linked ActionType ID (0 if none)
     }
-    function setStatus(uint256 id, Status s) external /*onlyMod*/ { requests[id].status = s; emit RequestStatusChanged(id, s); }
+    
+    /// @notice Comment on a request
+    struct Comment {
+        uint256 requestId;        // Parent request
+        address author;           // Comment author
+        string cid;               // IPFS content hash
+        uint256 parentCommentId;  // Parent comment (0 for top-level)
+        uint64 createdAt;         // Creation timestamp
+        bool isModerated;         // Hidden by moderators
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Community registry for access control and community data
+    CommunityRegistry public immutable communityRegistry;
+    
+    /// @notice Next request ID
+    uint256 public nextRequestId = 1;
+    
+    /// @notice Next comment ID  
+    uint256 public nextCommentId = 1;
+    
+    /// @notice All requests by ID
+    mapping(uint256 => Request) public requests;
+    
+    /// @notice All comments by ID
+    mapping(uint256 => Comment) public comments;
+    
+    /// @notice Requests by community: communityId => requestIds[]
+    mapping(uint256 => uint256[]) public communityRequests;
+    
+    /// @notice Comments by request: requestId => commentIds[]
+    mapping(uint256 => uint256[]) public requestComments;
+    
+    /// @notice User request count for rate limiting: communityId => user => count
+    mapping(uint256 => mapping(address => uint256)) public userRequestCount;
+    
+    /// @notice User last post time for rate limiting: communityId => user => timestamp
+    mapping(uint256 => mapping(address => uint256)) public userLastPostTime;
+    
+    /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Emitted when a new request is created
+    event RequestCreated(
+        uint256 indexed requestId,
+        uint256 indexed communityId, 
+        address indexed author,
+        string title,
+        string cid,
+        string[] tags
+    );
+    
+    /// @notice Emitted when a comment is posted
+    event CommentPosted(
+        uint256 indexed requestId,
+        uint256 indexed commentId,
+        address indexed author,
+        string cid,
+        uint256 parentCommentId
+    );
+    
+    /// @notice Emitted when request status changes
+    event RequestStatusChanged(
+        uint256 indexed requestId,
+        Status indexed newStatus,
+        address indexed moderator
+    );
+    
+    /// @notice Emitted when a bounty is added to a request
+    event BountyAdded(
+        uint256 indexed requestId,
+        uint256 amount,
+        address indexed funder
+    );
+    
+    /// @notice Emitted when a request is linked to an ActionType
+    event ActionTypeLinking(
+        uint256 indexed requestId,
+        uint256 indexed actionTypeId,
+        address indexed linker
+    );
+    
+    /*//////////////////////////////////////////////////////////////
+                               CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @param _communityRegistry Address of the community registry
+    constructor(address _communityRegistry) {
+        if (_communityRegistry == address(0)) revert Errors.ZeroAddress();
+        communityRegistry = CommunityRegistry(_communityRegistry);
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                            REQUEST MANAGEMENT
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Create a new community request
+    /// @param communityId Community to post in
+    /// @param title Request title
+    /// @param cid IPFS content hash
+    /// @param tags Categorization tags
+    /// @return requestId The created request ID
+    function createRequest(
+        uint256 communityId,
+        string calldata title,
+        string calldata cid,
+        string[] calldata tags
+    ) external returns (uint256 requestId) {
+        _requireValidCommunity(communityId);
+        _requireNotRateLimited(communityId, msg.sender);
+        
+        if (bytes(title).length == 0) revert Errors.InvalidInput("Title cannot be empty");
+        if (bytes(cid).length == 0) revert Errors.InvalidInput("Content CID cannot be empty");
+        
+        requestId = nextRequestId++;
+        
+        Request storage request = requests[requestId];
+        request.communityId = communityId;
+        request.author = msg.sender;
+        request.title = title;
+        request.cid = cid;
+        request.status = Status.OPEN_DEBATE;
+        request.createdAt = uint64(block.timestamp);
+        request.lastActivity = uint64(block.timestamp);
+        request.tags = tags;
+        
+        // Add to community requests list
+        communityRequests[communityId].push(requestId);
+        
+        // Update rate limiting
+        userRequestCount[communityId][msg.sender]++;
+        userLastPostTime[communityId][msg.sender] = block.timestamp;
+        
+        emit RequestCreated(requestId, communityId, msg.sender, title, cid, tags);
+    }
+    
+    /// @notice Post a comment on a request
+    /// @param requestId Request to comment on
+    /// @param parentCommentId Parent comment ID (0 for top-level)
+    /// @param cid IPFS content hash
+    /// @return commentId The created comment ID
+    function postComment(
+        uint256 requestId,
+        uint256 parentCommentId,
+        string calldata cid
+    ) external returns (uint256 commentId) {
+        Request storage request = requests[requestId];
+        if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
+        if (request.status == Status.FROZEN || request.status == Status.ARCHIVED) {
+            revert Errors.InvalidInput("Request is not open for comments");
+        }
+        
+        _requireNotRateLimited(request.communityId, msg.sender);
+        
+        if (bytes(cid).length == 0) revert Errors.InvalidInput("Content CID cannot be empty");
+        
+        // Validate parent comment if specified
+        if (parentCommentId != 0) {
+            Comment storage parentComment = comments[parentCommentId];
+            if (parentComment.requestId != requestId) {
+                revert Errors.InvalidInput("Parent comment not in this request");
+            }
+        }
+        
+        commentId = nextCommentId++;
+        
+        Comment storage comment = comments[commentId];
+        comment.requestId = requestId;
+        comment.author = msg.sender;
+        comment.cid = cid;
+        comment.parentCommentId = parentCommentId;
+        comment.createdAt = uint64(block.timestamp);
+        
+        // Add to request comments list
+        requestComments[requestId].push(commentId);
+        
+        // Update request activity
+        request.lastActivity = uint64(block.timestamp);
+        request.commentCount++;
+        
+        // Update rate limiting
+        userLastPostTime[request.communityId][msg.sender] = block.timestamp;
+        
+        emit CommentPosted(requestId, commentId, msg.sender, cid, parentCommentId);
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                             MODERATION
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Change request status (moderator only)
+    /// @param requestId Request to update
+    /// @param newStatus New status
+    function setRequestStatus(uint256 requestId, Status newStatus) external {
+        Request storage request = requests[requestId];
+        if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
+        
+        _requireModerator(request.communityId, msg.sender);
+        
+        request.status = newStatus;
+        emit RequestStatusChanged(requestId, newStatus, msg.sender);
+    }
+    
+    /// @notice Moderate a comment (hide/unhide)
+    /// @param commentId Comment to moderate
+    /// @param hide Whether to hide the comment
+    function moderateComment(uint256 commentId, bool hide) external {
+        Comment storage comment = comments[commentId];
+        if (comment.author == address(0)) revert Errors.InvalidInput("Comment does not exist");
+        
+        Request storage request = requests[comment.requestId];
+        _requireModerator(request.communityId, msg.sender);
+        
+        comment.isModerated = hide;
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                               BOUNTIES
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Add a bounty to a request
+    /// @param requestId Request to add bounty to
+    /// @param amount Bounty amount (in community tokens)
+    function addBounty(uint256 requestId, uint256 amount) external {
+        Request storage request = requests[requestId];
+        if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
+        if (amount == 0) revert Errors.InvalidInput("Bounty amount must be positive");
+        
+        // TODO: Transfer tokens from sender to this contract
+        // For now, just update the bounty amount
+        request.bountyAmount += amount;
+        
+        emit BountyAdded(requestId, amount, msg.sender);
+    }
+    
+    /// @notice Link request to an ActionType for work verification
+    /// @param requestId Request to link
+    /// @param actionTypeId ActionType to link to
+    function linkActionType(uint256 requestId, uint256 actionTypeId) external {
+        Request storage request = requests[requestId];
+        if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
+        
+        // Only request author or community admin can link ActionTypes
+        if (msg.sender != request.author) {
+            _requireCommunityAdmin(request.communityId, msg.sender);
+        }
+        
+        request.linkedActionType = actionTypeId;
+        emit ActionTypeLinking(requestId, actionTypeId, msg.sender);
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                              VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Get request details
+    /// @param requestId Request ID
+    /// @return request Request data
+    function getRequest(uint256 requestId) external view returns (Request memory request) {
+        request = requests[requestId];
+        if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
+    }
+    
+    /// @notice Get comment details
+    /// @param commentId Comment ID
+    /// @return comment Comment data
+    function getComment(uint256 commentId) external view returns (Comment memory comment) {
+        comment = comments[commentId];
+        if (comment.author == address(0)) revert Errors.InvalidInput("Comment does not exist");
+    }
+    
+    /// @notice Get all requests for a community
+    /// @param communityId Community ID
+    /// @return requestIds Array of request IDs
+    function getCommunityRequests(uint256 communityId) external view returns (uint256[] memory) {
+        return communityRequests[communityId];
+    }
+    
+    /// @notice Get all comments for a request
+    /// @param requestId Request ID
+    /// @return commentIds Array of comment IDs
+    function getRequestComments(uint256 requestId) external view returns (uint256[] memory) {
+        return requestComments[requestId];
+    }
+    
+    /// @notice Get requests by tag (view helper - off-chain filtering recommended for gas efficiency)
+    /// @param communityId Community ID
+    /// @param tag Tag to filter by
+    /// @return requestIds Matching request IDs
+    function getRequestsByTag(uint256 communityId, string calldata tag) external view returns (uint256[] memory requestIds) {
+        uint256[] memory allRequests = communityRequests[communityId];
+        uint256[] memory matching = new uint256[](allRequests.length);
+        uint256 matchCount = 0;
+        
+        for (uint256 i = 0; i < allRequests.length; i++) {
+            Request storage request = requests[allRequests[i]];
+            for (uint256 j = 0; j < request.tags.length; j++) {
+                if (keccak256(bytes(request.tags[j])) == keccak256(bytes(tag))) {
+                    matching[matchCount++] = allRequests[i];
+                    break;
+                }
+            }
+        }
+        
+        // Resize array to actual match count
+        requestIds = new uint256[](matchCount);
+        for (uint256 i = 0; i < matchCount; i++) {
+            requestIds[i] = matching[i];
+        }
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                            INTERNAL HELPERS
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Require valid community
+    /// @param communityId Community ID to validate
+    function _requireValidCommunity(uint256 communityId) internal view {
+        // Delegate to community registry
+        try communityRegistry.getCommunity(communityId) returns (CommunityRegistry.Community memory) {
+            // Community exists
+        } catch {
+            revert Errors.InvalidInput("Community does not exist");
+        }
+    }
+    
+    /// @notice Require community moderator privileges
+    /// @param communityId Community ID
+    /// @param user User to check
+    function _requireModerator(uint256 communityId, address user) internal view {
+        if (!communityRegistry.hasRole(communityId, user, communityRegistry.MODERATOR_ROLE()) &&
+            !communityRegistry.communityAdmins(communityId, user) &&
+            !communityRegistry.hasRole(communityRegistry.DEFAULT_ADMIN_ROLE(), user)) {
+            revert Errors.NotAuthorized(user);
+        }
+    }
+    
+    /// @notice Require community admin privileges
+    /// @param communityId Community ID
+    /// @param user User to check
+    function _requireCommunityAdmin(uint256 communityId, address user) internal view {
+        if (!communityRegistry.communityAdmins(communityId, user) &&
+            !communityRegistry.hasRole(communityRegistry.DEFAULT_ADMIN_ROLE(), user)) {
+            revert Errors.NotAuthorized(user);
+        }
+    }
+    
+    /// @notice Check rate limiting for user posts
+    /// @param communityId Community ID
+    /// @param user User to check
+    function _requireNotRateLimited(uint256 communityId, address user) internal view {
+        uint256 lastPost = userLastPostTime[communityId][user];
+        
+        // Skip rate limiting for first post (lastPost == 0)
+        if (lastPost == 0) {
+            return;
+        }
+        
+        // Basic rate limiting: max 10 posts per day
+        uint256 dayStart = (block.timestamp / 1 days) * 1 days;
+        if (lastPost >= dayStart) {
+            if (userRequestCount[communityId][user] >= 10) {
+                revert Errors.InvalidInput("Rate limit exceeded");
+            }
+        }
+        
+        // Minimum time between posts: 1 minute
+        if (block.timestamp - lastPost < 60) {
+            revert Errors.InvalidInput("Post too soon after previous post");
+        }
+    }
 }

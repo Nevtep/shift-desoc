@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {IVerifierPool} from "contracts/core/interfaces/IVerifierPool.sol";
+import {IWorkerSBT} from "contracts/core/interfaces/IWorkerSBT.sol";
 
 /// @title Claims
 /// @notice Handles work claim submissions and M-of-N verification with juror panels
@@ -266,13 +267,41 @@ contract Claims {
         }
 
         if (status == Types.ClaimStatus.Approved) {
+            // Get ActionType data for cooldown and WorkerPoints
+            Types.ActionType memory actionType;
+            if (actionRegistry != address(0)) {
+                // Get ActionType from registry
+                (bool success, bytes memory data) = actionRegistry.staticcall(
+                    abi.encodeWithSignature("getActionType(uint256)", claim.typeId)
+                );
+                if (success) {
+                    actionType = abi.decode(data, (Types.ActionType));
+                }
+            }
+            
             // Set cooldown for worker
-            // This would get cooldown period from ActionTypeRegistry
-            uint64 cooldownPeriod = 1 hours; // Default
+            uint64 cooldownPeriod = actionType.cooldown > 0 ? actionType.cooldown : 1 hours;
             workerCooldowns[claim.worker][claim.typeId] = uint64(block.timestamp + cooldownPeriod);
             
-            // TODO: Mint SBT and award WorkerPoints
-            // This would call WorkerSBT.mint() and update WorkerPoints
+            // Mint SBT and award WorkerPoints
+            if (workerSBT != address(0)) {
+                uint256 workerPoints = actionType.weight > 0 ? actionType.weight : 10; // Default 10 points
+                
+                // Generate basic metadata URI for the claim
+                string memory metadataURI = string(abi.encodePacked(
+                    '{"type":"claim","id":', 
+                    _uint2str(claimId),
+                    ',"actionType":', 
+                    _uint2str(claim.typeId),
+                    ',"points":', 
+                    _uint2str(workerPoints),
+                    ',"timestamp":', 
+                    _uint2str(block.timestamp),
+                    '}'
+                ));
+                
+                IWorkerSBT(workerSBT).mintAndAwardPoints(claim.worker, workerPoints, metadataURI);
+            }
             
             emit CooldownUpdated(claim.worker, claim.typeId, workerCooldowns[claim.worker][claim.typeId]);
         }
@@ -435,5 +464,28 @@ contract Claims {
     function updateGovernance(address _governance) external onlyGovernance {
         if (_governance == address(0)) revert Errors.ZeroAddress();
         governance = _governance;
+    }
+
+    /// @dev Convert uint to string for metadata generation
+    function _uint2str(uint256 _i) internal pure returns (string memory) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint256 j = _i;
+        uint256 len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint256 k = len;
+        while (_i != 0) {
+            k = k - 1;
+            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
+            bytes1 b1 = bytes1(temp);
+            bstr[k] = b1;
+            _i /= 10;
+        }
+        return string(bstr);
     }
 }

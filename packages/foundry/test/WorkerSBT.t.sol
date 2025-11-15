@@ -276,17 +276,19 @@ contract WorkerSBTTest is Test {
         vm.prank(manager);
         workerSBT.mintAndAwardPoints(worker1, 1000, "uri");
         
+        // Get the actual mint time from the contract
+        uint256 mintTime = workerSBT.lastWorkerPointsUpdate(worker1);
         assertEq(workerSBT.getCurrentWorkerPoints(worker1), 1000);
         
-        // Move forward 1 week (1 decay period)
-        vm.warp(block.timestamp + 7 days);
+        // Move forward 1 week from mint time (1 decay period)
+        vm.warp(mintTime + 7 days);
         
         // Points should decay to 950 (95% retention)
         uint256 expectedPoints = (1000 * 950) / 1000; // 950
         assertEq(workerSBT.getCurrentWorkerPoints(worker1), expectedPoints);
         
-        // Move forward another week
-        vm.warp(block.timestamp + 7 days);
+        // Move forward to exactly 2 weeks from mint time
+        vm.warp(mintTime + 14 days);
         
         // Points should decay again: 950 * 0.95 = 902
         expectedPoints = (expectedPoints * 950) / 1000;
