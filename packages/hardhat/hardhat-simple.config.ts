@@ -25,10 +25,11 @@ const config: HardhatUserConfig = {
     }
   },
   paths: {
-    sources: "../../contracts", // Use root contracts directory
-    tests: "./test", 
-    artifacts: "./artifacts", 
+    sources: "../../contracts", // Point to root contracts directory
+    tests: "./test",
+    artifacts: "./artifacts",
     cache: "./cache"
   }
 };
+
 export default config;
