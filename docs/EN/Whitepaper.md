@@ -179,7 +179,7 @@ A software project needs to choose a new architecture:
 - **Evidence-Based Management**: See exactly who contributed what, verified by peer consensus
 - **Democratic but Efficient Governance**: Multi-choice voting that captures community will without endless debates
 - **Transparent Resource Allocation**: Community sees exactly how funds and resources are distributed
-- **Conflict Resolution**: Clear appeals process and objective verification standards
+- **Conflict Resolution**: Clear appeals process with **Kleros** integration for decentralized dispute resolution and **Aragon Court** for high-stakes governance appeals
 
 **Example**: David manages a creator collective. Instead of guessing who deserves project funding, he can see verified contribution histories and let the community vote on funding allocation with full transparency.
 
@@ -194,6 +194,275 @@ A software project needs to choose a new architecture:
 - **Portfolio Diversification**: Support multiple communities with different risk/return profiles
 
 **Example**: Alex invests in a local food cooperative's expansion. She can see verified progress on new locations, vote on expansion priorities, and receive proportional returns from revenue growth.
+
+---
+
+## Revolutionary Tokenomics: From Capital Extraction to Cooperative Abundance
+
+### **The Economic Philosophy: Eliminating Arbitrary Value Extraction**
+
+Traditional platforms and organizations use **fixed percentage splits** that forever favor capital over contribution: "Investors get 40%, workers get 40%, treasury keeps 20%." These arbitrary numbers create permanent rent-seeking that destroys community trust and limits prosperity.
+
+**Shift DeSoc eliminates arbitrary splits entirely** through **Dynamic Economic Democracy** where value distribution evolves mathematically based on:
+- **Time-weighted risk resolution** (early risk deserves early returns)
+- **Performance-based merit** (actual contribution drives ongoing rewards)
+- **Community-governed parameters** (democratic control over economic rules)
+
+**Core Principle**: *Economic power transitions naturally from capital providers to value creators as risk decreases and contribution compounds.*
+
+### **The Triple-Token Architecture: Separating Investment from Reputation**
+
+Shift DeSoc solves a fundamental problem of decentralized organizations: **How do we prevent those with the most money from controlling the decisions of those who do the work?**
+
+Our revolutionary solution: **We completely separate economic participation from work reputation** using three different types of digital tokens.
+
+#### **Layer 1: Democratic Governance (Membership Token)**
+
+**What is it?** Like a share in the community that you can buy, sell, or trade.
+
+**How it works:**
+- **Buy with real money**: 1 token = 1 US dollar (USDC), always
+- **Gives you voting rights**: Participate in community decisions
+- **Earns you revenue**: When community generates income, you get your share
+- **Transferable**: You can sell or gift it to someone else
+- **Stable value**: No volatility like Bitcoin; always worth $1
+
+**Democratic Features:**
+- **Multi-choice voting** for nuanced decisions beyond binary yes/no
+- **Delegation system** enabling liquid democracy and expertise-based representation  
+- **Merit-enhanced weighting** that rewards contribution over pure token accumulation
+- **Anti-plutocracy** concentration limits preventing governance capture
+
+**Who it's for:**
+- Investors who want to support the community with capital
+- People who want to participate in governance but not necessarily work
+- Members who prefer to contribute economically rather than with time
+
+#### **Layer 2: Merit Credentials (Dual-SBT System)**
+
+##### **WorkerSBT: Contribution-Based Economic Power**
+
+**What is it?** Like a permanent digital certificate of your reputation and contributions that **NO ONE can buy, sell, or transfer**.
+
+**How it works:**
+- **Only earned through work**: Each time you complete verified work, you accumulate points
+- **Personal and non-transferable**: Impossible to buy, sell, or give to someone else
+- **Constantly updated**: Your current reputation reflects recent work, not just past achievements
+- **Decays over time**: If you stop working, your influence gradually decreases
+- **Peer-verified**: Other workers confirm you did good work
+
+**Merit Features:**
+- **Earned through verified work**: Claims validated by peer consensus (M-of-N verification)
+- **Anti-gaming cooldowns**: Prevents rapid point accumulation through low-quality submissions
+- **Cross-community portability**: Reputation travels across the entire ecosystem
+- **Revocable for fraud**: Community governance can revoke SBTs for verified gaming/fraud
+
+**Who it's for:**
+- Active workers who contribute time and effort
+- People who want their reputation to reflect their real work
+- Members committed to contributing regularly
+
+##### **InvestorSBT: Capital-Based Time-Decaying Power**
+
+**What is it?** A special credential for investors that recognizes their capital contribution but **decreases in power over time** as the community becomes self-sufficient.
+
+**How it works:**
+- **Earned through investment**: You get this by providing startup capital to communities
+- **Time-decaying influence**: Your economic power decreases as the community's risk decreases
+- **Performance-based rewards**: Better milestone achievement = higher ongoing rewards  
+- **Early exit penalties**: Prevents extractive short-term capital deployment
+- **Vesting periods**: Alignment with long-term community success
+
+**Investment Features:**
+- **Time-decaying economic influence**: Power decreases as risk is resolved
+- **Milestone-gated performance**: Better milestone achievement = higher ongoing rewards
+- **Early exit penalties**: Prevents extractive short-term capital deployment
+- **Vesting and cliff periods**: Alignment with long-term community success
+
+**Who it's for:**
+- Early investors who provide crucial startup capital
+- People who want to support communities financially
+- Investors aligned with long-term community success over quick profits
+
+#### **Layer 3: Fair Value Distribution (Dynamic Revenue Router)**
+
+##### **Automatic and Transparent Revenue Distribution (No Fixed Splits)**
+
+**The Problem**: Traditional organizations use arbitrary fixed percentages like "40% investors, 40% workers, 20% operations" forever, which creates unfair extraction.
+
+**Our Solution**: **Dynamic distribution that evolves over time** based on actual contribution and community needs.
+
+**How Revenue Gets Split:**
+
+Each community democratically votes on how to divide income between three groups:
+
+1. **Verified Workers**
+   - **Who**: People with WorkerSBT who completed verified work recently  
+   - **How it's split among them**: Proportional to current reputation (not just historical)
+   - **Why it's fair**: Those contributing most get more
+
+2. **Community Treasury**
+   - **What**: Common fund controlled by governance for future expenses, emergencies, and investments
+   - **How it's used**: Only through democratic voting by all members
+   - **Why it's important**: Ensures sustainability and enables long-term planning
+
+3. **Membership Token Investors**
+   - **Who**: People who bought membership tokens to support the community
+   - **How it's split among them**: Proportional to how many tokens they hold
+   - **Why they get a share**: Their initial capital allows the community to function
+
+##### **Automated Sustainability Management**
+
+**The Problem**: Communities often run out of money because they don't plan for sustainable operations.
+
+**Our Solution**: **Smart treasury management** that automatically adjusts to keep the community financially healthy.
+
+**How it works:**
+- **Healthy reserves**: When the community has plenty of money saved, treasury gets minimal share
+- **Low reserves**: When reserves run low, treasury automatically gets a bigger share to rebuild sustainability  
+- **Emergency mode**: If the community is at risk of running out of money, treasury gets maximum protection
+- **Community controlled**: All thresholds and responses are set by democratic governance, not imposed externally
+
+### **Economic Evolution: 36-Month Transformation from Startup to Cooperative**
+
+The beauty of our system is that it **naturally transitions from investor-focused to worker-cooperative** over time, reflecting the reality that early risk deserves early returns, but long-term value creation should benefit those doing the work.
+
+#### **Bootstrap Phase (Months 0-6): Capital Priority**
+
+**What's happening**: New community, high uncertainty, investors taking biggest risk
+
+**Revenue distribution example**:
+- **Investors**: ~65% (high risk deserves high return)
+- **Workers**: ~20% (early learning curve, building systems)
+- **Treasury**: ~15% (building infrastructure)
+
+**Community focus**: Capital deployment, team building, infrastructure setup, finding product-market fit
+
+#### **Growth Phase (Months 6-24): Balanced Transition**
+
+**What's happening**: Community proving itself, workers becoming more productive, risk decreasing
+
+**Revenue distribution example at 12 months**:
+- **Investors**: ~42% (risk decreasing, still significant)
+- **Workers**: ~38% (productivity proven, contributions scaling)
+- **Treasury**: ~20% (operations stabilizing)
+
+**Community focus**: Revenue generation, community growth, process optimization
+
+#### **Maturity Phase (Months 24+): Worker Cooperative**
+
+**What's happening**: Community self-sufficient, workers are primary value creators, investors maintain stake but reduced influence
+
+**Revenue distribution example at maturity**:
+- **Workers**: ~65% (primary value creators)
+- **Investors**: ~20% (floor maintains long-term alignment)  
+- **Treasury**: ~15% (lean sustainable operations)
+
+**Community focus**: Community-owned operations, reinvestment in growth, ecosystem expansion
+
+### **Performance-Based Rewards: Merit Drives Distribution**
+
+Beyond the basic time-evolution, the system rewards **actual performance** rather than just showing up.
+
+#### **Worker Performance Factors**
+
+**The Question**: Should workers who do excellent work get the same rewards as those who do mediocre work?
+
+**Our Answer**: No. Performance matters, and the system tracks multiple dimensions:
+
+1. **Output Quality**: What percentage of your work gets approved by peer reviewers? (70-95% is typical)
+2. **Consistency Score**: Do you contribute regularly or just sporadically?
+3. **Collaboration Rating**: How well do you work with others? Do teammates want to work with you again?
+4. **Innovation Bonus**: Do you help improve community processes and systems?
+
+**How it works**: High performers in these areas get bonus multipliers on their revenue share. The system prevents gaming by requiring strong performance across ALL dimensions, not just one.
+
+#### **Investor Performance Factors**
+
+**The Question**: Should investors who just provide money get the same returns as those who actively help the community succeed?
+
+**Our Answer**: No. Active, helpful investors deserve better returns.
+
+**What we measure:**
+1. **Milestone Achievement**: How well is the community meeting goals the investor committed to support?
+2. **Network Contribution**: Does the investor make valuable introductions and partnerships?
+3. **Capital Efficiency**: How much runway (months of operation) does each dollar of investment provide?
+4. **Governance Participation**: Does the investor vote and participate in community decisions?
+
+**How it works**: Investors who actively contribute to community success get bonus multipliers on their revenue share. Pure passive investors get baseline returns.
+
+### **Anti-Gaming Architecture: Keeping It Fair**
+
+**The Challenge**: Any economic system attracts people trying to game it for unfair advantage. How do we prevent cheating while keeping the system open and accessible?
+
+#### **Preventing Control by Wealth (Anti-Plutocracy)**
+
+**The Problem**: In many systems, whoever has the most money controls all decisions, even if they don't understand the day-to-day work.
+
+**Our Safeguards**:
+- **15% max voting influence** per person (including delegated votes) - no single person can control decisions
+- **25% max work verification concentration** - prevents gaming the peer review system
+- **30% max investment per funding round** - prevents single-investor capture of communities
+- **Multi-identity detection** - sophisticated systems to identify fake accounts and coordinated manipulation
+
+#### **Ensuring Authentic Participation (Sybil Resistance)**
+
+**The Problem**: People create fake accounts to multiply their influence or farm rewards unfairly.
+
+**Our Solutions**:
+- **Reputation staking**: Verifiers risk their accumulated reputation on verification accuracy
+- **Cross-validation networks**: Multiple independent verification rounds catch coordinated gaming
+- **Time-based contribution requirements**: Consistent contribution over months/years required for significant influence
+- **Decentralized Identity Verification**: Integration with **WorldID (Worldcoin)**, **BrightID**, and **Proof of Humanity** for authentic human verification without sacrificing privacy
+- **Portable Credentials**: **Ethereum Attestation Service (EAS)** and **Verifiable Credentials** enable verified identity across communities
+- **Privacy-Preserving Compliance**: **Fractal ID** and **Civic** provide compliant identity verification for large economic positions while maintaining user privacy
+
+#### **Preventing Economic Attacks**
+
+**The Problem**: Bad actors might try to extract value quickly and leave, or manipulate the system for short-term gain.
+
+**Our Protections**:
+- **Early exit penalties**: Investors who leave early forfeit 20-50% of their investment (based on timing)
+- **Quality requirements**: Performance multipliers prevent pure quantity gaming - you need actual quality contributions
+- **Governance delays**: Important changes have waiting periods that prevent rapid manipulation
+- **Emergency controls**: Community can pause distributions if attacks are detected
+
+### **Community Economic Sovereignty**
+
+**The Ultimate Principle**: Each community controls its own economic rules through democratic governance.
+
+**What Communities Can Adjust:**
+
+**Time Evolution Settings**:
+- **How fast investor influence decays** (1-36 month timeline)
+- **How quickly worker influence grows** (based on community needs)
+- **Total transformation timeframe** (24-60 months from startup to cooperative)
+
+**Performance Standards**:
+- **Minimum performance for full rewards** (prevents free-riding)
+- **Expected milestone achievement rates** (holds everyone accountable)
+
+**Economic Boundaries** (prevents extreme scenarios):
+- **Minimum investor share** (5-25% to maintain alignment)
+- **Maximum worker share** (50-80% based on community type)
+- **Emergency treasury minimum** (10-30% for sustainability)
+
+**Sustainability Management**:
+- **Target reserve runway** (how many months of expenses to maintain)
+- **Emergency treasury boost** (maximum protection during financial crisis)
+
+**Security Parameters**:
+- **Per-person influence limits** (prevents concentration of power)
+- **Performance measurement periods** (how long to track contribution quality)
+- **Early exit penalties** (discourages short-term extraction)
+
+**Democratic Parameter Evolution**:
+- **Gradual adjustment**: Economic parameters can only change by small increments per governance cycle
+- **Community consensus**: Major changes require super-majority approval
+- **Transparent simulation**: All parameter changes are modeled and published before votes
+- **Safety mechanisms**: Community can revert to previous parameters if new ones don't work
+
+---
 
 ## Market Opportunity: The Great Coordination Problem
 
@@ -370,8 +639,10 @@ Drawing inspiration from Jacque Fresco's Venus Project, we envision communities 
 **Shift DeSoc Solution**:
 - **Community-Owned Housing**: Shared ownership models reduce individual housing burden
 - **Work-Integrated Living**: Housing costs offset by community contributions rather than external employment
+- **Property Tokenization**: Integration with **RealT**, **Lofty AI**, and **RedSwan** enables fractional real estate ownership and liquid community property investments
+- **Decentralized Property Management**: **Propy** and **States Title** blockchain-based property records enable transparent ownership transfers and community land trusts
 - **Visitor Revenue**: Excess capacity rented to generate community income through platform
-- **Gradual Ownership**: Long-term contributors earn increasing ownership stakes in community assets
+- **Gradual Ownership**: Long-term contributors earn increasing ownership stakes in community assets through tokenized equity
 
 **Real Example**: Community purchases land collaboratively. Members live affordably while contributing skills. Excess capacity generates income. Long-term members build equity without traditional mortgages.
 
@@ -521,6 +792,76 @@ Unlike traditional platforms that extract value from communities, Shift DeSoc's 
 - Focus: Global expansion and advanced DeSoc infrastructure
 
 *Projections based on comparable platforms like Discord, Slack, and emerging Web3 tools*
+
+## Strategic Partnerships & Technology Integration
+
+### **Essential Decentralized Infrastructure Partners**
+
+Shift DeSoc's vision requires integration with best-in-class decentralized services to provide enterprise-grade functionality while maintaining community sovereignty:
+
+#### **Identity & Reputation Verification**
+- **WorldID (Worldcoin)**: Privacy-preserving human verification preventing sybil attacks without revealing personal information
+- **BrightID**: Social graph-based identity verification enabling trusted community onboarding
+- **Proof of Humanity**: Decentralized registry of humans providing anti-gaming protection for governance and verification
+- **Ethereum Attestation Service (EAS)**: Portable credential system enabling cross-community reputation transfer
+- **Fractal ID & Civic**: Compliant KYC/AML solutions for communities requiring regulatory compliance
+
+#### **Dispute Resolution & Legal Infrastructure**  
+- **Kleros**: Decentralized arbitration for community disputes, work verification appeals, and governance conflicts
+- **Aragon Court**: Specialized governance dispute resolution for high-stakes community decisions
+- **OpenLaw**: Smart contract legal templates for community governance structures and asset management
+- **Chainlink Functions**: Oracle integration for real-world data verification in claims and milestone tracking
+
+#### **Property & Asset Tokenization**
+- **RealT**: Fractional real estate investment enabling communities to collectively own property 
+- **Lofty AI**: Automated property management and rental income distribution for community housing projects
+- **RedSwan**: Commercial real estate tokenization for larger community infrastructure investments
+- **Propy**: Blockchain-based property transfers and transparent ownership records for community land trusts
+- **States Title**: Decentralized property title management reducing legal costs for community asset acquisition
+
+#### **Financial Infrastructure & DeFi Integration**
+- **Aave**: Community treasury yield generation through decentralized lending protocols
+- **Compound**: Automated treasury management maximizing returns on idle community funds
+- **Uniswap**: Decentralized exchange integration for cross-community token trading and liquidity provision
+- **Circle (USDC)**: Stable value foundation for CommunityToken 1:1 backing ensuring price stability
+- **Maker (DAI)**: Alternative stablecoin backing for communities preferring decentralized collateral
+
+### **Strategic Partnership Benefits**
+
+#### **For Communities**
+- **Reduced Development Costs**: Leverage proven infrastructure instead of building from scratch
+- **Enterprise Security**: Benefit from battle-tested protocols with strong security track records  
+- **Interoperability**: Seamless integration with broader decentralized ecosystem
+- **Regulatory Compliance**: Access compliant identity and financial services when required
+
+#### **For Partner Protocols**
+- **Expanded User Base**: Access to thousands of communities seeking decentralized infrastructure
+- **Real-World Use Cases**: Practical applications driving actual adoption beyond speculative trading
+- **Network Effects**: Cross-protocol integration creating stronger ecosystem value for all participants
+- **Revenue Sharing**: Integration fees and usage-based partnerships benefiting all parties
+
+#### **For the Ecosystem**
+- **Decentralization Acceleration**: More communities adopting decentralized alternatives to traditional platforms
+- **Innovation Catalyst**: Real community needs driving development of better decentralized tools
+- **Economic Sovereignty**: Reduced dependence on extractive traditional financial and legal systems
+- **Global Coordination**: Interoperable protocols enabling cross-border community collaboration
+
+### **Technology Integration Roadmap**
+
+#### **Phase 1: Core Infrastructure (Months 1-6)**
+- WorldID/BrightID integration for sybil-resistant community onboarding
+- Kleros integration for basic dispute resolution and appeals processes
+- USDC integration for stable community token backing
+
+#### **Phase 2: Advanced Services (Months 6-12)**  
+- Property tokenization partnerships for community land acquisition
+- DeFi protocol integration for treasury yield generation
+- EAS integration for cross-community reputation portability
+
+#### **Phase 3: Ecosystem Maturity (Months 12+)**
+- Full legal infrastructure integration for regulatory compliance
+- Advanced financial services for enterprise community deployment
+- Global property and asset tokenization for community network expansion
 
 ## How to Get Started: From Idea to Thriving Community Node
 

@@ -137,17 +137,29 @@ The **Community Coordination Layer** is now **FULLY OPERATIONAL**:
    - 3/5 users vote, proposal executes
    - ActionType created successfully
 
-##### **Phase 2: Production Readiness (NEXT 1 week)**
+##### **Phase 2: Advanced Tokenomics Implementation (NEXT 4-6 weeks)**
+1. **InvestorSBT contract**: Time-decay mathematics and vesting logic
+2. **Dynamic RevenueRouter**: Performance-based splits, runway controller
+3. **Enhanced governance**: SBT-weighted voting, parameter management  
+4. **Economic simulations**: Parameter testing and optimization
+
+##### **Phase 3: Production Readiness (NEXT 6-8 weeks)**
 1. **Fix toolchain deployment issues** for automation
-2. **Deploy to Base Sepolia** (main target network)  
-3. **Comprehensive integration testing**
+2. **Deploy to Base Sepolia** with full tokenomics stack
+3. **Comprehensive integration testing** of economic flows
 4. **Gas optimization and cost analysis**
 
-#### Future Development Opportunities
-1. **Economic modules**: RevenueRouter, Marketplace integration
-2. **Housing and project modules**: HousingManager, ProjectFactory  
-3. **Advanced features**: Cross-community collaboration, federation governance
-4. **Production deployment**: Base mainnet after thorough testnet validation
+#### Advanced Tokenomics Development (NEW PRIORITY)
+1. **InvestorSBT system**: Capital-based credentials with time-decay weighting
+2. **Dynamic RevenueRouter**: Performance-modulated splits, treasury runway controller
+3. **Enhanced governance**: Multi-stakeholder voting with SBT multipliers
+4. **Economic parameter management**: Governance-controlled tokenomics tuning
+
+#### Future Development Opportunities  
+1. **Cross-community features**: Reputation portability, federation governance
+2. **Advanced utilities**: ProjectTokens (ERC-1155), specialized staking mechanisms
+3. **Enterprise integration**: APIs, compliance tooling, mobile experience  
+4. **Production deployment**: Base mainnet with full economic model
 
 ### 🎉 Key Achievements
 
