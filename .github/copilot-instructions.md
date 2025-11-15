@@ -369,7 +369,7 @@ Create comprehensive technical documentation that includes:
 ```
 
 #### Business Documentation Updates
-For major new features, update `/docs/Whitepaper.md` to include:
+For major new features, update `/docs/EN/Whitepaper.md` to include:
 
 - **Business value proposition** of the new functionality
 - **Market impact** and competitive advantages  
@@ -378,7 +378,7 @@ For major new features, update `/docs/Whitepaper.md` to include:
 - **Investment considerations** and risk assessment
 
 #### Architecture Documentation Updates
-Update `/docs/Architecture.md` to reflect:
+Update `/docs/EN/Architecture.md` to reflect:
 
 - **Component relationships** and data flows
 - **Security implications** of new functionality  
