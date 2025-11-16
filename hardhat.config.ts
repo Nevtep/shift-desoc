@@ -17,7 +17,11 @@ const config: HardhatUserConfig = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
     },
     base_sepolia: {
-      url: process.env.RPC_BASE_SEPOLIA || "",
+      url: process.env.RPC_BASE_SEPOLIA || "https://sepolia.base.org",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
+    },
+    base: {
+      url: process.env.RPC_BASE || "https://mainnet.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : []
     },
     hardhat: {
@@ -25,10 +29,11 @@ const config: HardhatUserConfig = {
     }
   },
   paths: {
-    sources: "../../contracts", // Use root contracts directory
-    tests: "./test", 
+    sources: "./contracts",
+    tests: "./test/hardhat", 
     artifacts: "./artifacts", 
     cache: "./cache"
   }
 };
+
 export default config;

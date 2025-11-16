@@ -24,7 +24,8 @@ library Errors {
     error ExcessiveWeightAllocation(uint256 total);
     
     // Claims verification errors
-    error InvalidActionType(uint256 actionTypeId);
+    error InvalidValuableAction(uint256 valuableActionId);
+    error InvalidActionType(uint256 actionTypeId); // Legacy support
     error ClaimNotFound(uint256 claimId);
     error ClaimAlreadyVerified(uint256 claimId);
     error InsufficientVerifiers(uint256 available, uint256 required);

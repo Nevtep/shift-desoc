@@ -36,7 +36,7 @@ contract RequestHub {
         string[] tags;            // Categorization tags
         uint256 commentCount;     // Number of comments
         uint256 bountyAmount;     // Optional bounty (0 if none)
-        uint256 linkedActionType; // Linked ActionType ID (0 if none)
+        uint256 linkedValuableAction; // Linked ValuableAction ID (0 if none)
     }
     
     /// @notice Comment on a request
@@ -117,10 +117,10 @@ contract RequestHub {
         address indexed funder
     );
     
-    /// @notice Emitted when a request is linked to an ActionType
-    event ActionTypeLinking(
+    /// @notice Emitted when a request is linked to a ValuableAction
+    event ValuableActionLinking(
         uint256 indexed requestId,
-        uint256 indexed actionTypeId,
+        uint256 indexed valuableActionId,
         address indexed linker
     );
     
@@ -277,20 +277,20 @@ contract RequestHub {
         emit BountyAdded(requestId, amount, msg.sender);
     }
     
-    /// @notice Link request to an ActionType for work verification
-    /// @param requestId Request to link
-    /// @param actionTypeId ActionType to link to
-    function linkActionType(uint256 requestId, uint256 actionTypeId) external {
+    /// @notice Link request to a ValuableAction for work verification
+    /// @param requestId Request ID to link
+    /// @param valuableActionId ValuableAction to link to
+    function linkValuableAction(uint256 requestId, uint256 valuableActionId) external {
         Request storage request = requests[requestId];
         if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
         
-        // Only request author or community admin can link ActionTypes
+        // Only request author or community admin can link ValuableActions
         if (msg.sender != request.author) {
             _requireCommunityAdmin(request.communityId, msg.sender);
         }
         
-        request.linkedActionType = actionTypeId;
-        emit ActionTypeLinking(requestId, actionTypeId, msg.sender);
+        request.linkedValuableAction = valuableActionId;
+        emit ValuableActionLinking(requestId, valuableActionId, msg.sender);
     }
     
     /*//////////////////////////////////////////////////////////////

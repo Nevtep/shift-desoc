@@ -96,7 +96,7 @@ contract RequestHubTest is Test {
         assertEq(request.tags[1], "urgent");
         assertEq(request.commentCount, 0);
         assertEq(request.bountyAmount, 0);
-        assertEq(request.linkedActionType, 0);
+        assertEq(request.linkedValuableAction, 0);
         
         vm.stopPrank();
     }
@@ -393,46 +393,46 @@ contract RequestHubTest is Test {
                         ACTION TYPE LINKING TESTS
     //////////////////////////////////////////////////////////////*/
     
-    function testLinkActionTypeAsAuthor() public {
+    function testLinkValuableActionAsAuthor() public {
         vm.prank(user1);
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
         
         vm.startPrank(user1);
         
         vm.expectEmit(true, true, true, false);
-        emit RequestHub.ActionTypeLinking(requestId, 123, user1);
+        emit RequestHub.ValuableActionLinking(requestId, 123, user1);
         
-        requestHub.linkActionType(requestId, 123);
+        requestHub.linkValuableAction(requestId, 123);
         
         RequestHub.Request memory request = requestHub.getRequest(requestId);
-        assertEq(request.linkedActionType, 123);
+        assertEq(request.linkedValuableAction, 123);
         
         vm.stopPrank();
     }
     
-    function testLinkActionTypeAsCommunityAdmin() public {
+    function testLinkValuableActionAsCommunityAdmin() public {
         vm.prank(user1);
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
         
-        // Admin can link ActionType even if not author
+        // Admin can link ValuableAction even if not author
         vm.startPrank(admin);
         
-        requestHub.linkActionType(requestId, 456);
+        requestHub.linkValuableAction(requestId, 456);
         
         RequestHub.Request memory request = requestHub.getRequest(requestId);
-        assertEq(request.linkedActionType, 456);
+        assertEq(request.linkedValuableAction, 456);
         
         vm.stopPrank();
     }
     
-    function testLinkActionTypeUnauthorized() public {
+    function testLinkValuableActionUnauthorized() public {
         vm.prank(user1);
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
         
         vm.startPrank(user2);
         
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user2));
-        requestHub.linkActionType(requestId, 123);
+        requestHub.linkValuableAction(requestId, 123);
         
         vm.stopPrank();
     }

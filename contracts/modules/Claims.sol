@@ -5,10 +5,12 @@ import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {IVerifierPool} from "contracts/core/interfaces/IVerifierPool.sol";
 import {IWorkerSBT} from "contracts/core/interfaces/IWorkerSBT.sol";
+import {MembershipTokenERC20Votes} from "../tokens/MembershipTokenERC20Votes.sol";
+import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
 
 /// @title Claims
 /// @notice Handles work claim submissions and M-of-N verification with juror panels
-/// @dev Integrates with ActionTypeRegistry for verification parameters and VerifierPool for juror selection
+/// @dev Integrates with ValuableActionRegistry for verification parameters and VerifierPool for juror selection
 contract Claims {
     /// @notice Extended claim structure with verification tracking
     struct Claim {
@@ -55,10 +57,11 @@ contract Claims {
     uint256 public lastAppealId;
     
     /// @notice Core contracts
-    address public actionRegistry;
+    ValuableActionRegistry public immutable actionRegistry;
     address public verifierPool;
     address public workerSBT;
     address public governance;
+    address public membershipToken;
 
     /// @notice Mappings
     mapping(uint256 => Claim) public claims;
@@ -87,24 +90,28 @@ contract Claims {
 
     /// @notice Constructor
     /// @param _governance Governance contract address
-    /// @param _actionRegistry ActionTypeRegistry contract address  
+    /// @param _actionRegistry ValuableActionRegistry contract address  
     /// @param _verifierPool VerifierPool contract address
     /// @param _workerSBT WorkerSBT contract address
+    /// @param _membershipToken MembershipToken contract address for minting rewards
     constructor(
         address _governance,
         address _actionRegistry, 
         address _verifierPool,
-        address _workerSBT
+        address _workerSBT,
+        address _membershipToken
     ) {
         if (_governance == address(0)) revert Errors.ZeroAddress();
         if (_actionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_verifierPool == address(0)) revert Errors.ZeroAddress();
         if (_workerSBT == address(0)) revert Errors.ZeroAddress();
+        if (_membershipToken == address(0)) revert Errors.ZeroAddress();
 
         governance = _governance;
-        actionRegistry = _actionRegistry;
+        actionRegistry = ValuableActionRegistry(_actionRegistry);
         verifierPool = _verifierPool;
         workerSBT = _workerSBT;
+        membershipToken = _membershipToken;
     }
 
     /// @notice Submit a work claim for verification
@@ -115,13 +122,21 @@ contract Claims {
         if (bytes(evidenceCID).length == 0) revert Errors.InvalidInput("Evidence CID cannot be empty");
         
         // Check action type exists and is active
-        // Note: This would call ActionTypeRegistry.getActionType() and ActionTypeRegistry.isActionTypeActive()
-        // For now we'll assume the interfaces exist
+        Types.ValuableAction memory action = actionRegistry.getValuableAction(typeId);
+        if (!actionRegistry.isValuableActionActive(typeId)) {
+            revert Errors.InvalidInput("Action type is not active");
+        }
         
         // Check cooldown period
         uint64 nextAllowed = workerCooldowns[msg.sender][typeId];
         if (block.timestamp < nextAllowed) {
             revert Errors.InvalidInput("Worker is in cooldown period");
+        }
+
+        // Check max concurrent claims for this action type
+        uint256 currentConcurrent = _countActiveClaims(msg.sender, typeId);
+        if (currentConcurrent >= action.maxConcurrent) {
+            revert Errors.InvalidInput("Too many concurrent claims for this action type");
         }
 
         // Create claim
@@ -133,15 +148,14 @@ contract Claims {
         claim.status = Types.ClaimStatus.Pending;
         claim.createdAt = uint64(block.timestamp);
         
-        // Set verification deadline (would get verifyWindow from ActionTypeRegistry)
-        // For now using 24 hours as default
-        claim.verifyDeadline = uint64(block.timestamp + 24 hours);
+        // Set verification deadline from ValuableActionRegistry
+        claim.verifyDeadline = uint64(block.timestamp + action.verifyWindow);
 
-        // Assign juror panel via VerifierPool (if available and has code)
+        // Assign juror panel via VerifierPool using registry parameters
         if (verifierPool != address(0) && verifierPool.code.length > 0) {
             try IVerifierPool(verifierPool).selectJurors(
                 claimId,
-                3, // Default panel size - would come from ActionTypeRegistry
+                action.panelSize,
                 uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, claimId)))
             ) returns (address[] memory selectedJurors) {
                 claim.jurors = selectedJurors;
@@ -197,7 +211,7 @@ contract Claims {
         emit ClaimVerified(claimId, msg.sender, approve);
 
         // Check if we have enough votes to resolve
-        // This would get jurorsMin from ActionTypeRegistry
+        // This would get jurorsMin from ValuableActionRegistry
         // For now using simple majority
         uint32 requiredApprovals = uint32(claim.jurors.length / 2 + 1);
         uint32 requiredRejections = uint32(claim.jurors.length / 2 + 1);
@@ -222,7 +236,7 @@ contract Claims {
         if (bytes(reason).length == 0) revert Errors.InvalidInput("Appeal reason cannot be empty");
 
         // Check if action type allows appeals (revocable field)
-        // This would check ActionTypeRegistry.getActionType(typeId).revocable
+        // This would check ValuableActionRegistry.getValuableAction(typeId).revocable
 
         appealId = ++lastAppealId;
         Appeal storage appeal = appeals[appealId];
@@ -243,7 +257,7 @@ contract Claims {
         Claim storage claim = claims[claimId];
         if (claim.resolved && claim.status == Types.ClaimStatus.Approved) {
             // Check if action type allows revocation
-            // This would check ActionTypeRegistry.getActionType(claim.typeId).revocable
+            // This would check ValuableActionRegistry.getValuableAction(claim.typeId).revocable
             
             claim.status = Types.ClaimStatus.Revoked;
             
@@ -267,31 +281,39 @@ contract Claims {
         }
 
         if (status == Types.ClaimStatus.Approved) {
-            // Get ActionType data for cooldown and WorkerPoints
-            Types.ActionType memory actionType;
-            if (actionRegistry != address(0)) {
-                // Get ActionType from registry
-                (bool success, bytes memory data) = actionRegistry.staticcall(
-                    abi.encodeWithSignature("getActionType(uint256)", claim.typeId)
-                );
-                if (success) {
-                    actionType = abi.decode(data, (Types.ActionType));
-                }
+            // Get ValuableAction data for rewards and cooldown
+            Types.ValuableAction memory valuableAction = actionRegistry.getValuableAction(claim.typeId);
+            
+            // Set cooldown for worker based on action configuration
+            if (valuableAction.cooldownPeriod > 0) {
+                workerCooldowns[claim.worker][claim.typeId] = uint64(block.timestamp + valuableAction.cooldownPeriod);
             }
             
-            // Set cooldown for worker
-            uint64 cooldownPeriod = actionType.cooldown > 0 ? actionType.cooldown : 1 hours;
-            workerCooldowns[claim.worker][claim.typeId] = uint64(block.timestamp + cooldownPeriod);
+            // Mint MembershipTokens for governance participation
+            if (membershipToken != address(0) && valuableAction.membershipTokenReward > 0) {
+                string memory reason = string(abi.encodePacked(
+                    "ValuableAction #", 
+                    _uint2str(claim.typeId), 
+                    " completion - Claim #", 
+                    _uint2str(claimId)
+                ));
+                
+                MembershipTokenERC20Votes(membershipToken).mint(
+                    claim.worker, 
+                    valuableAction.membershipTokenReward,
+                    reason
+                );
+            }
             
             // Mint SBT and award WorkerPoints
             if (workerSBT != address(0)) {
-                uint256 workerPoints = actionType.weight > 0 ? actionType.weight : 10; // Default 10 points
+                uint256 workerPoints = valuableAction.membershipTokenReward > 0 ? valuableAction.membershipTokenReward : 10; // Default 10 points
                 
                 // Generate basic metadata URI for the claim
                 string memory metadataURI = string(abi.encodePacked(
                     '{"type":"claim","id":', 
                     _uint2str(claimId),
-                    ',"actionType":', 
+                    ',"valuableAction":', 
                     _uint2str(claim.typeId),
                     ',"points":', 
                     _uint2str(workerPoints),
@@ -445,16 +467,14 @@ contract Claims {
         return workerCooldowns[worker][typeId];
     }
 
-    /// @notice Update core contract addresses (governance only)
-    /// @param _actionRegistry New ActionTypeRegistry address
+    /// @notice Update contract addresses (governance only)
+    /// @dev actionRegistry is immutable and cannot be updated
     /// @param _verifierPool New VerifierPool address
     /// @param _workerSBT New WorkerSBT address
     function updateContracts(
-        address _actionRegistry,
         address _verifierPool, 
         address _workerSBT
     ) external onlyGovernance {
-        if (_actionRegistry != address(0)) actionRegistry = _actionRegistry;
         if (_verifierPool != address(0)) verifierPool = _verifierPool;
         if (_workerSBT != address(0)) workerSBT = _workerSBT;
     }
@@ -464,6 +484,60 @@ contract Claims {
     function updateGovernance(address _governance) external onlyGovernance {
         if (_governance == address(0)) revert Errors.ZeroAddress();
         governance = _governance;
+    }
+
+    /// @dev Count active claims for a worker for a specific action type
+    /// @param worker Worker address
+    /// @param typeId Action type ID
+    /// @return count Number of active claims
+    function _countActiveClaims(address worker, uint256 typeId) internal view returns (uint256 count) {
+        uint256[] storage workerClaims = claimsByWorker[uint256(uint160(worker))];
+        for (uint256 i = 0; i < workerClaims.length; i++) {
+            Claim storage claim = claims[workerClaims[i]];
+            if (claim.typeId == typeId && claim.status == Types.ClaimStatus.Pending) {
+                count++;
+            }
+        }
+    }
+
+    /// @notice Get basic claim info (excludes mappings)
+    /// @param claimId Claim ID to get info for
+    /// @return typeId Action type ID
+    /// @return worker Worker address
+    /// @return evidenceCID Evidence IPFS hash
+    /// @return status Claim status
+    /// @return createdAt Creation timestamp
+    /// @return verifyDeadline Verification deadline
+    /// @return approvalsCount Number of approvals
+    /// @return rejectionsCount Number of rejections
+    function getClaimInfo(uint256 claimId) external view returns (
+        uint256 typeId,
+        address worker,
+        string memory evidenceCID,
+        Types.ClaimStatus status,
+        uint64 createdAt,
+        uint64 verifyDeadline,
+        uint32 approvalsCount,
+        uint32 rejectionsCount
+    ) {
+        Claim storage claim = claims[claimId];
+        return (
+            claim.typeId,
+            claim.worker,
+            claim.evidenceCID,
+            claim.status,
+            claim.createdAt,
+            claim.verifyDeadline,
+            claim.approvalsCount,
+            claim.rejectionsCount
+        );
+    }
+
+    /// @notice Get jurors assigned to a claim
+    /// @param claimId Claim ID
+    /// @return jurors Array of juror addresses
+    function getClaimJurors(uint256 claimId) external view returns (address[] memory jurors) {
+        return claims[claimId].jurors;
     }
 
     /// @dev Convert uint to string for metadata generation
