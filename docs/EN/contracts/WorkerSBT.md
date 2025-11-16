@@ -2,48 +2,50 @@
 
 ## 🎯 Purpose & Role
 
-The **WorkerSBT** (Soulbound Token) contract manages worker reputation through non-transferable NFTs that track work contributions, achievements, and community standing. It implements a dynamic WorkerPoints system with exponential decay to incentivize consistent contribution and prevent reputation camping while providing governance eligibility and work verification bonuses.
+The **WorkerSBT** (Soulbound Token) contract manages worker reputation through non-transferable NFTs that permanently record work contributions and achievements. It implements a WorkerPoints system with time-based decay to encourage ongoing participation while providing soulbound credentials that enhance governance rights and community standing.
 
 ## 🏗️ Core Architecture  
 
-### Soulbound Token Design
+### Soulbound Token Implementation
 
-**Non-Transferable NFTs**: Unlike regular NFTs, WorkerSBTs cannot be transferred between accounts, ensuring reputation remains tied to the actual contributor.
+**Non-Transferable NFTs**: WorkerSBTs are permanently bound to the worker's address.
 
 ```solidity
-contract WorkerSBT is ERC721, AccessControl {
-    // Soulbound: override all transfer functions to revert
-    function transferFrom(address, address, uint256) public pure override {
-        revert SoulboundTokenNonTransferable();
+contract WorkerSBT is ERC721URIStorage, AccessControl {
+    // Soulbound: all transfer functions revert
+    function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+        if (to != address(0) && _ownerOf(tokenId) != address(0)) {
+            revert Soulbound(); // Prevent transfers
+        }
+        return super._update(to, tokenId, auth);
     }
     
-    function safeTransferFrom(address, address, uint256) public pure override {
-        revert SoulboundTokenNonTransferable();
+    function approve(address, uint256) public pure override {
+        revert Soulbound();
+    }
+    
+    function setApprovalForAll(address, bool) public pure override {
+        revert Soulbound();
     }
 }
 ```
 
 ### WorkerPoints System
 
-**Exponential Decay Model**:
+**Key Mappings**:
 ```solidity
-struct WorkerData {
-    uint256 workerPoints;           // Current points balance
-    uint256 lifetimeWorkerPoints;   // Historical total earned
-    uint64 lastUpdate;              // Last activity timestamp
-    bool[] achievements;            // Achievement unlock status
-}
-
-// Decay parameters
-uint256 public constant DECAY_PERIOD = 7 days;
-uint256 public constant DEFAULT_DECAY_RATE = 950; // 95% retention per period
-uint256 public workerPointsDecayRate = DEFAULT_DECAY_RATE;
+mapping(address => uint256) public workerPoints;              // Current points balance
+mapping(address => uint256) public lifetimeWorkerPoints;      // Historical total earned  
+mapping(address => uint256) public lastWorkerPointsUpdate;    // Last activity timestamp
+mapping(address => mapping(uint256 => bool)) public achievements; // Achievement unlocks
 ```
 
-**Points Calculation**:
-- **Active Points**: Decay over time to incentivize ongoing contribution
-- **Lifetime Points**: Permanent record of total work contribution
-- **Achievement Points**: Milestone rewards that never decay
+**Decay Parameters**:
+```solidity
+uint256 public constant DECAY_PERIOD = 7 days;               // Weekly decay cycle
+uint256 public constant DEFAULT_DECAY_RATE = 950;            // 95% retention per period
+uint256 public workerPointsDecayRate = DEFAULT_DECAY_RATE;   // Governance adjustable
+```
 
 ## ⚙️ Key Functions & Logic
 
@@ -51,20 +53,33 @@ uint256 public workerPointsDecayRate = DEFAULT_DECAY_RATE;
 
 ```solidity
 function mintAndAwardPoints(address worker, uint256 points, string calldata metadataURI) 
-    external onlyRole(MANAGER_ROLE)
+    external onlyRole(MANAGER_ROLE) {
+    uint256 tokenId = workerToTokenId[worker];
+    
+    // Mint new SBT if worker doesn't have one
+    if (tokenId == 0) {
+        tokenId = nextTokenId++;
+        _safeMint(worker, tokenId);
+        _setTokenURI(tokenId, metadataURI);
+        workerToTokenId[worker] = tokenId;
+        tokenIdToWorker[tokenId] = worker;
+    }
+    
+    // Award points (applies decay first, then adds new points)
+    _awardWorkerPoints(worker, points);
+}
 ```
 
-**Purpose**: Creates SBT for new workers or awards points to existing workers.
+**Process**:
+1. **Check existing SBT**: One SBT per worker maximum
+2. **Mint if needed**: Create new soulbound token with metadata
+3. **Apply decay**: Update existing points with time decay
+4. **Add new points**: Update current and lifetime totals
+5. **Check achievements**: Automatically unlock milestones
 
-**Key Logic**:
-1. **New Worker**: Mints SBT with initial points and metadata
-2. **Existing Worker**: Applies decay, adds new points, updates metadata
-3. **Achievement Check**: Automatically evaluates milestone achievements
-4. **Event Emission**: Tracks all point awards for transparency
+**Integration**: Called by Claims contract after successful work verification.
 
-**Integration**: Called by Claims contract when work is verified and approved.
-
-### Exponential Decay System
+### Time-Based Decay System
 
 ```solidity
 function getCurrentWorkerPoints(address worker) public view returns (uint256) {
@@ -72,15 +87,12 @@ function getCurrentWorkerPoints(address worker) public view returns (uint256) {
     if (lastUpdate == 0) return 0;
     
     uint256 timePassed = block.timestamp - lastUpdate;
-    if (timePassed < DECAY_PERIOD) {
-        return workerPoints[worker];
-    }
+    if (timePassed < DECAY_PERIOD) return workerPoints[worker];
     
-    // Calculate decay
+    // Calculate exponential decay over periods
     uint256 decayPeriods = timePassed / DECAY_PERIOD;
     uint256 currentPoints = workerPoints[worker];
     
-    // Apply exponential decay
     for (uint256 i = 0; i < decayPeriods && currentPoints > 0; i++) {
         currentPoints = (currentPoints * workerPointsDecayRate) / 1000;
     }
@@ -89,11 +101,11 @@ function getCurrentWorkerPoints(address worker) public view returns (uint256) {
 }
 ```
 
-**Decay Model**:
-- **7-day periods**: Points decay every week of inactivity
-- **95% retention**: By default, 5% of points are lost per period
-- **Exponential**: Multiple periods compound the decay effect
-- **Floor protection**: Points cannot decay below 1 if any remain
+**Decay Mechanics**:
+- **Weekly periods**: Points decay every 7 days of inactivity
+- **95% retention**: Default 5% loss per period (governance adjustable)
+- **Exponential compound**: Multiple periods multiply the effect
+- **Prevents camping**: Only active workers maintain high points
 
 ### Achievement System
 
@@ -101,282 +113,209 @@ function getCurrentWorkerPoints(address worker) public view returns (uint256) {
 struct Achievement {
     string name;
     string description;
-    uint256 pointsRequired;    // WorkerPoints threshold
-    string metadataURI;        // Achievement badge metadata
-    bool active;               // Can be earned
+    uint256 workerPointsRequired;  // Lifetime points threshold
+    string metadataURI;            // IPFS badge metadata
+    bool active;                   // Can be earned
 }
 
 function checkAchievements(address worker) external {
-    uint256 totalPoints = lifetimeWorkerPoints[worker];
+    uint256 currentPoints = getCurrentWorkerPoints(worker);
     
-    for (uint256 i = 1; i <= achievementCount; i++) {
-        if (!hasAchievement[worker][i] && 
-            totalPoints >= achievementDefinitions[i].pointsRequired &&
-            achievementDefinitions[i].active) {
+    for (uint256 i = 1; i < nextAchievementId; i++) {
+        Achievement storage achievement = achievementDefinitions[i];
+        if (!achievements[worker][i] && 
+            currentPoints >= achievement.workerPointsRequired && 
+            achievement.active) {
             
-            hasAchievement[worker][i] = true;
-            emit AchievementUnlocked(worker, i, achievementDefinitions[i].name);
+            achievements[worker][i] = true;
+            achievementCount[worker]++;
+            emit AchievementUnlocked(worker, i, achievement.name);
         }
     }
 }
 ```
 
-**Default Achievements**:
-1. **First Contribution** (1 point) - Welcome achievement  
-2. **Active Contributor** (100 points) - Regular participant
-3. **Community Builder** (500 points) - Significant contributor  
-4. **Expert Contributor** (1000 points) - Community expert
-5. **Master Builder** (2500 points) - Leadership level
+**Default Achievements** (initialized in constructor):
+1. **"First Steps"** (1 point) - Welcome to the community
+2. **"Getting Started"** (10 points) - Regular participation  
+3. **"Community Member"** (100 points) - Established contributor
+4. **"Dedicated Worker"** (500 points) - Significant contributions
+5. **"Expert Contributor"** (1000 points) - Community expertise
 
-### Governance Integration
+### Access Control & Roles
 
 ```solidity
-function hasRole(bytes32 role, address account) public view override returns (bool) {
-    // Enhanced permissions based on WorkerPoints
-    if (role == ENHANCED_VOTER_ROLE) {
-        return getCurrentWorkerPoints(account) >= ENHANCED_VOTING_THRESHOLD;
-    }
-    return super.hasRole(role, account);
+bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");      // Claims contract
+bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE"); // Community governance
+
+constructor(address initialOwner, address manager, address governance) {
+    _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+    _grantRole(MANAGER_ROLE, manager);           // Claims can mint SBTs
+    _grantRole(GOVERNANCE_ROLE, governance);     // Community can revoke SBTs
 }
 ```
 
-**Voting Weight Calculation**:
-- Base voting power from governance tokens
-- Multiplier based on current WorkerPoints  
-- Achievement bonuses for milestone unlocks
-- Decay ensures only active contributors have enhanced influence
+**Integration Points**:
+- **Claims Contract**: Can mint SBTs and award WorkerPoints after verification
+- **Governance**: Can revoke SBTs, adjust decay rates, add achievements
+- **Other Contracts**: Can query WorkerPoints for enhanced permissions
 
 ## 🛡️ Security Features
 
 ### Soulbound Enforcement
 
 ```solidity
-function approve(address, uint256) public pure override {
-    revert SoulboundTokenNonTransferable();
+// Override _update to prevent transfers
+function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+    if (to != address(0) && _ownerOf(tokenId) != address(0)) {
+        revert Soulbound(); // Prevent transfers between accounts
+    }
+    return super._update(to, tokenId, auth);
 }
 
-function setApprovalForAll(address, bool) public pure override {
-    revert SoulboundTokenNonTransferable();
-}
-
-// All transfer functions revert to ensure soulbound nature
+// Prevent approvals (soulbound tokens cannot be approved)
+function approve(address, uint256) public pure override { revert Soulbound(); }
+function setApprovalForAll(address, bool) public pure override { revert Soulbound(); }
 ```
 
 ### Governance Revocation
 
 ```solidity
-function revokeSBT(uint256 tokenId, string calldata reason) 
-    external onlyRole(GOVERNANCE_ROLE)
+function revokeSBT(address worker, string calldata reason) external onlyRole(GOVERNANCE_ROLE) {
+    uint256 tokenId = workerToTokenId[worker];
+    require(tokenId != 0, "Worker has no SBT");
+    
+    // Reset worker data (except lifetime points for history)
+    delete workerToTokenId[worker];
+    delete tokenIdToWorker[tokenId]; 
+    delete workerPoints[worker];
+    delete lastWorkerPointsUpdate[worker];
+    
+    _burn(tokenId); // Burn the soulbound token
+    emit TokenRevoked(worker, tokenId, reason);
+}
 ```
 
-**Purpose**: Community governance can revoke SBTs for violations or disputes.
+### Input Validation
 
-**Process**:
-1. Governance proposal and vote required
-2. Reason must be provided for transparency
-3. SBT burned and points reset to zero
-4. Lifetime points preserved for historical record
-5. Can be appealed through governance process
+- **Zero address checks**: Prevent invalid addresses
+- **Points validation**: Ensure positive point awards
+- **Decay rate limits**: 50%-99% retention range (governance controlled)
+- **Achievement verification**: Proper threshold checks before unlocking
 
-### Access Control
+## � Frontend Integration
 
+### Essential Getters
 ```solidity
-bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");      // Claims contract
-bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE"); // Community governance
+// Worker SBT status
+function hasSBT(address worker) external view returns (bool)
+function getTokenId(address worker) external view returns (uint256)
+function getWorker(uint256 tokenId) external view returns (address)
+
+// WorkerPoints and reputation  
+function getCurrentWorkerPoints(address worker) public view returns (uint256)
+function getWorkerStats(address worker) external view returns (
+    bool hasToken, uint256 tokenId, uint256 currentPoints, 
+    uint256 lifetimePoints, uint256 achievementsUnlocked
+)
+
+// Achievement system
+function hasAchievement(address worker, uint256 achievementId) external view returns (bool)
+function checkAchievements(address worker) external // Anyone can trigger checks
 ```
 
-- **MANAGER_ROLE**: Claims contract can mint SBTs and award points
-- **GOVERNANCE_ROLE**: Community can revoke SBTs and adjust parameters  
-- **DEFAULT_ADMIN_ROLE**: Protocol admin for emergency situations
-
-## 🔗 Integration Points
-
-### With Claims Verification
-
+### Event Tracking
 ```solidity
-// Claims contract calls after work verification
-IWorkerSBT(workerSBT).mintAndAwardPoints(
+event WorkerPointsAwarded(address indexed worker, uint256 amount, uint256 newTotal);
+event AchievementUnlocked(address indexed worker, uint256 indexed achievementId, string name);
+event TokenRevoked(address indexed worker, uint256 indexed tokenId, string reason);
+event WorkerPointsDecayUpdated(uint256 oldDecayRate, uint256 newDecayRate);
+```
+
+### Configuration Parameters
+```solidity
+// Time-based decay (governance adjustable)
+uint256 public constant DECAY_PERIOD = 7 days;           // Weekly decay cycle
+uint256 public workerPointsDecayRate = 950;              // 95% retention per period
+
+// System constraints
+uint256 public constant MAX_DECAY_RATE = 990;            // 99% max retention  
+uint256 public constant MIN_DECAY_RATE = 500;            // 50% min retention
+```
+
+## � Usage Examples
+
+### SBT Minting (Claims Integration)
+```solidity
+// Claims contract awards points after successful verification
+WorkerSBT(workerSBT).mintAndAwardPoints(
     worker,
-    actionType.weight,    // Points from ActionType configuration
-    metadataURI          // Claim metadata reference
+    250,                        // WorkerPoints earned
+    "ipfs://QmClaimEvidence..." // Claim metadata URI
 );
 ```
 
-### With Governance Contracts
-
+### Governance Parameter Updates
 ```solidity
-// Enhanced voting eligibility
-bool canPropose = workerSBT.getCurrentWorkerPoints(proposer) >= proposalThreshold;
+// Community votes to adjust decay rate for more retention
+WorkerSBT(workerSBT).setWorkerPointsDecayRate(975); // 97.5% retention (was 95%)
 
-// Voting weight calculation  
-uint256 baseWeight = governanceToken.getVotes(voter);
-uint256 workerPoints = workerSBT.getCurrentWorkerPoints(voter);
-uint256 enhancedWeight = baseWeight * (1 + workerPoints / POINTS_PER_MULTIPLIER);
+// Add new community-specific achievement
+WorkerSBT(workerSBT).addAchievement(
+    "Code Reviewer",
+    "Verified 50+ code contributions",
+    500,                        // 500 points required
+    "ipfs://QmCodeBadge..."    // Achievement badge metadata
+);
 ```
 
-### With Community Features
-
+### Integration Queries  
 ```solidity
-// Discussion privileges based on reputation
-uint256 postLimit = basePostLimit + (workerPoints / POINTS_PER_EXTRA_POST);
+// Check worker reputation for enhanced permissions
+uint256 points = workerSBT.getCurrentWorkerPoints(worker);
+bool canModerate = points >= 100; // Minimum threshold for moderation
 
-// Work verification priority
-bool isPriorityVerifier = workerSBT.hasAchievement(verifier, EXPERT_CONTRIBUTOR_ID);
+// Verify achievement for special privileges  
+bool isExpert = workerSBT.hasAchievement(worker, EXPERT_CONTRIBUTOR_ID);
+if (isExpert) {
+    // Grant enhanced verification privileges
+}
+
+// Get comprehensive worker profile
+(bool hasToken, uint256 tokenId, uint256 currentPoints, 
+ uint256 lifetimePoints, uint256 achievements) = workerSBT.getWorkerStats(worker);
 ```
 
-## 📊 Economic Model
+### SBT Revocation (Governance)
+```solidity
+// Community governance can revoke SBTs for violations
+WorkerSBT(workerSBT).revokeSBT(
+    violatingWorker,
+    "Repeated submission of false evidence"
+);
+```
 
-### Point Value System
+## � Economic Mechanics
 
-**Point Sources**:
-- **Verified Work**: Primary source through Claims system
-- **Manual Awards**: Community recognition for exceptional contributions
-- **Achievement Bonuses**: Milestone rewards (non-decaying)
+### Point Decay Model
+```
+Current Points = Previous Points × (Decay Rate / 1000) ^ (Weeks Passed)
 
-**Point Sinks**:
-- **Time Decay**: 5% per week of inactivity (configurable)
-- **Governance Penalties**: Points deduction for violations
-- **SBT Revocation**: Complete reset (extreme cases)
+Example with 95% retention:
+- Week 1: 1000 points
+- Week 2: 950 points (5% decay)  
+- Week 4: 902 points (cumulative decay)
+- Week 8: 815 points (exponential effect)
+```
 
 ### Incentive Alignment
+- **Fresh Work**: New points counteract decay, rewarding activity
+- **Quality Focus**: ValuableAction weights determine point amounts
+- **Milestone Progress**: Achievements provide permanent recognition
+- **Community Trust**: Soulbound nature ensures authentic reputation
 
-**Active Contribution**:
-- Fresh points prevent reputation camping
-- Consistent work maintains high reputation
-- Achievement system rewards milestone progress
+**Production Ready**: WorkerSBT provides robust soulbound reputation tracking with time-based decay and achievement systems, ready for production deployment with comprehensive governance controls.
 
-**Quality Over Quantity**:
-- Higher-weight ActionTypes provide more points
-- Verification system ensures quality work
-- Community can adjust point values through governance
+---
 
-## 🎛️ Configuration Examples
-
-### Initial Deployment
-
-```solidity
-WorkerSBT workerSBT = new WorkerSBT(
-    admin,           // Protocol administrator
-    claimsManager,   // Claims contract address
-    governance       // Community governance address
-);
-
-// Set up default achievements
-workerSBT.addAchievement("First Contribution", "Welcome to the community!", 1, "ipfs://...", true);
-workerSBT.addAchievement("Active Contributor", "Regular participant", 100, "ipfs://...", true);
-// ... additional achievements
-```
-
-### Governance Parameter Adjustments
-
-```solidity
-// Community votes to reduce decay rate (increase retention)
-workerSBT.setWorkerPointsDecayRate(975); // 97.5% retention (less aggressive)
-
-// Add community-specific achievement
-workerSBT.addAchievement(
-    "Code Auditor",
-    "Completed 10 security audits", 
-    500,
-    "ipfs://QmAuditorBadge...",
-    true
-);
-```
-
-### Integration Setup
-
-```solidity
-// Configure Claims to award appropriate points
-actionTypeRegistry.create(
-    10,    // 10 WorkerPoints reward  
-    2,     // 2 of 3 jurors needed
-    3,     // 3 juror panel
-    24 hours,  // Verification window
-    1 hours,   // Cooldown period
-    5,     // 5 points for verifiers
-    1000,  // 10% slashing rate
-    true,  // Revocable by governance
-    "ipfs://QmEvidenceSpec..."
-);
-```
-
-## 🚀 Advanced Features
-
-### Dynamic Metadata
-
-```solidity
-function updateTokenURI(uint256 tokenId, string calldata newURI) 
-    external onlyRole(MANAGER_ROLE)
-```
-
-**Use Cases**:
-- Update reputation display based on recent achievements
-- Add skill certifications and endorsements
-- Link to portfolio or work history
-- Community-specific customization
-
-### Cross-Community Reputation
-
-```solidity
-function getWorkerStats(address worker) external view returns (
-    uint256 currentPoints,
-    uint256 lifetimePoints, 
-    uint256 achievementCount,
-    uint64 lastActivity,
-    bool hasActiveSBT
-)
-```
-
-**Interoperability**:
-- Other communities can query reputation
-- Federated work verification systems
-- Cross-community collaboration bonuses
-- Reputation portability with community consent
-
-### Achievement Extensions
-
-```solidity
-function addAchievement(
-    string calldata name,
-    string calldata description,
-    uint256 pointsRequired,
-    string calldata metadataURI,
-    bool active
-) external onlyRole(GOVERNANCE_ROLE)
-```
-
-**Community Customization**:
-- Domain-specific achievements (e.g., "Smart Contract Auditor")
-- Collaboration achievements (e.g., "Cross-Community Worker")  
-- Leadership achievements (e.g., "Governance Participant")
-- Time-based achievements (e.g., "Veteran Contributor")
-
-## 📈 Reputation Economics
-
-### Decay Prevents Gaming
-
-**Reputation Camping**: Without decay, early workers could gain permanent advantage
-**Solution**: Exponential decay ensures only active contributors maintain high reputation
-
-**Mathematical Model**:
-```
-Points(t) = Initial × (DecayRate)^(t/DecayPeriod)
-Points(14 days) = 1000 × (0.95)^2 = 902.5 points
-Points(28 days) = 1000 × (0.95)^4 = 814.5 points
-```
-
-### Balanced Incentives
-
-**Short-term**: Immediate points reward good work
-**Medium-term**: Achievement unlocks provide milestone goals  
-**Long-term**: Lifetime points track overall contribution history
-**Governance**: Current points determine voting influence
-
-### Network Effects
-
-**Quality Verification**: High-reputation workers become preferred verifiers
-**Community Trust**: SBT history provides credibility for leadership roles
-**Cross-Pollination**: Reputation portability enables ecosystem growth
-**Skill Development**: Achievement system guides worker progression
-
-The WorkerSBT contract creates a sophisticated reputation system that balances recognition of past contributions with incentives for ongoing participation, forming the backbone of trust and quality assurance in the Shift DeSoc ecosystem.
+*This documentation reflects the actual production-ready implementation of soulbound worker credentials with decay mechanics and achievement unlocking.*

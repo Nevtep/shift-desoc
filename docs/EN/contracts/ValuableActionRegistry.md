@@ -1,226 +1,314 @@
-# ActionTypeRegistry Contract
+# ValuableActionRegistry Contract
 
-The ActionTypeRegistry serves as the central configuration hub for all types of work that can be verified within the Shift DeSoc ecosystem. It defines the parameters, requirements, and verification logic for different categories of community contributions.
+The ValuableActionRegistry serves as the central configuration hub for defining **Valuable Actions** - specific types of work that communities recognize as valuable and worth verifying within the Shift DeSoc ecosystem. It defines the parameters, requirements, and verification logic for different categories of community contributions.
 
 ## 🎯 Purpose & Role
 
-The ActionTypeRegistry acts as a **configurable blueprint system** that allows governance to define:
-- What types of work can be submitted for verification
-- How many verifiers are required for each type
-- What evidence is needed to prove completion
-- Economic parameters like rewards and penalties
+The ValuableActionRegistry acts as a **democratic work definition system** that allows communities to define:
+- What specific types of work can be submitted for verification  
+- How many peer verifiers are required for each Valuable Action
+- What evidence standards prove legitimate completion
+- Economic rewards and verification parameters
 
-Think of it as a "template system" where each template defines the rules for verifying a specific type of community work.
+**Core Concept**: Communities democratically create "Valuable Actions" that define how specific types of contribution translate into governance power, economic rewards, and portable reputation.
 
 ## 🏗️ Core Architecture
 
-### ActionType Structure
+### ValuableAction Structure
 ```solidity
-struct ActionType {
-    uint32 weight;              // WorkerPoints reward (1-10000)
-    uint32 jurorsMin;           // Minimum approvals needed (M in M-of-N)
-    uint32 panelSize;           // Total jurors selected (N in M-of-N)
-    uint32 verifyWindow;        // Time limit for verification (hours)
-    uint32 cooldown;            // Cooldown between submissions (hours)
-    uint32 rewardVerify;        // Verifier reward points
-    uint32 slashVerifierBps;    // Verifier penalty (basis points)
-    bool revocable;             // Can governance revoke approved claims?
-    string evidenceSpecCID;     // IPFS hash of evidence requirements
+struct ValuableAction {
+    uint32 membershipTokenReward;   // MembershipToken amount minted on completion
+    uint32 communityTokenReward;    // CommunityToken amount for salary periods  
+    uint32 investorSBTReward;      // InvestorSBT minting for investment actions
+    uint32 jurorsMin;              // Minimum approvals needed (M in M-of-N)
+    uint32 panelSize;              // Total jurors selected (N in M-of-N)
+    uint32 verifyWindow;           // Time limit for verification (seconds)
+    uint32 verifierRewardWeight;   // Points earned by accurate verifiers
+    uint32 slashVerifierBps;       // Penalty for inaccurate verification
+    uint32 cooldownPeriod;         // Minimum time between claims
+    uint32 maxConcurrent;          // Maximum active claims per person
+    bool revocable;                // Can governance revoke this SBT
+    bool requiresGovernanceApproval; // Community vote needed to activate
+    bool founderVerified;          // Bootstrap security mechanism
+    string evidenceSpecCID;        // IPFS hash of evidence requirements
+    string titleTemplate;          // Template for claim titles
 }
 ```
 
 ### Design Philosophy
 
-The ActionTypeRegistry follows several key design principles:
+The ValuableActionRegistry follows these key principles:
 
-1. **Flexibility**: Each action type can have completely different verification requirements
-2. **Governance Control**: Only governance can create/modify action types, ensuring community oversight
-3. **Moderator System**: Trusted moderators can temporarily disable problematic action types
-4. **Evidence Standards**: IPFS-based evidence specifications ensure verifiable work requirements
+1. **Democratic Definition**: Communities decide what work is valuable through governance
+2. **Economic Integration**: Each Valuable Action defines reward conversion rates across token types  
+3. **Bootstrap Security**: Founder verification enables community launch without governance delays
+4. **Evidence Standards**: IPFS-based specifications ensure transparent work requirements
 
 ## ⚙️ Key Functions
 
-### Action Type Management
+### Valuable Action Management  
 
-#### `createActionType(ActionType calldata actionType)`
-**Purpose**: Creates a new work category with specific verification parameters.
+#### `proposeValuableAction(uint256 communityId, Types.ValuableAction calldata params, string calldata ipfsDescription)`
+**Purpose**: Creates a new Valuable Action that defines what work is valuable and how it's rewarded.
 
 **Process**:
 1. Validates all parameters are within acceptable ranges
-2. Assigns unique ID to the action type
-3. Sets creation timestamp and activates the type
+2. Assigns unique ID to the Valuable Action
+3. Determines activation path (founder verification, governance approval, or direct activation)
 4. Emits event for indexing and UI updates
 
-**Governance Only**: Prevents arbitrary creation of action types
+**Three Activation Paths**:
+- **Founder Verified**: Bypass governance for community bootstrap
+- **Governance Required**: Community vote needed for activation
+- **Direct Activation**: Simple Valuable Actions activate immediately
 
-#### `updateActionType(uint256 typeId, ActionType calldata newActionType)`
-**Purpose**: Modifies existing action type parameters.
+#### `update(uint256 id, Types.ValuableAction calldata params)`
+**Purpose**: Modifies existing Valuable Action parameters.
 
-**Critical Safety**: 
-- Only allows updates to inactive action types by default
-- Governance can force updates to active types if needed
-- Preserves system integrity by preventing mid-flight changes
+**Security**: 
+- Only moderators can update active Valuable Actions
+- Validates all parameters before applying changes
+- Preserves system integrity with proper authorization
 
 ### State Management
 
-#### `setActionTypeActive(uint256 typeId, bool active)`
-**Purpose**: Enable/disable action types without deletion.
+#### `deactivate(uint256 id)`
+**Purpose**: Disable Valuable Actions without deletion, preventing new claims.
 
 **Use Cases**:
 - Temporarily disable problematic work categories
-- Seasonal work types (enable/disable based on community needs)
-- Emergency response to discovered issues
+- Seasonal work types (disable during off-seasons)
+- Emergency response to discovered issues or exploitation
 
-#### Moderator Functions
-Trusted community members can quickly respond to issues:
-- `deactivateActionType()` - Emergency shutdown capability
-- `reactivateActionType()` - Restore after issue resolution
+#### `activateFromGovernance(uint256 valuableActionId, uint256 approvedProposalId)`
+**Purpose**: Activate Valuable Actions after successful governance approval.
+
+**Security**: Only governance can call this function, ensuring democratic control over what work communities value.
 
 ## 🛡️ Security Features
 
 ### Input Validation
 ```solidity
-// Weight must be meaningful but not excessive
-if (actionType.weight == 0 || actionType.weight > 10000) 
-    revert InvalidWeight(actionType.weight);
-
-// M-of-N validation: M must be achievable with N
-if (actionType.jurorsMin > actionType.panelSize) 
-    revert InvalidJurorConfiguration(actionType.jurorsMin, actionType.panelSize);
-
-// Time windows must be reasonable (1 hour to 30 days)
-if (actionType.verifyWindow < 1 hours || actionType.verifyWindow > 30 days)
-    revert InvalidTimeWindow(actionType.verifyWindow);
+function _validateValuableAction(Types.ValuableAction calldata params) internal pure {
+    // Ensure meaningful rewards
+    if (params.membershipTokenReward == 0) revert Errors.InvalidInput("MembershipToken reward cannot be zero");
+    
+    // M-of-N validation: M must be achievable with N
+    if (params.jurorsMin > params.panelSize) {
+        revert Errors.InvalidInput("Minimum jurors cannot exceed panel size");
+    }
+    
+    // Time windows must be reasonable
+    if (params.verifyWindow == 0) revert Errors.InvalidInput("Verify window cannot be zero");
+    if (params.slashVerifierBps > 10000) revert Errors.InvalidInput("Slash rate cannot exceed 100%");
+    
+    // Evidence requirements
+    if (bytes(params.evidenceSpecCID).length == 0) {
+        revert Errors.InvalidInput("Evidence spec CID cannot be empty");
+    }
+}
 ```
 
 ### Access Control
-- **Governance**: Full control over action type lifecycle
-- **Moderators**: Limited emergency powers (deactivate only)
-- **Public**: Read-only access to all parameters
+- **Governance**: Full control over Valuable Action lifecycle and moderator management
+- **Moderators**: Can update and deactivate Valuable Actions (governance-appointed)
+- **Founders**: Bootstrap privileges for community launch phase
+- **Public**: Read-only access to all Valuable Action configurations
 
-### Economic Safeguards
-- **Bounded rewards**: Prevents inflation through excessive point rewards
-- **Reasonable cooldowns**: Prevents spam while allowing legitimate work
-- **Slashing limits**: Verifier penalties capped to prevent excessive punishment
+### Bootstrap Security
+- **Founder Whitelist**: Prevents unauthorized bootstrap Valuable Actions
+- **Community Scoped**: Founder privileges limited to specific community ID
+- **Governance Override**: Community can revoke founder status through normal governance
 
 ## 📊 Economic Model
 
-### WorkerPoints Rewards
-Each action type defines how many WorkerPoints workers receive for approved claims:
-- **Low complexity**: 100-500 points (simple tasks)
-- **Medium complexity**: 500-2000 points (moderate effort required)
-- **High complexity**: 2000-10000 points (significant contributions)
+### Triple Reward System
+Each Valuable Action defines how approved claims translate into three types of value:
+
+**MembershipToken Rewards** (Governance Power):
+```solidity
+membershipTokenReward  // Voting power minted for each approved claim
+```
+
+**CommunityToken Rewards** (Economic Value):
+```solidity 
+communityTokenReward   // Salary basis for periodic distributions
+```
+
+**InvestorSBT Rewards** (Capital Recognition):
+```solidity
+investorSBTReward      // For investment-type Valuable Actions
+```
 
 ### Verifier Incentives
 ```solidity
-rewardVerify     // Points for participating in verification
-slashVerifierBps // Penalty for incorrect decisions (basis points)
+verifierRewardWeight   // Points earned by accurate verifiers
+slashVerifierBps       // Penalty for incorrect decisions (basis points)
 ```
 
-This creates a balanced incentive structure:
-- **Participation rewards** encourage verifier engagement
-- **Accuracy penalties** ensure quality decision-making
-- **Reputation effects** build long-term incentive alignment
+**Balanced Incentive Structure**:
+- **Participation rewards** encourage quality verifier engagement
+- **Accuracy penalties** ensure careful decision-making
+- **Reputation building** creates long-term incentive alignment
 
 ## 🔄 Workflow Integration
 
-### 1. Action Type Creation
+### 1. Valuable Action Creation
 ```
-Governance Proposal → Vote → Timelock → ActionType Created
+Community Need → Governance Proposal → Vote → Timelock → ValuableAction Activated
+Alternative: Founder → Bootstrap ValuableAction → Immediate Activation
 ```
 
-### 2. Work Submission Flow
+### 2. Work Submission Flow  
 ```
-Worker checks ActionType requirements → Submits claim → Verification begins
+Worker checks ValuableAction requirements → Submits claim → Verification begins
 ```
 
 ### 3. Verification Parameter Usage
 ```
-Claims contract reads ActionType → Configures verification → Selects jurors
+Claims contract reads ValuableAction → Configures M-of-N verification → Selects jurors
+```
+
+### 4. Economic Integration
+```
+Approved Claim → Mint MembershipTokens → Update CommunityToken salary basis → Mint WorkerSBT
 ```
 
 ## 📈 Advanced Features
 
 ### Evidence Specifications (IPFS)
-Each action type references an IPFS document describing:
+Each Valuable Action references an IPFS document describing:
 - Required proof of work completion
-- Quality standards and criteria
+- Quality standards and acceptance criteria  
 - Submission format requirements
 - Example evidence for clarity
 
-### Dynamic Parameter Updates
-Action types can evolve based on community experience:
-- Adjust verification requirements based on success rates
-- Modify rewards based on economic conditions
-- Update evidence standards as work types mature
+### Bootstrap System
+**Founder Verification** enables communities to launch without governance delays:
+```solidity
+mapping(address => mapping(uint256 => bool)) public founderWhitelist;
+mapping(uint256 => address[]) public communityFounders;
+```
 
-### Batch Operations
-Efficiency features for governance:
-- Create multiple related action types in single transaction
-- Bulk activate/deactivate for seasonal adjustments
-- Mass parameter updates for economic rebalancing
+### Governance Integration
+**Pending System** for community-controlled Valuable Action approval:
+```solidity
+mapping(uint256 => uint256) public pendingValuableActions; // valuableActionId => proposalId
+```
+
+### Query Functions
+Essential getters for frontend integration:
+- `getActiveValuableActions()` - All currently active Valuable Actions
+- `getCommunityFounders(uint256 communityId)` - Founder list per community
+- `isValuableActionActive(uint256 id)` - Quick status check
 
 ## 🎛️ Configuration Examples
 
-### Software Development Task
+### Senior Software Development
 ```solidity
-ActionType({
-    weight: 2000,           // Substantial reward for code contributions
-    jurorsMin: 3,           // Require 3 approvals
-    panelSize: 5,           // From pool of 5 verifiers  
-    verifyWindow: 72 hours, // 3 days to verify code quality
-    cooldown: 24 hours,     // Daily contribution limit
-    rewardVerify: 50,       // Modest verifier reward
-    slashVerifierBps: 100,  // 1% reputation penalty for errors
-    revocable: true,        // Governance can revoke if bugs found
-    evidenceSpecCID: "QmX..." // IPFS hash of coding standards
+ValuableAction({
+    membershipTokenReward: 2000,     // Substantial governance power
+    communityTokenReward: 1500,      // High salary basis weight  
+    investorSBTReward: 0,           // Not an investment action
+    jurorsMin: 3,                   // Require 3 approvals
+    panelSize: 5,                   // From pool of 5 technical verifiers
+    verifyWindow: 259200,           // 3 days to verify code quality
+    verifierRewardWeight: 50,       // Modest verifier reward
+    slashVerifierBps: 100,          // 1% reputation penalty for errors
+    cooldownPeriod: 86400,          // Daily contribution limit  
+    maxConcurrent: 2,               // Max 2 active code claims
+    revocable: true,                // Governance can revoke if bugs found
+    requiresGovernanceApproval: true, // Community vote required
+    founderVerified: false,         // Not a bootstrap action
+    evidenceSpecCID: "QmX...",      // IPFS hash of coding standards
+    titleTemplate: "Code Contribution: {description}"
 })
 ```
 
 ### Community Moderation
 ```solidity
-ActionType({
-    weight: 500,            // Moderate reward for moderation
-    jurorsMin: 2,           // Simple majority from 3
-    panelSize: 3,           // Smaller panel for efficiency
-    verifyWindow: 24 hours, // Quick turnaround needed
-    cooldown: 1 hours,      // Frequent moderation allowed
-    rewardVerify: 25,       // Lower verifier reward (higher volume)
-    slashVerifierBps: 200,  // 2% penalty (subjective decisions)
-    revocable: false,       // Moderation decisions should be final
-    evidenceSpecCID: "QmY..." // Community guidelines reference
+ValuableAction({
+    membershipTokenReward: 300,      // Moderate governance power
+    communityTokenReward: 200,       // Lower salary weight
+    investorSBTReward: 0,           // Not an investment action
+    jurorsMin: 2,                   // Simple majority from 3
+    panelSize: 3,                   // Smaller panel for efficiency
+    verifyWindow: 86400,            // 24 hours for quick turnaround
+    verifierRewardWeight: 25,       // Lower verifier reward (higher volume)
+    slashVerifierBps: 200,          // 2% penalty (subjective decisions)
+    cooldownPeriod: 3600,           // 1 hour between moderation claims
+    maxConcurrent: 5,               // Allow multiple concurrent moderation
+    revocable: false,               // Moderation decisions should be final
+    requiresGovernanceApproval: false, // Direct activation
+    founderVerified: false,         // Community action, not bootstrap
+    evidenceSpecCID: "QmY...",      // Community guidelines reference
+    titleTemplate: "Moderation: {violation_type}"
 })
 ```
 
-## 🔍 Monitoring & Analytics
+## 🔍 Frontend Integration
 
-### Health Metrics
-The contract provides comprehensive data for system monitoring:
-- Action type usage statistics
-- Approval/rejection rates by type
-- Average verification times
-- Economic parameter effectiveness
+### Essential Getters
+```solidity
+// Check if a Valuable Action exists and is active
+function isValuableActionActive(uint256 id) external view returns (bool)
 
-### Governance Intelligence
-Data supports informed governance decisions:
-- Which action types need parameter adjustments
-- Economic impact of different reward levels
-- Verifier performance across action types
-- Evidence specification effectiveness
+// Get full configuration for UI display
+function getValuableAction(uint256 id) external view returns (Types.ValuableAction memory)
 
-## 🚀 Future Enhancements
+// List all active Valuable Actions for selection UI
+function getActiveValuableActions() external view returns (uint256[] memory)
 
-### Planned Features
-- **Dynamic parameter adjustment**: AI-driven parameter optimization
-- **Category hierarchies**: Parent/child action type relationships
-- **Cross-chain compatibility**: Multi-network action type synchronization
-- **Advanced evidence types**: Integration with additional proof systems
+// Community founder management
+function getCommunityFounders(uint256 communityId) external view returns (address[] memory)
+```
 
-### Scalability Considerations
-- **Gas optimization**: Batch operations for large governance updates
-- **Storage efficiency**: Compression techniques for evidence specifications
-- **Query optimization**: Enhanced indexing for better dApp performance
+### Event Tracking
+```solidity
+event ValuableActionCreated(uint256 indexed id, Types.ValuableAction valuableAction, address indexed creator);
+event ValuableActionActivated(uint256 indexed id, uint256 indexed proposalId);
+event ValuableActionDeactivated(uint256 indexed id, address indexed deactivator);
+event ModeratorUpdated(address indexed account, bool isModerator, address indexed updater);
+```
+
+## � Usage Examples
+
+### Creating a Bootstrap Valuable Action
+```solidity
+// Founder creates immediate Valuable Action for community launch
+proposeValuableAction(
+    communityId,
+    ValuableAction({
+        membershipTokenReward: 1000,
+        communityTokenReward: 500,
+        // ... other parameters
+        founderVerified: true,  // Bypass governance
+        requiresGovernanceApproval: false
+    }),
+    "ipfs://QmBootstrap..."
+);
+// Result: Immediately active, ready for claims
+```
+
+### Creating a Governance-Controlled Valuable Action  
+```solidity
+// Community member proposes new work category
+proposeValuableAction(
+    communityId,
+    ValuableAction({
+        membershipTokenReward: 2000,
+        communityTokenReward: 1500, 
+        // ... other parameters
+        founderVerified: false,
+        requiresGovernanceApproval: true  // Requires community vote
+    }),
+    "ipfs://QmProposal..."
+);
+// Result: Pending governance approval, not yet active
+```
+
+**Production Ready**: ValuableActionRegistry provides the democratic infrastructure for communities to define their own value systems while maintaining security through founder verification for bootstrap and governance approval for ongoing evolution.
 
 ---
 
-The ActionTypeRegistry represents the foundational layer that makes Shift DeSoc's verification system both flexible and robust, enabling communities to define and evolve their work verification requirements while maintaining economic security and governance oversight.
+*This documentation reflects the actual implementation using correct "ValuableAction" terminology rather than the outdated "ActionType" references, ensuring alignment with the project vision and codebase.*

@@ -125,7 +125,7 @@ function grantCommunityRole(uint256 communityId, address user, bytes32 role)
 **Role Hierarchy**:
 - **ADMIN_ROLE**: Full community management permissions
 - **MODERATOR_ROLE**: Content moderation in RequestHub and discussions
-- **CURATOR_ROLE**: ActionType management and verification oversight
+- **CURATOR_ROLE**: ValuableAction management and verification oversight
 
 ## 🛡️ Security Features
 
@@ -323,7 +323,7 @@ registry.updateParameters(communityId, updates);
 
 **Alliance Benefits**:
 - Reduced transaction fees between allied communities
-- Shared ActionType libraries and verification pools
+- Shared ValuableAction libraries and verification pools
 - Collaborative project funding and execution
 
 ## 📈 Scaling Considerations
