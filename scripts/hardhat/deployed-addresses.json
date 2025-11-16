@@ -1,0 +1,18 @@
+{
+  "deployer": "0x73af48d53f75827dB195189e6FeBaB726dF7D0e2",
+  "communityRegistry": "0x67eC4cAcC44D80B43Ce7CCA63cEF6D1Ae3E57f8B",
+  "countingMultiChoice": "0x9a254605ccEf5c69Ce51b0a8C0a65016dD476c83",
+  "tempToken": "0x0511064e48e0a33303f5A8D37bc4b612551E97B4",
+  "tempTimelock": "0xE388bFaB5f7D638a8adf4DaB83606d9370d90F9c",
+  "governorTemplate": "0x481B45411c417850b6F17e99b92ae325a2771D4A",
+  "timelockTemplate": "0xBA9CFad6F7DF50f301Eb51Dc75CD772b79E30cF6",
+  "membershipTokenTemplate": "0x62BC60DB4E4C1D9d5F993c1DCa0cc4aB780BF698",
+  "valuableActionRegistryTemplate": "0xcFD6B685128E9a3c55cd5cfA8493453694aC540F",
+  "claimsTemplate": "0xd5582c3a8AC8542888124B2F764CB06F7051dE5C",
+  "requestHubTemplate": "0xc830b76A4E4b412552808CD072947c6BE39aba0d",
+  "draftsManagerTemplate": "0x0B29bB4144aD438E1439C69F209a8429E16d7460",
+  "communityTokenTemplate": "0xE713F27091f6b82e759300D039A25cC97ca99256",
+  "workerSBTTemplate": "0xE1CD1eB0495f7668068d5c13a25219Dc85b98665",
+  "verifierPoolTemplate": "0x3F22A91Df01f43Ee19d6aE066ce7A5906f1E3694",
+  "treasuryAdapterTemplate": "0x898c0892B6E656Baf72eCee4036f8022f3000Fa1"
+}
