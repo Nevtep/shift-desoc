@@ -38,15 +38,15 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 GOVERNANCE LAYER                                           │
+│                                 GOVERNANCE LAYER                                            │
 ├─────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌──────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │
-│ │  ShiftGovernor   │◄─┤CountingMultiChoice├─┤MembershipToken │◄─┤    TimelockController  │ │
-│ │- Binary Voting   │  │- Multi-choice   │  │- Base Eligibility│  │- Execution Delays     │ │
-│ │- Multi-choice    │  │- Weight Distrib │  │- Delegation      │  │- Emergency Actions    │ │
-│ │- Proposal Queue  │  │- Result Calc    │  │- SBT Enhancement │  │- Upgrade Protection   │ │
-│ │- Integration Hub │  │- Events/Logs    │  │- Voting History  │  │- Role Management      │ │
-│ └──────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────────────┘ │
+│ ┌──────────────────┐  ┌───────────────────┐ ┌──────────────────┐  ┌───────────────────────┐ │
+│ │  ShiftGovernor   │◄─┤CountingMultiChoice├─┤MembershipToken   │◄─┤    TimelockController │ │
+│ │- Binary Voting   │  │- Multi-choice     │ │- Base Eligibility│  │- Execution Delays     │ │
+│ │- Multi-choice    │  │- Weight Distrib   │ │- Delegation      │  │- Emergency Actions    │ │
+│ │- Proposal Queue  │  │- Result Calc      │ │- SBT Enhancement │  │- Upgrade Protection   │ │
+│ │- Integration Hub │  │- Events/Logs      │ │- Voting History  │  │- Role Management      │ │
+│ └──────────────────┘  └───────────────────┘ └──────────────────┘  └───────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
