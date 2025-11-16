@@ -42,20 +42,6 @@ contract Claims {
         bool resolved;             // Appeal resolved
     }
 
-    /// @notice Events for claim lifecycle
-    event ClaimSubmitted(uint256 indexed claimId, uint256 indexed typeId, address indexed worker, string evidenceCID);
-    event JurorsAssigned(uint256 indexed claimId, address[] jurors);
-    event ClaimVerified(uint256 indexed claimId, address indexed verifier, bool approve);
-    event ClaimResolved(uint256 indexed claimId, Types.ClaimStatus status, uint32 finalApprovals, uint32 finalRejections);
-    event ClaimRevoked(uint256 indexed claimId, address indexed revoker);
-    event AppealSubmitted(uint256 indexed appealId, uint256 indexed claimId, address indexed appellant, string reason);
-    event AppealResolved(uint256 indexed appealId, Types.ClaimStatus status);
-    event CooldownUpdated(address indexed worker, uint256 indexed typeId, uint64 nextAllowed);
-
-    /// @notice State variables
-    uint256 public lastClaimId;
-    uint256 public lastAppealId;
-    
     /// @notice Core contracts
     ValuableActionRegistry public immutable actionRegistry;
     address public verifierPool;
@@ -63,12 +49,31 @@ contract Claims {
     address public governance;
     address public membershipToken;
 
+    /// @notice State variables
+    uint256 public lastClaimId;
+    uint256 public lastAppealId;
+
     /// @notice Mappings
     mapping(uint256 => Claim) public claims;
     mapping(uint256 => Appeal) public appeals;
     mapping(address => mapping(uint256 => uint64)) public workerCooldowns; // worker => typeId => nextAllowedTime
     mapping(uint256 => uint256[]) public claimsByWorker; // worker address hash => claim IDs
     mapping(uint256 => uint256[]) public pendingClaims; // typeId => pending claim IDs
+
+    /// @notice Events for claim lifecycle
+    event ClaimSubmitted(uint256 indexed claimId, uint256 indexed typeId, address indexed worker, string evidenceCID);
+    event JurorsAssigned(uint256 indexed claimId, address[] jurors);
+    event ClaimVerified(uint256 indexed claimId, address indexed verifier, bool approve);
+    event ClaimResolved(
+        uint256 indexed claimId, 
+        Types.ClaimStatus status, 
+        uint32 finalApprovals, 
+        uint32 finalRejections
+    );
+    event ClaimRevoked(uint256 indexed claimId, address indexed revoker);
+    event AppealSubmitted(uint256 indexed appealId, uint256 indexed claimId, address indexed appellant, string reason);
+    event AppealResolved(uint256 indexed appealId, Types.ClaimStatus status);
+    event CooldownUpdated(address indexed worker, uint256 indexed typeId, uint64 nextAllowed);
 
     /// @notice Access control modifiers
     modifier onlyGovernance() {
@@ -160,6 +165,7 @@ contract Claims {
             ) returns (address[] memory selectedJurors) {
                 claim.jurors = selectedJurors;
                 emit JurorsAssigned(claimId, selectedJurors);
+            // solhint-disable-next-line no-empty-blocks
             } catch {
                 // If verifier selection fails, leave jurors empty for manual assignment
                 // This allows the system to still function with fallback mechanisms
@@ -307,19 +313,21 @@ contract Claims {
             
             // Mint SBT and award WorkerPoints
             if (workerSBT != address(0)) {
-                uint256 workerPoints = valuableAction.membershipTokenReward > 0 ? valuableAction.membershipTokenReward : 10; // Default 10 points
+                uint256 workerPoints = valuableAction.membershipTokenReward > 0 
+                    ? valuableAction.membershipTokenReward 
+                    : 10; // Default 10 points
                 
                 // Generate basic metadata URI for the claim
                 string memory metadataURI = string(abi.encodePacked(
-                    '{"type":"claim","id":', 
+                    "{\"type\":\"claim\",\"id\":", 
                     _uint2str(claimId),
-                    ',"valuableAction":', 
+                    ",\"valuableAction\":", 
                     _uint2str(claim.typeId),
-                    ',"points":', 
+                    ",\"points\":", 
                     _uint2str(workerPoints),
-                    ',"timestamp":', 
+                    ",\"timestamp\":", 
                     _uint2str(block.timestamp),
-                    '}'
+                    "}"
                 ));
                 
                 IWorkerSBT(workerSBT).mintAndAwardPoints(claim.worker, workerPoints, metadataURI);
@@ -374,8 +382,10 @@ contract Claims {
         
         // Call VerifierPool to update reputations
         if (verifierPool.code.length > 0) {
+            // solhint-disable-next-line no-empty-blocks
             try IVerifierPool(verifierPool).updateReputations(claimId, claim.jurors, successful) {
-                // Reputation update successful
+                // Reputation update successful - no action needed
+            // solhint-disable-next-line no-empty-blocks  
             } catch {
                 // If reputation update fails, continue - this is not critical for claim resolution
             }
@@ -408,6 +418,7 @@ contract Claims {
     /// @return approvalsCount Number of approvals
     /// @return rejectionsCount Number of rejections
     /// @return resolved Whether resolved
+    // solhint-disable-next-line ordering
     function getClaim(uint256 claimId) external view returns (
         uint256 typeId,
         address worker,

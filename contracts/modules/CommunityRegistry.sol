@@ -10,19 +10,6 @@ import {Errors} from "../libs/Errors.sol";
 contract CommunityRegistry is AccessControl {
     
     /*//////////////////////////////////////////////////////////////
-                                ROLES
-    //////////////////////////////////////////////////////////////*/
-    
-    /// @notice Role for governance operations
-    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
-    
-    /// @notice Role for community moderators
-    bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
-    
-    /// @notice Role for community curators
-    bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
-    
-    /*//////////////////////////////////////////////////////////////
                                STRUCTS
     //////////////////////////////////////////////////////////////*/
     
@@ -71,6 +58,19 @@ contract CommunityRegistry is AccessControl {
         bytes32 key;                 // Parameter key
         uint256 value;               // New value
     }
+    
+    /*//////////////////////////////////////////////////////////////
+                                ROLES
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Role for governance operations
+    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    
+    /// @notice Role for community moderators
+    bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
+    
+    /// @notice Role for community curators
+    bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
     
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES

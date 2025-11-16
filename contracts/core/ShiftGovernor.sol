@@ -7,7 +7,8 @@ import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {GovernorVotes} from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
-import {GovernorVotesQuorumFraction} from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
+// solhint-disable-next-line max-line-length
+import {GovernorVotesQuorumFraction as Quorum} from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import {GovernorTimelockControl} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 import {ICountingMultiChoice} from "contracts/core/interfaces/ICountingMultiChoice.sol";
 import {Errors} from "contracts/libs/Errors.sol";
@@ -17,7 +18,7 @@ import {Errors} from "contracts/libs/Errors.sol";
 /// @dev Extends OpenZeppelin Governor with custom multi-choice voting capability
 contract ShiftGovernor is
     Governor, GovernorSettings, GovernorCountingSimple,
-    GovernorVotes, GovernorVotesQuorumFraction, GovernorTimelockControl
+    GovernorVotes, Quorum, GovernorTimelockControl
 {
     /// @notice Tracks number of options for multi-choice proposals
     mapping(uint256 => uint8) private _numOptions;
@@ -49,7 +50,7 @@ contract ShiftGovernor is
         Governor("ShiftGovernor")
         GovernorSettings(1 days, 5 days, 0)  // 1 day voting delay, 5 days voting period, 0 proposal threshold
         GovernorVotes(IVotes(token))
-        GovernorVotesQuorumFraction(4)  // 4% quorum
+        Quorum(4)  // 4% quorum
         GovernorTimelockControl(TimelockController(payable(timelock))) 
     {}
 
@@ -67,32 +68,6 @@ contract ShiftGovernor is
         require(multiCounter == address(0), "Already initialized");
         multiCounter = counter;
         emit MultiCounterUpdated(address(0), counter);
-    }
-
-    /// @notice Create a multi-choice proposal
-    /// @param targets Target addresses for proposal calls
-    /// @param values Ether values for proposal calls  
-    /// @param calldatas Encoded function calls
-    /// @param description Proposal description
-    /// @param numOptions Number of voting options (2-255)
-    /// @return proposalId The ID of the created proposal
-    function proposeMultiChoice(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        string memory description,
-        uint8 numOptions
-    ) public returns (uint256 proposalId) {
-        if (numOptions < 2) revert Errors.InvalidOptionsCount(numOptions);
-        
-        proposalId = propose(targets, values, calldatas, description);
-        _numOptions[proposalId] = numOptions;
-        
-        if (multiCounter != address(0)) {
-            ICountingMultiChoice(multiCounter).enableMulti(proposalId, numOptions);
-        }
-        
-        emit MultiChoiceProposalCreated(proposalId, _msgSender(), numOptions, description);
     }
 
     /// @notice Cast a multi-choice vote
@@ -150,8 +125,34 @@ contract ShiftGovernor is
         return ICountingMultiChoice(multiCounter).getVoterWeights(proposalId, voter);
     }
 
+    /// @notice Create a multi-choice proposal
+    /// @param targets Target addresses for proposal calls
+    /// @param values Ether values for proposal calls  
+    /// @param calldatas Encoded function calls
+    /// @param description Proposal description
+    /// @param numOptions Number of voting options (2-255)
+    /// @return proposalId The ID of the created proposal
+    function proposeMultiChoice(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description,
+        uint8 numOptions
+    ) public returns (uint256 proposalId) {
+        if (numOptions < 2) revert Errors.InvalidOptionsCount(numOptions);
+        
+        proposalId = propose(targets, values, calldatas, description);
+        _numOptions[proposalId] = numOptions;
+        
+        if (multiCounter != address(0)) {
+            ICountingMultiChoice(multiCounter).enableMulti(proposalId, numOptions);
+        }
+        
+        emit MultiChoiceProposalCreated(proposalId, _msgSender(), numOptions, description);
+    }
+
     // Required overrides for OpenZeppelin 5.x
-    function quorum(uint256 blockNumber) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256) {
+    function quorum(uint256 blockNumber) public view override(Governor, Quorum) returns (uint256) {
         return super.quorum(blockNumber);
     }
     
@@ -163,27 +164,49 @@ contract ShiftGovernor is
         return super.proposalThreshold();
     }
     
-    function proposalNeedsQueuing(uint256 proposalId) public view override(Governor, GovernorTimelockControl) returns (bool) {
+    function proposalNeedsQueuing(uint256 proposalId) 
+        public 
+        view 
+        override(Governor, GovernorTimelockControl) 
+        returns (bool) 
+    {
         return super.proposalNeedsQueuing(proposalId);
     }
     
-    function _queueOperations(uint256 proposalId, address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash) internal override(Governor, GovernorTimelockControl) returns (uint48) {
+    function supportsInterface(bytes4 interfaceId) public view override(Governor) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
+    
+    function _queueOperations(
+        uint256 proposalId, 
+        address[] memory targets, 
+        uint256[] memory values, 
+        bytes[] memory calldatas, 
+        bytes32 descriptionHash
+    ) internal override(Governor, GovernorTimelockControl) returns (uint48) {
         return super._queueOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
     
-    function _executeOperations(uint256 proposalId, address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash) internal override(Governor, GovernorTimelockControl) {
+    function _executeOperations(
+        uint256 proposalId, 
+        address[] memory targets, 
+        uint256[] memory values, 
+        bytes[] memory calldatas, 
+        bytes32 descriptionHash
+    ) internal override(Governor, GovernorTimelockControl) {
         super._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
     
-    function _cancel(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash) internal override(Governor, GovernorTimelockControl) returns (uint256) {
+    function _cancel(
+        address[] memory targets, 
+        uint256[] memory values, 
+        bytes[] memory calldatas, 
+        bytes32 descriptionHash
+    ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
         return super._cancel(targets, values, calldatas, descriptionHash);
     }
     
     function _executor() internal view override(Governor, GovernorTimelockControl) returns (address) {
         return super._executor();
-    }
-    
-    function supportsInterface(bytes4 interfaceId) public view override(Governor) returns (bool) {
-        return super.supportsInterface(interfaceId);
     }
 }
