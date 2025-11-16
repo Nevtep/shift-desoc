@@ -35,13 +35,14 @@ struct Community {
     address requestHub;
     address draftsManager;
     address claimsManager;
-    address actionTypeRegistry;
+    address valuableActionRegistry;
     address verifierPool;
     address workerSBT;
     address treasuryAdapter;
     
-    // Status and Relationships
-    CommunityStatus status;
+    // Status and Relationships  
+    bool active;                 // Whether community is active
+    uint256 createdAt;           // Creation timestamp
     uint256 parentCommunityId;   // Federation/hierarchy support
     uint256[] allyCommunityIds;  // Partnership relationships
 }
@@ -59,8 +60,12 @@ struct Community {
 ### Community Registration
 
 ```solidity
-function registerCommunity(CommunityParams calldata params) 
-    external returns (uint256 communityId)
+function registerCommunity(
+    string calldata name,
+    string calldata description,
+    string calldata metadataURI,
+    uint256 parentCommunityId
+) external returns (uint256 communityId)
 ```
 
 **Purpose**: Creates a new community with initial parameters and governance structure.
@@ -84,14 +89,16 @@ function updateParameters(uint256 communityId, ParameterUpdate[] calldata update
 **Supported Parameters**:
 - **Governance Timing**: `debateWindow`, `voteWindow`, `executionDelay`
 - **Eligibility Rules**: `minSeniority`, `minSBTs`, `proposalThreshold`  
-- **Economic Splits**: `revenueSplit` ratios, `feeOnWithdraw`
-- **Asset Management**: `backingAssets` whitelist
+- **Economic Settings**: `feeOnWithdraw`
+
+**Note**: Revenue splits and backing assets are set during community creation and cannot be updated through parameter system
 
 **Validation Logic**:
-- Revenue splits must sum to 100%
-- Time windows must be within reasonable bounds (1 hour to 30 days)
-- Fee rates cannot exceed 10%
-- Asset addresses must be valid ERC-20 contracts
+- Community name cannot be empty
+- Parent community must exist and be active (if specified)
+- Fee rates cannot exceed 100% (10000 basis points)
+- Time windows are not bounded (community choice)
+- Unknown parameter keys are rejected
 
 ### Module Address Management
 
@@ -104,7 +111,8 @@ function setModuleAddress(uint256 communityId, bytes32 moduleKey, address module
 
 **Supported Modules**:
 - Core governance: `governor`, `timelock`, `requestHub`, `draftsManager`
-- Work verification: `claimsManager`, `actionTypeRegistry`, `verifierPool`, `workerSBT`
+- Work verification: `claimsManager`, `valuableActionRegistry`, `verifierPool`, `workerSBT`
+- Economic: `communityToken`, `treasuryAdapter`
 - Treasury management: `treasuryAdapter`
 
 ### Role Management
@@ -135,8 +143,8 @@ modifier onlyAdmin(uint256 communityId) {
 
 // Cross-community relationship validation
 modifier validAlliance(uint256 communityId, uint256 allyCommunityId) {
-    require(communities[communityId].status == CommunityStatus.Active, "Community not active");
-    require(communities[allyCommunityId].status == CommunityStatus.Active, "Ally not active");
+    require(communities[communityId].active, "Community not active");
+    require(communities[allyCommunityId].active, "Ally not active");
     require(communityId != allyCommunityId, "Cannot ally with self");
 }
 ```
@@ -151,15 +159,16 @@ modifier validAlliance(uint256 communityId, uint256 allyCommunityId) {
 ### Emergency Controls
 
 ```solidity
-function setCommunityStatus(uint256 communityId, CommunityStatus status) 
-    external onlyRole(DEFAULT_ADMIN_ROLE)
+function setCommunityStatus(uint256 communityId, bool active) 
+    external
 ```
 
-**Global admin can**:
-- Suspend communities for governance violations
-- Deactivate malicious or abandoned communities  
-- Restore communities after dispute resolution
-- Enforce protocol-wide policy changes
+**Community admins can**:
+- Activate/deactivate their own communities
+- Manage community lifecycle and governance  
+- Control community visibility and participation
+
+**Access Control**: Only community admins or global admins can change community status
 
 ## 🔗 Integration Points
 
@@ -220,45 +229,43 @@ struct EconomicParameters {
 ### Basic Community Setup
 
 ```solidity
-CommunityParams memory params = CommunityParams({
-    name: "DeveloperDAO",
-    description: "Decentralized community for Web3 developers",
-    metadataURI: "ipfs://QmCommunityMetadata...",
-    
-    // Standard governance timing
-    debateWindow: 3 days,
-    voteWindow: 7 days,
-    executionDelay: 2 days,
-    
-    // Member eligibility
-    minSeniority: 30 days,
-    minSBTs: 1,
-    proposalThreshold: 100e18, // 100 governance tokens
-    
-    // Revenue allocation
-    revenueSplit: [7000, 2000, 1000], // 70% workers, 20% treasury, 10% investors
-    feeOnWithdraw: 250, // 2.5% withdrawal fee
-    backingAssets: [USDC_ADDRESS, DAI_ADDRESS], // Accept stablecoins
-    
-    // No parent community
-    parentCommunityId: 0
-});
+// Register community with basic metadata
+uint256 communityId = registry.registerCommunity(
+    "DeveloperDAO",
+    "Decentralized community for Web3 developers", 
+    "ipfs://QmCommunityMetadata...",
+    0 // No parent community
+);
 
-uint256 communityId = registry.registerCommunity(params);
+// Default parameters are automatically set:
+// - debateWindow: 7 days
+// - voteWindow: 3 days  
+// - executionDelay: 2 days
+// - minSeniority: 0
+// - minSBTs: 0
+// - proposalThreshold: 1e18 (1 token)
+// - revenueSplit: [70, 20, 10] (workers, treasury, investors)
+// - feeOnWithdraw: 0 (no fee)
 ```
 
 ### Federation Setup
 
-```solidity
+```solidity  
 // Parent community (e.g., "DeSoc Ecosystem")
-uint256 parentId = registry.registerCommunity(parentParams);
+uint256 parentId = registry.registerCommunity(
+    "DeSoc Ecosystem",
+    "Umbrella organization for DeSoc communities",
+    "ipfs://QmParentMetadata...",
+    0
+);
 
-// Child community inherits some parent policies
-CommunityParams memory childParams = baseParams;
-childParams.parentCommunityId = parentId;
-childParams.name = "DeSoc - Developer Chapter";
-
-uint256 childId = registry.registerCommunity(childParams);
+// Child community with parent relationship
+uint256 childId = registry.registerCommunity(
+    "DeSoc - Developer Chapter", 
+    "Developer-focused subcommunity",
+    "ipfs://QmChildMetadata...",
+    parentId // Set parent community
+);
 
 // Establish alliance between peer communities  
 registry.formAlliance(childId, anotherCommunityId);
@@ -270,12 +277,12 @@ registry.formAlliance(childId, anotherCommunityId);
 // Adjust governance timing after launch
 ParameterUpdate[] memory updates = new ParameterUpdate[](2);
 updates[0] = ParameterUpdate({
-    key: "voteWindow",
-    value: abi.encode(5 days) // Reduce from 7 to 5 days
+    key: keccak256("voteWindow"),
+    value: 5 days // Reduce from 3 to 5 days  
 });
 updates[1] = ParameterUpdate({
-    key: "revenueSplit", 
-    value: abi.encode([6500, 2500, 1000]) // Increase treasury allocation
+    key: keccak256("feeOnWithdraw"),
+    value: 100 // Set 1% withdrawal fee (100 basis points)
 });
 
 registry.updateParameters(communityId, updates);

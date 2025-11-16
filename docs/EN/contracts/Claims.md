@@ -67,9 +67,21 @@ enum ClaimStatus {
    // Ensure evidence is provided
    if (bytes(evidenceCID).length == 0) revert InvalidInput("Evidence CID cannot be empty");
    
+   // Check action type exists and is active
+   Types.ValuableAction memory action = actionRegistry.getValuableAction(typeId);
+   if (!actionRegistry.isValuableActionActive(typeId)) {
+       revert InvalidInput("Action type is not active");
+   }
+   
    // Check worker isn't in cooldown period
    uint64 nextAllowed = workerCooldowns[msg.sender][typeId];
    if (block.timestamp < nextAllowed) revert InvalidInput("Worker is in cooldown period");
+   
+   // Check max concurrent claims for this action type
+   uint256 currentConcurrent = _countActiveClaims(msg.sender, typeId);
+   if (currentConcurrent >= action.maxConcurrent) {
+       revert InvalidInput("Too many concurrent claims for this action type");
+   }
    ```
 
 2. **Claim Creation**:
@@ -79,7 +91,7 @@ enum ClaimStatus {
    claim.worker = msg.sender;
    claim.evidenceCID = evidenceCID;
    claim.status = Types.ClaimStatus.Pending;
-   claim.verifyDeadline = uint64(block.timestamp + 24 hours); // From ActionTypeRegistry
+   claim.verifyDeadline = uint64(block.timestamp + action.verifyWindow); // From ValuableActionRegistry
    ```
 
 3. **Automatic Juror Selection** (Integration with VerifierPool):
@@ -143,9 +155,32 @@ if (claim.approvalsCount >= requiredApprovals) {
    }
    ```
 3. **Worker Rewards** (if approved):
-   - Set cooldown period based on ActionType configuration
-   - Trigger WorkerSBT minting (future integration)
-   - Award WorkerPoints (future integration)
+   ```solidity
+   // Set cooldown based on ValuableAction configuration
+   if (valuableAction.cooldownPeriod > 0) {
+       workerCooldowns[claim.worker][claim.typeId] = uint64(block.timestamp + valuableAction.cooldownPeriod);
+   }
+   
+   // Mint MembershipTokens for governance participation
+   if (membershipToken != address(0) && valuableAction.membershipTokenReward > 0) {
+       MembershipTokenERC20Votes(membershipToken).mint(
+           claim.worker, 
+           valuableAction.membershipTokenReward,
+           "ValuableAction completion"
+       );
+   }
+   
+   // Mint SBT with WorkerPoints and rich metadata
+   if (workerSBT != address(0)) {
+       uint256 workerPoints = valuableAction.membershipTokenReward > 0 ? 
+           valuableAction.membershipTokenReward : 10; // Default 10 points
+       
+       string memory metadataURI = "{\"type\":\"claim\",\"id\":" + claimId + 
+           ",\"valuableAction\":" + claim.typeId + ",\"points\":" + workerPoints + "}";
+       
+       IWorkerSBT(workerSBT).mintAndAwardPoints(claim.worker, workerPoints, metadataURI);
+   }
+   ```
 4. **Cleanup**: Remove from pending claims lists
 
 #### `_updateVerifierReputations(uint256 claimId, Types.ClaimStatus finalStatus)`
@@ -173,6 +208,12 @@ IVerifierPool(verifierPool).updateReputations(claimId, claim.jurors, successful)
 ```
 
 **Economic Incentive**: Verifiers who consistently vote with the majority earn reputation, while those who don't lose reputation over time.
+
+**⚠️ Known Issue - Reputation System Flaw**: The current implementation has a timing issue where claims resolve immediately when enough votes are reached, causing remaining jurors who haven't voted yet to be unfairly penalized. This incentivizes rushed voting over thorough evidence review. Potential solutions include:
+1. Only updating reputation for jurors who actually voted before resolution
+2. Allowing full voting window and resolving based on deadline expiry
+3. Implementing separate reputation logic for non-participation vs wrong decisions
+4. Time-weighted voting where early accurate votes get bonus points
 
 ## 🔄 Appeals System
 
@@ -246,22 +287,28 @@ IVerifierPool(verifierPool).selectJurors(claimId, panelSize, seed)
 IVerifierPool(verifierPool).updateReputations(claimId, jurors, successful)
 ```
 
-### ActionTypeRegistry Integration
-- Fetches verification parameters (M, N, deadlines, cooldowns)
+### ValuableActionRegistry Integration
+- Fetches verification parameters (panelSize, verifyWindow, cooldowns, maxConcurrent)
 - Validates action type is active and properly configured
 - Uses evidence specifications for validation
+- Retrieves reward parameters (membershipTokenReward, communityTokenReward)
+
+### Current Integrations
+- **WorkerSBT**: Mints soulbound tokens with WorkerPoints on approved claims
+- **MembershipTokenERC20Votes**: Mints governance tokens based on ValuableAction rewards
+- **VerifierPool**: Handles juror selection and reputation updates
 
 ### Future Integrations
-- **WorkerSBT**: Mint soulbound tokens on approved claims
-- **WorkerPoints**: Award points based on action type weights
-- **Treasury**: Handle payment distributions and rewards
+- **Treasury**: Handle payment distributions and CommunityToken rewards
+- **Enhanced Metadata**: Richer SBT metadata with evidence links and validation history
 
 ## 📈 Economic Model
 
 ### Worker Incentives
-- **WorkerPoints**: Quantified contribution tracking
-- **Soulbound Tokens**: Non-transferable reputation building
-- **Cooldown Management**: Balances quality vs. quantity
+- **MembershipTokens**: Governance voting power based on ValuableAction rewards
+- **WorkerSBT + WorkerPoints**: Soulbound reputation tokens with quantified contribution tracking
+- **Rich Metadata**: SBTs include claim details, timestamps, and point values
+- **Cooldown Management**: Balances quality vs. quantity based on action type configuration
 
 ### Verifier Incentives
 - **Reputation Rewards**: Accurate voting increases selection probability
@@ -271,7 +318,8 @@ IVerifierPool(verifierPool).updateReputations(claimId, jurors, successful)
 ## 🎛️ Configuration & Governance
 
 ### Governance Controls
-- Update contract addresses (VerifierPool, ActionTypeRegistry, etc.)
+- Update contract addresses (VerifierPool, WorkerSBT, etc.)
+- Note: ValuableActionRegistry is immutable and cannot be updated
 - Revoke approved claims (for revocable action types)
 - Emergency parameter adjustments
 
