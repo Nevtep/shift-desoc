@@ -17,11 +17,10 @@ COVERAGE_THRESHOLD=86
 echo -e "${YELLOW}🔍 Running coverage analysis for Shift DeSoc contracts...${NC}"
 echo ""
 
-# Change to foundry directory
+# Change to project root directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-FOUNDRY_DIR="$PROJECT_ROOT/packages/foundry"
-cd "$FOUNDRY_DIR"
+cd "$PROJECT_ROOT"
 
 # Generate coverage report
 echo "📊 Generating coverage report..."
