@@ -81,9 +81,9 @@ Sistema de tokens triple con distribución dinámica de ingresos y economía sos
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │ ┌─────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌─────────────────────┐ │
 │ │ CommunityToken  │  │ RevenueRouter  │  │  InvestorSBT   │  │  TreasuryAdapter    │ │
-│ │- Respaldo 1:1   │  │- Distribución  │  │- Decay Tiempo  │  │- Gestión Tesorería │ │
-│ │- USDC Stablecoin│  │- Performance   │  │- Contribuciones│  │- Runway Controller │ │
-│ │- Mint/Redeem    │  │- Matemático    │  │- Network Multi │  │- Límites Gasto    │ │
+│ │- Salario Merit  │  │- Distribución  │  │- Decay Tiempo  │  │- Gestión Tesorería │ │
+│ │- Reclamos SBT   │  │- Performance   │  │- Contribuciones│  │- Runway Controller │ │
+│ │- Sistema Salario│  │- Matemático    │  │- Network Multi │  │- Límites Gasto    │ │
 │ │- Payments       │  │- Anti-Gaming   │  │- Voting Weight │  │- Governance Gates  │ │
 │ │- Governance Ctrl│  │- Runway Aware  │  │- Capital Track │  │- Emergency Funds  │ │
 │ └─────────────────┘  └────────────────┘  └────────────────┘  └─────────────────────┘ │
@@ -316,38 +316,51 @@ contract TreasuryController {
 }
 ```
 
-### **Integración de Gobernanza Mejorada por SBT**
+### **Arquitectura de Token de Gobernanza Basado en Mérito**
 
-Cálculo de poder de voto que recompensa mérito sobre riqueza:
+Token de gobernanza puro que se acuña automáticamente basado en contribuciones verificadas:
 
 ```solidity
 contract MembershipTokenERC20Votes {
-    function getEnhancedVotes(address account, uint256 blockNumber) 
-        external view returns (uint256 enhancedVotes) {
+    // Eliminado: funciones mint/redeem - los tokens solo se ganan a través de logros SBT
+    // Eliminado: respaldo USDC - utilidad de gobernanza pura
+    
+    struct GovernanceWeighting {
+        uint64 vestingPeriodMonths;     // Línea de tiempo de equilibrio establecida por la comunidad (ej. 36 meses)
+        uint64 startTimestamp;          // T=0 para cálculos basados en tiempo
+        uint256 workerBaseWeight;       // Peso inicial de gobernanza WorkerSBT
+        uint256 investorBaseWeight;     // Peso inicial de gobernanza InvestorSBT
+        uint256 maxConcentrationBps;    // Límite anti-plutocracia (ej. 15%)
+    }
+    
+    function calculateTimeBasedWeight(address account) 
+        external view returns (uint256 totalVotingPower) {
         
-        uint256 baseVotes = getPastVotes(account, blockNumber);
-        if (baseVotes == 0) return 0;
+        uint256 workerTokens = getWorkerSBTTokens(account);
+        uint256 investorTokens = getInvestorSBTTokens(account);
         
-        // Obtener multiplicadores SBT (limitados para prevenir concentración excesiva)
-        uint256 workerMultiplier = Math.min(
-            workerSBT.getGovernanceMultiplier(account, blockNumber),
-            maxWorkerMultiplier  // ej. máximo 500%
-        );
+        // Cálculo de ponderación basado en tiempo
+        uint256 elapsedMonths = (block.timestamp - weighting.startTimestamp) / 30 days;
+        uint256 progressRatio = Math.min(elapsedMonths * 1e18 / weighting.vestingPeriodMonths, 1e18);
         
-        uint256 investorMultiplier = Math.min(
-            investorSBT.getGovernanceMultiplier(account, blockNumber), 
-            maxInvestorMultiplier // ej. máximo 200%
-        );
+        // Progresión lineal: inversores empiezan alto, trabajadores crecen con el tiempo
+        uint256 currentWorkerWeight = weighting.workerBaseWeight + 
+            (progressRatio * (1e18 - weighting.workerBaseWeight) / 1e18);
+        uint256 currentInvestorWeight = weighting.investorBaseWeight - 
+            (progressRatio * (weighting.investorBaseWeight - 1e18) / 1e18);
         
-        // Multiplicador combinado con límites anti-plutocracia
-        uint256 totalMultiplier = 1e18 + workerMultiplier + investorMultiplier;
-        enhancedVotes = baseVotes * totalMultiplier / 1e18;
+        totalVotingPower = (workerTokens * currentWorkerWeight + investorTokens * currentInvestorWeight) / 1e18;
         
-        // Límite global de concentración (ej. máximo 15% por dirección)
-        uint256 totalSupply = getPastTotalSupply(blockNumber);
-        uint256 maxConcentration = totalSupply * maxConcentrationBps / 10000;
-        
-        return Math.min(enhancedVotes, maxConcentration);
+        // Límite anti-plutocracia de concentración
+        uint256 totalSupply = totalSupply();
+        uint256 maxConcentration = totalSupply * weighting.maxConcentrationBps / 10000;
+        return Math.min(totalVotingPower, maxConcentration);
+    }
+    
+    function mintFromSBT(address recipient, uint256 amount, bytes32 sbtType) external {
+        require(msg.sender == actionTypeRegistry || msg.sender == workerSBT || msg.sender == investorSBT, "No autorizado");
+        _mint(recipient, amount);
+        emit MembershipMinted(recipient, amount, sbtType);
     }
 }
 ```
@@ -951,7 +964,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 - ✅ ShiftGovernor con votación multi-opción (completado)
 - ✅ Claims + ActionTypeRegistry + VerifierPool (completado) 
 - ✅ WorkerSBT acumulación básica de puntos (completado)
-- ✅ CommunityToken respaldo 1:1 USDC (completado)
+- ✅ CommunityToken sistema de salario basado en mérito (completado)
 - 🔄 Scripts mejorados de despliegue y onboarding comunitario
 - 🔄 RevenueRouter básico con divisiones fijas
 
@@ -1044,7 +1057,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 
 #### **En Desarrollo**
 - 🔄 **WorkerSBT**: Minting de tokens soulbound y seguimiento de reputación
-- 🔄 **CommunityToken**: Respaldo stablecoin 1:1 con controles de gobernanza
+- 🔄 **CommunityToken**: Sistema de salario periódico basado en mérito con reclamos SBT-ponderados
 - 🔄 **RevenueRouter**: Sistema automatizado de distribución de ingresos
 
 #### **Estrategia de Testing**
@@ -1157,7 +1170,7 @@ pnpm fmt             # Formatear código según estándares
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────────┐ │
 │  │   WorkerSBT     │    │ CommunityToken   │    │   RevenueRouter         │ │
-│  │ - Soulbound     │    │ - 1:1 USDC       │    │ - Distribución Tarifas  │ │
+│  │ - Soulbound     │    │ - Salario Mérito │    │ - Distribución Tarifas  │ │
 │  │ - WorkerPoints  │    │ - Pagos          │    │ - Gestión Tesorería     │ │
 │  │ - Logros        │    │ - Recompensas    │    │ - División Ingresos     │ │
 │  └─────────────────┘    └──────────────────┘    └─────────────────────────┘ │
@@ -1217,7 +1230,7 @@ pnpm fmt             # Formatear código según estándares
    - Contribuidores (típicamente 60-70%)
    - Tesorería Comunitaria (20-30%)
    - Inversores/Stakeholders (10-20%)
-4. **Pagos**: CommunityToken facilita pagos con respaldo USDC 1:1
+4. **Pagos**: CommunityToken facilita pagos periódicos basados en mérito SBT
 
 ## 🔧 Especificaciones Técnicas de Contratos
 
@@ -1247,27 +1260,196 @@ function castVoteMulti(
 ) external;
 ```
 
-### ActionTypeRegistry  
-**Propósito**: Gestión de tipos de trabajo configurables con parámetros de verificación
+## **ActionType Registry: Sistema Central de Definición de Valor**
 
-**Características Clave**:
-- Tipos de acción definidos por gobernanza con parámetros personalizables
-- Especificaciones de evidencia IPFS para requisitos de trabajo
-- Sistema de moderadores para gestión de contenido
-- Cooldowns y restricciones para prevenir spam
+El ActionType Registry sirve como el mecanismo fundamental de gobernanza que define cómo el trabajo se traduce en mérito, valor económico y poder de gobernanza. A diferencia de los sistemas tradicionales de categorización de trabajos, los ActionTypes son **instrumentos económicos configurados dinámicamente** que las comunidades usan para alinear incentivos y medir el valor de las contribuciones.
 
-**Parámetros de ActionType**:
+### **Estructura Central de ActionType**
+
 ```solidity
-struct ActionType {
-    uint32 weight;              // Recompensa WorkerPoints
-    uint32 jurorsMin;           // M (aprobaciones mínimas)
-    uint32 panelSize;           // N (jurados totales)
-    uint32 verifyWindow;        // Límite tiempo verificación
-    uint32 cooldown;            // Cooldown entre reclamos
-    uint32 rewardVerify;        // Puntos recompensa verificador
-    uint32 slashVerifierBps;    // Tasa slashing verificadores malos
-    bool revocable;             // Puede ser revocado por gobernanza
-    string evidenceSpecCID;     // Requisitos evidencia IPFS
+contract ActionTypeRegistry {
+    struct ActionType {
+        // Parámetros Económicos
+        uint32 governanceWeight;        // Cantidad de MembershipToken acuñada en aprobación
+        uint32 salaryWeight;           // Tasa de ganancia CommunityToken (por período)  
+        uint32 initialInvestorBonus;   // Acuñación InvestorSBT en acciones de fundador
+        
+        // Parámetros de Verificación
+        uint32 jurorsMin;              // M (aprobaciones mínimas necesarias)
+        uint32 panelSize;              // N (total de jurados seleccionados)
+        uint32 verifyWindow;           // Límite de tiempo para decisión del jurado
+        uint32 verifierRewardWeight;   // Puntos ganados por verificadores precisos
+        uint32 slashVerifierBps;       // Penalización por verificación inexacta
+        
+        // Control de Calidad
+        uint32 cooldownPeriod;         // Tiempo mínimo entre reclamos de este tipo
+        uint32 maxConcurrent;          // Máximo de reclamos activos por persona
+        bool revocable;                // La gobernanza comunitaria puede revocar este SBT
+        uint32 evidenceTypes;          // Máscara de bits de formatos de evidencia requeridos
+        
+        // Barreras Económicas (Anti-Spam)
+        uint256 creationStake;         // USDC requerido para crear este ActionType
+        uint256 proposalThreshold;     // Tokens de gobernanza necesarios para proponer cambios
+        address sponsor;               // Quien financió la creación de este ActionType
+        
+        // Metadatos y Automatización
+        string evidenceSpecCID;        // IPFS: requisitos detallados de evidencia
+        string titleTemplate;          // Plantilla para títulos de reclamos
+        bytes32[] automationRules;     // Integración con sistemas externos (GitHub, etc)
+        
+        // Parámetros Basados en Tiempo
+        uint64 activationDelay;        // Período de aprobación de gobernanza → activo
+        uint64 deprecationWarning;     // Tiempo antes de auto-desactivación
+        bool founderVerified;          // Estado especial para bootstrap de comunidad
+    }
+    
+    // Sistema de Verificación de Fundadores (Seguridad Bootstrap)
+    mapping(address => mapping(uint256 => bool)) public founderWhitelist;  // fundador → comunidad → verificado
+    mapping(uint256 => address[]) public communityFounders;               // comunidad → lista de fundadores
+    
+    function proposeActionType(
+        uint256 communityId,
+        ActionTypeParams calldata params,
+        uint256 governanceStake
+    ) external payable returns (uint256 actionTypeId) {
+        require(msg.value >= params.creationStake, "Stake de creación insuficiente");
+        require(governanceToken.balanceOf(msg.sender) >= params.proposalThreshold, "Peso de gobernanza insuficiente");
+        
+        // Caso especial: Verificación de fundador para bootstrap de comunidad
+        if (params.founderVerified) {
+            require(founderWhitelist[msg.sender][communityId], "Fundador no está en whitelist");
+            // Los fundadores pueden crear ActionTypes que evitan los delays normales de gobernanza
+            _activateActionType(actionTypeId, params);
+        } else {
+            // Ruta normal: requiere aprobación de gobernanza comunitaria
+            uint256 proposalId = _createGovernanceProposal(actionTypeId, params);
+            pendingActionTypes[actionTypeId] = proposalId;
+        }
+        
+        emit ActionTypeProposed(actionTypeId, communityId, msg.sender, params.founderVerified);
+    }
+    
+    function activateFromGovernance(uint256 actionTypeId, uint256 approvedProposalId) external {
+        require(msg.sender == governor, "Solo la gobernanza puede activar");
+        require(pendingActionTypes[actionTypeId] == approvedProposalId, "Desajuste de propuesta");
+        
+        ActionType storage actionType = actionTypes[actionTypeId];
+        actionType.active = true;
+        actionType.activatedAt = uint64(block.timestamp);
+        
+        emit ActionTypeActivated(actionTypeId, approvedProposalId);
+    }
+}
+```
+
+### **Configuración de Peso Económico**
+
+Los ActionTypes definen las **tasas de conversión** entre trabajo verificado y varias formas de valor:
+
+```solidity
+// Ejemplos de configuración ActionType para diferentes tipos de trabajo
+struct ActionTypeExamples {
+    // DESARROLLO DE ALTO IMPACTO (Trabajo Técnico Senior)
+    ActionType seniorDevelopment = ActionType({
+        governanceWeight: 100,          // 100 MembershipTokens por aprobación
+        salaryWeight: 50,               // Alta tasa de ganancia en reclamos CommunityToken
+        initialInvestorBonus: 20,       // InvestorSBT significativo si es trabajo de fundador
+        jurorsMin: 3,                   // Requiere 3 aprobaciones (barra alta de calidad)
+        panelSize: 5,                   // De panel de 5 verificadores expertos
+        verifyWindow: 7 days,           // Trabajo complejo necesita revisión minuciosa
+        verifierRewardWeight: 15,       // Altas recompensas por verificación experta
+        cooldownPeriod: 14 days,        // Calidad sobre cantidad
+        evidenceTypes: CODE_REVIEW | DEPLOYMENT_PROOF | IMPACT_METRICS,
+        creationStake: 1000e6,          // $1000 USDC para crear (previene spam)
+        proposalThreshold: 10000e18     // Requiere poder de gobernanza significativo
+    });
+    
+    // MODERACIÓN COMUNITARIA (Contribución Regular)
+    ActionType moderation = ActionType({
+        governanceWeight: 10,           // 10 MembershipTokens por aprobación
+        salaryWeight: 15,               // Tasa de ganancia moderada
+        initialInvestorBonus: 5,        // Pequeño bono InvestorSBT
+        jurorsMin: 2,                   // Requiere 2 aprobaciones
+        panelSize: 3,                   // De panel de 3 verificadores
+        verifyWindow: 3 days,           // Tiempo de respuesta más rápido para trabajo rutinario
+        verifierRewardWeight: 5,        // Recompensas estándar de verificador
+        cooldownPeriod: 1 days,         // Puede hacerse regularmente
+        evidenceTypes: SCREENSHOT | ACTIVITY_LOG,
+        creationStake: 100e6,           // $100 USDC para crear
+        proposalThreshold: 1000e18      // Umbral de gobernanza más bajo
+    });
+    
+    // BOOTSTRAP DE FUNDADOR (Estado de Verificación Especial)
+    ActionType founderWork = ActionType({
+        governanceWeight: 200,          // Poder de gobernanza extra durante bootstrap
+        salaryWeight: 0,                // Los fundadores no ganan salario (enfocados en equity)
+        initialInvestorBonus: 100,      // Acuñación significativa de InvestorSBT
+        jurorsMin: 1,                   // Verificación más rápida durante bootstrap
+        panelSize: 2,                   // Panel mínimo necesario
+        verifyWindow: 1 days,           // Verificación rápida para agilidad
+        founderVerified: true,          // Evita delays normales de gobernanza
+        deprecationWarning: 180 days    // Auto-desactiva después de 6 meses
+    });
+}
+```
+
+### **Sistema de Verificación de Fundadores**
+
+Mecanismo de seguridad crítico para la fase de bootstrap de la comunidad:
+
+```solidity
+contract FounderVerificationSystem {
+    struct FounderApplication {
+        address applicant;
+        uint256 communityId;  
+        string profileCID;          // IPFS: perfil detallado del fundador
+        string businessPlanCID;     // IPFS: plan de negocios de la comunidad
+        uint256 initialStake;       // USDC comprometido a la comunidad
+        address[] endorsers;        // Endorsos de fundadores existentes
+        uint64 applicationDate;
+        bool approved;
+    }
+    
+    function applyForFounderStatus(
+        uint256 communityId,
+        string calldata profileCID,
+        string calldata businessPlanCID,
+        address[] calldata endorsers
+    ) external payable returns (uint256 applicationId) {
+        require(msg.value >= minimumFounderStake, "Stake de fundador insuficiente");
+        require(endorsers.length >= minimumEndorsements, "Endorsos insuficientes");
+        
+        // Crear aplicación para revisión comunitaria
+        applications[applicationId] = FounderApplication({
+            applicant: msg.sender,
+            communityId: communityId,
+            profileCID: profileCID,
+            businessPlanCID: businessPlanCID,
+            initialStake: msg.value,
+            endorsers: endorsers,
+            applicationDate: uint64(block.timestamp),
+            approved: false
+        });
+        
+        emit FounderApplicationSubmitted(applicationId, msg.sender, communityId);
+    }
+    
+    function approveFounder(uint256 applicationId) external {
+        require(msg.sender == communityGovernance, "Solo la gobernanza comunitaria");
+        
+        FounderApplication storage app = applications[applicationId];
+        app.approved = true;
+        
+        // Otorgar privilegios especiales
+        founderWhitelist[app.applicant][app.communityId] = true;
+        communityFounders[app.communityId].push(app.applicant);
+        
+        // Privilegios limitados en tiempo (previene concentración permanente de poder)
+        founderExpirationTime[app.applicant][app.communityId] = 
+            block.timestamp + founderPrivilegeWindow;
+            
+        emit FounderApproved(applicationId, app.applicant, app.communityId);
+    }
 }
 ```
 
@@ -1316,6 +1498,292 @@ COOLDOWN   APPEAL     SBT_MINTED
 - **Decay Function**: Decaimiento gradual sin actividad reciente
 - **Achievement Milestones**: Hitos desbloqueados por WorkerPoints totales
 - **Cross-Community**: Reputación portable a través de comunidades
+
+## **CommunityToken: Sistema de Salario Basado en Mérito**
+
+El CommunityToken implementa un sofisticado **sistema de salario periódico** donde los miembros de la comunidad ganan basado en su mérito acumulado (pesos SBT) en lugar de salarios por hora tradicionales. Esto crea un modelo económico sostenible que recompensa la contribución a largo plazo sobre la extracción a corto plazo.
+
+### **Arquitectura Central de Salario**
+
+```solidity
+contract CommunityToken is ERC20 {
+    struct SalaryPeriod {
+        uint64 startTime;               // Marca de tiempo de inicio del período
+        uint64 endTime;                 // Marca de tiempo de fin del período
+        uint256 totalBudget;           // Total USDC asignado para este período
+        uint256 totalSBTWeight;        // Suma de todos los pesos SBT al inicio del período
+        uint256 claimedAmount;         // Total reclamado hasta ahora en este período
+        bool finalized;                // Período cerrado para reclamos
+        mapping(address => uint256) workerWeightSnapshot;  // Pesos SBT al inicio del período
+        mapping(address => bool) hasClaimed;               // Seguimiento de reclamos
+    }
+    
+    struct WorkerSalaryState {
+        uint256 accumulatedWeight;      // Peso total SBT ganado a través de ActionTypes
+        uint256 lastClaimPeriod;       // Último período que el trabajador reclamó salario
+        uint256 unclaimedPeriods;      // Número de períodos no reclamados (rollover)
+        bool fraudFlagged;             // Temporalmente suspendido de reclamos
+        uint256 lifetimeEarnings;      // Total CommunityToken ganado históricamente
+        uint64 joinDate;               // Marca de tiempo de primera contribución
+    }
+    
+    mapping(uint256 => SalaryPeriod) public salaryPeriods;
+    mapping(address => WorkerSalaryState) public workerStates;
+    
+    uint256 public currentPeriod;
+    uint64 public periodDuration = 30 days;    // Períodos de salario mensuales
+    uint256 public maxRolloverPeriods = 6;     // Máximo 6 meses sin reclamar
+    uint256 public emergencyReserveRatio = 20; // 20% mantenido en reserva
+    
+    function initializePeriod(uint256 periodId, uint256 budgetUSDC) external onlyGovernance {
+        require(!salaryPeriods[periodId].finalized, "Período ya finalizado");
+        
+        SalaryPeriod storage period = salaryPeriods[periodId];
+        period.startTime = uint64(block.timestamp);
+        period.endTime = uint64(block.timestamp + periodDuration);
+        period.totalBudget = budgetUSDC;
+        
+        // Capturar todos los pesos SBT de trabajadores al inicio del período
+        address[] memory workers = workerSBT.getAllWorkers();
+        uint256 totalWeight = 0;
+        
+        for (uint i = 0; i < workers.length; i++) {
+            uint256 weight = workerSBT.getTotalWeight(workers[i]);
+            period.workerWeightSnapshot[workers[i]] = weight;
+            totalWeight += weight;
+        }
+        
+        period.totalSBTWeight = totalWeight;
+        
+        emit PeriodInitialized(periodId, budgetUSDC, totalWeight, workers.length);
+    }
+}
+```
+
+### **Mecanismo de Reclamación Sofisticado**
+
+```solidity
+contract CommunityTokenClaiming {
+    function claimSalary(uint256[] calldata periodIds) external nonReentrant {
+        require(!workerStates[msg.sender].fraudFlagged, "Trabajador marcado para revisión de fraude");
+        
+        uint256 totalClaimableUSDC = 0;
+        
+        for (uint i = 0; i < periodIds.length; i++) {
+            uint256 periodId = periodIds[i];
+            totalClaimableUSDC += _calculatePeriodClaim(msg.sender, periodId);
+        }
+        
+        require(totalClaimableUSDC > 0, "No hay salario reclamable");
+        
+        // Actualizar estado del trabajador
+        workerStates[msg.sender].lastClaimPeriod = _getLatestPeriod(periodIds);
+        workerStates[msg.sender].lifetimeEarnings += totalClaimableUSDC;
+        workerStates[msg.sender].unclaimedPeriods = _calculateUnclaimedPeriods(msg.sender);
+        
+        // Acuñar CommunityTokens respaldados 1:1 USDC
+        _mintFromTreasury(msg.sender, totalClaimableUSDC);
+        
+        emit SalaryClaimed(msg.sender, periodIds, totalClaimableUSDC);
+    }
+    
+    function _calculatePeriodClaim(address worker, uint256 periodId) 
+        internal returns (uint256 claimableUSDC) {
+        
+        SalaryPeriod storage period = salaryPeriods[periodId];
+        require(period.finalized, "Período aún no finalizado");
+        require(!period.hasClaimed[worker], "Ya reclamado para este período");
+        require(period.workerWeightSnapshot[worker] > 0, "Sin contribuciones en el período");
+        
+        // Calcular porción proporcional: (peso_trabajador / peso_total) * presupuesto
+        uint256 baseShare = (period.workerWeightSnapshot[worker] * period.totalBudget) / 
+                           period.totalSBTWeight;
+        
+        // Aplicar bonos y penalizaciones
+        uint256 adjustedShare = _applyClaimAdjustments(worker, baseShare, periodId);
+        
+        // Marcar como reclamado
+        period.hasClaimed[worker] = true;
+        period.claimedAmount += adjustedShare;
+        
+        return adjustedShare;
+    }
+    
+    function _applyClaimAdjustments(address worker, uint256 baseShare, uint256 periodId) 
+        internal view returns (uint256 adjustedShare) {
+        
+        adjustedShare = baseShare;
+        
+        // Bono de rollover: Recompensa extra por reclamos retrasados (fomenta agrupación)
+        uint256 unclaimed = workerStates[worker].unclaimedPeriods;
+        if (unclaimed > 1) {
+            uint256 rolloverBonus = Math.min(unclaimed * 5, 25); // Hasta 25% de bono
+            adjustedShare = adjustedShare * (100 + rolloverBonus) / 100;
+        }
+        
+        // Bono de consistencia: Recompensa por contribuciones regulares
+        if (_hasConsistentContributions(worker, periodId)) {
+            adjustedShare = adjustedShare * 110 / 100; // 10% bono de consistencia
+        }
+        
+        // Reducción de penalización para nuevos trabajadores: Subida gradual para nuevos contribuidores
+        uint256 tenureMonths = (block.timestamp - workerStates[worker].joinDate) / 30 days;
+        if (tenureMonths < 6) {
+            uint256 penaltyReduction = Math.min(tenureMonths * 10, 50); // Hasta 50% de reducción
+            adjustedShare = adjustedShare * (50 + penaltyReduction) / 100;
+        }
+        
+        return adjustedShare;
+    }
+}
+```
+
+### **Protección contra Fraude y Manejo de Casos Edge**
+
+```solidity
+contract CommunityTokenSecurity {
+    struct FraudInvestigation {
+        address reporter;
+        address accused;
+        string evidenceCID;
+        uint256 reportedPeriod;
+        uint64 reportedAt;
+        bool resolved;
+        bool fraudConfirmed;
+        uint256 investigatorReward;
+    }
+    
+    mapping(uint256 => FraudInvestigation) public fraudCases;
+    mapping(address => uint256) public fraudScore; // Riesgo de fraude acumulativo
+    
+    function reportFraud(
+        address accused, 
+        uint256 suspiciousPeriod,
+        string calldata evidenceCID
+    ) external payable returns (uint256 caseId) {
+        require(msg.value >= fraudReportStake, "Stake de reporte insuficiente");
+        require(workerSBT.balanceOf(msg.sender) > 0, "Reportero debe tener SBT");
+        
+        fraudCases[caseId] = FraudInvestigation({
+            reporter: msg.sender,
+            accused: accused,
+            evidenceCID: evidenceCID,
+            reportedPeriod: suspiciousPeriod,
+            reportedAt: uint64(block.timestamp),
+            resolved: false,
+            fraudConfirmed: false,
+            investigatorReward: msg.value
+        });
+        
+        // Marcar temporalmente al trabajador acusado
+        workerStates[accused].fraudFlagged = true;
+        
+        emit FraudReported(caseId, msg.sender, accused, suspiciousPeriod);
+    }
+    
+    function investigateFraud(uint256 caseId, bool fraudConfirmed, string calldata reasoning) 
+        external onlyGovernance {
+        
+        FraudInvestigation storage case = fraudCases[caseId];
+        require(!case.resolved, "Caso ya resuelto");
+        
+        case.resolved = true;
+        case.fraudConfirmed = fraudConfirmed;
+        
+        if (fraudConfirmed) {
+            // Penalización: Recortar salario por período fraudulento
+            _slashSalary(case.accused, case.reportedPeriod);
+            
+            // Recompensar reportero
+            payable(case.reporter).transfer(case.investigatorReward);
+            
+            // Incrementar puntuación de fraude
+            fraudScore[case.accused] += 100;
+            
+            emit FraudConfirmed(caseId, case.accused, case.reportedPeriod);
+        } else {
+            // Reporte falso: Devolver stake al acusado, penalización al reportero
+            payable(case.accused).transfer(case.investigatorReward / 2);
+            fraudScore[case.reporter] += 25; // Penalización por reporte falso
+            
+            // Restaurar privilegios de reclamación
+            workerStates[case.accused].fraudFlagged = false;
+            
+            emit FraudDismissed(caseId, case.accused);
+        }
+    }
+    
+    function _slashSalary(address worker, uint256 fraudulentPeriod) internal {
+        // Recuperar ganancias fraudulentas
+        SalaryPeriod storage period = salaryPeriods[fraudulentPeriod];
+        if (period.hasClaimed[worker]) {
+            uint256 fraudulentAmount = _calculatePeriodClaim(worker, fraudulentPeriod);
+            
+            // Quemar tokens fraudulentos (remueve de circulación)
+            _burn(worker, fraudulentAmount);
+            
+            // Actualizar contabilidad del período
+            period.claimedAmount -= fraudulentAmount;
+            period.hasClaimed[worker] = false;
+            
+            emit SalarySlashed(worker, fraudulentPeriod, fraudulentAmount);
+        }
+    }
+}
+```
+
+### **Integración con Tesorería y Respaldo USDC**
+
+```solidity
+contract CommunityTokenTreasury {
+    IERC20 public immutable USDC;
+    address public treasuryController;
+    uint256 public totalReserves;      // USDC que respalda el suministro del token
+    uint256 public emergencyReserve;   // Fondo de emergencia (controlado por gobernanza)
+    
+    function _mintFromTreasury(address recipient, uint256 usdcAmount) internal {
+        require(totalReserves >= usdcAmount, "Reservas de tesorería insuficientes");
+        
+        // Acuñar tokens respaldados 1:1
+        _mint(recipient, usdcAmount);
+        totalReserves -= usdcAmount;
+        
+        emit TokensMinted(recipient, usdcAmount, totalReserves);
+    }
+    
+    function redeem(uint256 tokenAmount) external {
+        require(balanceOf(msg.sender) >= tokenAmount, "Saldo insuficiente");
+        require(totalReserves >= tokenAmount, "Reservas de respaldo insuficientes");
+        
+        // Quemar tokens y devolver USDC
+        _burn(msg.sender, tokenAmount);
+        totalReserves += tokenAmount;
+        USDC.transfer(msg.sender, tokenAmount);
+        
+        emit TokensRedeemed(msg.sender, tokenAmount, totalReserves);
+    }
+    
+    function fundSalaryBudget(uint256 usdcAmount) external {
+        require(msg.sender == treasuryController, "Solo controlador de tesorería");
+        
+        USDC.transferFrom(msg.sender, address(this), usdcAmount);
+        totalReserves += usdcAmount;
+        
+        emit SalaryBudgetFunded(usdcAmount, totalReserves);
+    }
+    
+    // Funciones de emergencia para casos extremos
+    function emergencyFreeze() external onlyGovernance {
+        // Detener temporalmente todos los reclamos de salario durante crisis
+        emit EmergencyFreeze(block.timestamp);
+    }
+    
+    function emergencyRecovery(address newTreasuryController) external onlyGovernance {
+        treasuryController = newTreasuryController;
+        emit EmergencyRecovery(newTreasuryController);
+    }
+}
+```
 
 ## 🌐 Despliegue Layer 2 y Optimización
 

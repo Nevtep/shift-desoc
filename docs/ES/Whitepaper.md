@@ -197,270 +197,249 @@ Un proyecto de software necesita elegir una nueva arquitectura:
 
 ---
 
-## Tokenomics Revolucionaria: De la Extracción de Capital a la Abundancia Cooperativa
+## Tokenomics Revolucionaria: De la Plutocracia de Capital al Poder del Mérito
 
-### **La Filosofía Económica: Eliminando la Extracción de Valor Arbitraria**
+### **La Revolución del Mérito: Ganarse la Gobernanza, No Comprarla**
 
-Las plataformas y organizaciones tradicionales usan **divisiones de porcentaje fijo** que favorecen para siempre el capital sobre la contribución: "Los inversores obtienen 40%, los trabajadores 40%, la tesorería mantiene 20%." Estos números arbitrarios crean extracción permanente que destruye la confianza comunitaria y limita la prosperidad.
+Las plataformas tradicionales cometen un error fundamental: **mezclan dinero con poder de decisión**, permitiendo que quienes tienen capital controlen las decisiones de quienes hacen el trabajo. Esto crea **plutocracia** (gobierno de los ricos) en lugar de **meritocracia** (gobierno de quienes contribuyen).
 
-**Shift DeSoc elimina las divisiones arbitrarias completamente** a través de **Democracia Económica Dinámica** donde la distribución de valor evoluciona matemáticamente basándose en:
-- **Resolución de riesgo ponderada por tiempo** (el riesgo temprano merece retornos tempranos)
-- **Mérito basado en rendimiento** (la contribución real impulsa recompensas continuas)
-- **Parámetros gobernados por la comunidad** (control democrático sobre las reglas económicas)
+**Shift DeSoc introduce separación completa** entre **participación económica** y **poder de gobernanza**:
+- **Poder de Gobernanza**: Solo se gana a través de contribuciones verificadas (imposible de comprar)
+- **Beneficios Económicos**: Fluyen hacia quienes crean valor a través de trabajo real
+- **Participación de Capital**: Los inversores obtienen rendimientos pero no control automático sobre decisiones
 
-**Principio Central**: *El poder económico transiciona naturalmente de los proveedores de capital a los creadores de valor conforme el riesgo disminuye y la contribución se acumula.*
+**Principio Central**: *El poder de decisión pertenece a quienes hacen el trabajo. Los beneficios económicos fluyen hacia quienes crean valor. El capital obtiene rendimientos justos sin comprar influencia democrática.*
 
-### **La Arquitectura de Triple-Token: Separando Inversión de Reputación**
+### **La Nueva Arquitectura de Triple-Token: Separando Completamente Dinero de Poder**
 
-Shift DeSoc resuelve un problema fundamental de las organizaciones descentralizadas: **¿Cómo evitamos que aquellos con más dinero controlen las decisiones de quienes hacen el trabajo?**
+Shift DeSoc resuelve el problema fundamental de la gobernanza descentralizada: **¿Cómo evitamos que el dinero compre democracia mientras recompensamos justamente tanto la contribución como la inversión?**
 
-Nuestra solución revolucionaria: **Separamos completamente la participación económica de la reputación de trabajo** usando tres tipos diferentes de tokens digitales.
+Nuestra solución revolucionaria: **Tres tipos completamente diferentes de tokens** que separan dinero, mérito y utilidad.
 
-#### **Capa 1: Gobernanza Democrática (Token de Membresía)**
+#### **Capa 1: Gobernanza Pura Basada en Mérito (MembershipToken)**
 
-**¿Qué es?** Como una acción en la comunidad que puedes comprar, vender o intercambiar.
+**¿Qué es?** El poder de voto en la comunidad que **SOLO puede ganarse** a través de contribuciones verificadas.
 
-**Cómo funciona:**
-- **Comprar con dinero real**: 1 token = 1 dólar estadounidense (USDC), siempre
-- **Te da derechos de voto**: Participar en decisiones comunitarias
-- **Te da ganancias**: Cuando la comunidad genera ingresos, obtienes tu parte
-- **Transferible**: Puedes venderlo o regalarlo a otra persona
-- **Valor estable**: Sin volatilidad como Bitcoin; siempre vale $1
-
-**Características Democráticas:**
-- **Votación multi-opción** para decisiones matizadas más allá del binario sí/no
-- **Sistema de delegación** habilitando democracia líquida y representación basada en experiencia
-- **Peso mejorado por mérito** que recompensa la contribución sobre la mera acumulación de tokens
-- **Límites anti-plutocracia** previniendo la captura de gobernanza
-
-**Para quién es:**
-- Inversores que quieren apoyar la comunidad con capital
-- Personas que quieren participar en gobernanza pero no necesariamente trabajar
-- Miembros que prefieren contribuir económicamente en lugar de con tiempo
-
-#### **Capa 2: Credenciales de Mérito (Sistema Dual-SBT)**
-
-##### **WorkerSBT: Poder Económico Basado en Contribución**
-
-**¿Qué es?** Como un certificado digital permanente de tu reputación y contribuciones que **NADIE puede comprar, vender o transferir**.
+**Revolución Clave: NO SE PUEDE COMPRAR**
 
 **Cómo funciona:**
-- **Solo se gana a través del trabajo**: Cada vez que completas trabajo verificado, acumulas puntos
-- **Personal y no transferible**: Imposible de comprar, vender o dar a otra persona
-- **Constantemente actualizado**: Tu reputación actual refleja trabajo reciente, no solo logros pasados
-- **Decae con el tiempo**: Si dejas de trabajar, tu influencia gradualmente disminuye
-- **Verificado por pares**: Otros trabajadores confirman que hiciste buen trabajo
+- **Solo ganado por trabajo**: Cada contribución verificada acuña automáticamente tokens de gobernanza
+- **Imposible de comprar**: Ninguna cantidad de dinero puede comprar poder de voto
+- **Imposible de vender**: Los tokens están vinculados a tu identidad de contribuidor
+- **Ponderado por tiempo**: El poder de gobernanza evoluciona de inversores a trabajadores durante 3-4 años
+- **Refleja contribución real**: Tu poder de voto refleja tu historial de trabajo verificado
 
-**Características de Mérito:**
-- **Ganado a través de trabajo verificado**: Reclamos validados por consenso de pares (verificación M-de-N)
-- **Períodos de enfriamiento anti-gaming**: Previene acumulación rápida de puntos a través de envíos de baja calidad
-- **Portabilidad inter-comunitaria**: La reputación viaja a través de todo el ecosistema
-- **Revocación por fraude**: La gobernanza comunitaria puede revocar SBTs por gaming/fraude verificado
+**Arquitectura de Equilibrio Temporal**:
+```
+Año 0:  30% Trabajadores | 70% Inversores  (Bootstrap inicial)
+Año 1:  40% Trabajadores | 60% Inversores  (Crecimiento temprano)  
+Año 2:  50% Trabajadores | 50% Inversores  (Equilibrio maduro)
+Año 3:  50% Trabajadores | 50% Inversores  (Estabilidad democrática)
+```
 
 **Para quién es:**
 - Trabajadores activos que contribuyen tiempo y esfuerzo
-- Personas que quieren que su reputación refleje su trabajo real
-- Miembros comprometidos con contribuir regularmente
+- Inversores fundadores que también trabajan en la comunidad
+- Cualquiera que quiera **ganar** influencia democrática a través de contribución real
 
-##### **InvestorSBT: Poder Basado en Capital con Decaimiento Temporal**
+**Lo que NO es:**
+- ❌ No es una inversión financiera
+- ❌ No se puede comprar con dinero
+- ❌ No genera rendimientos económicos directos
+- ❌ No se puede transferir a otras personas
 
-**¿Qué es?** Una credencial especial para inversores que reconoce su contribución de capital pero **decrece en poder con el tiempo** conforme la comunidad se vuelve autosuficiente.
+#### **Capa 2: Sistema de Credenciales de Mérito Dual (SBT)**
 
-**Cómo funciona:**
-- **Ganado a través de inversión**: Lo obtienes proporcionando capital inicial a las comunidades
-- **Influencia que decae con el tiempo**: Tu poder económico disminuye conforme el riesgo de la comunidad disminuye
-- **Recompensas basadas en rendimiento**: Mejor logro de hitos = recompensas continuas más altas
-- **Penalizaciones por salida temprana**: Previene el despliegue de capital extractivo a corto plazo
-- **Períodos de vesting**: Alineación con el éxito comunitario a largo plazo
+##### **WorkerSBT: Reputación Permanente No Transferible**
 
-**Características de Inversión:**
-- **Influencia económica que decae con el tiempo**: El poder disminuye conforme se resuelve el riesgo
-- **Rendimiento basado en hitos**: Mejor logro de hitos = recompensas continuas más altas
-- **Penalizaciones por salida temprana**: Previene el despliegue de capital extractivo a corto plazo
-- **Períodos de vesting y cliff**: Alineación con el éxito comunitario a largo plazo
-
-**Para quién es:**
-- Inversores tempranos que proporcionan capital inicial crucial
-- Personas que quieren apoyar comunidades financieramente
-- Inversores alineados con el éxito comunitario a largo plazo sobre ganancias rápidas
-
-#### **Capa 3: Distribución Justa de Valor (Router de Ingresos Dinámico)**
-
-##### **Distribución Automática y Transparente de Ingresos (Sin Divisiones Fijas)**
-
-**El Problema**: Las organizaciones tradicionales usan porcentajes fijos arbitrarios como "40% inversores, 40% trabajadores, 20% operaciones" para siempre, lo que crea extracción injusta.
-
-**Nuestra Solución**: **Distribución dinámica que evoluciona con el tiempo** basada en contribución real y necesidades comunitarias.
-
-**Cómo Se Dividen los Ingresos:**
-
-Cada comunidad vota democráticamente sobre cómo dividir los ingresos entre tres grupos:
-
-1. **Trabajadores Verificados**
-   - **Quiénes**: Personas con WorkerSBT que completaron trabajo verificado recientemente
-   - **Cómo se divide entre ellos**: Proporcional a la reputación actual (no solo histórica)
-   - **Por qué es justo**: Quienes más contribuyen reciben más
-
-2. **Tesorería Comunitaria**
-   - **Qué**: Fondo común controlado por gobernanza para gastos futuros, emergencias e inversiones
-   - **Cómo se usa**: Solo a través de votación democrática de todos los miembros
-   - **Por qué es importante**: Asegura sostenibilidad y permite planificación a largo plazo
-
-3. **Inversores de Tokens de Membresía**
-   - **Quiénes**: Personas que compraron tokens de membresía para apoyar la comunidad
-   - **Cómo se divide entre ellos**: Proporcional a cuántos tokens poseen
-   - **Por qué reciben una parte**: Su capital inicial permite que la comunidad funcione
-
-##### **Gestión Automatizada de Sostenibilidad**
-
-**El Problema**: Las comunidades a menudo se quedan sin dinero porque no planifican para operaciones sostenibles.
-
-**Nuestra Solución**: **Gestión inteligente de tesorería** que se ajusta automáticamente para mantener la comunidad financieramente saludable.
+**¿Qué es?** Un certificado digital permanente que prueba tu historial de contribuciones **que NADIE puede falsificar, comprar o transferir**.
 
 **Cómo funciona:**
-- **Reservas saludables**: Cuando la comunidad tiene mucho dinero ahorrado, la tesorería obtiene una parte mínima
-- **Reservas bajas**: Cuando las reservas están bajas, la tesorería automáticamente obtiene una parte más grande para reconstruir sostenibilidad
-- **Modo de emergencia**: Si la comunidad está en riesgo de quedarse sin dinero, la tesorería obtiene protección máxima
-- **Controlado por la comunidad**: Todos los umbrales y respuestas son establecidos por gobernanza democrática, no impuestos externamente
+- **Acuñado por contribuciones**: Cada trabajo verificado acuña un SBT con metadatos de contribución
+- **Completamente no transferible**: Imposible de vender, regalar o transferir
+- **Portátil entre comunidades**: Tu reputación viaja contigo por todo el ecosistema
+- **Decae sin actividad**: Si dejas de contribuir, tu influencia disminuye gradualmente
+- **Revocable por fraude**: La comunidad puede revocar SBTs por comportamiento fraudulento
 
-### **Evolución Económica: Transformación de 36 Meses de Startup a Cooperativa**
+**Características Anti-Gaming**:
+- **Verificación M-de-N**: Cada contribución requiere múltiples verificadores independientes
+- **Períodos de enfriamiento**: Previene spam de contribuciones de baja calidad
+- **Análisis de calidad**: Los verificadores evalúan tanto cantidad como calidad del trabajo
+- **Detección de colusión**: Algoritmos detectan patrones de verificación fraudulenta
 
-La belleza de nuestro sistema es que **naturalmente transiciona de enfocado en inversores a cooperativa de trabajadores** con el tiempo, reflejando la realidad de que el riesgo temprano merece retornos tempranos, pero la creación de valor a largo plazo debería beneficiar a quienes hacen el trabajo.
+##### **InvestorSBT: Credenciales de Capital con Decaimiento Temporal**
 
-#### **Fase de Arranque (Meses 0-6): Prioridad del Capital**
+**¿Qué es?** Reconocimiento especial para inversores que **decae con el tiempo** conforme la comunidad se vuelve autosuficiente.
 
-**Qué está pasando**: Nueva comunidad, alta incertidumbre, inversores tomando el mayor riesgo
+**Filosofía del Decaimiento Temporal**:
+- **Riesgo temprano = Recompensas tempranas**: Los inversores iniciales merecen retornos frontales altos
+- **Decaimiento de influencia**: El poder del capital disminuye conforme el riesgo se resuelve
+- **Transición a cooperativa**: Las comunidades maduras son controladas por trabajadores, no inversores
 
-**Ejemplo de distribución de ingresos**:
-- **Inversores**: ~65% (alto riesgo merece alto retorno)
-- **Trabajadores**: ~20% (curva de aprendizaje temprana, construyendo sistemas)
-- **Tesorería**: ~15% (construyendo infraestructura)
+**Cómo funciona:**
+- **Acuñado por inversión verificada**: Inversión de capital inicial en comunidades genera InvestorSBT
+- **Influencia que decae**: El peso de gobernanza disminuye linealmente durante 3-4 años
+- **Recompensas basadas en rendimiento**: Mejores resultados comunitarios = mejores retornos para inversores
+- **Alineación a largo plazo**: Períodos de vesting previenen extracción de capital a corto plazo
 
-**Enfoque de la comunidad**: Despliegue de capital, construcción de equipo, configuración de infraestructura, encontrando ajuste producto-mercado
+#### **Capa 3: Sistema de Salario Basado en Mérito (CommunityToken)**
 
-#### **Fase de Crecimiento (Meses 6-24): Transición Equilibrada**
+##### **Revolución del Salario: De Pagos por Hora a Reclamos Basados en Mérito**
 
-**Qué está pasando**: La comunidad se está probando a sí misma, los trabajadores se vuelven más productivos, el riesgo está disminuyendo
+**El Problema**: Los salarios tradicionales recompensan tiempo, no valor. Los trabajadores más productivos obtienen lo mismo que los menos productivos.
 
-**Ejemplo de distribución de ingresos a los 12 meses**:
-- **Inversores**: ~42% (riesgo disminuyendo, todavía significativo)
-- **Trabajadores**: ~38% (productividad probada, contribuciones escalando)
-- **Tesorería**: ~20% (operaciones estabilizándose)
+**Nuestra Solución**: **Sistema de salario periódico** donde las ganancias se basan en tu **peso de mérito acumulado** (SBT) en lugar de horas trabajadas.
 
-**Enfoque de la comunidad**: Generación de ingresos, crecimiento comunitario, optimización de procesos
+**Cómo Funciona el Nuevo Sistema de Salario:**
 
-#### **Fase de Madurez (Meses 24+): Cooperativa de Trabajadores**
+Cada **30 días**, la comunidad habilita **reclamos de salario** donde los trabajadores pueden reclamar **CommunityTokens** basado en su peso de contribución:
 
-**Qué está pasando**: Comunidad autosuficiente, los trabajadores son los principales creadores de valor, los inversores mantienen participación pero influencia reducida
+```solidity
+Ejemplo de Reclamo de Salario:
+- Presupuesto del Período: $50,000 USDC
+- Tu Peso SBT: 15% del total comunitario  
+- Tu Reclamo Elegible: $7,500 en CommunityTokens
+```
 
-**Ejemplo de distribución de ingresos en madurez**:
-- **Trabajadores**: ~65% (principales creadores de valor)
-- **Inversores**: ~20% (piso mantiene alineación a largo plazo)
-- **Tesorería**: ~15% (operaciones sostenibles eficientes)
+**Características Revolucionarias**:
+- **Basado en mérito**: Los mejores contribuidores obtienen la mayor participación
+- **Reclamos opcionales**: Los trabajadores pueden acumular múltiples períodos y reclamar en lotes
+- **Respaldado 1:1 USDC**: Los CommunityTokens siempre pueden canjearse por dólares reales
+- **Bonos por consistencia**: Contribución regular aumenta tu peso de reclamo
+- **Protección contra fraude**: Investigación comunitaria de reclamos sospechosos
 
-**Enfoque de la comunidad**: Operaciones propiedad de la comunidad, reinversión en crecimiento, expansión del ecosistema
+##### **Mecánica Sofisticada de Reclamo de Salario**
 
-### **Recompensas Basadas en Rendimiento: El Mérito Impulsa la Distribución**
+**Sistema de Peso SBT Dinámico:**
+```
+Trabajador A: 100 SBT puntos de desarrollo senior = 25% del peso total
+Trabajador B: 60 SBT puntos de moderación comunitaria = 15% del peso total  
+Trabajador C: 40 SBT puntos de trabajo de diseño = 10% del peso total
+Total Comunidad: 400 SBT puntos = 100% del peso total
+```
 
-Más allá de la evolución temporal básica, el sistema recompensa el **rendimiento real** en lugar de solo aparecer.
+**Cálculo de Reclamo del Período:**
+```
+Presupuesto Mensual: $20,000 USDC
+- Trabajador A reclama: 25% × $20,000 = $5,000
+- Trabajador B reclama: 15% × $20,000 = $3,000  
+- Trabajador C reclama: 10% × $20,000 = $2,000
+- Tesorería retiene: 50% × $20,000 = $10,000 (para crecimiento/reservas)
+```
 
-#### **Factores de Rendimiento del Trabajador**
+**Características Avanzadas**:
+- **Rollover Acumulativo**: Los trabajadores pueden skip períodos y reclamar múltiples a la vez
+- **Bonos de Consistencia**: Contribución regular durante 6+ meses = +10% de bonus
+- **Nuevos Trabajadores**: Período de rampa de 6 meses con reducción gradual de penalizaciones
+- **Detección de Fraude**: Sistema de reporte comunitario con recompensas para detectores
 
-**La Pregunta**: ¿Deberían los trabajadores que hacen trabajo excelente obtener las mismas recompensas que aquellos que hacen trabajo mediocre?
+### **ActionType Registry: El Motor de Definición de Valor Central**
 
-**Nuestra Respuesta**: No. El rendimiento importa, y el sistema rastrea múltiples dimensiones:
+El corazón del sistema de mérito es el **ActionType Registry** - el lugar donde las comunidades definen **qué trabajo vale cuánto**.
 
-1. **Calidad de Producción**: ¿Qué porcentaje de tu trabajo es aprobado por revisores pares? (70-95% es típico)
-2. **Puntuación de Consistencia**: ¿Contribuyes regularmente o solo esporádicamente?
-3. **Calificación de Colaboración**: ¿Qué tan bien trabajas con otros? ¿Los compañeros de equipo quieren trabajar contigo otra vez?
-4. **Bonus de Innovación**: ¿Ayudas a mejorar los procesos y sistemas comunitarios?
+#### **Definiendo Valor a través de Gobernanza Democrática**
 
-**Cómo funciona**: Los que tienen alto rendimiento en estas áreas obtienen multiplicadores de bonus en su participación de ingresos. El sistema previene el gaming requiriendo rendimiento fuerte en TODAS las dimensiones, no solo una.
+**El Problema**: ¿Quién decide si el desarrollo de software vale más que el diseño? ¿Si la moderación comunitaria vale menos que el marketing?
 
-#### **Factores de Rendimiento del Inversor**
+**Nuestra Solución**: **La propia comunidad vota democráticamente** sobre el valor relativo de diferentes tipos de contribuciones.
 
-**La Pregunta**: ¿Deberían los inversores que solo proporcionan dinero obtener los mismos retornos que aquellos que ayudan activamente a la comunidad a tener éxito?
+**Ejemplos de ActionTypes:**
 
-**Nuestra Respuesta**: No. Los inversores activos y útiles merecen mejores retornos.
+```solidity
+// Desarrollo Senior (Trabajo Técnico Complejo)
+ActionType: "Senior Development"
+- Peso de Gobernanza: 100 MembershipTokens por aprobación
+- Peso de Salario: 50 (alta tasa de ganancia mensual)
+- Verificadores Requeridos: 3 de 5 expertos técnicos
+- Ventana de Verificación: 7 días (revisión minuciosa)
+- Período de Enfriamiento: 14 días (calidad sobre cantidad)
+- Stake de Creación: $1,000 USDC (previene spam)
 
-**Lo que medimos:**
-1. **Logro de Hitos**: ¿Qué tan bien está la comunidad cumpliendo metas que el inversor se comprometió a apoyar?
-2. **Contribución de Red**: ¿El inversor hace presentaciones y asociaciones valiosas?
-3. **Eficiencia de Capital**: ¿Cuánta runway (meses de operación) proporciona cada dólar de inversión?
-4. **Participación en Gobernanza**: ¿El inversor vota y participa en decisiones comunitarias?
+// Moderación Comunitaria (Trabajo Regular)  
+ActionType: "Community Moderation"
+- Peso de Gobernanza: 10 MembershipTokens por aprobación
+- Peso de Salario: 15 (tasa moderada de ganancia mensual)
+- Verificadores Requeridos: 2 de 3 moderadores
+- Ventana de Verificación: 3 días (turno rápido)
+- Período de Enfriamiento: 1 día (puede hacerse regularmente)
+- Stake de Creación: $100 USDC
 
-**Cómo funciona**: Los inversores que contribuyen activamente al éxito comunitario obtienen multiplicadores de bonus en su participación de ingresos. Los inversores puramente pasivos obtienen retornos base.
+// Trabajo de Bootstrap de Fundador (Estado Especial)
+ActionType: "Founder Bootstrap Work"  
+- Peso de Gobernanza: 200 MembershipTokens (poder extra durante bootstrap)
+- Peso de Salario: 0 (fundadores enfocados en equity, no salario)
+- Bonus InvestorSBT: 100 (significativo para fundadores)
+- Verificadores Requeridos: 1 de 2 (verificación rápida para agilidad)
+- Estado Especial: Bypass delays de gobernanza normales
+- Auto-Expiración: 6 meses (previene concentración permanente de poder)
+```
 
-### **Manteniendo Todo Justo: Arquitectura Anti-Gaming**
+#### **Sistema de Verificación de Fundadores**
 
-**El Desafío**: Cualquier sistema económico atrae personas tratando de manipularlo para ventaja injusta. ¿Cómo prevenimos el engaño mientras mantenemos el sistema abierto y accesible?
+**Desafío Crítico**: ¿Cómo bootstrapean las comunidades sin permitir que los fundadores se vuelvan dictadores permanentes?
 
-#### **Previniendo Control por Riqueza (Anti-Plutocracia)**
+**Nuestra Solución**: **Sistema de privilegios de fundador limitados en tiempo** con transición automática a gobernanza democrática.
 
-**El Problema**: En muchos sistemas, quien tiene más dinero controla todas las decisiones, incluso si no entienden el trabajo del día a día.
+**Proceso de Verificación de Fundador:**
+1. **Aplicación**: Los aspirantes a fundadores envían perfil + plan de negocio + stake inicial
+2. **Endorsos**: Requiere endorsos de fundadores existentes de otras comunidades exitosas  
+3. **Aprobación Comunitaria**: La comunidad vota sobre las aplicaciones de fundador
+4. **Privilegios Temporales**: Los fundadores pueden crear ActionTypes que evitan delays normales de gobernanza
+5. **Auto-Expiración**: Los privilegios de fundador expiran automáticamente después de 6-12 meses
+6. **Transición Democrática**: Las comunidades maduras son controladas completamente por verificación de trabajo + gobernanza democrática
 
-**Nuestras Salvaguardas**:
-- **15% máximo de influencia de voto** por persona (incluyendo votos delegados) - ninguna persona puede controlar las decisiones
-- **25% máximo de concentración de verificación de trabajo** - previene manipular el sistema de revisión por pares
-- **30% máximo de inversión por ronda de financiamiento** - previene captura por inversor único de comunidades
-- **Detección de múltiples identidades** - sistemas sofisticados para identificar cuentas falsas y manipulación coordinada
+### **Arquitectura de Seguridad Anti-Gaming Multicapa**
 
-#### **Asegurando Participación Auténtica (Resistencia Sybil)**
+#### **Previniendo Ataques de Riqueza (Anti-Plutocracia)**
+- **15% límite de concentración de gobernanza** por persona - ninguna ballena puede controlar decisiones
+- **Múltiples rondas de verificación independientes** - dificulta la colusión coordinada  
+- **Análisis de patrones temporales** - detecta comportamientos de gaming sospechosos
+- **Requisitos de stake económico** - crear ActionTypes falsos cuesta dinero real
 
-**El Problema**: Las personas crean cuentas falsas para multiplicar su influencia o extraer recompensas injustamente.
+#### **Protección contra Identidades Falsas (Resistencia Sybil)**
+- **Integración WorldID** - verificación humana verificable preservando privacidad
+- **Credenciales EAS** - identidad portátil a través del ecosistema  
+- **Análisis de red social** - detecta patrones de verificación cruzada sospechosos
+- **Staking de reputación** - los verificadores arriesgan su credibilidad histórica
 
-**Nuestras Soluciones**:
-- **Staking de reputación**: Los verificadores arriesgan su reputación acumulada en la precisión de verificación
-- **Redes de validación cruzada**: Múltiples rondas de verificación independientes atrapan el gaming coordinado
-- **Requisitos de contribución basados en tiempo**: Contribución consistente durante meses/años requerida para influencia significativa
-- **Verificación de Identidad Descentralizada**: Integración con **WorldID (Worldcoin)**, **BrightID**, y **Proof of Humanity** para verificación humana auténtica sin sacrificar privacidad
-- **Credenciales Portátiles**: **Ethereum Attestation Service (EAS)** y **Credenciales Verificables** habilitan identidad verificada a través de comunidades
-- **Cumplimiento Preservando Privacidad**: **Fractal ID** y **Civic** proporcionan verificación de identidad conforme para posiciones económicas grandes manteniendo privacidad del usuario
+#### **Prevención de Extracción Económica**
+- **Períodos de vesting para InvestorSBT** - alinea inversores con éxito a largo plazo
+- **Detección de fraude comunitario** - sistema de reporte con recompensas económicas
+- **Controles de emergencia de gobernanza** - pausar sistemas durante ataques detectados
+- **Análisis de comportamiento de IA** - algoritmos detectan gaming coordinado
 
-#### **Previniendo Ataques Económicos**
+### **Soberanía Económica Total de la Comunidad**
 
-**El Problema**: Los actores maliciosos podrían tratar de extraer valor rápidamente e irse, o manipular el sistema para ganancia a corto plazo.
+**Principio Final**: Cada comunidad controla sus **propias reglas económicas** a través de gobernanza democrática transparente.
 
-**Nuestras Protecciones**:
-- **Penalizaciones por salida temprana**: Los inversores que se van temprano pierden 20-50% de su inversión (basado en tiempo)
-- **Requisitos de calidad**: Los multiplicadores de rendimiento previenen gaming puro de cantidad - necesitas contribuciones de calidad real
-- **Demoras de gobernanza**: Los cambios importantes tienen períodos de espera que previenen manipulación rápida
-- **Controles de emergencia**: La comunidad puede pausar distribuciones si se detectan ataques
+**Lo Que las Comunidades Controlan Completamente:**
 
-### **Soberanía Económica Comunitaria**
+**Definición de Valor del Trabajo:**
+- **Peso de gobernanza por ActionType** - cuánto poder de voto genera cada tipo de trabajo
+- **Peso de salario por ActionType** - cuántos CommunityTokens gana cada tipo de trabajo
+- **Estándares de verificación** - qué evidencia se requiere para cada tipo de trabajo
+- **Requisitos de calidad** - umbrales mínimos de rendimiento para recompensas completas
 
-**El Principio Último**: Cada comunidad controla sus propias reglas económicas a través de gobernanza democrática.
+**Distribución de Ingresos:**
+- **Porcentaje de presupuesto de salario** (30-70% de ingresos comunitarios)
+- **Porcentaje de reserva de tesorería** (10-40% para sostenibilidad/crecimiento)
+- **Porcentaje de retorno de inversor** (10-50% basado en fase comunitaria)
 
-**Lo Que las Comunidades Pueden Ajustar:**
+**Cronologías de Transición:**
+- **Velocidad de decaimiento de InvestorSBT** (1-5 años de alta influencia a baseline)
+- **Velocidad de crecimiento de WorkerSBT** (qué tan rápido los trabajadores obtienen máximo poder)
+- **Duración total de bootstrap** (cuándo la comunidad se vuelve completamente autónoma)
 
-**Configuraciones de Evolución Temporal**:
-- **Qué tan rápido decae la influencia del inversor** (cronología de 1-36 meses)
-- **Qué tan rápido crece la influencia del trabajador** (basado en necesidades comunitarias)
-- **Cronología total de transformación** (24-60 meses de startup a cooperativa)
+**Parámetros de Seguridad:**
+- **Límites de concentración de poder** por individuo
+- **Requisitos de stake para proponer cambios** económicos
+- **Períodos de delay para cambios críticos** de gobernanza
 
-**Estándares de Rendimiento**:
-- **Rendimiento mínimo para recompensas completas** (previene parasitismo)
-- **Tasas esperadas de logro de hitos** (mantiene a todos responsables)
+**El Resultado**: Las comunidades obtienen **control completo** sobre sus economías mientras mantienen compatibilidad con el ecosistema más amplio y protección robusta contra gaming/fraude.
 
-**Límites Económicos** (previene escenarios extremos):
-- **Participación mínima del inversor** (5-25% para mantener alineación)
-- **Participación máxima del trabajador** (50-80% basado en tipo de comunidad)
-- **Mínimo de tesorería de emergencia** (10-30% para sostenibilidad)
+---
 
-**Gestión de Sostenibilidad**:
-- **Runway de reserva objetivo** (cuántos meses de gastos mantener)
-- **Impulso de tesorería de emergencia** (protección máxima durante crisis financiera)
-
-**Parámetros de Seguridad**:
-- **Límites de influencia por persona** (previene concentración de poder)
-- **Períodos de medición de rendimiento** (cuánto tiempo rastrear calidad de contribución)
-- **Penalizaciones por salida temprana** (desalienta extracción a corto plazo)
-
-**Evolución Democrática de Parámetros**:
-- **Ajuste gradual**: Los parámetros económicos solo pueden cambiar por incrementos pequeños por ciclo de gobernanza
-- **Consenso comunitario**: Los cambios mayores requieren aprobación de súper-mayoría
-- **Simulación transparente**: Todos los cambios de parámetros son modelados y publicados antes de los votos
-- **Mecanismos de seguridad**: La comunidad puede revertir a parámetros anteriores si los nuevos no funcionan
+**Esta revolución tokenómica transforma organizaciones de plutocracia de capital a democracia basada en mérito, donde el poder de decisión se gana a través de contribución, los beneficios económicos fluyen hacia quienes crean valor, y las comunidades controlan completamente sus propios destinos económicos.**
 
 ---
 
