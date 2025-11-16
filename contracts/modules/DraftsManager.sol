@@ -468,7 +468,13 @@ contract DraftsManager {
         bool multiChoice,
         uint8 numOptions,
         string calldata description
-    ) external draftExists(draftId) onlyAuthorOrContributor(draftId) onlyInStatus(draftId, DraftStatus.FINALIZED) returns (uint256 proposalId) {
+    ) 
+        external 
+        draftExists(draftId) 
+        onlyAuthorOrContributor(draftId) 
+        onlyInStatus(draftId, DraftStatus.FINALIZED) 
+        returns (uint256 proposalId) 
+    {
         Draft storage draft = _drafts[draftId];
 
         // Create proposal through governor
@@ -660,9 +666,8 @@ contract DraftsManager {
         if (newGovernor == address(0)) {
             revert Errors.ZeroAddress();
         }
-        address oldGovernor = governor;
         governor = newGovernor;
-        // TODO: Emit event
+        // TODO: Emit GovernanceUpdated event with oldGovernor
     }
 
     /**

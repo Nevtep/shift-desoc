@@ -25,6 +25,29 @@ import {Errors} from "../libs/Errors.sol";
 contract CommunityFactory is AccessControl {
     
     /*//////////////////////////////////////////////////////////////
+                               STRUCTURES
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Initial governance parameters for new communities
+    struct GovernanceParams {
+        uint256 debateWindow;      // Time for proposal debate (seconds)
+        uint256 voteWindow;        // Time for voting (seconds) 
+        uint256 executionDelay;    // Time before execution (seconds)
+        uint256 minSeniority;      // Minimum account age to participate
+        uint256 minSBTs;           // Minimum SBT count to participate
+        uint256 proposalThreshold; // Minimum tokens to create proposal
+        uint256[3] revenueSplit;   // [workers%, treasury%, investors%]
+        uint256 feeOnWithdraw;     // Fee percentage on withdrawals (basis points)
+    }
+    
+    /*//////////////////////////////////////////////////////////////
+                               CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+    
+    /// @notice Initial MembershipTokens minted to founder
+    uint256 public constant FOUNDER_INITIAL_TOKENS = 10_000 ether;
+    
+    /*//////////////////////////////////////////////////////////////
                             TEMPLATE ADDRESSES
     //////////////////////////////////////////////////////////////*/
     
@@ -47,24 +70,7 @@ contract CommunityFactory is AccessControl {
     /// @notice Central community registry
     address public immutable communityRegistry;
     
-    /*//////////////////////////////////////////////////////////////
-                            FOUNDER PARAMETERS
-    //////////////////////////////////////////////////////////////*/
-    
-    /// @notice Initial MembershipTokens minted to founder
-    uint256 public constant FOUNDER_INITIAL_TOKENS = 10_000 ether;
-    
-    /// @notice Initial governance parameters for new communities
-    struct GovernanceParams {
-        uint256 debateWindow;      // Time for proposal debate (seconds)
-        uint256 voteWindow;        // Time for voting (seconds) 
-        uint256 executionDelay;    // Time before execution (seconds)
-        uint256 minSeniority;      // Minimum account age to participate
-        uint256 minSBTs;           // Minimum SBT count to participate
-        uint256 proposalThreshold; // Minimum tokens to create proposal
-        uint256[3] revenueSplit;   // [workers%, treasury%, investors%]
-        uint256 feeOnWithdraw;     // Fee percentage on withdrawals (basis points)
-    }
+
     
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -266,7 +272,12 @@ contract CommunityFactory is AccessControl {
     }
     
     /// @dev Deploy Claims contract for the community
-    function _deployClaims(address valuableActionRegistry, address verifierPool, address workerSBT, address membershipToken) private returns (address) {
+    function _deployClaims(
+        address valuableActionRegistry, 
+        address verifierPool, 
+        address workerSBT, 
+        address membershipToken
+    ) private returns (address) {
         // Deploy new instance with required constructor parameters
         return address(new Claims(
             msg.sender,           // governance (founder initially)

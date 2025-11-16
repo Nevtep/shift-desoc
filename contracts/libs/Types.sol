@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 library Types {
+    enum ClaimStatus { Pending, Approved, Rejected, Revoked }
+    
     struct ValuableAction {
         uint32 membershipTokenReward;   // MembershipToken amount minted on completion
         uint32 communityTokenReward;    // CommunityToken amount earned for period salary calculation  
@@ -48,6 +50,4 @@ library Types {
         bool   revocable;
         string evidenceSpecCID;     // IPFS: foto/video + geo + ts
     }
-    
-    enum ClaimStatus { Pending, Approved, Rejected, Revoked }
 }

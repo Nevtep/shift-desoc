@@ -2,11 +2,14 @@
   "name": "shift",
   "private": true,
   "workspaces": [
-    "packages/*",
     "apps/*"
   ],
   "scripts": {
     "fmt": "prettier -w .",
+    "lint": "solhint 'contracts/**/*.sol'",
+    "lint:fix": "solhint 'contracts/**/*.sol' --fix",
+    "quality": "npm run lint && npm run forge:test && npm run cov:gate",
+    "sanity": "npm run quality && echo '✅ All quality checks passed!'",
     "hh:compile": "npx hardhat compile",
     "hh:test": "npx hardhat test",
     "hh:deploy:base-sepolia": "npx hardhat run scripts/hardhat/deploy.ts --network base_sepolia",
@@ -18,14 +21,15 @@
     "test": "npm run forge:test"
   },
   "devDependencies": {
-    "prettier": "^3.3.0",
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.6",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@types/chai": "^4.3.0",
     "@types/node": "^22.0.0",
     "chai": "^4.4.0",
     "dotenv": "^16.4.0",
     "hardhat": "^2.22.0",
+    "prettier": "^3.3.0",
+    "solhint": "^6.0.1",
     "typescript": "^5.5.0"
   },
   "dependencies": {

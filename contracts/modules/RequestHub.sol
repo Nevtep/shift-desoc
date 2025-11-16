@@ -331,7 +331,11 @@ contract RequestHub {
     /// @param communityId Community ID
     /// @param tag Tag to filter by
     /// @return requestIds Matching request IDs
-    function getRequestsByTag(uint256 communityId, string calldata tag) external view returns (uint256[] memory requestIds) {
+    function getRequestsByTag(uint256 communityId, string calldata tag) 
+        external 
+        view 
+        returns (uint256[] memory requestIds) 
+    {
         uint256[] memory allRequests = communityRequests[communityId];
         uint256[] memory matching = new uint256[](allRequests.length);
         uint256 matchCount = 0;
@@ -362,7 +366,8 @@ contract RequestHub {
     function _requireValidCommunity(uint256 communityId) internal view {
         // Delegate to community registry
         try communityRegistry.getCommunity(communityId) returns (CommunityRegistry.Community memory) {
-            // Community exists
+            // Community exists - validation successful
+            return;
         } catch {
             revert Errors.InvalidInput("Community does not exist");
         }
