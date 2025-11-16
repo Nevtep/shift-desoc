@@ -4,7 +4,9 @@ Este documento proporciona una visión general de alto nivel de la arquitectura 
 
 ## 🏗️ Visión General del Sistema
 
-Shift DeSoc implementa una **arquitectura modular, nativa de blockchain** diseñada para escalabilidad, seguridad y capacidad de actualización. La plataforma consiste en contratos inteligentes interconectados que gestionan gobernanza, verificación de trabajo e incentivos económicos.
+**Shift DeSoc es tecnología de meta-gobernanza** - una infraestructura flexible que permite a las comunidades modelar cualquier estructura organizacional que elijan. En lugar de imponer un modelo de gobernanza específico, Shift proporciona los bloques de construcción (protocolos de gobernanza, sistemas de verificación de trabajo y mecanismos económicos) que las comunidades pueden configurar para implementar sus procesos únicos de toma de decisiones, definiciones de valor y patrones de coordinación.
+
+Shift implementa una **arquitectura modular, nativa de blockchain** diseñada para escalabilidad, seguridad y capacidad de actualización. La plataforma consiste en contratos inteligentes interconectados que gestionan gobernanza, verificación de trabajo e incentivos económicos.
 
 ### Principios de Diseño Central
 
@@ -62,7 +64,7 @@ Sistema resistente a Sybil para validar contribuciones y construir reputación:
 │                           VERIFICACIÓN DE TRABAJO & MÉRITO                              │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │ ┌─────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌─────────────────────┐ │
-│ │ActionTypeRegistry│ │     Claims     │  │ VerifierPool   │  │     WorkerSBT       │ │
+│ │ValuableActionReg │ │     Claims     │  │ VerifierPool   │  │     WorkerSBT       │ │
 │ │- Tipos Trabajo  │  │- Envío Trabajo │  │- Registro M-de-N│  │- Tokens Soulbound  │ │
 │ │- Params Verific │  │- Selec Jurados │  │- Bonding ETH   │  │- WorkerPoints EMA  │ │
 │ │- Recompensas    │  │- Votac M-de-N  │  │- Reputa/Select │  │- Cross-Community   │ │
@@ -224,53 +226,65 @@ mapping(address => uint256[]) userCommunities;                            // Com
 
 ## 🏗️ Arquitectura Económica Avanzada
 
-### **Motor de Distribución Matemática de Ingresos**
+### **Motor de Distribución de Ingresos Basado en ROI**
 
-El RevenueRouter elimina divisiones arbitrarias a través de curvas matemáticas basadas en tiempo:
+El RevenueRouter reduce automáticamente la participación de ingresos del inversor a medida que su ROI se acerca a su objetivo, asegurando retornos sostenibles mientras incentiva el crecimiento comunitario a largo plazo:
 
 ```solidity
-contract RevenueRouterDynamic {
-    struct EconomicParams {
-        uint64 startTimestamp;           // T=0 para todos los cálculos
-        uint64 lambdaInvestor;           // Tasa de decay investor (ej. 0.1/mes)
-        uint64 lambdaWorker;             // Tasa de crecimiento worker (ej. 0.05/mes)
-        uint256 alphaI;                  // Amplitud curva investor
-        uint256 betaI;                   // Piso investor (share mínima)
-        uint256 alphaW;                  // Amplitud curva worker  
-        uint256 betaW;                   // Share inicial worker
-        uint16 investorFloor;            // % mínimo investor (bps)
-        uint16 workerCap;                // % máximo worker (bps)
-        uint16 treasuryFloor;            // % base tesorería (bps)
+contract RevenueRouter {
+    struct InvestorRevenue {
+        uint256 totalInvested;           // Cantidad de aporte de capital
+        uint256 targetROI;               // Múltiplo de retorno esperado (ej. 3x = 300%)
+        uint256 cumulativeRevenue;       // Ingresos totales recibidos hasta la fecha
+        uint256 currentShare;            // Porcentaje de ingresos actual (bps)
+        bool hasActiveRevenue;           // Aún recibiendo ingresos
     }
     
-    function calculateTimeBasedWeights(uint64 elapsedTime) 
-        external view returns (uint256 investorWeight, uint256 workerWeight) {
+    mapping(address => InvestorRevenue) public investorRevenue;
+    
+    function calculateInvestorShare(address investor) external view returns (uint256) {
+        InvestorRevenue memory inv = investorRevenue[investor];
         
-        // Peso investor: w_I(t) = α_I × e^(-λ_I × t) + β_I  
-        uint256 investorDecay = Math.exp(-params.lambdaInvestor * elapsedTime / 1e9);
-        investorWeight = (params.alphaI * investorDecay + params.betaI) / 1e18;
-        investorWeight = Math.max(investorWeight, params.investorFloor);
+        // Calcular porcentaje de ROI actual logrado
+        uint256 currentROI = (inv.cumulativeRevenue * 10000) / inv.totalInvested;
         
-        // Peso worker: w_W(t) = α_W × (1 - e^(-λ_W × t)) + β_W
-        uint256 workerGrowth = 1e18 - Math.exp(-params.lambdaWorker * elapsedTime / 1e9);
-        workerWeight = (params.alphaW * workerGrowth + params.betaW) / 1e18;
-        workerWeight = Math.min(workerWeight, params.workerCap);
+        if (currentROI >= inv.targetROI) {
+            return 0; // ROI objetivo alcanzado, no más ingresos
+        }
+        
+        // Decaimiento lineal: participación decrece cuando ROI se acerca al objetivo
+        // En 0% ROI: participación inicial completa
+        // En ROI objetivo: 0% participación
+        uint256 progress = (currentROI * 10000) / inv.targetROI;
+        return inv.currentShare * (10000 - progress) / 10000;
     }
     
-    function calculatePerformanceMultipliers() 
-        external view returns (uint256 workerMult, uint256 investorMult) {
+    function distributeRevenue(uint256 totalRevenue) external {
+        uint256 totalInvestorShare = 0;
         
-        // Performance worker: calidad output × consistencia × colaboración
-        uint256 qualityScore = getCollectiveOutputQuality();      // Tasa promedio aprobación claims
-        uint256 consistencyScore = getContributionConsistency();  // Participación regular
-        uint256 collaborationScore = getPeerReviewScores();      // Compatibilidad de equipo
-        workerMult = Math.cbrt(qualityScore * consistencyScore * collaborationScore);
+        // Calcular asignación total de inversores
+        address[] memory activeInvestors = getActiveInvestors();
+        for (uint256 i = 0; i < activeInvestors.length; i++) {
+            totalInvestorShare += calculateInvestorShare(activeInvestors[i]);
+        }
         
-        // Performance investor: logro hitos × efectos red × eficiencia capital  
-        uint256 milestonesHit = getCollectiveMilestoneScore();    // Logro objetivos comunitarios
-        uint256 networkEffects = getEcosystemContributions();     // Valor cross-community
-        uint256 capitalEfficiency = getRunwayExtensionRatio();    // $ por mes runway añadido
-        investorMult = (milestonesHit + networkEffects + capitalEfficiency) / 3;
+        // Distribuir a inversores
+        uint256 investorRevenue = (totalRevenue * totalInvestorShare) / 10000;
+        for (uint256 i = 0; i < activeInvestors.length; i++) {
+            address investor = activeInvestors[i];
+            uint256 share = calculateInvestorShare(investor);
+            uint256 amount = (investorRevenue * share) / totalInvestorShare;
+            
+            // Actualizar seguimiento de ingresos acumulativos
+            investorRevenue[investor].cumulativeRevenue += amount;
+            
+            // Transferir ingresos
+            payable(investor).transfer(amount);
+        }
+        
+        // El resto va a salarios de trabajadores y tesorería
+        uint256 remainingRevenue = totalRevenue - investorRevenue;
+        distributeToWorkersAndTreasury(remainingRevenue);
     }
 }
 ```
@@ -358,7 +372,7 @@ contract MembershipTokenERC20Votes {
     }
     
     function mintFromSBT(address recipient, uint256 amount, bytes32 sbtType) external {
-        require(msg.sender == actionTypeRegistry || msg.sender == workerSBT || msg.sender == investorSBT, "No autorizado");
+        require(msg.sender == valuableActionRegistry || msg.sender == workerSBT || msg.sender == investorSBT, "No autorizado");
         _mint(recipient, amount);
         emit MembershipMinted(recipient, amount, sbtType);
     }
@@ -629,19 +643,19 @@ contract DiscordGovernanceBridge {
 
 contract GitHubIntegration {
     mapping(uint256 => string) communityRepositories;      // Comunidad → org/repo GitHub
-    mapping(bytes32 => uint256) issueToActionType;         // Issue GitHub → ActionType
+    mapping(bytes32 => uint256) issueToValuableAction;     // Issue GitHub → ValuableAction
     
-    function createActionTypeFromIssue(
+    function createValuableActionFromIssue(
         uint256 communityId,
         string calldata issueUrl,
-        ActionTypeParams calldata params
-    ) external returns (uint256 actionTypeId) {
+        ValuableActionParams calldata params
+    ) external returns (uint256 valuableActionId) {
         // Convierte issues GitHub en tipos de trabajo verificables
         // Permite onboarding seamless de desarrolladores
     }
     
     function submitClaimFromPR(
-        uint256 actionTypeId,
+        uint256 valuableActionId,
         string calldata pullRequestUrl,
         bytes32 evidenceHash
     ) external returns (uint256 claimId) {
@@ -830,7 +844,7 @@ contract CommunityRegistry {
         address requestHub;
         address draftsManager;
         address claimsManager;
-        address actionTypeRegistry;
+        address valuableActionRegistry;
         address verifierPool;
         address workerSBT;
         address treasuryAdapter;
@@ -854,7 +868,7 @@ contract CommunityRegistry {
 ```solidity
 contract Claims {
     struct Claim {
-        uint256 actionTypeId;
+        uint256 valuableActionId;
         address claimant;
         string evidenceCID;
         uint64 submittedAt;
@@ -865,7 +879,7 @@ contract Claims {
         bool appealed;
     }
     
-    function submitClaim(uint256 actionTypeId, string calldata evidenceCID) external returns (uint256 claimId);
+    function submitClaim(uint256 valuableActionId, string calldata evidenceCID) external returns (uint256 claimId);
     function vote(uint256 claimId, bool approve, string calldata reason) external;
     function resolve(uint256 claimId) external;
     function appeal(uint256 claimId) external payable;
@@ -915,7 +929,7 @@ struct PackedVote {
 }
 
 // Arquitectura dirigida por eventos para indexado off-chain
-event ClaimSubmitted(uint256 indexed claimId, address indexed claimant, uint256 indexed actionTypeId);
+event ClaimSubmitted(uint256 indexed claimId, address indexed claimant, uint256 indexed valuableActionId);
 event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 ```
 
@@ -962,7 +976,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 
 **Entregables Técnicos:**
 - ✅ ShiftGovernor con votación multi-opción (completado)
-- ✅ Claims + ActionTypeRegistry + VerifierPool (completado) 
+- ✅ Claims + ValuableActionRegistry + VerifierPool (completado) 
 - ✅ WorkerSBT acumulación básica de puntos (completado)
 - ✅ CommunityToken sistema de salario basado en mérito (completado)
 - 🔄 Scripts mejorados de despliegue y onboarding comunitario
@@ -1051,7 +1065,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 #### **Componentes Completados (86%+ Cobertura de Tests)**
 - ✅ **ShiftGovernor**: Votación multi-opción con integración OpenZeppelin
 - ✅ **CountingMultiChoice**: Lógica de distribución de votación ponderada  
-- ✅ **ActionTypeRegistry**: Parámetros configurables de verificación de trabajo
+- ✅ **ValuableActionRegistry**: Parámetros configurables de verificación de trabajo
 - ✅ **Claims**: Verificación M-de-N con proceso de apelaciones
 - ✅ **VerifierPool**: Selección de jurados ponderada por reputación con bonding
 
@@ -1066,7 +1080,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 describe("Claims Verification Flow", () => {
   it("should complete M-of-N verification", async () => {
     // Enviar claim
-    const claimId = await claims.submitClaim(actionTypeId, evidenceCID);
+    const claimId = await claims.submitClaim(valuableActionId, evidenceCID);
     
     // Seleccionar jurados
     const jurors = await verifierPool.selectJurors(claimId, PANEL_SIZE);
@@ -1158,7 +1172,7 @@ pnpm fmt             # Formatear código según estándares
 │                          CAPA DE VERIFICACIÓN                               │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────────┐ │
-│  │ActionTypeRegistry│◄───┤     Claims       ├────┤    VerifierPool        │ │
+│  │ValuableActionReg │◄───┤     Claims       ├────┤    VerifierPool        │ │
 │  │ - Tipos Trabajo │    │ - Envíos         │    │ - Registro             │ │
 │  │ - Parámetros    │    │ - Votación M-de-N│    │ - Bonding              │ │
 │  │ - Spec Evidencia│    │ - Apelaciones    │    │ - Reputación           │ │
@@ -1187,7 +1201,7 @@ pnpm fmt             # Formatear código según estándares
                          │                     │                    │
                          ▼                     ▼                    ▼
                   ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-                  │ActionType   │     │VerifierPool  │     │ Resolución  │
+                  │ValuableAction│     │VerifierPool  │     │ Resolución  │
                   │Registry     │     │              │     │ Claims      │
                   └─────────────┘     └──────────────┘     └─────────────┘
                          │                     │                    │
@@ -1214,7 +1228,7 @@ pnpm fmt             # Formatear código según estándares
 
 **Proceso de Verificación M-de-N:**
 1. **Envío**: Trabajador envía reclamo con evidencia IPFS
-2. **Validación**: ActionTypeRegistry valida parámetros del reclamo
+2. **Validación**: ValuableActionRegistry valida parámetros del reclamo
 3. **Selección de Jurados**: VerifierPool selecciona panel M-de-N
 4. **Período de Verificación**: Jurados revisan y votan sobre el reclamo
 5. **Resolución**: Reclamo aprobado/rechazado basado en consenso mayoría
@@ -1260,15 +1274,15 @@ function castVoteMulti(
 ) external;
 ```
 
-## **ActionType Registry: Sistema Central de Definición de Valor**
+## **ValuableAction Registry: Motor de Definición de Valor Comunitario**
 
-El ActionType Registry sirve como el mecanismo fundamental de gobernanza que define cómo el trabajo se traduce en mérito, valor económico y poder de gobernanza. A diferencia de los sistemas tradicionales de categorización de trabajos, los ActionTypes son **instrumentos económicos configurados dinámicamente** que las comunidades usan para alinear incentivos y medir el valor de las contribuciones.
+El ValuableAction Registry sirve como el sistema democrático donde las comunidades definen **qué trabajo es valioso** y **qué oportunidades de inversión existen** a través de crear Acciones Valiosas específicas ("Valuable Actions") que los contribuidores pueden completar. A diferencia de los sistemas tradicionales de categorización de trabajos, las Acciones Valiosas son **instrumentos económicos configurados por la comunidad** que definen cómo las contribuciones se traducen en poder de gobernanza (MembershipTokens), recompensas económicas (CommunityTokens) y reputación (SBTs).
 
-### **Estructura Central de ActionType**
+### **Estructura Central de ValuableAction**
 
 ```solidity
-contract ActionTypeRegistry {
-    struct ActionType {
+contract ValuableActionRegistry {
+    struct ValuableAction {
         // Parámetros Económicos
         uint32 governanceWeight;        // Cantidad de MembershipToken acuñada en aprobación
         uint32 salaryWeight;           // Tasa de ganancia CommunityToken (por período)  
@@ -1288,9 +1302,9 @@ contract ActionTypeRegistry {
         uint32 evidenceTypes;          // Máscara de bits de formatos de evidencia requeridos
         
         // Barreras Económicas (Anti-Spam)
-        uint256 creationStake;         // USDC requerido para crear este ActionType
-        uint256 proposalThreshold;     // Tokens de gobernanza necesarios para proponer cambios
-        address sponsor;               // Quien financió la creación de este ActionType
+        uint256 creationStake;         // USDC requerido para crear esta ValuableAction
+        uint256 proposalThreshold;     // Tokens de gobernanza necesarios para proponer cambios  
+        address sponsor;               // Quien financió la creación de esta ValuableAction
         
         // Metadatos y Automatización
         string evidenceSpecCID;        // IPFS: requisitos detallados de evidencia
@@ -1307,50 +1321,50 @@ contract ActionTypeRegistry {
     mapping(address => mapping(uint256 => bool)) public founderWhitelist;  // fundador → comunidad → verificado
     mapping(uint256 => address[]) public communityFounders;               // comunidad → lista de fundadores
     
-    function proposeActionType(
+    function proposeValuableAction(
         uint256 communityId,
-        ActionTypeParams calldata params,
+        ValuableActionParams calldata params,
         uint256 governanceStake
-    ) external payable returns (uint256 actionTypeId) {
+    ) external payable returns (uint256 valuableActionId) {
         require(msg.value >= params.creationStake, "Stake de creación insuficiente");
         require(governanceToken.balanceOf(msg.sender) >= params.proposalThreshold, "Peso de gobernanza insuficiente");
         
         // Caso especial: Verificación de fundador para bootstrap de comunidad
         if (params.founderVerified) {
             require(founderWhitelist[msg.sender][communityId], "Fundador no está en whitelist");
-            // Los fundadores pueden crear ActionTypes que evitan los delays normales de gobernanza
-            _activateActionType(actionTypeId, params);
+            // Los fundadores pueden crear ValuableActions que evitan los delays normales de gobernanza
+            _activateValuableAction(valuableActionId, params);
         } else {
             // Ruta normal: requiere aprobación de gobernanza comunitaria
-            uint256 proposalId = _createGovernanceProposal(actionTypeId, params);
-            pendingActionTypes[actionTypeId] = proposalId;
+            uint256 proposalId = _createGovernanceProposal(valuableActionId, params);
+            pendingValuableActions[valuableActionId] = proposalId;
         }
         
-        emit ActionTypeProposed(actionTypeId, communityId, msg.sender, params.founderVerified);
+        emit ValuableActionProposed(valuableActionId, communityId, msg.sender, params.founderVerified);
     }
     
-    function activateFromGovernance(uint256 actionTypeId, uint256 approvedProposalId) external {
+    function activateFromGovernance(uint256 valuableActionId, uint256 approvedProposalId) external {
         require(msg.sender == governor, "Solo la gobernanza puede activar");
-        require(pendingActionTypes[actionTypeId] == approvedProposalId, "Desajuste de propuesta");
+        require(pendingValuableActions[valuableActionId] == approvedProposalId, "Desajuste de propuesta");
         
-        ActionType storage actionType = actionTypes[actionTypeId];
-        actionType.active = true;
-        actionType.activatedAt = uint64(block.timestamp);
+        ValuableAction storage valuableAction = valuableActions[valuableActionId];
+        valuableAction.active = true;
+        valuableAction.activatedAt = uint64(block.timestamp);
         
-        emit ActionTypeActivated(actionTypeId, approvedProposalId);
+        emit ValuableActionActivated(valuableActionId, approvedProposalId);
     }
 }
 ```
 
 ### **Configuración de Peso Económico**
 
-Los ActionTypes definen las **tasas de conversión** entre trabajo verificado y varias formas de valor:
+Las ValuableActions definen las **tasas de conversión** entre trabajo verificado y varias formas de valor:
 
 ```solidity
-// Ejemplos de configuración ActionType para diferentes tipos de trabajo
-struct ActionTypeExamples {
+// Ejemplos de configuración ValuableAction para diferentes tipos de trabajo
+struct ValuableActionExamples {
     // DESARROLLO DE ALTO IMPACTO (Trabajo Técnico Senior)
-    ActionType seniorDevelopment = ActionType({
+    ValuableAction seniorDevelopment = ValuableAction({
         governanceWeight: 100,          // 100 MembershipTokens por aprobación
         salaryWeight: 50,               // Alta tasa de ganancia en reclamos CommunityToken
         initialInvestorBonus: 20,       // InvestorSBT significativo si es trabajo de fundador
@@ -1365,7 +1379,7 @@ struct ActionTypeExamples {
     });
     
     // MODERACIÓN COMUNITARIA (Contribución Regular)
-    ActionType moderation = ActionType({
+    ValuableAction moderation = ValuableAction({
         governanceWeight: 10,           // 10 MembershipTokens por aprobación
         salaryWeight: 15,               // Tasa de ganancia moderada
         initialInvestorBonus: 5,        // Pequeño bono InvestorSBT
@@ -1380,7 +1394,7 @@ struct ActionTypeExamples {
     });
     
     // BOOTSTRAP DE FUNDADOR (Estado de Verificación Especial)
-    ActionType founderWork = ActionType({
+    ValuableAction founderWork = ValuableAction({
         governanceWeight: 200,          // Poder de gobernanza extra durante bootstrap
         salaryWeight: 0,                // Los fundadores no ganan salario (enfocados en equity)
         initialInvestorBonus: 100,      // Acuñación significativa de InvestorSBT
@@ -1519,7 +1533,7 @@ contract CommunityToken is ERC20 {
     }
     
     struct WorkerSalaryState {
-        uint256 accumulatedWeight;      // Peso total SBT ganado a través de ActionTypes
+        uint256 accumulatedWeight;      // Peso total SBT ganado a través de ValuableActions
         uint256 lastClaimPeriod;       // Último período que el trabajador reclamó salario
         uint256 unclaimedPeriods;      // Número de períodos no reclamados (rollover)
         bool fraudFlagged;             // Temporalmente suspendido de reclamos
@@ -1850,7 +1864,7 @@ contract CommunityTokenTreasury {
 |----------|------------------|---------------------|-----------------|---------|
 | ShiftGovernor | 86%+ | 95%+ | 80%+ | ✅ Completado |
 | CountingMultiChoice | 100% | 100% | 100% | ✅ Completado |
-| ActionTypeRegistry | 96%+ | 98%+ | 92%+ | ✅ Completado |
+| ValuableActionRegistry | 96%+ | 98%+ | 92%+ | ✅ Completado |
 | Claims | 98%+ | 100% | 95%+ | ✅ Completado |
 | VerifierPool | 95%+ | 97%+ | 88%+ | ✅ Completado |
 | WorkerSBT | 85%+ | 90%+ | 80%+ | 🚧 En Desarrollo |
