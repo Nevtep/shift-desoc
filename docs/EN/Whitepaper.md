@@ -218,83 +218,179 @@ Traditional platforms and organizations use **fixed percentage splits** that for
 
 **Core Principle**: *Economic power transitions naturally from capital providers to value creators as risk decreases and contribution compounds.*
 
-### **The Triple-Token Architecture: Separating Investment from Reputation**
+### **The Revolutionary Token Architecture: Merit-Driven Governance**
 
 Shift DeSoc solves a fundamental problem of decentralized organizations: **How do we prevent those with the most money from controlling the decisions of those who do the work?**
 
-Our revolutionary solution: **We completely separate economic participation from work reputation** using three different types of digital tokens.
+Our revolutionary solution: **Pure merit-based governance where voting power is EARNED, not bought** through two types of contribution credentials that automatically generate voting rights.
 
-#### **Layer 1: Democratic Governance (Membership Token)**
+#### **Layer 1: Pure Merit Governance (MembershipToken)**
 
-**What is it?** Like a share in the community that you can buy, sell, or trade.
+**What is it?** Voting power that is **NEVER bought or sold** - only earned through verified contribution or investment.
 
 **How it works:**
-- **Buy with real money**: 1 token = 1 US dollar (USDC), always
-- **Gives you voting rights**: Participate in community decisions
-- **Earns you revenue**: When community generates income, you get your share
-- **Transferable**: You can sell or gift it to someone else
-- **Stable value**: No volatility like Bitcoin; always worth $1
+- **NEVER purchased directly**: Cannot be bought with money
+- **NEVER redeemed for cash**: Pure governance utility, no economic value
+- **Automatically minted**: Generated when you earn SBT credentials  
+- **Governance weight from ActionTypes**: Amount determined by community-defined contribution values
+- **Merit-based distribution**: More valuable contributions = more voting power
 
-**Democratic Features:**
+**Revolutionary Features:**
 - **Multi-choice voting** for nuanced decisions beyond binary yes/no
-- **Delegation system** enabling liquid democracy and expertise-based representation  
-- **Merit-enhanced weighting** that rewards contribution over pure token accumulation
-- **Anti-plutocracy** concentration limits preventing governance capture
+- **Merit-weighted democracy** where influence reflects actual contribution value
+- **Anti-plutocracy by design** - money alone cannot buy governance control
+- **Cross-community portability** with your SBT credentials
 
-**Who it's for:**
-- Investors who want to support the community with capital
-- People who want to participate in governance but not necessarily work
-- Members who prefer to contribute economically rather than with time
+**Who gets voting power:**
+- **Workers** who complete verified contributions (via WorkerSBT)
+- **Investors** who provide capital funding (via InvestorSBT)  
+- **Mixed contributors** who both work and invest earn voting power from both sources
+- **NO pure token buyers** - you must contribute value to participate in governance
 
-#### **Layer 2: Merit Credentials (Dual-SBT System)**
+#### **Layer 2: Contribution Credentials (Dual-SBT System)**
 
-##### **WorkerSBT: Contribution-Based Economic Power**
+##### **WorkerSBT: Work-Based Governance Credentials**
 
-**What is it?** Like a permanent digital certificate of your reputation and contributions that **NO ONE can buy, sell, or transfer**.
+**What is it?** Permanent digital certificates of verified contributions that **automatically generate voting power** and **cannot be bought, sold, or transferred**.
 
 **How it works:**
-- **Only earned through work**: Each time you complete verified work, you accumulate points
+- **Only earned through verified work**: Community members validate your contributions through M-of-N consensus
+- **Governance weight from ActionTypes**: Each work type has community-defined governance value in the registry
+- **Automatically mints MembershipTokens**: Earning SBT immediately grants proportional voting power
 - **Personal and non-transferable**: Impossible to buy, sell, or give to someone else
-- **Constantly updated**: Your current reputation reflects recent work, not just past achievements
-- **Decays over time**: If you stop working, your influence gradually decreases
-- **Peer-verified**: Other workers confirm you did good work
+- **Cross-community reputation**: Your work credentials travel across the entire network
 
-**Merit Features:**
-- **Earned through verified work**: Claims validated by peer consensus (M-of-N verification)
-- **Anti-gaming cooldowns**: Prevents rapid point accumulation through low-quality submissions
-- **Cross-community portability**: Reputation travels across the entire ecosystem
-- **Revocable for fraud**: Community governance can revoke SBTs for verified gaming/fraud
+**Anti-Gaming Features:**
+- **Community verification required**: Founder-verified addresses can join and claim work
+- **Expensive ActionType creation**: Prevents spam work types through economic barriers
+- **Peer consensus validation**: Multiple community members must confirm work quality
+- **Cooldown periods**: Prevents rapid gaming through low-quality submissions
 
-**Who it's for:**
-- Active workers who contribute time and effort
-- People who want their reputation to reflect their real work
-- Members committed to contributing regularly
+**Who earns WorkerSBTs:**
+- Active contributors completing community-defined work
+- Developers, designers, content creators, community managers
+- Anyone doing verified valuable work for community goals
 
-##### **InvestorSBT: Capital-Based Time-Decaying Power**
+##### **InvestorSBT: Investment-Based Governance Credentials**
 
-**What is it?** A special credential for investors that recognizes their capital contribution but **decreases in power over time** as the community becomes self-sufficient.
+**What is it?** Permanent credentials for capital contributors that **automatically generate voting power** and **provide revenue sharing** from community economic activity.
 
 **How it works:**
-- **Earned through investment**: You get this by providing startup capital to communities
-- **Time-decaying influence**: Your economic power decreases as the community's risk decreases
-- **Performance-based rewards**: Better milestone achievement = higher ongoing rewards  
-- **Early exit penalties**: Prevents extractive short-term capital deployment
-- **Vesting periods**: Alignment with long-term community success
+- **Purchased with real money**: Send USDC directly to community treasury to mint InvestorSBT  
+- **ActionType-defined value**: Each investment tier has community-defined USDC cost and governance weight
+- **Automatically mints MembershipTokens**: Investment immediately grants proportional voting power
+- **Revenue sharing**: Earn ongoing returns through RevenueRouter as community generates income
+- **Time-decaying influence**: Voting power gradually shifts toward workers as community matures
 
-**Investment Features:**
-- **Time-decaying economic influence**: Power decreases as risk is resolved
-- **Milestone-gated performance**: Better milestone achievement = higher ongoing rewards
-- **Early exit penalties**: Prevents extractive short-term capital deployment
-- **Vesting and cliff periods**: Alignment with long-term community success
+**Investment Protection Features:**
+- **One SBT per account**: Prevents Sybil attacks through identity validation or founder whitelist
+- **Flexible project funding**: Communities can create specific InvestorSBTs for targeted projects (like cabin rentals)
+- **Transparent value propositions**: Clear investment amounts and expected governance/revenue returns
+- **Community-controlled parameters**: Investment terms set through democratic governance
 
-**Who it's for:**
-- Early investors who provide crucial startup capital
-- People who want to support communities financially
-- Investors aligned with long-term community success over quick profits
+**Investment Examples:**
+- **Community Seed Funding**: General community investment for initial operations
+- **Project-Specific Investment**: Cabin rentals, equipment purchases, specific initiatives  
+- **Infrastructure Investment**: Land acquisition, facility development, technology purchases
 
-#### **Layer 3: Fair Value Distribution (Dynamic Revenue Router)**
+**Who earns InvestorSBTs:**
+- Capital providers supporting community startup costs
+- Project-specific funders backing particular initiatives
+- Long-term investors aligned with community mission and success
 
-##### **Automatic and Transparent Revenue Distribution (No Fixed Splits)**
+#### **The Foundation: ActionType Registry (Community Value Definition)**
+
+**What is it?** The democratic system where communities define **what work is valuable** and **what investment opportunities exist**.
+
+**How it works:**
+- **Community-controlled value definition**: Democratic governance sets parameters for each type of contribution
+- **Economic barriers prevent spam**: Creating new ActionTypes has significant cost, ensuring only valuable work types are proposed
+- **Flexible contribution models**: Communities can define any type of work or investment that creates value
+- **Governance weight assignment**: Each ActionType specifies how much voting power (MembershipTokens) contributors receive
+
+**ActionType Examples:**
+
+**Work-Based ActionTypes:**
+- **"Code Contribution"**: Submit verified code, earn 100 MembershipTokens, requires 3-of-5 developer validation
+- **"Community Event Organization"**: Organize successful event, earn 200 MembershipTokens, requires community attendance verification
+- **"Content Creation"**: Create approved educational content, earn 50 MembershipTokens, requires content quality review
+
+**Investment-Based ActionTypes:**  
+- **"Seed Investment"**: Invest $500,000 USDC, receive 1 InvestorSBT with high governance weight
+- **"Cabin Rental Investment"**: Invest $2,000 USDC for 1-week annual rental rights, receive project-specific InvestorSBT
+- **"Equipment Funding"**: Fund specific community equipment needs, receive proportional InvestorSBT and governance rights
+
+**Key Insight**: A dedicated worker might earn 240 WorkerSBTs in a year (20 per month), while a major investor gets 1 InvestorSBT for $500,000. **The quantity doesn't matter - what matters is consistency over time.** A worker with 3 years of consistent contribution (600+ SBTs) achieves equal governance weight to major investors through sustained dedication.
+
+**Community Bootstrap Process:**
+1. **Founder Setup**: Community created with founder address whitelist having equal voting rights
+2. **ActionType Definition**: Founders democratically create initial work and investment opportunities  
+3. **Value Proposition Showcase**: Clear actionable ways for workers and investors to contribute
+4. **Public Launch**: Community opens to verified contributors and investors
+
+#### **Time-Based Governance Balance: From Investment Priority to Worker Cooperative**
+
+**The Philosophy**: Early investors take the biggest risks and deserve higher initial influence, but long-term dedicated workers should eventually have equal governance rights. **This creates cooperation, not competition, between capital and labor.**
+
+**How it works:**
+- **Communities set vesting period**: Decide how long until workers and investors have equal voting power (typically 3-4 years)
+- **Automatic balance calculation**: System mathematically determines governance weight progression over time
+- **Consistency rewards dedication**: A worker earning 200 SBTs per year consistently for 3 years gains equal governance weight to major investors
+- **Quality over quantity**: Sustained contribution over years matters more than total number of SBTs
+
+**Example Progression (3-year balance period):**
+
+**Year 1**: Investors have 70% governance influence, workers 30%
+- **Why**: High startup risk, uncertain outcomes, investors bearing financial risk
+
+**Year 2**: Investors 55%, workers 45% 
+- **Why**: Community proving viability, workers developing expertise and commitment
+
+**Year 3**: Investors 50%, workers 50%
+- **Why**: Balanced partnership between capital providers and value creators
+
+**Built-in Cooperation Incentives:**
+- **Revenue sharing protects both groups**: Workers and investors both benefit from community success
+- **Minimum/maximum governance caps**: Neither group can completely dominate decision-making
+- **Shared long-term interests**: Real ROI comes from creating sustainable post-money society together
+
+#### **Layer 3: Merit-Based Salary System (CommunityToken)**
+
+**What is it?** Revolutionary fair-pay system where **worker compensation is automatically calculated** based on **verified contributions** during each salary period.
+
+**How Fair Salaries Work:**
+
+**1. Democratic Salary Budgeting**
+- **Governance sets salary budget**: Community votes on total worker compensation per period (weekly/monthly)
+- **Protected salary vault**: CommunityVault contract ensures worker pay is protected from other governance spending
+- **Investor-to-worker transition**: Early investors control salary budgets, gradually shifting to worker control over vesting period
+
+**2. Automatic Merit-Based Distribution**
+- **SBT-weighted calculations**: Each worker's share = their SBT weight / total period SBT weight × salary budget
+- **Period-based fairness**: Only SBTs earned during current period count (prevents gaming from old work)
+- **Workload completion tracking**: Payment reflects actual work completed vs. total work needed
+
+**3. Flexible Claiming & Redemption**  
+- **Periodic claims enabled**: Workers claim earned CommunityTokens each salary period
+- **1:1 USDC redemption**: Burn CommunityTokens anytime for equivalent USDC from treasury
+- **Rollover protection**: Unclaimed tokens carry forward to next period, preventing loss
+
+**Real Example:**
+*Community allocates $6,000 monthly salary budget. Three workers earned SBTs: Alice (50 points), Bob (25 points), Carol (25 points). Distribution: Alice claims $3,000, Bob and Carol each claim $1,500.*
+
+**Built-in Fairness Features:**
+- **Mid-period joining**: New workers earn proportional SBTs and fair payment for actual contribution time
+- **Fraud protection**: Revoked SBTs result in proportional salary clawback in next period  
+- **Efficient periods**: If less work gets done, unearned salary stays in vault for future periods
+- **No arbitrary splits**: Payment directly reflects verified contribution value, not politics or seniority
+
+**Economic Utility Features:**
+- **Stable value**: No price volatility like other cryptocurrencies
+- **Transparent treasury**: All community funds visible on blockchain
+- **Democratic spending control**: Only governance (MembershipToken holders) can authorize expenditures
+- **Revenue collection**: All community income flows through this system for transparent distribution
+
+#### **Layer 4: Fair Value Distribution (Dynamic Revenue Router)**
 
 **The Problem**: Traditional organizations use arbitrary fixed percentages like "40% investors, 40% workers, 20% operations" forever, which creates unfair extraction.
 
@@ -302,22 +398,25 @@ Our revolutionary solution: **We completely separate economic participation from
 
 **How Revenue Gets Split:**
 
-Each community democratically votes on how to divide income between three groups:
+Community governance democratically allocates all income through transparent, automated distribution:
 
-1. **Verified Workers**
-   - **Who**: People with WorkerSBT who completed verified work recently  
-   - **How it's split among them**: Proportional to current reputation (not just historical)
-   - **Why it's fair**: Those contributing most get more
+1. **Worker Salaries (via CommunityVault)**
+   - **Governance-approved budgets**: MembershipToken holders vote on salary allocations per period
+   - **Merit-based distribution**: CommunityTokens claimed proportional to SBT contributions each period
+   - **Protected from overspending**: Separate vault ensures worker compensation is guaranteed
+   - **Evolution over time**: Investor-controlled budgets early, worker-controlled after ROI achieved
 
-2. **Community Treasury**
-   - **What**: Common fund controlled by governance for future expenses, emergencies, and investments
-   - **How it's used**: Only through democratic voting by all members
-   - **Why it's important**: Ensures sustainability and enables long-term planning
+2. **Community Treasury Operations**
+   - **Democratic spending control**: All operational expenses approved through MembershipToken governance
+   - **Sustainability focus**: Reserves for future expenses, emergencies, and strategic investments
+   - **Transparent management**: All treasury decisions publicly recorded and auditable
+   - **Long-term planning**: Enables strategic resource allocation beyond immediate needs
 
-3. **Membership Token Investors**
-   - **Who**: People who bought membership tokens to support the community
-   - **How it's split among them**: Proportional to how many tokens they hold
-   - **Why they get a share**: Their initial capital allows the community to function
+3. **Investment Returns (via Revenue Router)**
+   - **Front-loaded ROI**: High early returns compensating investors for startup risk
+   - **Automatic distribution**: Mathematical formulas determine investor share based on time and performance
+   - **Decreasing over time**: Returns plateau and gradually decrease as community achieves sustainability
+   - **Performance-linked**: Better milestone achievement and community success = enhanced returns
 
 ##### **Automated Sustainability Management**
 
@@ -331,42 +430,63 @@ Each community democratically votes on how to divide income between three groups
 - **Emergency mode**: If the community is at risk of running out of money, treasury gets maximum protection
 - **Community controlled**: All thresholds and responses are set by democratic governance, not imposed externally
 
-### **Economic Evolution: 36-Month Transformation from Startup to Cooperative**
+### **Economic Evolution: Balanced Transformation from Startup to Cooperative**
 
-The beauty of our system is that it **naturally transitions from investor-focused to worker-cooperative** over time, reflecting the reality that early risk deserves early returns, but long-term value creation should benefit those doing the work.
+The beauty of our system is that it **balances governance and revenue progression** to align with community development stages, ensuring both capital providers and workers benefit fairly over time.
+
+#### **Two Different Progression Curves:**
+
+**Governance Rights (Linear Progression)**:
+- **Purpose**: Smooth transition ensuring neither investors nor workers can dominate
+- **Pattern**: Steady progression toward 50/50 balance over the vesting period
+- **Goal**: Cooperative decision-making where capital and labor work together
+
+**Revenue Distribution (Front-Loaded Investor Returns)**:
+- **Purpose**: High early returns compensate investors for startup risk, then stabilize
+- **Pattern**: High investor returns initially, then plateaus and gradually decreases
+- **Goal**: Attractive investor ROI early, sustainable worker income long-term
 
 #### **Bootstrap Phase (Months 0-6): Capital Priority**
 
 **What's happening**: New community, high uncertainty, investors taking biggest risk
 
-**Revenue distribution example**:
-- **Investors**: ~65% (high risk deserves high return)
-- **Workers**: ~20% (early learning curve, building systems)
-- **Treasury**: ~15% (building infrastructure)
+**Governance Control**: Investors ~70%, Workers ~30%
+- **Salary budgets**: Investor-controlled, conservative allocations while proving viability
+- **Strategic decisions**: Capital providers guide resource deployment and business model
 
-**Community focus**: Capital deployment, team building, infrastructure setup, finding product-market fit
+**Revenue Distribution**: Investors ~65%, Workers ~20%, Treasury ~15%
+- **High investor returns**: Front-loaded ROI compensating for startup risk
+- **Modest worker salaries**: Building skills and proving value while community establishes itself
+
+**Community Focus**: Capital deployment, team building, infrastructure setup, finding product-market fit
 
 #### **Growth Phase (Months 6-24): Balanced Transition**
 
-**What's happening**: Community proving itself, workers becoming more productive, risk decreasing
+**What's happening**: Community proving viability, workers demonstrating consistent value, risk decreasing
 
-**Revenue distribution example at 12 months**:
-- **Investors**: ~42% (risk decreasing, still significant)
-- **Workers**: ~38% (productivity proven, contributions scaling)
-- **Treasury**: ~20% (operations stabilizing)
+**Governance Control**: Investors ~55%, Workers ~45%
+- **Salary budget decisions**: Shared control, worker input increases as they prove consistent contribution
+- **Operational decisions**: Collaborative governance with growing worker influence on day-to-day operations
 
-**Community focus**: Revenue generation, community growth, process optimization
+**Revenue Distribution**: Investors ~42%, Workers ~38%, Treasury ~20%
+- **Stabilizing investor returns**: Still significant but decreasing as startup risk is resolved
+- **Growing worker compensation**: Proven productivity enables increased salary allocations
+
+**Community Focus**: Revenue generation, community growth, process optimization, sustainable operations
 
 #### **Maturity Phase (Months 24+): Worker Cooperative**
 
-**What's happening**: Community self-sufficient, workers are primary value creators, investors maintain stake but reduced influence
+**What's happening**: Community self-sufficient, workers are primary value creators, balanced governance achieved
 
-**Revenue distribution example at maturity**:
-- **Workers**: ~65% (primary value creators)
-- **Investors**: ~20% (floor maintains long-term alignment)  
-- **Treasury**: ~15% (lean sustainable operations)
+**Governance Control**: Workers ~50%, Investors ~50%
+- **Worker-controlled salaries**: Dedicated workers now have equal say in compensation decisions
+- **Strategic partnership**: Investors maintain influence on long-term strategy while workers control operations
 
-**Community focus**: Community-owned operations, reinvestment in growth, ecosystem expansion
+**Revenue Distribution**: Workers ~65%, Investors ~20%, Treasury ~15%
+- **Primary value creators compensated**: Workers receive majority of ongoing revenue for sustained contributions
+- **Investor floor maintained**: Ongoing returns ensure long-term capital provider alignment
+
+**Community Focus**: Worker-owned operations, reinvestment in community growth, sustainable abundance model
 
 ### **Performance-Based Rewards: Merit Drives Distribution**
 
@@ -867,7 +987,7 @@ Shift DeSoc offers a valuable platform for strategic partnerships with leading d
 - **Aave**: Partnership opportunity for community treasury yield generation through decentralized lending protocols
 - **Compound**: Integration potential for automated treasury management, maximizing returns on idle community funds
 - **Uniswap**: Collaboration opportunity for decentralized exchange services, enabling cross-community token trading and liquidity provision
-- **Circle (USDC)**: Strategic partnership for stable value foundation, supporting CommunityToken 1:1 backing and price stability
+- **Circle (USDC)**: Strategic partnership for stable treasury infrastructure, enabling CommunityToken 1:1 USDC backing for reliable worker salaries and transparent fund management
 - **Maker (DAI)**: Alternative partnership for stablecoin backing, serving communities that prefer decentralized collateral
 
 ### **Strategic Partnership Benefits**

@@ -96,6 +96,233 @@ Shift DeSoc implements a **modular, blockchain-native architecture** designed fo
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+## **ActionType Registry: Central Value Definition System**
+
+The ActionType Registry serves as the foundational governance mechanism that defines how work translates into merit, economic value, and governance power. Unlike traditional job categorization systems, ActionTypes are **dynamically configured economic instruments** that communities use to align incentives and measure contribution value.
+
+### **Core ActionType Structure**
+
+```solidity
+contract ActionTypeRegistry {
+    struct ActionType {
+        // Economic Parameters
+        uint32 governanceWeight;        // MembershipToken amount minted on approval
+        uint32 salaryWeight;           // CommunityToken earning rate (per period)  
+        uint32 initialInvestorBonus;   // InvestorSBT minting on founder actions
+        
+        // Verification Parameters
+        uint32 jurorsMin;              // M (minimum approvals needed)
+        uint32 panelSize;              // N (total jurors selected)
+        uint32 verifyWindow;           // Time limit for jury decision
+        uint32 verifierRewardWeight;   // Points earned by accurate verifiers
+        uint32 slashVerifierBps;       // Penalty for inaccurate verification
+        
+        // Quality Control
+        uint32 cooldownPeriod;         // Minimum time between claims of this type
+        uint32 maxConcurrent;          // Maximum active claims per person
+        bool revocable;                // Can community governance revoke this SBT
+        uint32 evidenceTypes;          // Bitmask of required evidence formats
+        
+        // Economic Barriers (Anti-Spam)
+        uint256 creationStake;         // USDC required to create this ActionType
+        uint256 proposalThreshold;     // Governance tokens needed to propose changes
+        address sponsor;               // Who funded the creation of this ActionType
+        
+        // Metadata & Automation
+        string evidenceSpecCID;        // IPFS: detailed evidence requirements
+        string titleTemplate;          // Template for claim titles
+        bytes32[] automationRules;     // Integration with external systems (GitHub, etc)
+        
+        // Time-Based Parameters
+        uint64 activationDelay;        // Governance approval → active period
+        uint64 deprecationWarning;     // Time before auto-deactivation
+        bool founderVerified;          // Special status for community bootstrapping
+    }
+    
+    // Founder Verification System (Bootstrap Security)
+    mapping(address => mapping(uint256 => bool)) public founderWhitelist;  // founder → community → verified
+    mapping(uint256 => address[]) public communityFounders;               // community → founder list
+    
+    function proposeActionType(
+        uint256 communityId,
+        ActionTypeParams calldata params,
+        uint256 governanceStake
+    ) external payable returns (uint256 actionTypeId) {
+        require(msg.value >= params.creationStake, "Insufficient creation stake");
+        require(governanceToken.balanceOf(msg.sender) >= params.proposalThreshold, "Insufficient governance weight");
+        
+        // Special case: Founder verification for community bootstrap
+        if (params.founderVerified) {
+            require(founderWhitelist[msg.sender][communityId], "Founder not whitelisted");
+            // Founders can create ActionTypes that bypass normal governance delays
+            _activateActionType(actionTypeId, params);
+        } else {
+            // Normal path: requires community governance approval
+            uint256 proposalId = _createGovernanceProposal(actionTypeId, params);
+            pendingActionTypes[actionTypeId] = proposalId;
+        }
+        
+        emit ActionTypeProposed(actionTypeId, communityId, msg.sender, params.founderVerified);
+    }
+    
+    function activateFromGovernance(uint256 actionTypeId, uint256 approvedProposalId) external {
+        require(msg.sender == governor, "Only governance can activate");
+        require(pendingActionTypes[actionTypeId] == approvedProposalId, "Proposal mismatch");
+        
+        ActionType storage actionType = actionTypes[actionTypeId];
+        actionType.active = true;
+        actionType.activatedAt = uint64(block.timestamp);
+        
+        emit ActionTypeActivated(actionTypeId, approvedProposalId);
+    }
+}
+```
+
+### **Economic Weight Configuration**
+
+ActionTypes define the **conversion rates** between verified work and various forms of value:
+
+```solidity
+// Example ActionType configurations for different work types
+struct ActionTypeExamples {
+    // HIGH-IMPACT DEVELOPMENT (Senior Technical Work)
+    ActionType seniorDevelopment = ActionType({
+        governanceWeight: 100,          // 100 MembershipTokens per approval
+        salaryWeight: 50,               // High earning rate in CommunityToken claims
+        initialInvestorBonus: 20,       // Significant InvestorSBT if founder work
+        jurorsMin: 3,                   // Requires 3 approvals (high quality bar)
+        panelSize: 5,                   // From panel of 5 expert verifiers
+        verifyWindow: 7 days,           // Complex work needs thorough review
+        verifierRewardWeight: 15,       // High rewards for expert verification
+        cooldownPeriod: 14 days,        // Quality over quantity
+        evidenceTypes: CODE_REVIEW | DEPLOYMENT_PROOF | IMPACT_METRICS,
+        creationStake: 1000e6,          // $1000 USDC to create (prevents spam)
+        proposalThreshold: 10000e18     // Requires significant governance power
+    });
+    
+    // COMMUNITY MODERATION (Regular Contribution)
+    ActionType moderation = ActionType({
+        governanceWeight: 10,           // 10 MembershipTokens per approval
+        salaryWeight: 15,               // Moderate earning rate
+        initialInvestorBonus: 5,        // Small InvestorSBT bonus
+        jurorsMin: 2,                   // Requires 2 approvals
+        panelSize: 3,                   // From panel of 3 verifiers
+        verifyWindow: 3 days,           // Faster turnaround for routine work
+        verifierRewardWeight: 5,        // Standard verifier rewards
+        cooldownPeriod: 1 days,         // Can be done regularly
+        evidenceTypes: SCREENSHOT | ACTIVITY_LOG,
+        creationStake: 100e6,           // $100 USDC to create
+        proposalThreshold: 1000e18      // Lower governance threshold
+    });
+    
+    // FOUNDER BOOTSTRAP (Special Verification Status)
+    ActionType founderWork = ActionType({
+        governanceWeight: 200,          // Extra governance power during bootstrap
+        salaryWeight: 0,                // Founders don't earn salary (equity-focused)
+        initialInvestorBonus: 100,      // Significant InvestorSBT minting
+        jurorsMin: 1,                   // Faster verification during bootstrap
+        panelSize: 2,                   // Minimal panel needed
+        verifyWindow: 1 days,           // Quick verification for agility
+        founderVerified: true,          // Bypasses normal governance delays
+        deprecationWarning: 180 days    // Auto-deactivates after 6 months
+    });
+}
+```
+
+### **Integration with Merit Economy**
+
+ActionTypes create the **mathematical foundation** for the entire merit-based economy:
+
+```solidity
+contract ActionTypeEconomicEngine {
+    function processApprovedClaim(uint256 claimId, uint256 actionTypeId) external {
+        ActionType memory actionType = registry.getActionType(actionTypeId);
+        address claimant = claims.getClaimant(claimId);
+        
+        // 1. Mint governance power (MembershipToken)
+        membershipToken.mintFromSBT(claimant, actionType.governanceWeight, "WORKER");
+        
+        // 2. Update salary earning rate (for CommunityToken claims)
+        communityToken.increaseSalaryWeight(claimant, actionType.salaryWeight);
+        
+        // 3. Mint WorkerSBT with embedded weights
+        workerSBT.mintWithActionType(claimant, actionTypeId, actionType.governanceWeight);
+        
+        // 4. Special handling for founder actions
+        if (actionType.founderVerified && actionType.initialInvestorBonus > 0) {
+            investorSBT.mintFromFounderWork(claimant, actionType.initialInvestorBonus);
+            membershipToken.mintFromSBT(claimant, actionType.initialInvestorBonus, "INVESTOR");
+        }
+        
+        // 5. Reward accurate verifiers
+        address[] memory accurateVerifiers = claims.getAccurateVerifiers(claimId);
+        for (uint i = 0; i < accurateVerifiers.length; i++) {
+            workerSBT.mintVerifierReward(accurateVerifiers[i], actionType.verifierRewardWeight);
+        }
+    }
+}
+```
+
+### **Founder Verification System**
+
+Critical security mechanism for community bootstrap phase:
+
+```solidity
+contract FounderVerificationSystem {
+    struct FounderApplication {
+        address applicant;
+        uint256 communityId;  
+        string profileCID;          // IPFS: detailed founder profile
+        string businessPlanCID;     // IPFS: community business plan
+        uint256 initialStake;       // USDC committed to community
+        address[] endorsers;        // Existing founder endorsements
+        uint64 applicationDate;
+        bool approved;
+    }
+    
+    function applyForFounderStatus(
+        uint256 communityId,
+        string calldata profileCID,
+        string calldata businessPlanCID,
+        address[] calldata endorsers
+    ) external payable returns (uint256 applicationId) {
+        require(msg.value >= minimumFounderStake, "Insufficient founder stake");
+        require(endorsers.length >= minimumEndorsements, "Insufficient endorsements");
+        
+        // Create application for community review
+        applications[applicationId] = FounderApplication({
+            applicant: msg.sender,
+            communityId: communityId,
+            profileCID: profileCID,
+            businessPlanCID: businessPlanCID,
+            initialStake: msg.value,
+            endorsers: endorsers,
+            applicationDate: uint64(block.timestamp),
+            approved: false
+        });
+        
+        emit FounderApplicationSubmitted(applicationId, msg.sender, communityId);
+    }
+    
+    function approveFounder(uint256 applicationId) external {
+        require(msg.sender == communityGovernance, "Only community governance");
+        
+        FounderApplication storage app = applications[applicationId];
+        app.approved = true;
+        
+        // Grant special privileges
+        founderWhitelist[app.applicant][app.communityId] = true;
+        communityFounders[app.communityId].push(app.applicant);
+        
+        // Time-limited privileges (prevents permanent power concentration)
+        founderExpirationTime[app.applicant][app.communityId] = 
+            block.timestamp + founderPrivilegeWindow;
+            
+        emit FounderApproved(applicationId, app.applicant, app.communityId);
+    }
+}
+```
+
 ### **Data Flow: Complete Economic Lifecycle**
 
 ```
@@ -121,6 +348,292 @@ Shift DeSoc implements a **modular, blockchain-native architecture** designed fo
                 │Workers Submit   │────▶│  M-of-N Peer     │────▶│SBT Minting &    │
                 │Claims w/Evidence│     │  Verification    │     │Revenue Sharing  │
                 └─────────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+## **CommunityToken: Merit-Based Salary System**
+
+The CommunityToken implements a sophisticated **periodic salary system** where community members earn based on their accumulated merit (SBT weights) rather than traditional hourly wages. This creates a sustainable economic model that rewards long-term contribution over short-term extraction.
+
+### **Core Salary Architecture**
+
+```solidity
+contract CommunityToken is ERC20 {
+    struct SalaryPeriod {
+        uint64 startTime;               // Period start timestamp
+        uint64 endTime;                 // Period end timestamp
+        uint256 totalBudget;           // Total USDC allocated for this period
+        uint256 totalSBTWeight;        // Sum of all SBT weights at period start
+        uint256 claimedAmount;         // Total claimed so far this period
+        bool finalized;                // Period closed for claims
+        mapping(address => uint256) workerWeightSnapshot;  // SBT weights at period start
+        mapping(address => bool) hasClaimed;               // Claim tracking
+    }
+    
+    struct WorkerSalaryState {
+        uint256 accumulatedWeight;      // Total SBT weight earned across ActionTypes
+        uint256 lastClaimPeriod;       // Last period worker claimed salary
+        uint256 unclaimedPeriods;      // Number of unclaimed periods (rollover)
+        bool fraudFlagged;             // Temporarily suspended from claims
+        uint256 lifetimeEarnings;      // Total CommunityToken ever earned
+        uint64 joinDate;               // First contribution timestamp
+    }
+    
+    mapping(uint256 => SalaryPeriod) public salaryPeriods;
+    mapping(address => WorkerSalaryState) public workerStates;
+    
+    uint256 public currentPeriod;
+    uint64 public periodDuration = 30 days;    // Monthly salary periods
+    uint256 public maxRolloverPeriods = 6;     // 6 months max unclaimed
+    uint256 public emergencyReserveRatio = 20; // 20% held in reserve
+    
+    function initializePeriod(uint256 periodId, uint256 budgetUSDC) external onlyGovernance {
+        require(!salaryPeriods[periodId].finalized, "Period already finalized");
+        
+        SalaryPeriod storage period = salaryPeriods[periodId];
+        period.startTime = uint64(block.timestamp);
+        period.endTime = uint64(block.timestamp + periodDuration);
+        period.totalBudget = budgetUSDC;
+        
+        // Snapshot all worker SBT weights at period start
+        address[] memory workers = workerSBT.getAllWorkers();
+        uint256 totalWeight = 0;
+        
+        for (uint i = 0; i < workers.length; i++) {
+            uint256 weight = workerSBT.getTotalWeight(workers[i]);
+            period.workerWeightSnapshot[workers[i]] = weight;
+            totalWeight += weight;
+        }
+        
+        period.totalSBTWeight = totalWeight;
+        
+        emit PeriodInitialized(periodId, budgetUSDC, totalWeight, workers.length);
+    }
+}
+```
+
+### **Sophisticated Claiming Mechanism**
+
+```solidity
+contract CommunityTokenClaiming {
+    function claimSalary(uint256[] calldata periodIds) external nonReentrant {
+        require(!workerStates[msg.sender].fraudFlagged, "Worker flagged for fraud review");
+        
+        uint256 totalClaimableUSDC = 0;
+        
+        for (uint i = 0; i < periodIds.length; i++) {
+            uint256 periodId = periodIds[i];
+            totalClaimableUSDC += _calculatePeriodClaim(msg.sender, periodId);
+        }
+        
+        require(totalClaimableUSDC > 0, "No claimable salary");
+        
+        // Update worker state
+        workerStates[msg.sender].lastClaimPeriod = _getLatestPeriod(periodIds);
+        workerStates[msg.sender].lifetimeEarnings += totalClaimableUSDC;
+        workerStates[msg.sender].unclaimedPeriods = _calculateUnclaimedPeriods(msg.sender);
+        
+        // Mint 1:1 USDC-backed CommunityTokens
+        _mintFromTreasury(msg.sender, totalClaimableUSDC);
+        
+        emit SalaryClaimed(msg.sender, periodIds, totalClaimableUSDC);
+    }
+    
+    function _calculatePeriodClaim(address worker, uint256 periodId) 
+        internal returns (uint256 claimableUSDC) {
+        
+        SalaryPeriod storage period = salaryPeriods[periodId];
+        require(period.finalized, "Period not yet finalized");
+        require(!period.hasClaimed[worker], "Already claimed for this period");
+        require(period.workerWeightSnapshot[worker] > 0, "No contributions in period");
+        
+        // Calculate proportional share: (worker_weight / total_weight) * budget
+        uint256 baseShare = (period.workerWeightSnapshot[worker] * period.totalBudget) / 
+                           period.totalSBTWeight;
+        
+        // Apply bonuses and penalties
+        uint256 adjustedShare = _applyClaimAdjustments(worker, baseShare, periodId);
+        
+        // Mark as claimed
+        period.hasClaimed[worker] = true;
+        period.claimedAmount += adjustedShare;
+        
+        return adjustedShare;
+    }
+    
+    function _applyClaimAdjustments(address worker, uint256 baseShare, uint256 periodId) 
+        internal view returns (uint256 adjustedShare) {
+        
+        adjustedShare = baseShare;
+        
+        // Rollover bonus: Extra reward for delayed claims (encourages batching)
+        uint256 unclaimed = workerStates[worker].unclaimedPeriods;
+        if (unclaimed > 1) {
+            uint256 rolloverBonus = Math.min(unclaimed * 5, 25); // Up to 25% bonus
+            adjustedShare = adjustedShare * (100 + rolloverBonus) / 100;
+        }
+        
+        // Consistency bonus: Reward for regular contributions
+        if (_hasConsistentContributions(worker, periodId)) {
+            adjustedShare = adjustedShare * 110 / 100; // 10% consistency bonus
+        }
+        
+        // New worker penalty reduction: Gradual ramp-up for new contributors
+        uint256 tenureMonths = (block.timestamp - workerStates[worker].joinDate) / 30 days;
+        if (tenureMonths < 6) {
+            uint256 penaltyReduction = Math.min(tenureMonths * 10, 50); // Up to 50% reduction
+            adjustedShare = adjustedShare * (50 + penaltyReduction) / 100;
+        }
+        
+        return adjustedShare;
+    }
+}
+```
+
+### **Fraud Protection & Edge Case Handling**
+
+```solidity
+contract CommunityTokenSecurity {
+    struct FraudInvestigation {
+        address reporter;
+        address accused;
+        string evidenceCID;
+        uint256 reportedPeriod;
+        uint64 reportedAt;
+        bool resolved;
+        bool fraudConfirmed;
+        uint256 investigatorReward;
+    }
+    
+    mapping(uint256 => FraudInvestigation) public fraudCases;
+    mapping(address => uint256) public fraudScore; // Cumulative fraud risk
+    
+    function reportFraud(
+        address accused, 
+        uint256 suspiciousPeriod,
+        string calldata evidenceCID
+    ) external payable returns (uint256 caseId) {
+        require(msg.value >= fraudReportStake, "Insufficient report stake");
+        require(workerSBT.balanceOf(msg.sender) > 0, "Reporter must have SBT");
+        
+        fraudCases[caseId] = FraudInvestigation({
+            reporter: msg.sender,
+            accused: accused,
+            evidenceCID: evidenceCID,
+            reportedPeriod: suspiciousPeriod,
+            reportedAt: uint64(block.timestamp),
+            resolved: false,
+            fraudConfirmed: false,
+            investigatorReward: msg.value
+        });
+        
+        // Temporarily flag accused worker
+        workerStates[accused].fraudFlagged = true;
+        
+        emit FraudReported(caseId, msg.sender, accused, suspiciousPeriod);
+    }
+    
+    function investigateFraud(uint256 caseId, bool fraudConfirmed, string calldata reasoning) 
+        external onlyGovernance {
+        
+        FraudInvestigation storage case = fraudCases[caseId];
+        require(!case.resolved, "Case already resolved");
+        
+        case.resolved = true;
+        case.fraudConfirmed = fraudConfirmed;
+        
+        if (fraudConfirmed) {
+            // Penalty: Slash salary for fraudulent period
+            _slashSalary(case.accused, case.reportedPeriod);
+            
+            // Reward reporter
+            payable(case.reporter).transfer(case.investigatorReward);
+            
+            // Increase fraud score
+            fraudScore[case.accused] += 100;
+            
+            emit FraudConfirmed(caseId, case.accused, case.reportedPeriod);
+        } else {
+            // False report: Return stake to accused, penalty to reporter
+            payable(case.accused).transfer(case.investigatorReward / 2);
+            fraudScore[case.reporter] += 25; // Penalty for false reporting
+            
+            // Restore claiming privileges
+            workerStates[case.accused].fraudFlagged = false;
+            
+            emit FraudDismissed(caseId, case.accused);
+        }
+    }
+    
+    function _slashSalary(address worker, uint256 fraudulentPeriod) internal {
+        // Claw back fraudulent earnings
+        SalaryPeriod storage period = salaryPeriods[fraudulentPeriod];
+        if (period.hasClaimed[worker]) {
+            uint256 fraudulentAmount = _calculatePeriodClaim(worker, fraudulentPeriod);
+            
+            // Burn fraudulent tokens (removes from circulation)
+            _burn(worker, fraudulentAmount);
+            
+            // Update period accounting
+            period.claimedAmount -= fraudulentAmount;
+            period.hasClaimed[worker] = false;
+            
+            emit SalarySlashed(worker, fraudulentPeriod, fraudulentAmount);
+        }
+    }
+}
+```
+
+### **Treasury Integration & USDC Backing**
+
+```solidity
+contract CommunityTokenTreasury {
+    IERC20 public immutable USDC;
+    address public treasuryController;
+    uint256 public totalReserves;      // USDC backing the token supply
+    uint256 public emergencyReserve;   // Emergency fund (governance-controlled)
+    
+    function _mintFromTreasury(address recipient, uint256 usdcAmount) internal {
+        require(totalReserves >= usdcAmount, "Insufficient treasury reserves");
+        
+        // Mint 1:1 backed tokens
+        _mint(recipient, usdcAmount);
+        totalReserves -= usdcAmount;
+        
+        emit TokensMinted(recipient, usdcAmount, totalReserves);
+    }
+    
+    function redeem(uint256 tokenAmount) external {
+        require(balanceOf(msg.sender) >= tokenAmount, "Insufficient balance");
+        require(totalReserves >= tokenAmount, "Insufficient backing reserves");
+        
+        // Burn tokens and return USDC
+        _burn(msg.sender, tokenAmount);
+        totalReserves += tokenAmount;
+        USDC.transfer(msg.sender, tokenAmount);
+        
+        emit TokensRedeemed(msg.sender, tokenAmount, totalReserves);
+    }
+    
+    function fundSalaryBudget(uint256 usdcAmount) external {
+        require(msg.sender == treasuryController, "Only treasury controller");
+        
+        USDC.transferFrom(msg.sender, address(this), usdcAmount);
+        totalReserves += usdcAmount;
+        
+        emit SalaryBudgetFunded(usdcAmount, totalReserves);
+    }
+    
+    // Emergency functions for edge cases
+    function emergencyFreeze() external onlyGovernance {
+        // Temporarily halt all salary claims during crisis
+        emit EmergencyFreeze(block.timestamp);
+    }
+    
+    function emergencyRecovery(address newTreasuryController) external onlyGovernance {
+        treasuryController = newTreasuryController;
+        emit EmergencyRecovery(newTreasuryController);
+    }
+}
 ```
 
 ### Data Flow Architecture
@@ -442,38 +955,51 @@ contract TreasuryController {
 }
 ```
 
-### **SBT-Enhanced Governance Integration**
+### **Merit-Based Governance Token Architecture**
 
-Voting power calculation that rewards merit over wealth:
+Pure governance token automatically minted based on verified contributions:
 
 ```solidity
 contract MembershipTokenERC20Votes {
-    function getEnhancedVotes(address account, uint256 blockNumber) 
-        external view returns (uint256 enhancedVotes) {
+    // Removed: mint/redeem functions - tokens only earned through SBT achievements
+    // Removed: USDC backing - pure governance utility
+    
+    struct GovernanceWeighting {
+        uint64 vestingPeriodMonths;     // Community-set balance timeline (e.g., 36 months)
+        uint64 startTimestamp;          // T=0 for time-based calculations
+        uint256 workerBaseWeight;       // Initial WorkerSBT governance weight
+        uint256 investorBaseWeight;     // Initial InvestorSBT governance weight
+        uint256 maxConcentrationBps;    // Anti-plutocracy limit (e.g., 15%)
+    }
+    
+    function calculateTimeBasedWeight(address account) 
+        external view returns (uint256 totalVotingPower) {
         
-        uint256 baseVotes = getPastVotes(account, blockNumber);
-        if (baseVotes == 0) return 0;
+        uint256 workerTokens = getWorkerSBTTokens(account);
+        uint256 investorTokens = getInvestorSBTTokens(account);
         
-        // Get SBT multipliers (capped to prevent excessive concentration)
-        uint256 workerMultiplier = Math.min(
-            workerSBT.getGovernanceMultiplier(account, blockNumber),
-            maxWorkerMultiplier  // e.g., 500% max
-        );
+        // Time-based weighting calculation
+        uint256 elapsedMonths = (block.timestamp - weighting.startTimestamp) / 30 days;
+        uint256 progressRatio = Math.min(elapsedMonths * 1e18 / weighting.vestingPeriodMonths, 1e18);
         
-        uint256 investorMultiplier = Math.min(
-            investorSBT.getGovernanceMultiplier(account, blockNumber), 
-            maxInvestorMultiplier // e.g., 200% max
-        );
+        // Linear progression: investors start high, workers grow over time
+        uint256 currentWorkerWeight = weighting.workerBaseWeight + 
+            (progressRatio * (1e18 - weighting.workerBaseWeight) / 1e18);
+        uint256 currentInvestorWeight = weighting.investorBaseWeight - 
+            (progressRatio * (weighting.investorBaseWeight - 1e18) / 1e18);
         
-        // Combined multiplier with anti-plutocracy bounds
-        uint256 totalMultiplier = 1e18 + workerMultiplier + investorMultiplier;
-        enhancedVotes = baseVotes * totalMultiplier / 1e18;
+        totalVotingPower = (workerTokens * currentWorkerWeight + investorTokens * currentInvestorWeight) / 1e18;
         
-        // Global concentration limit (e.g., 15% max per address)
-        uint256 totalSupply = getPastTotalSupply(blockNumber);
-        uint256 maxConcentration = totalSupply * maxConcentrationBps / 10000;
-        
-        return Math.min(enhancedVotes, maxConcentration);
+        // Anti-plutocracy concentration limit
+        uint256 totalSupply = totalSupply();
+        uint256 maxConcentration = totalSupply * weighting.maxConcentrationBps / 10000;
+        return Math.min(totalVotingPower, maxConcentration);
+    }
+    
+    function mintFromSBT(address recipient, uint256 amount, bytes32 sbtType) external {
+        require(msg.sender == actionTypeRegistry || msg.sender == workerSBT || msg.sender == investorSBT, "Unauthorized");
+        _mint(recipient, amount);
+        emit MembershipMinted(recipient, amount, sbtType);
     }
 }
 ```
