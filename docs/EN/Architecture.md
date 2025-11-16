@@ -102,7 +102,7 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 
 The ValuableAction Registry serves as the democratic system where communities define **what work is valuable** and **what investment opportunities exist** through creating specific Valuable Actions ("Acciones Valorables") that contributors can complete. Unlike traditional job categorization systems, Valuable Actions are **community-configured economic instruments** that define how contributions translate into governance power (MembershipTokens), economic rewards (CommunityTokens), and reputation (SBTs).
 
-### **Core ActionType Structure**
+### **Core ValuableAction Structure**
 
 ```solidity
 contract ValuableActionRegistry {
@@ -160,28 +160,26 @@ contract ValuableActionRegistry {
             _activateValuableAction(actionId, params);
         }
         
-        emit ActionTypeProposed(actionTypeId, communityId, msg.sender, params.founderVerified);
+        emit ValuableActionProposed(valuableActionId, communityId, msg.sender, params.founderVerified);
     }
     
-    function activateFromGovernance(uint256 actionTypeId, uint256 approvedProposalId) external {
+    function activateFromGovernance(uint256 valuableActionId, uint256 approvedProposalId) external {
         require(msg.sender == governor, "Only governance can activate");
-        require(pendingActionTypes[actionTypeId] == approvedProposalId, "Proposal mismatch");
+        require(pendingValuableActions[valuableActionId] == approvedProposalId, "Proposal mismatch");
         
-        ActionType storage actionType = actionTypes[actionTypeId];
-        actionType.active = true;
-        actionType.activatedAt = uint64(block.timestamp);
+        isActive[valuableActionId] = true;
         
-        emit ActionTypeActivated(actionTypeId, approvedProposalId);
+        emit ValuableActionActivated(valuableActionId, approvedProposalId);
     }
 }
 ```
 
 ### **Economic Weight Configuration**
 
-ActionTypes define the **conversion rates** between verified work and various forms of value:
+ValuableActions define the **conversion rates** between verified work and various forms of value:
 
 ```solidity
-// Example ActionType configurations for different work types
+// Example ValuableAction configurations for different work types
 struct ValuableActionExamples {
     // HIGH-IMPACT DEVELOPMENT (Senior Technical Work)
     ValuableAction seniorDevelopment = ValuableAction({
@@ -231,25 +229,25 @@ struct ValuableActionExamples {
 
 ### **Integration with Merit Economy**
 
-ActionTypes create the **mathematical foundation** for the entire merit-based economy:
+ValuableActions create the **mathematical foundation** for the entire merit-based economy:
 
 ```solidity
-contract ActionTypeEconomicEngine {
-    function processApprovedClaim(uint256 claimId, uint256 actionTypeId) external {
-        ValuableAction memory valuableAction = registry.getValuableAction(actionTypeId);
+contract ValuableActionEconomicEngine {
+    function processApprovedClaim(uint256 claimId, uint256 valuableActionId) external {
+        ValuableAction memory valuableAction = registry.getValuableAction(valuableActionId);
         address claimant = claims.getClaimant(claimId);
         
         // 1. Mint governance power (MembershipToken)
-        membershipToken.mintFromSBT(claimant, actionType.governanceWeight, "WORKER");
+        membershipToken.mintFromSBT(claimant, valuableAction.membershipTokenReward, "WORKER");
         
         // 2. Update salary earning rate (for CommunityToken claims)
-        communityToken.increaseSalaryWeight(claimant, actionType.salaryWeight);
+        communityToken.increaseSalaryWeight(claimant, valuableAction.communityTokenReward);
         
         // 3. Mint WorkerSBT with embedded weights
-        workerSBT.mintWithActionType(claimant, actionTypeId, actionType.governanceWeight);
+        workerSBT.mintWithValuableAction(claimant, valuableActionId, valuableAction.membershipTokenReward);
         
         // 4. Special handling for founder actions
-        if (actionType.founderVerified && actionType.initialInvestorBonus > 0) {
+        if (valuableAction.founderVerified && valuableAction.investorSBTReward > 0) {
             investorSBT.mintFromFounderWork(claimant, actionType.initialInvestorBonus);
             membershipToken.mintFromSBT(claimant, actionType.initialInvestorBonus, "INVESTOR");
         }
