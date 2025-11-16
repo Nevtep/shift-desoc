@@ -4,7 +4,9 @@ This document provides a high-level overview of Shift DeSoc's system architectur
 
 ## 🏗️ System Overview
 
-Shift DeSoc implements a **modular, blockchain-native architecture** designed for scalability, security, and upgradability. The platform consists of interconnected smart contracts that manage governance, work verification, and economic incentives.
+**Shift DeSoc is meta-governance technology** - a flexible infrastructure that enables communities to model any organizational structure they choose. Rather than imposing a specific governance model, Shift provides the building blocks (governance protocols, work verification systems, and economic mechanisms) that communities can configure to implement their unique decision-making processes, value definitions, and coordination patterns.
+
+Shift implements a **modular, blockchain-native architecture** designed for scalability, security, and upgradability. The platform consists of interconnected smart contracts that manage governance, work verification, and economic incentives.
 
 ### Core Design Principles
 
@@ -55,7 +57,7 @@ Shift DeSoc implements a **modular, blockchain-native architecture** designed fo
 │                              VERIFICATION LAYER                                            │
 ├─────────────────────────────────────────────────────────────────────────────────────────────┤
 │ ┌──────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │
-│ │ActionTypeRegistry│◄─┤     Claims      ├──┤ VerifierPool    ├──┤      WorkerSBT         │ │
+│ │ValuableActionReg │◄─┤     Claims      ├──┤ VerifierPool    ├──┤      WorkerSBT         │ │
 │ │- Work Categories │  │- Submissions    │  │- Registration   │  │- Contribution Record   │ │
 │ │- Evidence Specs  │  │- M-of-N Panels  │  │- Bonding System │  │- Reputation Score     │ │
 │ │- Reward Params   │  │- Verification   │  │- Random Select  │  │- Governance Multiplier│ │
@@ -96,19 +98,19 @@ Shift DeSoc implements a **modular, blockchain-native architecture** designed fo
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## **ActionType Registry: Central Value Definition System**
+## **ValuableAction Registry: Community Value Definition Engine**
 
-The ActionType Registry serves as the foundational governance mechanism that defines how work translates into merit, economic value, and governance power. Unlike traditional job categorization systems, ActionTypes are **dynamically configured economic instruments** that communities use to align incentives and measure contribution value.
+The ValuableAction Registry serves as the democratic system where communities define **what work is valuable** and **what investment opportunities exist** through creating specific Valuable Actions ("Acciones Valorables") that contributors can complete. Unlike traditional job categorization systems, Valuable Actions are **community-configured economic instruments** that define how contributions translate into governance power (MembershipTokens), economic rewards (CommunityTokens), and reputation (SBTs).
 
 ### **Core ActionType Structure**
 
 ```solidity
-contract ActionTypeRegistry {
-    struct ActionType {
+contract ValuableActionRegistry {
+    struct ValuableAction {
         // Economic Parameters
-        uint32 governanceWeight;        // MembershipToken amount minted on approval
-        uint32 salaryWeight;           // CommunityToken earning rate (per period)  
-        uint32 initialInvestorBonus;   // InvestorSBT minting on founder actions
+        uint32 membershipTokenReward;   // MembershipToken amount minted on completion
+        uint32 communityTokenReward;    // CommunityToken amount earned for period salary calculation  
+        uint32 investorSBTReward;      // InvestorSBT minting for investment-type actions
         
         // Verification Parameters
         uint32 jurorsMin;              // M (minimum approvals needed)
@@ -123,10 +125,10 @@ contract ActionTypeRegistry {
         bool revocable;                // Can community governance revoke this SBT
         uint32 evidenceTypes;          // Bitmask of required evidence formats
         
-        // Economic Barriers (Anti-Spam)
-        uint256 creationStake;         // USDC required to create this ActionType
-        uint256 proposalThreshold;     // Governance tokens needed to propose changes
-        address sponsor;               // Who funded the creation of this ActionType
+        // Governance Requirements
+        uint256 proposalThreshold;     // Governance tokens needed to propose new Valuable Actions
+        address proposer;              // Who proposed this Valuable Action
+        bool requiresGovernanceApproval; // Whether this action needs community vote to activate
         
         // Metadata & Automation
         string evidenceSpecCID;        // IPFS: detailed evidence requirements
@@ -143,23 +145,19 @@ contract ActionTypeRegistry {
     mapping(address => mapping(uint256 => bool)) public founderWhitelist;  // founder → community → verified
     mapping(uint256 => address[]) public communityFounders;               // community → founder list
     
-    function proposeActionType(
+    function proposeValuableAction(
         uint256 communityId,
-        ActionTypeParams calldata params,
-        uint256 governanceStake
-    ) external payable returns (uint256 actionTypeId) {
-        require(msg.value >= params.creationStake, "Insufficient creation stake");
-        require(governanceToken.balanceOf(msg.sender) >= params.proposalThreshold, "Insufficient governance weight");
+        ValuableActionParams calldata params
+    ) external returns (uint256 actionId) {
+        require(membershipToken.balanceOf(msg.sender) >= params.proposalThreshold, "Insufficient governance power to propose");
         
-        // Special case: Founder verification for community bootstrap
-        if (params.founderVerified) {
-            require(founderWhitelist[msg.sender][communityId], "Founder not whitelisted");
-            // Founders can create ActionTypes that bypass normal governance delays
-            _activateActionType(actionTypeId, params);
+        // Create governance proposal for community approval
+        if (params.requiresGovernanceApproval) {
+            uint256 proposalId = _createGovernanceProposal(actionId, params);
+            pendingActions[actionId] = proposalId;
         } else {
-            // Normal path: requires community governance approval
-            uint256 proposalId = _createGovernanceProposal(actionTypeId, params);
-            pendingActionTypes[actionTypeId] = proposalId;
+            // Activate immediately if no governance approval required
+            _activateValuableAction(actionId, params);
         }
         
         emit ActionTypeProposed(actionTypeId, communityId, msg.sender, params.founderVerified);
@@ -184,47 +182,49 @@ ActionTypes define the **conversion rates** between verified work and various fo
 
 ```solidity
 // Example ActionType configurations for different work types
-struct ActionTypeExamples {
+struct ValuableActionExamples {
     // HIGH-IMPACT DEVELOPMENT (Senior Technical Work)
-    ActionType seniorDevelopment = ActionType({
-        governanceWeight: 100,          // 100 MembershipTokens per approval
-        salaryWeight: 50,               // High earning rate in CommunityToken claims
-        initialInvestorBonus: 20,       // Significant InvestorSBT if founder work
+    ValuableAction seniorDevelopment = ValuableAction({
+        membershipTokenReward: 100,     // 100 MembershipTokens per completion
+        communityTokenReward: 50,       // High weight in period salary calculation
+        investorSBTReward: 0,          // No investor reward for work actions
         jurorsMin: 3,                   // Requires 3 approvals (high quality bar)
         panelSize: 5,                   // From panel of 5 expert verifiers
         verifyWindow: 7 days,           // Complex work needs thorough review
         verifierRewardWeight: 15,       // High rewards for expert verification
         cooldownPeriod: 14 days,        // Quality over quantity
         evidenceTypes: CODE_REVIEW | DEPLOYMENT_PROOF | IMPACT_METRICS,
-        creationStake: 1000e6,          // $1000 USDC to create (prevents spam)
-        proposalThreshold: 10000e18     // Requires significant governance power
+        proposalThreshold: 10000e18,    // Requires significant governance power to propose
+        requiresGovernanceApproval: true // Community must vote to activate
     });
     
-    // COMMUNITY MODERATION (Regular Contribution)
-    ActionType moderation = ActionType({
-        governanceWeight: 10,           // 10 MembershipTokens per approval
-        salaryWeight: 15,               // Moderate earning rate
-        initialInvestorBonus: 5,        // Small InvestorSBT bonus
+    // COMMUNITY MODERATION (Regular Contribution)  
+    ValuableAction moderation = ValuableAction({
+        membershipTokenReward: 10,      // 10 MembershipTokens per completion
+        communityTokenReward: 15,       // Moderate weight in salary calculation
+        investorSBTReward: 0,          // No investor reward for work actions
         jurorsMin: 2,                   // Requires 2 approvals
         panelSize: 3,                   // From panel of 3 verifiers
         verifyWindow: 3 days,           // Faster turnaround for routine work
         verifierRewardWeight: 5,        // Standard verifier rewards
         cooldownPeriod: 1 days,         // Can be done regularly
         evidenceTypes: SCREENSHOT | ACTIVITY_LOG,
-        creationStake: 100e6,           // $100 USDC to create
-        proposalThreshold: 1000e18      // Lower governance threshold
+        proposalThreshold: 1000e18,     // Lower governance threshold to propose
+        requiresGovernanceApproval: false // Can be activated immediately
     });
     
-    // FOUNDER BOOTSTRAP (Special Verification Status)
-    ActionType founderWork = ActionType({
-        governanceWeight: 200,          // Extra governance power during bootstrap
-        salaryWeight: 0,                // Founders don't earn salary (equity-focused)
-        initialInvestorBonus: 100,      // Significant InvestorSBT minting
-        jurorsMin: 1,                   // Faster verification during bootstrap
+    // SEED INVESTMENT (Capital Contribution)
+    ValuableAction seedInvestment = ValuableAction({
+        membershipTokenReward: 1000,    // Significant governance power for investors  
+        communityTokenReward: 0,        // Investors don't participate in salary system
+        investorSBTReward: 100,        // InvestorSBT for revenue sharing
+        jurorsMin: 1,                   // Simple verification for USDC transfer
         panelSize: 2,                   // Minimal panel needed
-        verifyWindow: 1 days,           // Quick verification for agility
-        founderVerified: true,          // Bypasses normal governance delays
-        deprecationWarning: 180 days    // Auto-deactivates after 6 months
+        verifyWindow: 1 days,           // Quick verification
+        evidenceTypes: USDC_TRANSFER_PROOF,
+        maxCompletions: 1,             // Each investor can only do this once per round
+        proposalThreshold: 5000e18,    // Moderate governance requirement
+        requiresGovernanceApproval: true // Community must approve investment terms
     });
 }
 ```
@@ -236,7 +236,7 @@ ActionTypes create the **mathematical foundation** for the entire merit-based ec
 ```solidity
 contract ActionTypeEconomicEngine {
     function processApprovedClaim(uint256 claimId, uint256 actionTypeId) external {
-        ActionType memory actionType = registry.getActionType(actionTypeId);
+        ValuableAction memory valuableAction = registry.getValuableAction(actionTypeId);
         address claimant = claims.getClaimant(claimId);
         
         // 1. Mint governance power (MembershipToken)
@@ -863,53 +863,65 @@ mapping(address => uint256[]) userCommunities;                            // Com
 
 ## 🏗️ Advanced Economic Architecture
 
-### **Mathematical Revenue Distribution Engine**
+### **ROI-Based Revenue Distribution Engine**
 
-The RevenueRouter eliminates arbitrary splits through time-based mathematical curves:
+The RevenueRouter automatically reduces investor revenue share as their ROI approaches their target, ensuring sustainable returns while incentivizing long-term community growth:
 
 ```solidity
-contract RevenueRouterDynamic {
-    struct EconomicParams {
-        uint64 startTimestamp;           // T=0 for all calculations
-        uint64 lambdaInvestor;           // Investor decay rate (e.g., 0.1/month)
-        uint64 lambdaWorker;             // Worker growth rate (e.g., 0.05/month)
-        uint256 alphaI;                  // Investor curve amplitude
-        uint256 betaI;                   // Investor floor (minimum share)
-        uint256 alphaW;                  // Worker curve amplitude  
-        uint256 betaW;                   // Worker starting share
-        uint16 investorFloor;            // Minimum investor % (bps)
-        uint16 workerCap;                // Maximum worker % (bps)
-        uint16 treasuryFloor;            // Base treasury % (bps)
+contract RevenueRouter {
+    struct InvestorRevenue {
+        uint256 totalInvested;           // Capital contribution amount
+        uint256 targetROI;               // Expected return multiple (e.g., 3x = 300%)
+        uint256 cumulativeRevenue;       // Total revenue received to date
+        uint256 currentShare;            // Current revenue percentage (bps)
+        bool hasActiveRevenue;           // Still receiving revenue
     }
     
-    function calculateTimeBasedWeights(uint64 elapsedTime) 
-        external view returns (uint256 investorWeight, uint256 workerWeight) {
+    mapping(address => InvestorRevenue) public investorRevenue;
+    
+    function calculateInvestorShare(address investor) external view returns (uint256) {
+        InvestorRevenue memory inv = investorRevenue[investor];
         
-        // Investor weight: w_I(t) = α_I × e^(-λ_I × t) + β_I  
-        uint256 investorDecay = Math.exp(-params.lambdaInvestor * elapsedTime / 1e9);
-        investorWeight = (params.alphaI * investorDecay + params.betaI) / 1e18;
-        investorWeight = Math.max(investorWeight, params.investorFloor);
+        // Calculate current ROI percentage achieved
+        uint256 currentROI = (inv.cumulativeRevenue * 10000) / inv.totalInvested;
         
-        // Worker weight: w_W(t) = α_W × (1 - e^(-λ_W × t)) + β_W
-        uint256 workerGrowth = 1e18 - Math.exp(-params.lambdaWorker * elapsedTime / 1e9);
-        workerWeight = (params.alphaW * workerGrowth + params.betaW) / 1e18;
-        workerWeight = Math.min(workerWeight, params.workerCap);
+        if (currentROI >= inv.targetROI) {
+            return 0; // ROI target reached, no more revenue
+        }
+        
+        // Linear decay: share decreases as ROI approaches target
+        // At 0% ROI: full initial share
+        // At target ROI: 0% share
+        uint256 progress = (currentROI * 10000) / inv.targetROI;
+        return inv.currentShare * (10000 - progress) / 10000;
     }
     
-    function calculatePerformanceMultipliers() 
-        external view returns (uint256 workerMult, uint256 investorMult) {
+    function distributeRevenue(uint256 totalRevenue) external {
+        uint256 totalInvestorShare = 0;
         
-        // Worker performance: output quality × consistency × collaboration
-        uint256 qualityScore = getCollectiveOutputQuality();      // Average claim approval rate
-        uint256 consistencyScore = getContributionConsistency();  // Regular participation
-        uint256 collaborationScore = getPeerReviewScores();      // Team compatibility
-        workerMult = Math.cbrt(qualityScore * consistencyScore * collaborationScore);
+        // Calculate total investor allocation
+        address[] memory activeInvestors = getActiveInvestors();
+        for (uint256 i = 0; i < activeInvestors.length; i++) {
+            totalInvestorShare += calculateInvestorShare(activeInvestors[i]);
+        }
         
-        // Investor performance: milestone achievement × network effects × capital efficiency  
-        uint256 milestonesHit = getCollectiveMilestoneScore();    // Community goal achievement
-        uint256 networkEffects = getEcosystemContributions();     // Cross-community value
-        uint256 capitalEfficiency = getRunwayExtensionRatio();    // $ per month runway added
-        investorMult = (milestonesHit + networkEffects + capitalEfficiency) / 3;
+        // Distribute to investors
+        uint256 investorRevenue = (totalRevenue * totalInvestorShare) / 10000;
+        for (uint256 i = 0; i < activeInvestors.length; i++) {
+            address investor = activeInvestors[i];
+            uint256 share = calculateInvestorShare(investor);
+            uint256 amount = (investorRevenue * share) / totalInvestorShare;
+            
+            // Update cumulative revenue tracking
+            investorRevenue[investor].cumulativeRevenue += amount;
+            
+            // Transfer revenue
+            payable(investor).transfer(amount);
+        }
+        
+        // Remaining goes to worker wages and treasury
+        uint256 remainingRevenue = totalRevenue - investorRevenue;
+        distributeToWorkersAndTreasury(remainingRevenue);
     }
 }
 ```
@@ -957,49 +969,44 @@ contract TreasuryController {
 
 ### **Merit-Based Governance Token Architecture**
 
-Pure governance token automatically minted based on verified contributions:
+Pure governance token minted directly when completing Valuable Actions:
 
 ```solidity
 contract MembershipTokenERC20Votes {
-    // Removed: mint/redeem functions - tokens only earned through SBT achievements
-    // Removed: USDC backing - pure governance utility
+    // Simple governance token - no complex time calculations
+    // Governance power earned through completing Valuable Actions
     
-    struct GovernanceWeighting {
-        uint64 vestingPeriodMonths;     // Community-set balance timeline (e.g., 36 months)
-        uint64 startTimestamp;          // T=0 for time-based calculations
-        uint256 workerBaseWeight;       // Initial WorkerSBT governance weight
-        uint256 investorBaseWeight;     // Initial InvestorSBT governance weight
-        uint256 maxConcentrationBps;    // Anti-plutocracy limit (e.g., 15%)
+    struct AntiPlutocracyLimits {
+        uint256 maxConcentrationBps;    // Maximum % any account can hold (e.g., 15%)
+        mapping(address => bool) exemptAccounts; // CommunityFactory, etc. can be exempt
     }
     
-    function calculateTimeBasedWeight(address account) 
-        external view returns (uint256 totalVotingPower) {
+    function mintFromValuableAction(
+        address recipient, 
+        uint256 amount, 
+        uint256 actionId
+    ) external {
+        require(msg.sender == valuableActionRegistry, "Only ValuableActionRegistry can mint");
+        require(_wouldExceedConcentrationLimit(recipient, amount) == false, "Would exceed concentration limit");
         
-        uint256 workerTokens = getWorkerSBTTokens(account);
-        uint256 investorTokens = getInvestorSBTTokens(account);
-        
-        // Time-based weighting calculation
-        uint256 elapsedMonths = (block.timestamp - weighting.startTimestamp) / 30 days;
-        uint256 progressRatio = Math.min(elapsedMonths * 1e18 / weighting.vestingPeriodMonths, 1e18);
-        
-        // Linear progression: investors start high, workers grow over time
-        uint256 currentWorkerWeight = weighting.workerBaseWeight + 
-            (progressRatio * (1e18 - weighting.workerBaseWeight) / 1e18);
-        uint256 currentInvestorWeight = weighting.investorBaseWeight - 
-            (progressRatio * (weighting.investorBaseWeight - 1e18) / 1e18);
-        
-        totalVotingPower = (workerTokens * currentWorkerWeight + investorTokens * currentInvestorWeight) / 1e18;
-        
-        // Anti-plutocracy concentration limit
-        uint256 totalSupply = totalSupply();
-        uint256 maxConcentration = totalSupply * weighting.maxConcentrationBps / 10000;
-        return Math.min(totalVotingPower, maxConcentration);
-    }
-    
-    function mintFromSBT(address recipient, uint256 amount, bytes32 sbtType) external {
-        require(msg.sender == actionTypeRegistry || msg.sender == workerSBT || msg.sender == investorSBT, "Unauthorized");
         _mint(recipient, amount);
-        emit MembershipMinted(recipient, amount, sbtType);
+        emit GovernancePowerEarned(recipient, amount, actionId);
+    }
+    
+    function _wouldExceedConcentrationLimit(address account, uint256 additionalAmount) 
+        internal view returns (bool) {
+        if (antiPlutocracy.exemptAccounts[account]) return false;
+        
+        uint256 newBalance = balanceOf(account) + additionalAmount;
+        uint256 newTotalSupply = totalSupply() + additionalAmount;
+        uint256 concentrationBps = (newBalance * 10000) / newTotalSupply;
+        
+        return concentrationBps > antiPlutocracy.maxConcentrationBps;
+    }
+    
+    function updateConcentrationLimit(uint256 newLimitBps) external onlyGovernance {
+        antiPlutocracy.maxConcentrationBps = newLimitBps;
+        emit ConcentrationLimitUpdated(newLimitBps);
     }
 }
 ```
@@ -1443,17 +1450,42 @@ contract CommunityFactory {
         address governor;
         address membershipToken; 
         address timelock;
-        address actionRegistry;
+        address valuableActionRegistry;
         address verifierPool;
         address claims;
         uint256 communityId;
     }
     
+    struct FounderBootstrap {
+        address[] founders;              // Initial governance token holders
+        uint256[] membershipAmounts;     // Initial governance token distribution
+        ValuableActionParams[] initialActions;  // Pre-configured valuable actions
+        string[] evidenceTemplates;      // Bootstrap evidence requirements
+    }
+    
     function createCommunity(
         string calldata name,
         GovernanceParams calldata govParams,
-        VerificationParams calldata verifyParams
-    ) external returns (CommunityDeployment memory);
+        VerificationParams calldata verifyParams,
+        FounderBootstrap calldata bootstrap
+    ) external returns (CommunityDeployment memory) {
+        
+        // Deploy core governance infrastructure
+        CommunityDeployment memory deployment = _deployContracts(name, govParams, verifyParams);
+        
+        // Bootstrap governance: distribute initial MembershipTokens to founders
+        for (uint i = 0; i < bootstrap.founders.length; i++) {
+            deployment.membershipToken.mint(bootstrap.founders[i], bootstrap.membershipAmounts[i]);
+        }
+        
+        // Pre-configure initial ValuableActions with founder verification
+        for (uint i = 0; i < bootstrap.initialActions.length; i++) {
+            bootstrap.initialActions[i].founderVerified = true; // Bypass governance for bootstrap
+            deployment.valuableActionRegistry.createValuableAction(deployment.communityId, bootstrap.initialActions[i]);
+        }
+        
+        return deployment;
+    }
     
     function getCommunityContracts(uint256 communityId) 
         external view returns (CommunityDeployment memory);
@@ -1489,7 +1521,7 @@ HousingManager_Network   // Shared accommodation network
 
 // Community-specific (via Factory):
 ShiftGovernor_Community[N]     // Per-community governance
-ActionTypeRegistry_Community[N] // Community work types
+ValuableActionRegistry_Community[N] // Community valuable actions
 VerifierPool_Community[N]       // Community verifier sets
 ```
 
@@ -1603,7 +1635,7 @@ contract CommunityRegistry {
         address requestHub;
         address draftsManager;
         address claimsManager;
-        address actionTypeRegistry;
+        address valuableActionRegistry;
         address verifierPool;
         address workerSBT;
         address treasuryAdapter;
@@ -1630,7 +1662,7 @@ contract CommunityRegistry {
 
 **Technical Deliverables:**
 - ✅ ShiftGovernor with multi-choice voting (completed)
-- ✅ Claims + ActionTypeRegistry + VerifierPool (completed) 
+- ✅ Claims + ValuableActionRegistry + VerifierPool (completed) 
 - ✅ WorkerSBT basic point accumulation (completed)
 - ✅ CommunityToken 1:1 USDC backing (completed)
 - 🔄 Enhanced deployment scripts and community onboarding
@@ -1826,7 +1858,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 #### **Completed Components (86%+ Test Coverage)**
 - ✅ **ShiftGovernor**: Multi-choice voting with OpenZeppelin integration
 - ✅ **CountingMultiChoice**: Weighted voting distribution logic  
-- ✅ **ActionTypeRegistry**: Configurable work verification parameters
+- ✅ **ValuableActionRegistry**: Community-configured value definition system
 - ✅ **Claims**: M-of-N verification with appeals process
 - ✅ **VerifierPool**: Reputation-weighted juror selection with bonding
 

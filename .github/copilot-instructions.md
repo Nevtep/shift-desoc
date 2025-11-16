@@ -1,8 +1,10 @@
 # Shift DeSoc - Smart Contract Development Guide
 
-## Mission: On-Chain Governance Platform for Decentralized Community Work
+## Mission: Meta-Governance Technology for Flexible Community Organization
 
-Shift DeSoc implements fully on-chain governance with multi-choice voting for community decision-making, work verification, and token economy. Core flow: `requests → drafts → proposals → timelock execution` with claims verification and soulbound token rewards.
+**Shift DeSoc is meta-governance technology** - flexible infrastructure that enables communities to model any organizational structure they choose. Rather than imposing a specific governance model, Shift provides building blocks (governance protocols, work verification systems, and economic mechanisms) that communities configure to implement their unique decision-making processes, value definitions, and coordination patterns.
+
+Core flow: `requests → drafts → proposals → timelock execution` with ValuableAction-based merit verification and token rewards.
 
 ## Architecture Overview
 
@@ -20,23 +22,28 @@ Shift implements a comprehensive **Community Coordination → Work Verification 
 - **ShiftGovernor**: OpenZeppelin Governor + multi-choice voting extension for nuanced decision-making
 - **CountingMultiChoice**: Custom counting module for weighted multi-option votes across complex proposals
 - **TimelockController**: Execution delays for governance decisions with emergency override capabilities
-- **MembershipTokenERC20Votes**: Governance token with vote delegation and SBT-weighted eligibility
+- **MembershipTokenERC20Votes**: Pure governance token minted from ValuableAction completion, with vote delegation and anti-plutocracy concentration limits
 
 ### Work Verification System
-- **ActionTypeRegistry**: Configurable action types with verification parameters, evidence requirements, and economic incentives
+- **ValuableActionRegistry**: Community-configured value definition system where communities define what work is valuable and how it translates into governance power, economic rewards, and reputation
 - **VerifierPool**: M-of-N juror selection with reputation bonding, pseudo-random selection, and economic rewards
 - **Claims**: Work submission and verification workflow with evidence validation and appeals process
 - **WorkerSBT**: Soulbound tokens minted on approved claims with WorkerPoints EMA tracking and governance revocation
 
 ### Token Economy & Revenue Distribution
 - **CommunityToken**: 1:1 USDC-backed stablecoin for transparent community payments and treasury management
-- **RevenueRouter**: Automated revenue splits between workers, treasury, and investors (governance-configurable)
+- **RevenueRouter**: ROI-based revenue distribution where investor share automatically decreases as their return approaches target, ensuring sustainable returns
 - **Marketplace**: Decentralized service marketplace with quality verification and reputation-based discovery
 - **ProjectFactory**: ERC-1155 crowdfunding with milestone validation and investor protection mechanisms
 
 ### Community Infrastructure Modules
 - **HousingManager**: Co-housing reservations (ERC-1155 per night) with investor staking and worker discounts
 - **TreasuryAdapter**: Treasury management with governance-controlled spending limits and emergency procedures
+
+### Community Bootstrap System
+- **CommunityFactory**: Factory pattern for deploying new communities with standardized governance infrastructure
+- **Founder Verification**: Bootstrap security mechanism allowing founders to create initial ValuableActions without governance approval
+- **Initial MembershipToken Distribution**: Founders receive governance tokens during community creation to enable initial decision-making
 
 ## Development Workflow
 
@@ -159,7 +166,7 @@ struct Community {
     address requestHub;
     address draftsManager;
     address claimsManager;
-    address actionTypeRegistry;
+    address valuableActionRegistry;
     address verifierPool;
     address workerSBT;
     address treasuryAdapter;
@@ -184,18 +191,18 @@ function getCommunityModules(uint256 communityId) returns (ModuleAddresses memor
 
 #### **RequestHub → Claims Integration (Bounty System)**:
 ```solidity
-// Requests can spawn bounties by linking ActionTypes
-function createBountyRequest(string title, string cid, uint256 actionTypeId, uint256 reward) 
+// Requests can spawn bounties by linking ValuableActions
+function createBountyRequest(string title, string cid, uint256 valuableActionId, uint256 reward) 
 // Workers file claims referencing the source request
 function submitClaim(uint256 requestId, string evidenceCID) returns (uint256 claimId)
 ```
 
-#### **DraftsManager ↔ ActionTypeRegistry Integration**:
+#### **DraftsManager ↔ ValuableActionRegistry Integration**:
 ```solidity
-// Drafts can propose new ActionTypes that activate after governance approval
-function proposeActionType(uint256 draftId, ActionTypeParams params) 
-// ActionTypes become active only after successful governance vote
-function activateActionType(uint256 actionTypeId, uint256 approvedProposalId)
+// Drafts can propose new ValuableActions that activate after governance approval
+function proposeValuableAction(uint256 draftId, ValuableActionParams params) 
+// ValuableActions become active only after successful governance vote
+function activateValuableAction(uint256 valuableActionId, uint256 approvedProposalId)
 ```
 
 #### **WorkerSBT Influence on Discussion System**:
@@ -260,20 +267,43 @@ function castVoteMulti(
 
 ### Claims Verification Flow
 ```solidity
-// ActionType configuration
-struct ActionType {
-    uint32 weight;              // WorkerPoints reward
-    uint32 jurorsMin;           // M (minimum approvals)
-    uint32 panelSize;           // N (total jurors)
-    uint32 verifyWindow;        // Time limit for verification
-    uint32 cooldown;            // Cooldown between claims
-    uint32 rewardVerify;        // Verifier reward points
-    uint32 slashVerifierBps;    // Slashing rate for bad verifiers
-    bool revocable;             // Can be revoked by governance
-    string evidenceSpecCID;     // IPFS evidence requirements
+// ValuableAction configuration
+struct ValuableAction {
+    // Economic Parameters
+    uint32 membershipTokenReward;   // MembershipToken amount minted on completion
+    uint32 communityTokenReward;    // CommunityToken amount earned for period salary calculation  
+    uint32 investorSBTReward;      // InvestorSBT minting for investment-type actions
+    
+    // Verification Parameters
+    uint32 jurorsMin;              // M (minimum approvals needed)
+    uint32 panelSize;              // N (total jurors selected)
+    uint32 verifyWindow;           // Time limit for jury decision
+    uint32 verifierRewardWeight;   // Points earned by accurate verifiers
+    uint32 slashVerifierBps;       // Penalty for inaccurate verification
+    
+    // Quality Control
+    uint32 cooldownPeriod;         // Minimum time between claims of this type
+    uint32 maxConcurrent;          // Maximum active claims per person
+    bool revocable;                // Can community governance revoke this SBT
+    uint32 evidenceTypes;          // Bitmask of required evidence formats
+    
+    // Governance Requirements
+    uint256 proposalThreshold;     // Governance tokens needed to propose new Valuable Actions
+    address proposer;              // Who proposed this Valuable Action
+    bool requiresGovernanceApproval; // Whether this action needs community vote to activate
+    
+    // Metadata & Automation
+    string evidenceSpecCID;        // IPFS: detailed evidence requirements
+    string titleTemplate;          // Template for claim titles
+    bytes32[] automationRules;     // Integration with external systems (GitHub, etc)
+    
+    // Time-Based Parameters
+    uint64 activationDelay;        // Governance approval → active period
+    uint64 deprecationWarning;     // Time before auto-deactivation
+    bool founderVerified;          // Special status for community bootstrapping
 }
 
-// Claims workflow: submit → verify (M-of-N) → approve → mint SBT
+// Claims workflow: submit → verify (M-of-N) → approve → mint SBT + MembershipTokens
 ```
 
 ### Token Economy Patterns
@@ -287,6 +317,25 @@ function mint(uint256 usdcAmount) external {
 function redeem(uint256 tokenAmount) external {
     _burn(msg.sender, tokenAmount);
     USDC.transfer(msg.sender, tokenAmount);
+}
+```
+
+### ROI-Based Revenue Distribution
+```solidity
+// RevenueRouter: Investor revenue share decreases as ROI approaches target
+function calculateInvestorShare(address investor) external view returns (uint256) {
+    InvestorRevenue memory inv = investorRevenue[investor];
+    
+    // Calculate current ROI percentage achieved
+    uint256 currentROI = (inv.cumulativeRevenue * 10000) / inv.totalInvested;
+    
+    if (currentROI >= inv.targetROI) {
+        return 0; // ROI target reached, no more revenue
+    }
+    
+    // Linear decay: share decreases as ROI approaches target
+    uint256 progress = (currentROI * 10000) / inv.targetROI;
+    return inv.currentShare * (10000 - progress) / 10000;
 }
 ```
 
@@ -426,7 +475,8 @@ Before considering implementation complete, verify:
 1. **CommunityRegistry**: Complete community metadata, parameters, module addresses, and role management
 2. **RequestHub**: Full discussion forum with commenting, moderation, tagging, and spam prevention
 3. **DraftsManager**: Multi-contributor proposal development with versioning and review cycles
-4. **Integration workflows**: RequestHub → Claims bounties, DraftsManager → ActionType proposals
+4. **CommunityFactory**: Community deployment with founder MembershipToken distribution and initial ValuableAction creation
+5. **Integration workflows**: RequestHub → Claims bounties, DraftsManager → ValuableAction proposals
 
 ### Phase 2: Core Governance
 1. Complete `CountingMultiChoice` with weight snapshots and events
@@ -435,18 +485,18 @@ Before considering implementation complete, verify:
 4. **Integrate with DraftsManager**: Seamless draft → proposal escalation
 
 ### Phase 3: Verification System  
-1. `ActionTypeRegistry` with configurable verification parameters
+1. `ValuableActionRegistry` with configurable verification parameters
 2. `VerifierPool` with pseudo-random juror selection and bonding
 3. `Claims` end-to-end workflow with appeal windows and RequestHub integration
 4. `WorkerSBT` with WorkerPoints EMA tracking and discussion privileges
 
 ### Phase 4: Economic Modules
 1. `CommunityToken` with 1:1 USDC backing
-2. `RevenueRouter` with configurable splits
+2. `RevenueRouter` with ROI-based revenue decay
 3. `Marketplace` and `ProjectFactory` basic functionality
 4. **TreasuryAdapter** with CommunityRegistry parameter integration
 
-### Phase 4: Deployment & Testing
+### Phase 5: Deployment & Testing
 1. Complete deployment scripts for all networks
 2. On-chain smoke tests covering full workflows
 3. Achieve ≥86% test coverage
