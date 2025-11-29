@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
-import {IVerifierPool} from "contracts/core/interfaces/IVerifierPool.sol";
+import {IVerifierManager} from "contracts/core/interfaces/IVerifierManager.sol";
 import {IWorkerSBT} from "contracts/core/interfaces/IWorkerSBT.sol";
 import {MembershipTokenERC20Votes} from "../tokens/MembershipTokenERC20Votes.sol";
 import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
@@ -44,10 +44,11 @@ contract Claims {
 
     /// @notice Core contracts
     ValuableActionRegistry public immutable actionRegistry;
-    address public verifierPool;
+    address public verifierManager;
     address public workerSBT;
     address public governance;
     address public membershipToken;
+    uint256 public immutable communityId;
 
     /// @notice State variables
     uint256 public lastClaimId;
@@ -96,27 +97,30 @@ contract Claims {
     /// @notice Constructor
     /// @param _governance Governance contract address
     /// @param _actionRegistry ValuableActionRegistry contract address  
-    /// @param _verifierPool VerifierPool contract address
+    /// @param _verifierManager VerifierManager contract address
     /// @param _workerSBT WorkerSBT contract address
     /// @param _membershipToken MembershipToken contract address for minting rewards
+    /// @param _communityId Community identifier for this claims contract instance
     constructor(
         address _governance,
         address _actionRegistry, 
-        address _verifierPool,
+        address _verifierManager,
         address _workerSBT,
-        address _membershipToken
+        address _membershipToken,
+        uint256 _communityId
     ) {
         if (_governance == address(0)) revert Errors.ZeroAddress();
         if (_actionRegistry == address(0)) revert Errors.ZeroAddress();
-        if (_verifierPool == address(0)) revert Errors.ZeroAddress();
+        if (_verifierManager == address(0)) revert Errors.ZeroAddress();
         if (_workerSBT == address(0)) revert Errors.ZeroAddress();
         if (_membershipToken == address(0)) revert Errors.ZeroAddress();
 
         governance = _governance;
         actionRegistry = ValuableActionRegistry(_actionRegistry);
-        verifierPool = _verifierPool;
+        verifierManager = _verifierManager;
         workerSBT = _workerSBT;
         membershipToken = _membershipToken;
+        communityId = _communityId;
     }
 
     /// @notice Submit a work claim for verification
@@ -156,12 +160,14 @@ contract Claims {
         // Set verification deadline from ValuableActionRegistry
         claim.verifyDeadline = uint64(block.timestamp + action.verifyWindow);
 
-        // Assign juror panel via VerifierPool using registry parameters
-        if (verifierPool != address(0) && verifierPool.code.length > 0) {
-            try IVerifierPool(verifierPool).selectJurors(
+        // Assign juror panel via VerifierManager using registry parameters
+        if (verifierManager != address(0) && verifierManager.code.length > 0) {
+            try IVerifierManager(verifierManager).selectJurors(
                 claimId,
+                communityId,
                 action.panelSize,
-                uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, claimId)))
+                uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, claimId))),
+                false // Use community configuration for weighting
             ) returns (address[] memory selectedJurors) {
                 claim.jurors = selectedJurors;
                 emit JurorsAssigned(claimId, selectedJurors);
@@ -179,11 +185,11 @@ contract Claims {
         emit ClaimSubmitted(claimId, typeId, msg.sender, evidenceCID);
     }
 
-    /// @notice Assign jurors to a claim (called by VerifierPool)
+    /// @notice Assign jurors to a claim (called by VerifierManager)
     /// @param claimId Claim to assign jurors to
     /// @param jurors Array of selected juror addresses
     function assignJurors(uint256 claimId, address[] calldata jurors) external {
-        if (msg.sender != verifierPool) revert Errors.NotAuthorized(msg.sender);
+        if (msg.sender != verifierManager) revert Errors.NotAuthorized(msg.sender);
         if (claimId == 0 || claimId > lastClaimId) revert Errors.InvalidInput("Invalid claim ID");
         
         Claim storage claim = claims[claimId];
@@ -281,9 +287,9 @@ contract Claims {
         claim.status = status;
         claim.resolved = true;
 
-        // Update verifier reputations based on their votes
-        if (verifierPool != address(0) && verifierPool.code.length > 0 && claim.jurors.length > 0) {
-            _updateVerifierReputations(claimId, status);
+        // Report verification results to VerifierManager (replaces old reputation system)
+        if (verifierManager != address(0) && verifierManager.code.length > 0 && claim.jurors.length > 0) {
+            _reportVerificationResults(claimId, status);
         }
 
         if (status == Types.ClaimStatus.Approved) {
@@ -342,52 +348,62 @@ contract Claims {
         emit ClaimResolved(claimId, status, claim.approvalsCount, claim.rejectionsCount);
     }
 
-    /// @notice Update verifier reputations based on claim resolution
+    /// @notice Report verification results and potential fraud to VerifierManager
     /// @param claimId Claim ID that was resolved
     /// @param finalStatus Final claim status (Approved or Rejected)
-    function _updateVerifierReputations(uint256 claimId, Types.ClaimStatus finalStatus) internal {
+    function _reportVerificationResults(uint256 claimId, Types.ClaimStatus finalStatus) internal {
         Claim storage claim = claims[claimId];
         
         if (claim.jurors.length == 0) return;
         
-        bool[] memory successful = new bool[](claim.jurors.length);
+        // Identify jurors who voted incorrectly (potential fraud cases)
+        address[] memory incorrectVoters = new address[](claim.jurors.length);
+        uint256 incorrectCount = 0;
         
-        // TODO: FIX REPUTATION SYSTEM FLAW
-        // Current issue: Claims resolve immediately when M votes are reached, 
-        // causing N-M jurors who haven't voted yet to be unfairly penalized.
-        // This incentivizes rushed voting over thorough evidence review.
-        //
-        // Potential solutions:
-        // 1. Only update reputation for jurors who actually voted before resolution
-        // 2. Allow full voting window and resolve based on deadline expiry
-        // 3. Implement separate reputation logic for non-participation vs wrong decisions
-        // 4. Consider time-weighted voting where early accurate votes get bonus points
-        
-        // Determine which jurors voted with the majority (successfully)
         for (uint256 i = 0; i < claim.jurors.length; i++) {
             address juror = claim.jurors[i];
             
             // Only consider jurors who actually voted
             if (!claim.hasVoted[juror]) {
-                successful[i] = false; // Didn't vote = unsuccessful
-                continue;
+                continue; // Non-participation is handled separately from incorrect voting
             }
             
             // Get how the juror voted (true = approved, false = rejected)
             bool jurorApproved = claim.votes[juror];
             
-            // Juror was successful if they voted with the final outcome
-            successful[i] = (finalStatus == Types.ClaimStatus.Approved) ? jurorApproved : !jurorApproved;
+            // Check if juror voted against the final outcome
+            bool votedIncorrectly = (finalStatus == Types.ClaimStatus.Approved) ? !jurorApproved : jurorApproved;
+            
+            if (votedIncorrectly) {
+                incorrectVoters[incorrectCount] = juror;
+                incorrectCount++;
+            }
         }
         
-        // Call VerifierPool to update reputations
-        if (verifierPool.code.length > 0) {
-            // solhint-disable-next-line no-empty-blocks
-            try IVerifierPool(verifierPool).updateReputations(claimId, claim.jurors, successful) {
-                // Reputation update successful - no action needed
+        // If there are incorrect voters, report potential fraud
+        // Note: In the VPT system, this triggers governance review rather than automatic punishment
+        if (incorrectCount > 0) {
+            // Trim the array to actual size
+            address[] memory offenders = new address[](incorrectCount);
+            for (uint256 i = 0; i < incorrectCount; i++) {
+                offenders[i] = incorrectVoters[i];
+            }
+            
+            // Generate evidence CID for the fraud report
+            string memory evidenceCID = string(abi.encodePacked(
+                "claim-", _uint2str(claimId), 
+                "-incorrect-votes-", _uint2str(uint256(finalStatus))
+            ));
+            
+            // Report to VerifierManager for governance review
+            try IVerifierManager(verifierManager).reportFraud(
+                claimId, communityId, offenders, evidenceCID
+            ) {
+                // Fraud report successful - governance will handle from here
             // solhint-disable-next-line no-empty-blocks  
             } catch {
-                // If reputation update fails, continue - this is not critical for claim resolution
+                // If fraud report fails, continue - this is not critical for claim resolution
+                // The fraud can still be reported manually through governance
             }
         }
     }
@@ -479,14 +495,14 @@ contract Claims {
     }
 
     /// @notice Update contract addresses (governance only)
-    /// @dev actionRegistry is immutable and cannot be updated
-    /// @param _verifierPool New VerifierPool address
+    /// @dev actionRegistry and communityId are immutable and cannot be updated
+    /// @param _verifierManager New VerifierManager address
     /// @param _workerSBT New WorkerSBT address
     function updateContracts(
-        address _verifierPool, 
+        address _verifierManager, 
         address _workerSBT
     ) external onlyGovernance {
-        if (_verifierPool != address(0)) verifierPool = _verifierPool;
+        if (_verifierManager != address(0)) verifierManager = _verifierManager;
         if (_workerSBT != address(0)) workerSBT = _workerSBT;
     }
 
@@ -495,6 +511,12 @@ contract Claims {
     function updateGovernance(address _governance) external onlyGovernance {
         if (_governance == address(0)) revert Errors.ZeroAddress();
         governance = _governance;
+    }
+
+    /// @notice Get the community ID for this claims contract
+    /// @return The immutable community identifier
+    function getCommunityId() external view returns (uint256) {
+        return communityId;
     }
 
     /// @dev Count active claims for a worker for a specific action type
