@@ -1,0 +1,22 @@
+# Ignore everything by default
+*
+
+# Only format specific folders
+!contracts/**
+!scripts/**
+!test/**
+
+# Also format root config files
+!*.ts
+!*.json
+!.github/**
+
+# But ignore build outputs and dependencies even in those folders
+**/node_modules/
+**/out/
+**/cache/
+**/artifacts/
+**/typechain-types/
+lib/
+package-lock.json
+pnpm-lock.yaml
