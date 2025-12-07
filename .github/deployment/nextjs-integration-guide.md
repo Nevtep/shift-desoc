@@ -11,7 +11,7 @@ your-nextjs-app/
 ├── pages/api/
 │   └── communities/
 │       ├── create.ts          # Main community creation endpoint
-│       ├── status/[id].ts     # Deployment status checking  
+│       ├── status/[id].ts     # Deployment status checking
 │       └── list.ts            # List user's communities
 ├── lib/
 │   ├── community-deployer.ts  # Core deployment logic
@@ -30,29 +30,29 @@ your-nextjs-app/
 
 ```typescript
 // pages/api/communities/create.ts
-import { NextApiRequest, NextApiResponse } from 'next';
-import { ethers } from 'ethers';
-import { createCommunityForUI } from '../../../lib/community-deployer';
-import { saveCommunityDeployment } from '../../../lib/database';
-import { validateCommunityParams } from '../../../lib/validation';
+import { NextApiRequest, NextApiResponse } from "next";
+import { ethers } from "ethers";
+import { createCommunityForUI } from "../../../lib/community-deployer";
+import { saveCommunityDeployment } from "../../../lib/database";
+import { validateCommunityParams } from "../../../lib/validation";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     // Extract and validate parameters
     const {
       name,
-      description = '',
+      description = "",
       founderAddress,
       governanceParams = {},
-      network = 'base_sepolia'
+      network = "base_sepolia",
     } = req.body;
 
     // Input validation
@@ -61,13 +61,13 @@ export default async function handler(
       description,
       founderAddress,
       governanceParams,
-      network
+      network,
     });
 
     if (!validation.isValid) {
-      return res.status(400).json({ 
-        error: 'Invalid parameters',
-        details: validation.errors 
+      return res.status(400).json({
+        error: "Invalid parameters",
+        details: validation.errors,
       });
     }
 
@@ -77,24 +77,24 @@ export default async function handler(
       description: description.trim(),
       founderAddress: ethers.getAddress(founderAddress), // Normalize address
       governanceParams: {
-        debateWindow: governanceParams.debateWindow || 86400,    // 24h default
-        voteWindow: governanceParams.voteWindow || 259200,       // 72h default  
+        debateWindow: governanceParams.debateWindow || 86400, // 24h default
+        voteWindow: governanceParams.voteWindow || 259200, // 72h default
         executionDelay: governanceParams.executionDelay || 172800, // 48h default
-        proposalThreshold: governanceParams.proposalThreshold || "100"
+        proposalThreshold: governanceParams.proposalThreshold || "100",
       },
-      network
+      network,
     };
 
     // Deploy community via Hardhat script
     console.log(`🚀 Creating community "${name}" for ${founderAddress}`);
-    
+
     const deploymentResult = await createCommunityForUI(finalParams);
-    
+
     // Save to database for tracking
     const dbRecord = await saveCommunityDeployment({
       ...deploymentResult,
       founderAddress,
-      networkName: network
+      networkName: network,
     });
 
     // Return success response
@@ -103,21 +103,20 @@ export default async function handler(
       data: {
         ...deploymentResult,
         databaseId: dbRecord.id,
-        deployedAt: new Date().toISOString()
-      }
+        deployedAt: new Date().toISOString(),
+      },
     });
-
   } catch (error) {
-    console.error('❌ Community creation failed:', error);
-    
+    console.error("❌ Community creation failed:", error);
+
     // Return detailed error for development, generic for production
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    
+    const isDevelopment = process.env.NODE_ENV === "development";
+
     res.status(500).json({
       success: false,
-      error: 'Community creation failed',
-      message: isDevelopment ? error.message : 'Internal server error',
-      ...(isDevelopment && { stack: error.stack })
+      error: "Community creation failed",
+      message: isDevelopment ? error.message : "Internal server error",
+      ...(isDevelopment && { stack: error.stack }),
     });
   }
 }
@@ -127,46 +126,45 @@ export const config = {
   api: {
     responseLimit: false,
     bodyParser: {
-      sizeLimit: '1mb',
+      sizeLimit: "1mb",
     },
   },
   // Extend timeout for blockchain operations
   maxDuration: 300, // 5 minutes
-}
+};
 ```
 
 ### 2. Deployment Status Checker
 
 ```typescript
 // pages/api/communities/status/[id].ts
-import { NextApiRequest, NextApiResponse } from 'next';
-import { getCommunityDeploymentStatus } from '../../../../lib/database';
+import { NextApiRequest, NextApiResponse } from "next";
+import { getCommunityDeploymentStatus } from "../../../../lib/database";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
   const { id } = req.query;
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     const deployment = await getCommunityDeploymentStatus(id as string);
-    
+
     if (!deployment) {
-      return res.status(404).json({ error: 'Deployment not found' });
+      return res.status(404).json({ error: "Deployment not found" });
     }
 
     res.status(200).json({
       success: true,
-      data: deployment
+      data: deployment,
     });
-
   } catch (error) {
-    console.error('Error fetching deployment status:', error);
-    res.status(500).json({ error: 'Failed to fetch deployment status' });
+    console.error("Error fetching deployment status:", error);
+    res.status(500).json({ error: "Failed to fetch deployment status" });
   }
 }
 ```
@@ -175,8 +173,8 @@ export default async function handler(
 
 ```typescript
 // lib/community-deployer.ts
-import { spawn } from 'child_process';
-import path from 'path';
+import { spawn } from "child_process";
+import path from "path";
 
 interface CommunityParams {
   name: string;
@@ -191,11 +189,18 @@ interface CommunityParams {
   network: string;
 }
 
-export async function createCommunityForUI(params: CommunityParams): Promise<any> {
+export async function createCommunityForUI(
+  params: CommunityParams,
+): Promise<any> {
   return new Promise((resolve, reject) => {
     // Path to the Hardhat script
-    const scriptPath = path.join(process.cwd(), 'scripts', 'hardhat', 'create-community-api.ts');
-    
+    const scriptPath = path.join(
+      process.cwd(),
+      "scripts",
+      "hardhat",
+      "create-community-api.ts",
+    );
+
     // Environment variables for the script
     const env = {
       ...process.env,
@@ -205,37 +210,39 @@ export async function createCommunityForUI(params: CommunityParams): Promise<any
       DEBATE_WINDOW: params.governanceParams.debateWindow.toString(),
       VOTE_WINDOW: params.governanceParams.voteWindow.toString(),
       EXECUTION_DELAY: params.governanceParams.executionDelay.toString(),
-      PROPOSAL_THRESHOLD: params.governanceParams.proposalThreshold
+      PROPOSAL_THRESHOLD: params.governanceParams.proposalThreshold,
     };
 
     // Spawn Hardhat process
-    const hardhat = spawn('npx', [
-      'hardhat', 'run', scriptPath, '--network', params.network
-    ], {
-      env,
-      cwd: process.cwd(),
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    const hardhat = spawn(
+      "npx",
+      ["hardhat", "run", scriptPath, "--network", params.network],
+      {
+        env,
+        cwd: process.cwd(),
+        stdio: ["pipe", "pipe", "pipe"],
+      },
+    );
 
-    let output = '';
-    let errorOutput = '';
+    let output = "";
+    let errorOutput = "";
 
     // Collect stdout
-    hardhat.stdout.on('data', (data) => {
+    hardhat.stdout.on("data", (data) => {
       const chunk = data.toString();
       output += chunk;
-      console.log('Hardhat output:', chunk);
+      console.log("Hardhat output:", chunk);
     });
 
     // Collect stderr
-    hardhat.stderr.on('data', (data) => {
+    hardhat.stderr.on("data", (data) => {
       const chunk = data.toString();
       errorOutput += chunk;
-      console.error('Hardhat error:', chunk);
+      console.error("Hardhat error:", chunk);
     });
 
     // Handle process completion
-    hardhat.on('close', (code) => {
+    hardhat.on("close", (code) => {
       if (code === 0) {
         try {
           // Extract JSON result from output
@@ -244,17 +251,19 @@ export async function createCommunityForUI(params: CommunityParams): Promise<any
             const result = JSON.parse(jsonMatch[1]);
             resolve(result);
           } else {
-            reject(new Error('Could not parse deployment result'));
+            reject(new Error("Could not parse deployment result"));
           }
         } catch (parseError) {
           reject(new Error(`Failed to parse result: ${parseError.message}`));
         }
       } else {
-        reject(new Error(`Hardhat process failed with code ${code}: ${errorOutput}`));
+        reject(
+          new Error(`Hardhat process failed with code ${code}: ${errorOutput}`),
+        );
       }
     });
 
-    hardhat.on('error', (error) => {
+    hardhat.on("error", (error) => {
       reject(new Error(`Failed to start Hardhat process: ${error.message}`));
     });
   });
@@ -265,11 +274,14 @@ export async function createCommunityForUI(params: CommunityParams): Promise<any
 
 ```typescript
 // lib/database.ts
-import { Pool } from 'pg';
+import { Pool } from "pg";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
 });
 
 interface CommunityDeployment {
@@ -288,7 +300,7 @@ interface CommunityDeployment {
 
 export async function saveCommunityDeployment(deployment: CommunityDeployment) {
   const client = await pool.connect();
-  
+
   try {
     const query = `
       INSERT INTO community_deployments (
@@ -301,7 +313,7 @@ export async function saveCommunityDeployment(deployment: CommunityDeployment) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
       RETURNING *
     `;
-    
+
     const values = [
       deployment.communityId,
       deployment.communityName,
@@ -318,12 +330,11 @@ export async function saveCommunityDeployment(deployment: CommunityDeployment) {
       deployment.network.chainId,
       deployment.txHashes,
       deployment.founderTokens,
-      'completed'
+      "completed",
     ];
-    
+
     const result = await client.query(query, values);
     return result.rows[0];
-    
   } finally {
     client.release();
   }
@@ -331,16 +342,15 @@ export async function saveCommunityDeployment(deployment: CommunityDeployment) {
 
 export async function getCommunityDeploymentStatus(deploymentId: string) {
   const client = await pool.connect();
-  
+
   try {
     const query = `
       SELECT * FROM community_deployments 
       WHERE id = $1 OR community_id::text = $1
     `;
-    
+
     const result = await client.query(query, [deploymentId]);
     return result.rows[0] || null;
-    
   } finally {
     client.release();
   }
@@ -348,7 +358,7 @@ export async function getCommunityDeploymentStatus(deploymentId: string) {
 
 export async function getUserCommunities(founderAddress: string) {
   const client = await pool.connect();
-  
+
   try {
     const query = `
       SELECT community_id, community_name, status, created_at, completed_at
@@ -356,10 +366,9 @@ export async function getUserCommunities(founderAddress: string) {
       WHERE founder_address = $1
       ORDER BY created_at DESC
     `;
-    
+
     const result = await client.query(query, [founderAddress]);
     return result.rows;
-    
   } finally {
     client.release();
   }
@@ -370,7 +379,7 @@ export async function getUserCommunities(founderAddress: string) {
 
 ```typescript
 // lib/validation.ts
-import { ethers } from 'ethers';
+import { ethers } from "ethers";
 
 interface ValidationResult {
   isValid: boolean;
@@ -381,66 +390,77 @@ export function validateCommunityParams(params: any): ValidationResult {
   const errors: string[] = [];
 
   // Name validation
-  if (!params.name || typeof params.name !== 'string') {
-    errors.push('Community name is required');
+  if (!params.name || typeof params.name !== "string") {
+    errors.push("Community name is required");
   } else if (params.name.length < 3) {
-    errors.push('Community name must be at least 3 characters');
+    errors.push("Community name must be at least 3 characters");
   } else if (params.name.length > 50) {
-    errors.push('Community name must be less than 50 characters');
+    errors.push("Community name must be less than 50 characters");
   }
 
   // Description validation
   if (params.description && params.description.length > 500) {
-    errors.push('Description must be less than 500 characters');
+    errors.push("Description must be less than 500 characters");
   }
 
   // Founder address validation
   if (!params.founderAddress) {
-    errors.push('Founder address is required');
+    errors.push("Founder address is required");
   } else if (!ethers.isAddress(params.founderAddress)) {
-    errors.push('Invalid Ethereum address format');
+    errors.push("Invalid Ethereum address format");
   }
 
   // Network validation
-  const validNetworks = ['base_sepolia', 'base_mainnet', 'ethereum_sepolia', 'ethereum_mainnet'];
+  const validNetworks = [
+    "base_sepolia",
+    "base_mainnet",
+    "ethereum_sepolia",
+    "ethereum_mainnet",
+  ];
   if (params.network && !validNetworks.includes(params.network)) {
-    errors.push(`Invalid network. Must be one of: ${validNetworks.join(', ')}`);
+    errors.push(`Invalid network. Must be one of: ${validNetworks.join(", ")}`);
   }
 
   // Governance parameters validation
   if (params.governanceParams) {
     const gov = params.governanceParams;
-    
-    if (gov.debateWindow && (gov.debateWindow < 3600 || gov.debateWindow > 604800)) {
-      errors.push('Debate window must be between 1 hour and 1 week');
+
+    if (
+      gov.debateWindow &&
+      (gov.debateWindow < 3600 || gov.debateWindow > 604800)
+    ) {
+      errors.push("Debate window must be between 1 hour and 1 week");
     }
-    
+
     if (gov.voteWindow && (gov.voteWindow < 3600 || gov.voteWindow > 604800)) {
-      errors.push('Vote window must be between 1 hour and 1 week');
+      errors.push("Vote window must be between 1 hour and 1 week");
     }
-    
-    if (gov.executionDelay && (gov.executionDelay < 0 || gov.executionDelay > 604800)) {
-      errors.push('Execution delay must be between 0 and 1 week');
+
+    if (
+      gov.executionDelay &&
+      (gov.executionDelay < 0 || gov.executionDelay > 604800)
+    ) {
+      errors.push("Execution delay must be between 0 and 1 week");
     }
-    
+
     if (gov.proposalThreshold) {
       const threshold = parseFloat(gov.proposalThreshold);
       if (isNaN(threshold) || threshold < 1 || threshold > 1000000) {
-        errors.push('Proposal threshold must be between 1 and 1,000,000');
+        errors.push("Proposal threshold must be between 1 and 1,000,000");
       }
     }
   }
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   };
 }
 
 export function sanitizeInput(input: string): string {
   return input
     .trim()
-    .replace(/[<>\"']/g, '') // Remove potentially dangerous characters
+    .replace(/[<>\"']/g, "") // Remove potentially dangerous characters
     .slice(0, 200); // Limit length
 }
 ```
@@ -451,7 +471,7 @@ export function sanitizeInput(input: string): string {
 
 ```typescript
 // hooks/useCommunityCreation.ts (in your Expo app)
-import { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
 
 interface CommunityParams {
   name: string;
@@ -476,25 +496,27 @@ export function useCommunityCreation() {
     setProgress(0);
 
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/communities/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${process.env.EXPO_PUBLIC_API_URL}/api/communities/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(params),
         },
-        body: JSON.stringify(params),
-      });
+      );
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create community');
+        throw new Error(result.error || "Failed to create community");
       }
 
       setProgress(100);
       return result.data;
-
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : "Unknown error");
       throw err;
     } finally {
       setLoading(false);
@@ -504,12 +526,12 @@ export function useCommunityCreation() {
   const checkStatus = useCallback(async (deploymentId: string) => {
     try {
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/communities/status/${deploymentId}`
+        `${process.env.EXPO_PUBLIC_API_URL}/api/communities/status/${deploymentId}`,
       );
       const result = await response.json();
       return result.data;
     } catch (err) {
-      console.error('Failed to check deployment status:', err);
+      console.error("Failed to check deployment status:", err);
       return null;
     }
   }, []);
@@ -564,14 +586,14 @@ export function CreateCommunityScreen({ navigation }) {
       });
 
       Alert.alert(
-        'Success!', 
+        'Success!',
         `Community "${name}" created successfully!`,
         [
           {
             text: 'View Community',
-            onPress: () => navigation.navigate('Community', { 
+            onPress: () => navigation.navigate('Community', {
               communityId: result.communityId,
-              contracts: result.contracts 
+              contracts: result.contracts
             })
           }
         ]
@@ -585,7 +607,7 @@ export function CreateCommunityScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create New Community</Text>
-      
+
       <TextInput
         style={styles.input}
         placeholder="Community Name"
@@ -593,7 +615,7 @@ export function CreateCommunityScreen({ navigation }) {
         onChangeText={setName}
         maxLength={50}
       />
-      
+
       <TextInput
         style={[styles.input, styles.textArea]}
         placeholder="Description (optional)"
@@ -605,7 +627,7 @@ export function CreateCommunityScreen({ navigation }) {
       />
 
       {error && <Text style={styles.error}>{error}</Text>}
-      
+
       <Button
         title={loading ? 'Creating...' : 'Create Community'}
         onPress={handleCreate}
@@ -693,18 +715,18 @@ EXPO_PUBLIC_NETWORK="base_sepolia" # or base_mainnet for production
 
 ```sql
 -- Community creation metrics
-SELECT 
+SELECT
   DATE(created_at) as date,
   COUNT(*) as communities_created,
   AVG(total_gas_used) as avg_gas_used,
   SUM(deployment_cost_eth) as total_eth_spent
-FROM community_deployments 
+FROM community_deployments
 WHERE status = 'completed'
 GROUP BY DATE(created_at)
 ORDER BY date DESC;
 
 -- Most active founders
-SELECT 
+SELECT
   founder_address,
   COUNT(*) as communities_created,
   MAX(created_at) as last_created
@@ -714,7 +736,7 @@ ORDER BY communities_created DESC
 LIMIT 10;
 
 -- Network usage distribution
-SELECT 
+SELECT
   network_name,
   COUNT(*) as deployments,
   AVG(deployment_cost_eth) as avg_cost_eth
@@ -728,27 +750,32 @@ GROUP BY network_name;
 
 ```typescript
 // middleware/security.ts
-import rateLimit from 'express-rate-limit';
-import { NextApiRequest, NextApiResponse } from 'next';
+import rateLimit from "express-rate-limit";
+import { NextApiRequest, NextApiResponse } from "next";
 
 // Rate limiting for community creation
 export const createCommunityLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // Limit each IP to 5 requests per windowMs
-  message: 'Too many communities created, please try again later',
+  message: "Too many communities created, please try again later",
 });
 
 // Input sanitization
-export function sanitizeAndValidate(req: NextApiRequest, res: NextApiResponse, next: Function) {
+export function sanitizeAndValidate(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  next: Function,
+) {
   // Sanitize string inputs
   if (req.body.name) req.body.name = req.body.name.trim().slice(0, 50);
-  if (req.body.description) req.body.description = req.body.description.trim().slice(0, 500);
-  
+  if (req.body.description)
+    req.body.description = req.body.description.trim().slice(0, 500);
+
   // Validate Ethereum address
   if (req.body.founderAddress && !ethers.isAddress(req.body.founderAddress)) {
-    return res.status(400).json({ error: 'Invalid Ethereum address' });
+    return res.status(400).json({ error: "Invalid Ethereum address" });
   }
-  
+
   next();
 }
 ```
@@ -759,7 +786,7 @@ export function sanitizeAndValidate(req: NextApiRequest, res: NextApiResponse, n
 
 ```typescript
 // lib/cache.ts
-import Redis from 'ioredis';
+import Redis from "ioredis";
 
 const redis = new Redis(process.env.REDIS_URL);
 
@@ -775,4 +802,4 @@ export async function getCachedDeployment(communityId: string) {
 
 ---
 
-*This implementation guide provides production-ready code for integrating Shift DeSoc community creation into Next.js applications serving Expo mobile apps. All code examples are tested and optimized for real-world usage.*
+_This implementation guide provides production-ready code for integrating Shift DeSoc community creation into Next.js applications serving Expo mobile apps. All code examples are tested and optimized for real-world usage._

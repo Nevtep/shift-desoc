@@ -14,10 +14,10 @@ contract MembershipTokenERC20Votes is ERC20, ERC20Permit, ERC20Votes, AccessCont
     uint256 public constant BASE_VOTING_POWER = 1e18;      // 1 token = 1 voto base
     uint256 public constant MAX_SBT_MULTIPLIER = 5e18;     // Hasta 5x multiplicador SBT
     uint256 public constant SBT_SCALING_FACTOR = 100e18;   // Factor de escalamiento de puntos SBT
-    
+
     mapping(address => bool) public eligibleVoters;        // Lista blanca de votantes
     mapping(address => uint256) public lastVoteTimestamp;  // Anti-spam de votación
-    
+
     uint256 public minVotingBalance = 10e18;               // Balance mínimo para votar
     uint256 public proposalThreshold = 100e18;             // Tokens requeridos para proponer
 }
@@ -44,29 +44,29 @@ function getVotes(address account) public view virtual override returns (uint256
 ### Cálculo de Poder de Voto Ponderado por Reputación
 
 ```solidity
-function _applyReputationMultiplier(address voter, uint256 baseVotes) 
+function _applyReputationMultiplier(address voter, uint256 baseVotes)
     internal view returns (uint256) {
     if (baseVotes == 0) return 0;
-    
+
     // Obtener puntos efectivos de WorkerSBT
     uint256 sbtPoints = 0;
     if (workerSBT.balanceOf(voter) > 0) {
         uint256 tokenId = workerSBT.tokenOfOwnerByIndex(voter, 0);
         sbtPoints = workerSBT.calculateEffectivePoints(tokenId);
     }
-    
+
     // Calcular multiplicador basado en puntos SBT
     uint256 multiplier = BASE_VOTING_POWER;
     if (sbtPoints > 0) {
         uint256 sbtBonus = (sbtPoints * 1e18) / SBT_SCALING_FACTOR;
         multiplier = BASE_VOTING_POWER + sbtBonus;
-        
+
         // Limitar al multiplicador máximo
         if (multiplier > MAX_SBT_MULTIPLIER) {
             multiplier = MAX_SBT_MULTIPLIER;
         }
     }
-    
+
     return (baseVotes * multiplier) / BASE_VOTING_POWER;
 }
 ```
@@ -74,7 +74,7 @@ function _applyReputationMultiplier(address voter, uint256 baseVotes)
 ### Gestión de Elegibilidad de Votantes
 
 ```solidity
-function setVoterEligibility(address voter, bool eligible) 
+function setVoterEligibility(address voter, bool eligible)
     external onlyRole(GOVERNANCE_ROLE) {
     eligibleVoters[voter] = eligible;
     emit VoterEligibilityChanged(voter, eligible);
@@ -83,7 +83,7 @@ function setVoterEligibility(address voter, bool eligible)
 function batchSetEligibility(address[] calldata voters, bool[] calldata eligibility)
     external onlyRole(GOVERNANCE_ROLE) {
     require(voters.length == eligibility.length, "Arrays desiguales");
-    
+
     for (uint256 i = 0; i < voters.length; i++) {
         eligibleVoters[voters[i]] = eligibility[i];
         emit VoterEligibilityChanged(voters[i], eligibility[i]);
@@ -97,9 +97,9 @@ function batchSetEligibility(address[] calldata voters, bool[] calldata eligibil
 function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
     require(to != address(0), "Dirección inválida");
     require(amount > 0, "Monto inválido");
-    
+
     _mint(to, amount);
-    
+
     // Habilitar automáticamente eligibilidad de votante para nuevos holders
     if (!eligibleVoters[to] && balanceOf(to) >= minVotingBalance) {
         eligibleVoters[to] = true;
@@ -108,12 +108,12 @@ function mint(address to, uint256 amount) external onlyRole(MINTER_ROLE) {
 }
 
 function burnFrom(address account, uint256 amount) public virtual override {
-    require(hasRole(BURNER_ROLE, _msgSender()) || account == _msgSender(), 
+    require(hasRole(BURNER_ROLE, _msgSender()) || account == _msgSender(),
             "No autorizado para quemar");
-    
+
     _spendAllowance(account, _msgSender(), amount);
     _burn(account, amount);
-    
+
     // Remover elegibilidad si balance cae por debajo del mínimo
     if (balanceOf(account) < minVotingBalance) {
         eligibleVoters[account] = false;
@@ -137,12 +137,12 @@ function updateVotingParameters(
     uint256 newMinBalance,
     uint256 newProposalThreshold
 ) external onlyRole(GOVERNANCE_ROLE) {
-    require(newMinBalance > 0 && newProposalThreshold >= newMinBalance, 
+    require(newMinBalance > 0 && newProposalThreshold >= newMinBalance,
             "Parámetros inválidos");
-    
+
     minVotingBalance = newMinBalance;
     proposalThreshold = newProposalThreshold;
-    
+
     emit VotingParametersUpdated(newMinBalance, newProposalThreshold);
 }
 ```
@@ -150,10 +150,10 @@ function updateVotingParameters(
 ### Prevención de Manipulación de Votación
 
 ```solidity
-function _beforeTokenTransfer(address from, address to, uint256 amount) 
+function _beforeTokenTransfer(address from, address to, uint256 amount)
     internal virtual override(ERC20, ERC20Votes) {
     super._beforeTokenTransfer(from, to, amount);
-    
+
     // Prevenir transferencias durante votación activa para prevenir manipulación
     if (from != address(0) && to != address(0)) {
         require(block.timestamp > lastVoteTimestamp[from] + VOTE_COOLDOWN,
@@ -165,7 +165,7 @@ function _beforeTokenTransfer(address from, address to, uint256 amount)
 function _afterTokenTransfer(address from, address to, uint256 amount)
     internal virtual override(ERC20, ERC20Votes) {
     super._afterTokenTransfer(from, to, amount);
-    
+
     // Actualizar elegibilidad basada en nuevos balances
     _updateVoterEligibility(from);
     _updateVoterEligibility(to);
@@ -180,14 +180,14 @@ function _afterTokenTransfer(address from, address to, uint256 amount)
 // ShiftGovernor consulta elegibilidad y poder de voto
 function hasVotes(address account, uint256 blockNumber) external view returns (uint256) {
     if (!eligibleVoters[account]) return 0;
-    
+
     uint256 historicalVotes = getPastVotes(account, blockNumber);
     return _applyReputationMultiplier(account, historicalVotes);
 }
 
 // Verificar umbral de propuesta
 function meetsProposalThreshold(address proposer) external view returns (bool) {
-    return eligibleVoters[proposer] && 
+    return eligibleVoters[proposer] &&
            getVotes(proposer) >= proposalThreshold;
 }
 ```
@@ -198,10 +198,10 @@ function meetsProposalThreshold(address proposer) external view returns (bool) {
 // Escuchar eventos de cambio de WorkerSBT para recalcular poder de voto
 function onWorkerSBTUpdate(address worker, uint256 newPoints) external {
     require(msg.sender == address(workerSBT), "Solo WorkerSBT");
-    
+
     // Emitir evento para actualización de UI
     emit ReputationMultiplierUpdated(worker, newPoints);
-    
+
     // Recalcular checkpoints de delegación si es necesario
     _writeCheckpoint(_delegates[worker], _subtract, _applyReputationMultiplier(worker, 0));
 }
@@ -212,6 +212,7 @@ function onWorkerSBTUpdate(address worker, uint256 newPoints) external {
 ### Distribución de Suministro
 
 **Suministro Inicial**:
+
 ```solidity
 constructor(
     string memory name,
@@ -220,16 +221,17 @@ constructor(
     address initialAdmin
 ) ERC20(name, symbol) ERC20Permit(name) {
     workerSBT = IWorkerSBT(workerSBTAddress);
-    
+
     _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
     _grantRole(GOVERNANCE_ROLE, initialAdmin);
-    
+
     // Acuñar suministro inicial para bootstrap de gobernanza
     _mint(initialAdmin, INITIAL_SUPPLY);
 }
 ```
 
 **Estrategia de Distribución**:
+
 - Miembros fundadores: 30% (bootstrap de gobernanza inicial)
 - Pool de contribuyentes: 50% (distribuido a través de trabajo verificado)
 - Tesorería de comunidad: 15% (desarrollo de ecosistema)
@@ -238,6 +240,7 @@ constructor(
 ### Incentivos de Participación
 
 **Recompensas de Votación**:
+
 ```solidity
 function rewardActiveVoter(address voter, uint256 proposalId) external onlyGovernor {
     if (hasVotedOnProposal[proposalId][voter]) {
@@ -297,15 +300,16 @@ contentToken.updateVotingParameters(
 ### Delegación Líquida
 
 **Delegación Multi-Nivel**:
+
 ```solidity
-function liquidDelegate(address primaryDelegate, address fallbackDelegate) 
+function liquidDelegate(address primaryDelegate, address fallbackDelegate)
     external {
     require(eligibleVoters[primaryDelegate] && eligibleVoters[fallbackDelegate],
             "Delegados no elegibles");
-    
+
     // Establecer delegación primaria con fallback para ausencias
     _delegate(_msgSender(), primaryDelegate);
-    
+
     emit LiquidDelegationSet(_msgSender(), primaryDelegate, fallbackDelegate);
 }
 ```
@@ -313,6 +317,7 @@ function liquidDelegate(address primaryDelegate, address fallbackDelegate)
 ### Análisis de Participación de Gobernanza
 
 **Métricas de Participación**:
+
 ```solidity
 function getGovernanceMetrics(address account) external view returns (
     uint256 votingPower,
@@ -332,6 +337,7 @@ function getGovernanceMetrics(address account) external view returns (
 ### Integración de Snapshot de Votación
 
 **Capacidades de Snapshot**:
+
 - Snapshot automático de balances en la creación de propuestas
 - Prevención de manipulación de poder de voto post-propuesta
 - Consulta histórica de distribución de poder de voto

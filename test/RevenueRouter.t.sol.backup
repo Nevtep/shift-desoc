@@ -422,19 +422,19 @@ contract RevenueRouterTest is Test {
 
     function testPreviewDistribution() public {
         // Test with no investors - proportional distribution
-        (uint256 workers, uint256 treasury, uint256 investors) = router.previewDistribution(1000e18);
-        assertEq(workers, 625e18); // 5000/(5000+3000) = 62.5%
-        assertEq(treasury, 375e18); // 3000/(5000+3000) = 37.5%
-        assertEq(investors, 0);
+        (uint256 workersAmount, uint256 treasuryAmount, uint256 investorsAmount) = router.previewDistribution(1000e18);
+        assertEq(workersAmount, 625e18); // 5000/(5000+3000) = 62.5%
+        assertEq(treasuryAmount, 375e18); // 3000/(5000+3000) = 37.5%
+        assertEq(investorsAmount, 0);
 
         // Add an investor
         vm.prank(investorManager);
         router.registerInvestor(investor1, 10000e18, 15000, 2000);
 
-        (workers, treasury, investors) = router.previewDistribution(1000e18);
-        assertEq(workers, 500e18);
-        assertEq(treasury, 300e18);
-        assertEq(investors, 200e18);
+        (workersAmount, treasuryAmount, investorsAmount) = router.previewDistribution(1000e18);
+        assertEq(workersAmount, 500e18);
+        assertEq(treasuryAmount, 300e18);
+        assertEq(investorsAmount, 200e18);
     }
 
     function testGetActiveInvestors() public {

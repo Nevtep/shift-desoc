@@ -1,8 +1,8 @@
-# Contrato WorkerSBT
+# Contrato ValuableActionSBT
 
 ## 🎯 Propósito y Función
 
-El **WorkerSBT** (Soulbound Token de Trabajador) implementa un sistema de reputación no transferible que rastrea contribuciones de trabajo verificado y establece elegibilidad para participación en gobernanza. Como un NFT soulbound (vinculado al alma), el token representa la reputación de trabajo del portador dentro de la comunidad, permitiendo la participación ponderada en las discusiones y decisiones de gobernanza.
+El **ValuableActionSBT** (Soulbound Token de Acción Valiosa) implementa un sistema de reputación no transferible que rastrea contribuciones de trabajo verificado y establece elegibilidad para participación en gobernanza. Como un NFT soulbound (vinculado al alma), el token representa la reputación de trabajo del portador dentro de la comunidad, permitiendo la participación ponderada en las discusiones y decisiones de gobernanza.
 
 ## 🏗️ Arquitectura Central
 
@@ -37,28 +37,30 @@ struct DecayParameters {
 ### Acuñación de Tokens
 
 ```solidity
-function mintWorkerSBT(address to, uint256 communityId, uint256 initialPoints) 
+function mintValuableActionSBT(address to, uint256 communityId, uint256 initialPoints)
     external onlyMinter returns (uint256 tokenId)
 ```
 
-**Propósito**: Crea un nuevo WorkerSBT para un trabajador después de su primera contribución verificada.
+**Propósito**: Crea un nuevo ValuableActionSBT para un trabajador después de su primera contribución verificada.
 
 **Lógica Clave**:
+
 - Un propietario = un token (enforce unicidad 1:1)
 - Establece puntos iniciales de trabajo y timestamp de acuñación
 - Vincula el token a una comunidad específica
-- Emite evento `WorkerSBTMinted` para indexación
+- Emite evento `ValuableActionSBTMinted` para indexación
 
 ### Sistema de Puntos de Trabajo
 
 ```solidity
-function addWorkerPoints(address worker, uint256 points, uint256 claimId) 
+function addWorkerPoints(address worker, uint256 points, uint256 claimId)
     external onlyMinter
 ```
 
 **Propósito**: Agrega puntos de trabajo después de verificación exitosa de reclamos.
 
 **Lógica de Acumulación**:
+
 - Actualiza `totalWorkerPoints` (nunca decae, registro histórico)
 - Recalcula `effectivePoints` incorporando decadencia y nuevos puntos
 - Actualiza `lastActiveTimestamp` para preservar actividad reciente
@@ -71,6 +73,7 @@ function calculateEffectivePoints(uint256 tokenId) public view returns (uint256)
 ```
 
 **Modelo de Decadencia Exponencial**:
+
 ```solidity
 uint256 timeSinceMint = block.timestamp - workerData.mintedAt;
 uint256 decayPeriods = timeSinceMint / decayParameters.decayPeriod;
@@ -79,6 +82,7 @@ uint256 decayedPoints = (totalPoints * decayFactor) / (10000 ** decayPeriods);
 ```
 
 **Propósito de la Decadencia**:
+
 - Incentiva contribución continua vs acumulación pasiva
 - Previene dominación a largo plazo de trabajadores inactivos
 - Mantiene relevancia contemporánea de la reputación
@@ -93,13 +97,14 @@ function transferFrom(address from, address to, uint256 tokenId) public pure ove
     revert SoulboundToken();
 }
 
-function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) 
+function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data)
     public pure override {
     revert SoulboundToken();
 }
 ```
 
 **Garantías de No Transferibilidad**:
+
 - Los tokens no pueden ser transferidos, vendidos o cedidos
 - La reputación permanece vinculada a la identidad original del trabajador
 - Previene mercados secundarios y manipulación de reputación
@@ -107,10 +112,11 @@ function safeTransferFrom(address from, address to, uint256 tokenId, bytes memor
 ### Mecanismo de Revocación
 
 ```solidity
-function revokeWorkerSBT(uint256 tokenId) external onlyGovernor
+function revokeValuableActionSBT(uint256 tokenId) external onlyGovernor
 ```
 
 **Controles de Gobernanza**:
+
 - Solo la gobernanza comunitaria puede revocar tokens
 - Permite corrección de fraude o comportamiento malicioso
 - Mantiene integridad del sistema de reputación
@@ -125,7 +131,7 @@ function revokeWorkerSBT(uint256 tokenId) external onlyGovernor
 function addWorkerPoints(address worker, uint256 points, uint256 claimId) external onlyMinter {
     if (balanceOf(worker) == 0) {
         // Acuñar primer SBT para nuevo trabajador
-        mintWorkerSBT(worker, communityId, points);
+        mintValuableActionSBT(worker, communityId, points);
     } else {
         // Agregar puntos a SBT existente
         _addPointsToExisting(worker, points, claimId);
@@ -149,11 +155,13 @@ function hasVotingEligibility(address voter) external view returns (bool) {
 ### Estructura de Incentivos
 
 **Acumulación de Puntos**:
+
 - Los puntos se otorgan basándose en el peso de ActionType (complejidad del trabajo)
 - Los trabajadores de mayor contribución obtienen más influencia de gobernanza
 - La actividad continua mantiene altos puntos efectivos
 
 **Incentivos de Decadencia**:
+
 ```solidity
 // Configuración de ejemplo
 DecayParameters({
@@ -188,6 +196,7 @@ DecayParameters memory contentParams = DecayParameters({
 ### Análisis de Patrones de Actividad
 
 **Métricas de Trabajador**:
+
 - Frecuencia de contribución (reclamos por período de tiempo)
 - Tipos de trabajo diversidad (múltiples ActionTypes)
 - Tasa de retención (tiempo entre primera y última contribución)
@@ -209,13 +218,15 @@ function getWorkerHistory(address worker) external view returns (WorkerSnapshot[
 ### Elegibilidad Dinámica de Gobernanza
 
 **Votación Ponderada por Reputación**:
+
 - El poder de voto escala con puntos efectivos (límite superior configurado)
 - Los trabajadores más activos obtienen más influencia en la toma de decisiones
 - Los patrones de contribución reciente tienen prioridad sobre la historia antigua
 
 **Umbrales de Participación**:
+
 - Umbrales mínimos de puntos efectivos para crear propuestas
 - Requisitos escalonados para diferentes tipos de propuestas (parámetros vs presupuesto)
 - Períodos de carencia para nuevos trabajadores
 
-El WorkerSBT forma la columna vertebral del sistema de reputación meritocrático de Shift DeSoc, asegurando que la influencia de gobernanza refleje contribuciones verificadas de trabajo mientras incentiva participación continua.
+El ValuableActionSBT forma la columna vertebral del sistema de reputación meritocrático de Shift DeSoc, asegurando que la influencia de gobernanza refleje contribuciones verificadas de trabajo mientras incentiva participación continua.

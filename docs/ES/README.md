@@ -5,24 +5,34 @@ Esta documentación cubre la arquitectura de contratos inteligentes y detalles d
 ## 📚 Estructura de Documentación
 
 ### Documentación Técnica Central
+
 - **[ValuableActionRegistry](./contracts/ValuableActionRegistry.md)** - Tipos de trabajo definidos por comunidad con parámetros de verificación
 - **[Claims](./contracts/Claims.md)** - Sistema de envío de reclamos de trabajo y verificación M-de-N
-- **[VerifierPool](./contracts/VerifierPool.md)** - Registro de verificadores, bonding y gestión de reputación
+- **[VerifierElection](./contracts/VerifierElection.md)** - Gestión democrática de conjuntos de verificadores con gobernanza timelock
+- **[VerifierPowerToken1155](./contracts/VerifierPowerToken1155.md)** - Tokens de poder de verificador por comunidad con arquitectura VPS
+- **[VerifierManager](./contracts/VerifierManager.md)** - Selección de jurado M-de-N y sistema de reporte de fraude
 - **[ShiftGovernor](./contracts/ShiftGovernor.md)** - Gobernanza multi-opción con ejecución timelock
 - **[CountingMultiChoice](./contracts/CountingMultiChoice.md)** - Mecanismo de votación multi-opción ponderado
 
 ### Documentación de Coordinación Comunitaria
+
 - **[RequestHub](./contracts/RequestHub.md)** - Foro de discusión descentralizado y coordinación comunitaria
 - **[DraftsManager](./contracts/DraftsManager.md)** - Desarrollo colaborativo de propuestas y revisión
 - **[CommunityRegistry](./contracts/CommunityRegistry.md)** - Metadatos comunitarios y gestión de módulos
 
 ### Documentación del Sistema Económico
-- **[RevenueRouter](./contracts/RevenueRouter.md)** - Distribución de ingresos basada en ROI con decaimiento de inversores
+
+- **[RevenueRouter](./contracts/RevenueRouter.md)** - Distribución de ingresos basada en cohortes con asignación en cascada
 - **[CommunityToken](./contracts/CommunityToken.md)** - Moneda comunitaria respaldada 1:1 por USDC
 - **[MembershipTokenERC20Votes](./contracts/MembershipTokenERC20Votes.md)** - Tokens de gobernanza basados en mérito
-- **[WorkerSBT](./contracts/WorkerSBT.md)** - Tokens de reputación soulbound con WorkerPoints
+- **[ValuableActionSBT](./contracts/ValuableActionSBT.md)** - Tokens de reputación soulbound con WorkerPoints
+
+### Documentación de Gestión y Operaciones
+
+- **[Sistema de Gestión de Cohortes](./COHORT_MANAGEMENT.md)** - Guía completa para operaciones de cohortes de inversión
 
 ### Documentación No Técnica
+
 - **[Whitepaper](./Whitepaper.md)** - Visión de inversión para stakeholders no técnicos
 - **[Arquitectura del Sistema](./Architecture.md)** - Diseño de sistema de alto nivel y flujo de trabajo
 
@@ -31,17 +41,20 @@ Esta documentación cubre la arquitectura de contratos inteligentes y detalles d
 Shift DeSoc implementa una plataforma de gobernanza completamente on-chain para trabajo comunitario descentralizado con los siguientes componentes centrales:
 
 ### Capa de Gobernanza
+
 - **Votación multi-opción** para toma de decisiones matizada
 - **Ejecución timelock** para seguridad y transparencia
 - **Participación basada en tokens** con soporte de delegación
 
 ### Capa de Verificación de Trabajo
+
 - **Tipos de acción configurables** con parámetros de verificación personalizados
 - **Verificación de jurado M-de-N** con incentivos económicos
 - **Selección de verificadores basada en reputación** usando algoritmos pseudo-aleatorios
 - **Proceso de apelaciones** para reclamos disputados
 
 ### Economía de Tokens
+
 - **Tokens soulbound (SBTs)** para reputación no transferible
 - **Sistema WorkerPoints** con seguimiento de promedio móvil exponencial
 - **Mecanismos de bonding** para participación de verificadores
@@ -50,25 +63,28 @@ Shift DeSoc implementa una plataforma de gobernanza completamente on-chain para 
 ## 🔧 Estado de Implementación
 
 ### ✅ MVP LISTO PARA PRODUCCIÓN (Noviembre 2025)
-| Contrato | Cobertura | Estado | Características |
-|----------|-----------|---------|-----------------|
-| **Gobernanza Central** |
-| ShiftGovernor | 86%+ | ✅ Producción | Votación multi-opción, integración timelock, escalación de borradores |
-| CountingMultiChoice | 100% | ✅ Producción | Votación ponderada, soporte snapshot, características empresariales |
-| **Coordinación Comunitaria** |
-| RequestHub | 95%+ | ✅ Producción | Foro de discusión, moderación, integración RequestHub→Claims |
-| DraftsManager | 98%+ | ✅ Producción | Desarrollo multi-contribuidor, versionado, ciclos de revisión |
-| CommunityRegistry | 96%+ | ✅ Producción | Gestión de metadatos, direcciones de módulos, enlaces inter-comunitarios |
+
+| Contrato                               | Cobertura | Estado        | Características                                                          |
+| -------------------------------------- | --------- | ------------- | ------------------------------------------------------------------------ |
+| **Gobernanza Central**                 |
+| ShiftGovernor                          | 86%+      | ✅ Producción | Votación multi-opción, integración timelock, escalación de borradores    |
+| CountingMultiChoice                    | 100%      | ✅ Producción | Votación ponderada, soporte snapshot, características empresariales      |
+| **Coordinación Comunitaria**           |
+| RequestHub                             | 95%+      | ✅ Producción | Foro de discusión, moderación, integración RequestHub→Claims             |
+| DraftsManager                          | 98%+      | ✅ Producción | Desarrollo multi-contribuidor, versionado, ciclos de revisión            |
+| CommunityRegistry                      | 96%+      | ✅ Producción | Gestión de metadatos, direcciones de módulos, enlaces inter-comunitarios |
 | **Sistema de Verificación de Trabajo** |
-| ValuableActionRegistry | 96%+ | ✅ Producción | Tipos de trabajo definidos por comunidad, integración con gobernanza |
-| Claims | 98%+ | ✅ Producción | Verificación M-de-N, apelaciones, bounties RequestHub |
-| VerifierPool | 95%+ | ✅ Producción | Bonding, reputación, selección pseudo-aleatoria de jurados |
-| WorkerSBT | 94%+ | ✅ Producción | Seguimiento EMA WorkerPoints, integración con gobernanza |
-| **Módulos Económicos** |
-| RevenueRouter | 92%+ | ✅ Producción | Decaimiento de ingresos basado en ROI, distribución matemática |
-| CommunityToken | 100% | ✅ Producción | Respaldo 1:1 USDC, gestión de tesorería |
-| MembershipTokenERC20Votes | 98%+ | ✅ Producción | Tokens de gobernanza basados en mérito, anti-plutocracia |
-| TreasuryAdapter | 90%+ | ✅ Producción | Integración de parámetros CommunityRegistry |
+| ValuableActionRegistry                 | 96%+      | ✅ Producción | Tipos de trabajo definidos por comunidad, integración con gobernanza     |
+| Claims                                 | 98%+      | ✅ Producción | Verificación M-de-N, apelaciones, bounties RequestHub                    |
+| VerifierElection                       | 98%+      | ✅ Producción | Gestión democrática de verificadores, gobernanza timelock                |
+| VerifierPowerToken1155                 | 96%+      | ✅ Producción | Tokens VPT por comunidad, sistema de poder no transferible              |
+| VerifierManager                        | 95%+      | ✅ Producción | Selección M-de-N, integración VPS, reporte de fraude                    |
+| ValuableActionSBT                      | 94%+      | ✅ Producción | Seguimiento EMA WorkerPoints, integración con gobernanza                 |
+| **Módulos Económicos**                 |
+| RevenueRouter                          | 92%+      | ✅ Producción | Cascada basada en cohortes, distribución de ROI objetivo garantizado     |
+| CommunityToken                         | 100%      | ✅ Producción | Respaldo 1:1 USDC, gestión de tesorería                                  |
+| MembershipTokenERC20Votes              | 98%+      | ✅ Producción | Tokens de gobernanza basados en mérito, anti-plutocracia                 |
+| TreasuryAdapter                        | 90%+      | ✅ Producción | Integración de parámetros CommunityRegistry                              |
 
 **Estado de Despliegue**: ✅ Comunidad ID 3 operacional en Base Sepolia con 28 transacciones exitosas
 
@@ -92,6 +108,7 @@ Shift DeSoc implementa una plataforma de gobernanza completamente on-chain para 
 ## 📈 Pruebas y Cobertura
 
 Todos los contratos mantienen ≥86% de cobertura de pruebas con testing integral de casos extremos:
+
 - **Pruebas unitarias** para funcionalidad individual de contratos
 - **Pruebas de integración** para interacciones entre contratos
 - **Pruebas fuzz** para validación de entrada y casos extremos
@@ -102,6 +119,7 @@ Todos los contratos mantienen ≥86% de cobertura de pruebas con testing integra
 **✅ DESPLEGADO EN PRODUCCIÓN**: Ecosistema completo desplegado exitosamente y verificado en Base Sepolia con operaciones comunitarias reales.
 
 **Estado de Redes:**
+
 1. **Base Sepolia** (testnet) - ✅ **OPERACIONAL** - Comunidad ID 3 con 28 transacciones exitosas
 2. **Base** (mainnet) - **Listo para Lanzamiento en Producción** - Objetivo de despliegue de ultra-bajo costo (~$0.19 por comunidad)
 3. **Ethereum Sepolia** (testnet) - Objetivo secundario después del éxito en Base
@@ -118,4 +136,4 @@ Todos los contratos mantienen ≥86% de cobertura de pruebas con testing integra
 
 ---
 
-*Para detalles de implementación técnica, consulta la documentación específica de contratos. Para visión de inversión y negocio, ve el [Whitepaper](./Whitepaper.md).*
+_Para detalles de implementación técnica, consulta la documentación específica de contratos. Para visión de inversión y negocio, ve el [Whitepaper](./Whitepaper.md)._

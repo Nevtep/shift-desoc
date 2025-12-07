@@ -39,7 +39,7 @@ struct ActionBundle {
 
 struct ReviewState {
     uint256 supportCount;        // Positive reviews
-    uint256 opposeCount;         // Negative reviews  
+    uint256 opposeCount;         // Negative reviews
     uint256 neutralCount;        // Neutral feedback
     uint256 requestChangesCount; // Change requests
     uint256 totalReviews;        // Total review count
@@ -72,7 +72,7 @@ function createDraft(
 **Creates new collaborative draft** with initial version and governance actions.
 
 - **Community Integration**: Links to specific community context
-- **Request Linking**: Optional connection to RequestHub discussions  
+- **Request Linking**: Optional connection to RequestHub discussions
 - **Action Definition**: Specifies exact governance actions to execute
 - **Version Tracking**: Immutable IPFS content versioning
 
@@ -127,7 +127,7 @@ function escalateToProposal(
 **Seamless governance integration**:
 
 - **Binary Proposals**: Standard yes/no governance votes
-- **Multi-Choice Voting**: Complex decisions with multiple options  
+- **Multi-Choice Voting**: Complex decisions with multiple options
 - **Governor Integration**: Direct submission to ShiftGovernor
 - **Proposal Tracking**: Bidirectional linking with governance system
 
@@ -146,12 +146,14 @@ modifier onlyAuthorOrContributor(uint256 draftId) {
 ```
 
 **Collaborative permissions**:
+
 - **Author Control**: Original creator maintains full control
 - **Contributor Rights**: Added contributors can modify and version
 - **Review Restrictions**: Contributors cannot review their own drafts
 - **Status Gates**: Operations restricted by current workflow stage
 
-**⚠️ Admin Access Control Gap**: 
+**⚠️ Admin Access Control Gap**:
+
 - `updateGovernor()` and `updateConfiguration()` functions currently lack proper governance authorization
 - `updateProposalOutcome()` needs authorization from governance or proposal outcome oracle
 - These functions are marked with TODOs for future security implementation
@@ -172,6 +174,7 @@ if (supportBps < supportThresholdBps) {
 ```
 
 **Quality assurance**:
+
 - **Time Gates**: Prevents rushed proposals
 - **Consensus Requirements**: Ensures community support
 - **Review Minimums**: Guarantees adequate feedback
@@ -199,6 +202,7 @@ uint256 draftId = draftsManager.createDraft(
 ```
 
 **Seamless discussion → proposal workflow**:
+
 - **Request Linking**: Optional connection to community discussions
 - **Context Preservation**: Maintains discussion history
 - **Bounty Integration**: Can implement bounty-driven development
@@ -211,7 +215,7 @@ uint256 draftId = draftsManager.createDraft(
 if (multiChoice) {
     proposalId = IGovernorLike(governor).proposeMultiChoice(
         draft.actions.targets,
-        draft.actions.values, 
+        draft.actions.values,
         draft.actions.calldatas,
         description,
         numOptions
@@ -220,6 +224,7 @@ if (multiChoice) {
 ```
 
 **Governance workflow**:
+
 - **Action Execution**: Direct translation to governance calls
 - **Multi-Choice Support**: Complex voting scenarios
 - **Proposal Tracking**: Bidirectional ID linking
@@ -230,6 +235,7 @@ if (multiChoice) {
 ### CommunityRegistry Integration
 
 **Community context**:
+
 - **Parameter Compliance**: Follows community governance rules
 - **Permission Inheritance**: Uses community role system
 - **Configuration Binding**: Community-specific thresholds
@@ -251,6 +257,7 @@ The DraftsManager creates economic incentives for **quality proposal development
 ### Resource Management
 
 **Gas Optimization**:
+
 - **Efficient Storage**: Mappings for O(1) lookups
 - **Event-Driven**: Off-chain indexing for complex queries
 - **Minimal On-Chain**: IPFS for large content storage
@@ -275,6 +282,7 @@ supportThresholdBps = 6000; // 60% support required
 ### Integration Scenarios
 
 **RequestHub → DraftsManager → Governance**:
+
 ```solidity
 // 1. Community discusses need in RequestHub
 uint256 requestId = requestHub.createRequest(communityId, "Treasury Upgrade", cid, tags);
@@ -301,6 +309,7 @@ draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 ## � Current Implementation Status
 
 ### Completed Features ✅
+
 - **Draft Creation & Management**: Full collaborative editing system
 - **Version Control**: Immutable IPFS-based versioning
 - **Review System**: Complete consensus-building mechanism
@@ -309,6 +318,7 @@ draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 - **Access Control**: Author/contributor permission system
 
 ### Pending Implementation 🔄
+
 - **Authorization System**: Admin functions lack governance checks
 - **Community Validation**: Registry integration not implemented
 - **Request Validation**: RequestHub linking validation missing
@@ -316,10 +326,11 @@ draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 - **Advanced Security**: Additional authorization layers needed
 
 ### Technical Debt 📋
+
 ```solidity
 // Current TODOs in contract:
 // 1. updateProposalOutcome: Add proper authorization check
-// 2. updateGovernor: Add governance authorization + emit events  
+// 2. updateGovernor: Add governance authorization + emit events
 // 3. updateConfiguration: Add governance authorization + emit events
 // 4. createDraft: Validate community exists via CommunityRegistry
 // 5. createDraft: Validate request exists if requestId > 0
@@ -330,14 +341,16 @@ draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 ### Version Control System
 
 **Git-like versioning** for proposals:
+
 - **Immutable History**: All versions permanently stored
-- **Content Addressing**: IPFS ensures content integrity  
+- **Content Addressing**: IPFS ensures content integrity
 - **Branching Support**: Multiple contributors can work simultaneously
 - **Merge Workflow**: Review process acts as merge gate
 
 ### Multi-Community Coordination
 
 **Cross-community proposals**:
+
 - **Alliance Support**: Drafts can span allied communities
 - **Parent-Child Relations**: Hierarchical community governance
 - **Federation Models**: Coordinated governance across communities
@@ -346,14 +359,16 @@ draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 ### Governance Innovation
 
 **Advanced voting patterns**:
+
 - **Multi-Choice Proposals**: Complex decision trees
-- **Conditional Execution**: Dependent action sequences  
+- **Conditional Execution**: Dependent action sequences
 - **Parametric Governance**: Dynamic parameter adjustment
 - **Experimental Features**: A/B testing for governance changes
 
 ### Analytics & Insights
 
 **Data-driven governance**:
+
 - **Success Tracking**: Proposal outcome analytics
 - **Contributor Metrics**: Development participation rates
 - **Review Quality**: Feedback effectiveness measurement
@@ -371,7 +386,7 @@ function updateGovernor(address newGovernor) external {
 
 function updateConfiguration(
     uint256 newReviewPeriod,
-    uint256 newMinReviews, 
+    uint256 newMinReviews,
     uint256 newSupportThreshold
 ) external {
     // TODO: Add governance authorization
@@ -380,6 +395,7 @@ function updateConfiguration(
 ```
 
 **Security Implications**:
+
 - Functions are currently callable by anyone
 - No event emissions for governance changes
 - Missing proper access control integration
@@ -387,6 +403,7 @@ function updateConfiguration(
 ### Future Enhancements
 
 **Planned improvements**:
+
 - **Authorization System**: Proper governance-gated admin functions
 - **AI-Assisted Drafting**: Content suggestions and optimization
 - **Automated Testing**: Proposal simulation before voting
@@ -401,8 +418,9 @@ function updateConfiguration(
 RequestHub (Discussion) → DraftsManager (Development) → ShiftGovernor (Voting) → TimelockController (Execution)
 
 This creates a **comprehensive governance system** where:
+
 1. **Community needs** are identified and discussed
-2. **Collaborative solutions** are developed and refined  
+2. **Collaborative solutions** are developed and refined
 3. **Consensus building** occurs before formal voting
 4. **Quality proposals** reach the governance stage
 5. **Successful execution** of community decisions

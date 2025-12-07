@@ -25,18 +25,18 @@ contract HousingManager {
         address[] amenities;         // Available amenities (ERC1155 tokens)
         uint256[] availableDates;    // Calendar availability
     }
-    
+
     struct Reservation {
         uint256 reservationId;       // Unique reservation ID
         uint256 unitId;             // Reserved unit
         address resident;           // Who made the reservation
         uint256 checkIn;            // Check-in timestamp
-        uint256 checkOut;           // Check-out timestamp  
+        uint256 checkOut;           // Check-out timestamp
         uint256 totalCost;          // Total payment amount
         uint256 workerDiscount;     // Applied discount percentage
         ReservationStatus status;   // Current reservation status
     }
-    
+
     enum ReservationStatus {
         PENDING,
         CONFIRMED,
@@ -60,7 +60,7 @@ struct PricingRule {
 
 struct PriorityRule {
     uint256 sbtWeight;              // WorkerSBT priority weight
-    uint256 tenureWeight;           // Community membership length weight  
+    uint256 tenureWeight;           // Community membership length weight
     uint256 contributionWeight;     // Recent contribution weight
     uint256 needWeight;             // Special needs consideration weight
 }
@@ -73,13 +73,13 @@ contract HousingManager {
     event UnitListed(uint256 indexed unitId, string name, uint256 basePricePerNight);
     event Reserved(uint256 indexed unitId, uint256 night, address indexed user);
 
-    function listUnit(string calldata name, uint256 basePricePerNight) 
+    function listUnit(string calldata name, uint256 basePricePerNight)
         external returns (uint256 unitId) {
         // TODO: alta de unidad + calendario
-        unitId = 1; 
+        unitId = 1;
         emit UnitListed(unitId, name, basePricePerNight);
     }
-    
+
     function reserve(uint256 unitId, uint256 nightTs) external payable {
         // TODO: reglas de prioridad, descuentos, cobro en stable/token, NFT de reserva
         emit Reserved(unitId, nightTs, msg.sender);
@@ -88,6 +88,7 @@ contract HousingManager {
 ```
 
 **Current Functionality**:
+
 - ✅ Basic event emission for unit listing
 - ✅ Basic event emission for reservations
 - ❌ No actual unit storage or management
@@ -98,18 +99,21 @@ contract HousingManager {
 ## 🛡️ Planned Security Features
 
 ### Access Control
+
 - Unit owners can manage their properties
 - Community governance can set pricing rules
 - Reservation system prevents double-booking
 - Emergency admin controls for dispute resolution
 
 ### Payment Security
+
 - Escrow system for reservation payments
 - Automatic refunds for cancelled reservations
 - Community token integration for seamless payments
 - Dispute resolution mechanisms
 
 ### Privacy Protection
+
 - Selective information sharing for residents
 - Opt-in location sharing and contact details
 - Reservation history privacy controls
@@ -125,11 +129,11 @@ interface IWorkerSBT {
     function getWorkerPoints(address worker) external view returns (uint256);
 }
 
-function calculateWorkerDiscount(address resident) 
+function calculateWorkerDiscount(address resident)
     external view returns (uint256 discountBps) {
     uint256 sbtCount = workerSBT.balanceOf(resident);
     uint256 workerPoints = workerSBT.getWorkerPoints(resident);
-    
+
     // Calculate discount based on contributions
     return _calculateDiscount(sbtCount, workerPoints);
 }
@@ -145,14 +149,14 @@ function processReservationPayment(
     address resident
 ) external {
     uint256 totalCost = calculateTotalCost(unitId, nights, resident);
-    
+
     // Transfer community tokens for payment
     IERC20(communityToken).safeTransferFrom(
-        resident, 
-        address(this), 
+        resident,
+        address(this),
         totalCost
     );
-    
+
     // Issue reservation NFT
     _mintReservationNFT(resident, unitId, nights);
 }
@@ -164,11 +168,11 @@ function processReservationPayment(
 // Planned: Revenue sharing with community treasury
 function distributeHousingRevenue(uint256 reservationId) external {
     Reservation memory reservation = reservations[reservationId];
-    
+
     uint256 unitOwnerShare = (reservation.totalCost * 7000) / 10000; // 70%
     uint256 treasuryShare = (reservation.totalCost * 2000) / 10000;  // 20%
     uint256 maintenanceShare = (reservation.totalCost * 1000) / 10000; // 10%
-    
+
     // Distribute payments accordingly
 }
 ```
@@ -178,8 +182,8 @@ function distributeHousingRevenue(uint256 reservationId) external {
 ### 1. Property Onboarding Flow
 
 ```
-Property Owner → Lists Unit → Community Approval → 
-Calendar Setup → Pricing Configuration → 
+Property Owner → Lists Unit → Community Approval →
+Calendar Setup → Pricing Configuration →
 Unit Available for Reservations
 ```
 
@@ -209,7 +213,7 @@ listUnit("Community House Alpha", 50e18); // 50 tokens per night
 setPricingRules(unitId, PricingRule({
     workerSBTDiscount: 2000,      // 20% discount for contributors
     seniorityMultiplier: 500,     // 5% discount per year of membership
-    demandMultiplier: 1500,       // Up to 15% surge pricing  
+    demandMultiplier: 1500,       // Up to 15% surge pricing
     seasonalAdjustment: 1000      // 10% seasonal adjustment
 }));
 ```
@@ -254,23 +258,26 @@ setPriorityRules(unitId, PriorityRule({
 ### Technical Integration Requirements
 
 - **Smart Lock Integration**: Physical access control via blockchain
-- **Oracle Integration**: External pricing data and demand metrics  
+- **Oracle Integration**: External pricing data and demand metrics
 - **IPFS Storage**: Unit photos, descriptions, and amenities data
 - **Mobile App**: Reservation management and check-in interfaces
 
 ## 💡 Innovation Opportunities
 
 ### Decentralized Hospitality Model
+
 - Community-owned property networks
 - Cross-community reciprocal housing agreements
 - Reputation-based travel networks
 
 ### Economic Experiments
+
 - Time-banking integration (work hours → housing credits)
 - Seasonal worker housing programs
 - Co-living experiment coordination
 
 ### Sustainability Integration
+
 - Carbon offset programs for housing usage
 - Renewable energy incentives for property owners
 - Community garden and resource sharing coordination
@@ -280,8 +287,9 @@ setPriorityRules(unitId, PriorityRule({
 **Note**: The HousingManager stub provides the foundation for a comprehensive community housing coordination system. The minimal current implementation allows the architecture to account for future housing features without blocking current community deployment.
 
 For immediate housing coordination needs, communities can:
+
 1. Use external platforms with community token integration
-2. Implement manual coordination through RequestHub discussions  
+2. Implement manual coordination through RequestHub discussions
 3. Create custom ValuableActions for housing contributions
 4. Utilize governance proposals for housing-related decisions
 

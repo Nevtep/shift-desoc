@@ -1,304 +1,320 @@
-# RevenueRouter Contract
+# RevenueRouter Contract (Cohort-Based)
 
 ## 🎯 Purpose & Role
 
-The RevenueRouter contract implements Shift DeSoc's innovative **ROI-based revenue distribution system** that automatically adjusts investor returns as they approach their target ROI. This creates sustainable economic incentives where investor share decreases over time, ensuring long-term community ownership while providing predictable returns to early supporters.
+The RevenueRouter implements a cohort-based revenue distribution system that ensures guaranteed Target ROI for investors while transitioning revenue to workers as investment goals are achieved. It functions as a pure executor that reads governance-controlled policies from ParamController and distributes revenue through a waterfall allocation model.
 
 ## 🏗️ Core Architecture
 
-### Investor Management Structure
+### Waterfall Distribution Model
 
-```solidity
-struct InvestorData {
-    uint256 totalInvested;        // Total capital contributed
-    uint256 targetROI;            // Target return percentage (basis points)
-    uint256 cumulativeRevenue;    // Total revenue received to date
-    uint256 currentShare;         // Current revenue share percentage
-    uint256 lastRevenueTime;      // Timestamp of last revenue distribution
-    bool active;                  // Whether investor is still receiving revenue
-}
-
-mapping(address => InvestorData) public investors;
-address[] public activeInvestors;
+```
+Revenue Input → Workers Minimum → Treasury Base → Investor Pool → Spillover Handling
+                    (30%)            (40%)           (30%)          (↓ Workers/Treasury)
+                                                       ↓
+                                            Cohort Weight Distribution
+                                                       ↓
+                                            Pro-Rata Investor Allocation
 ```
 
-### Revenue Distribution Logic
+### State Variables
 
 ```solidity
-struct RevenueDistribution {
-    uint256 totalRevenue;         // Revenue to distribute this period
-    uint256 workersShare;         // Percentage to workers (basis points)
-    uint256 treasuryShare;        // Percentage to treasury (basis points) 
-    uint256 investorsShare;       // Percentage to investors (basis points)
-    uint256 distributedAmount;    // Total amount distributed
-    uint256 timestamp;            // Distribution timestamp
-}
-```
+// Controller Dependencies
+IParamController public paramController;     // Governance policy reading
+ICohortRegistry public cohortRegistry;       // Investment cohort management
 
-**Design Philosophy**: Revenue sharing that transitions from investor-weighted to community-owned as ROI targets are achieved, ensuring sustainable long-term economics.
+// Community Configuration
+mapping(uint256 => address) public communityTreasuries;           // Treasury addresses
+mapping(uint256 => mapping(address => bool)) public supportedTokens;  // Approved tokens
+
+// Revenue Pools
+mapping(uint256 => mapping(address => uint256)) public workerPools;       // Worker revenue pools
+mapping(uint256 => mapping(address => uint256)) public treasuryReserves;  // Treasury reserves
+
+// Claims Tracking
+mapping(uint256 => mapping(address => mapping(address => uint256))) public workerClaims;    // [community][worker][token]
+mapping(uint256 => mapping(address => mapping(address => uint256))) public investorClaims; // [cohort][investor][token]
+```
 
 ## ⚙️ Key Functions & Logic
 
-### Investor Registration
+### Revenue Distribution Waterfall
 
 ```solidity
-function registerInvestor(
-    address investor,
-    uint256 investedAmount,
-    uint256 targetROI,
-    uint256 initialShare
-) external onlyRole(INVESTOR_MANAGER_ROLE) {
-    require(investor != address(0), "Invalid investor address");
-    require(investedAmount > 0, "Investment must be positive");
-    require(targetROI > 0 && targetROI <= 50000, "Invalid ROI target"); // Max 500%
-    
-    investors[investor] = InvestorData({
-        totalInvested: investedAmount,
-        targetROI: targetROI,
-        cumulativeRevenue: 0,
-        currentShare: initialShare,
-        lastRevenueTime: block.timestamp,
-        active: true
-    });
-    
-    activeInvestors.push(investor);
-    
-    emit InvestorRegistered(investor, investedAmount, targetROI, initialShare);
-}
+function routeRevenue(
+    uint256 communityId,
+    address token,
+    uint256 amount
+) external onlyRole(DISTRIBUTOR_ROLE) nonReentrant
 ```
 
-### Dynamic Revenue Calculation
+**Implementation Steps**:
+
+1. **Policy Reading**: `paramController.getRevenuePolicy(communityId)`
+2. **Workers Minimum**: `workersMin = amount * minWorkersBps / MAX_BPS`
+3. **Treasury Base**: `treasuryBase = remaining * treasuryBps / (treasuryBps + investorsBps)`
+4. **Investor Pool**: `investorPool = remaining - treasuryBase` (after treasury allocation)
+5. **Cohort Distribution**: Weight-based allocation to active investment cohorts
+6. **Spillover Handling**: Unallocated amounts flow to workers or treasury based on policy
+
+### Cohort-Based Investment Distribution
 
 ```solidity
-function calculateInvestorShare(address investor) external view returns (uint256) {
-    InvestorData memory inv = investors[investor];
-    
-    if (!inv.active) return 0;
-    
-    // Calculate current ROI percentage achieved
-    uint256 currentROI = (inv.cumulativeRevenue * 10000) / inv.totalInvested;
-    
-    if (currentROI >= inv.targetROI) {
-        return 0; // ROI target reached, no more revenue
-    }
-    
-    // Linear decay: share decreases as ROI approaches target
-    uint256 progress = (currentROI * 10000) / inv.targetROI;
-    uint256 remainingShare = inv.currentShare * (10000 - progress) / 10000;
-    
-    return remainingShare;
-}
+function _distributeToActiveCohorts(
+    uint256 communityId,
+    address token,
+    uint256 investorPool
+) internal returns (uint256 spillover)
 ```
 
-### Revenue Distribution Process
+**Weight Calculation Logic**:
+
+- `totalWeight = Σ(cohortWeight)` for all active cohorts
+- `cohortWeight = unrecoveredAmount * priorityWeight`
+- `cohortPayment = investorPool * cohortWeight / totalWeight`
+- `spillover = investorPool - Σ(cohortPayment)` (handles rounding/precision)
+
+### Pro-Rata Investor Allocation
 
 ```solidity
-function distributeRevenue(uint256 totalRevenue) 
-    external onlyRole(DISTRIBUTOR_ROLE) nonReentrant {
-    
-    require(totalRevenue > 0, "No revenue to distribute");
-    
-    // Calculate dynamic shares
-    uint256 totalInvestorShare = 0;
-    address[] memory eligibleInvestors = new address[](activeInvestors.length);
-    uint256 eligibleCount = 0;
-    
-    // Collect eligible investors and their shares
-    for (uint256 i = 0; i < activeInvestors.length; i++) {
-        address investor = activeInvestors[i];
-        uint256 share = calculateInvestorShare(investor);
-        
-        if (share > 0) {
-            totalInvestorShare += share;
-            eligibleInvestors[eligibleCount] = investor;
-            eligibleCount++;
-        } else if (investors[investor].active) {
-            // Deactivate investors who reached ROI target
-            _deactivateInvestor(investor);
-        }
-    }
-    
-    // Distribute to each eligible investor
-    for (uint256 i = 0; i < eligibleCount; i++) {
-        address investor = eligibleInvestors[i];
-        uint256 investorShare = calculateInvestorShare(investor);
-        uint256 investorAmount = (totalRevenue * investorShare) / 10000;
-        
-        // Update investor data
-        investors[investor].cumulativeRevenue += investorAmount;
-        investors[investor].lastRevenueTime = block.timestamp;
-        
-        // Transfer revenue
-        IERC20(communityToken).safeTransfer(investor, investorAmount);
-        
-        emit RevenueDistributed(investor, investorAmount, investors[investor].cumulativeRevenue);
-    }
-    
-    // Remaining revenue goes to treasury and workers
-    uint256 distributedAmount = (totalRevenue * totalInvestorShare) / 10000;
-    uint256 remainingRevenue = totalRevenue - distributedAmount;
-    
-    _distributeCommunityRevenue(remainingRevenue);
-}
+function _distributeToCohortInvestors(
+    uint256 cohortId,
+    address token,
+    uint256 totalPayment
+) internal
 ```
+
+**Distribution Formula**:
+
+- `investorPayment = totalPayment * investmentAmount / cohort.investedTotal`
+- Updates `investorClaims[cohortId][investor][token]` for withdrawal
+- Maintains precision through careful integer arithmetic
 
 ## 🛡️ Security Features
 
-### Access Control
-- **INVESTOR_MANAGER_ROLE**: Can register and modify investor parameters
-- **DISTRIBUTOR_ROLE**: Can trigger revenue distribution events
-- **ADMIN_ROLE**: Can update system parameters and emergency controls
+### Access Control Architecture
+
+| Role                 | Functions                               | Justification                       |
+| -------------------- | --------------------------------------- | ----------------------------------- |
+| `DISTRIBUTOR_ROLE`   | `routeRevenue`, `allocateWorkerRevenue` | Revenue input and worker allocation |
+| `TREASURY_ROLE`      | `withdrawTreasuryRevenue`               | Community treasury management       |
+| `DEFAULT_ADMIN_ROLE` | Configuration functions                 | System administration               |
 
 ### Economic Security
-- **ROI Limits**: Maximum 500% ROI to prevent excessive returns
-- **Reentrancy Protection**: SafeMath and ReentrancyGuard for all financial operations
-- **Audit Trail**: Complete event logging for all revenue distributions
 
-### Investor Protection
-- **Monotonic Progress**: ROI calculation ensures investors never lose progress
-- **Fair Distribution**: Pro-rata distribution based on current calculated shares
-- **Transparency**: All calculations are publicly verifiable on-chain
+- **Reentrancy Protection**: All revenue functions use `nonReentrant` modifier
+- **Integer Overflow**: Solidity 0.8+ automatic protection
+- **Precision Handling**: Careful ordering to minimize division precision loss
+- **Balance Validation**: Comprehensive checks before token transfers
+
+### Input Validation
+
+```solidity
+// Revenue routing validation
+if (amount == 0) revert Errors.InvalidInput("Zero amount");
+if (!supportedTokens[communityId][token]) revert Errors.InvalidInput("Unsupported token");
+
+// Withdrawal validation
+if (workerClaims[communityId][msg.sender][token] < amount) {
+    revert Errors.InsufficientBalance(msg.sender, amount, available);
+}
+```
 
 ## 🔗 Integration Points
 
-### CommunityToken Integration
+### ParamController Policy Integration
 
 ```solidity
-interface ICommunityToken {
-    function transfer(address to, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-}
+// Revenue policy reading
+(uint256 minWorkersBps, uint256 treasuryBps, uint256 investorsBps,
+ uint8 spilloverTarget) = paramController.getRevenuePolicy(communityId);
 
-// Revenue router receives CommunityTokens and distributes them
-function setToken(address _communityToken) external onlyRole(ADMIN_ROLE) {
-    communityToken = ICommunityToken(_communityToken);
-    emit TokenUpdated(_communityToken);
-}
+// Dynamic policy updates through governance
+// No hardcoded values - all parameters governance-controlled
 ```
 
-### Treasury Integration
+### CohortRegistry Distribution Integration
 
 ```solidity
-function _distributeCommunityRevenue(uint256 amount) private {
-    uint256 workersAmount = (amount * workersShare) / 10000;
-    uint256 treasuryAmount = amount - workersAmount;
-    
-    // Transfer to workers pool (via Claims contract)
-    if (workersAmount > 0) {
-        IERC20(communityToken).safeTransfer(workersPool, workersAmount);
-    }
-    
-    // Transfer to treasury
-    if (treasuryAmount > 0) {
-        IERC20(communityToken).safeTransfer(treasury, treasuryAmount);
-    }
-}
+// Active cohort discovery
+uint256[] memory activeCohorts = cohortRegistry.getActiveCohorts(communityId);
+
+// Weight-based distribution calculation
+uint256 weight = cohortRegistry.getCohortWeight(cohortId, true);
+
+// Recovery tracking and cohort completion
+cohortRegistry.markRecovered(cohortId, cohortPayment);
 ```
 
-## 📊 Use Case Flows
+### ValuableActionSBT Allocation Integration
 
-### 1. Initial Investment & Setup
-
-```
-1. Investor contributes capital to community
-2. INVESTOR_MANAGER calls registerInvestor(address, amount, targetROI, initialShare)
-3. Investor added to activeInvestors array
-4. System begins tracking their ROI progress
-```
-
-### 2. Revenue Generation & Distribution
-
-```
-1. Community generates revenue (marketplace sales, project income, etc.)
-2. DISTRIBUTOR_ROLE calls distributeRevenue(totalAmount)
-3. System calculates current ROI for each investor
-4. Determines current share based on ROI progress
-5. Distributes proportionally to eligible investors
-6. Remaining revenue goes to workers and treasury
+```solidity
+// Called by Claims contract after work verification
+function allocateWorkerRevenue(
+    uint256 communityId,
+    address worker,
+    address token,
+    uint256 amount
+) external onlyRole(DISTRIBUTOR_ROLE)
 ```
 
-### 3. ROI Target Achievement & Transition
+## 📊 Economic Model
+
+### Revenue Distribution Examples
+
+**Scenario: 1000 USDC Revenue, Policy 30%/40%/30%**
 
 ```
-1. Investor's cumulativeRevenue reaches targetROI threshold
-2. calculateInvestorShare() returns 0 for that investor
-3. Investor automatically deactivated from future distributions
-4. Their share reallocated to community (workers + treasury)
-5. Community achieves full economic autonomy
+Input: 1000 USDC
+├── Workers Min (300 USDC): Immediate allocation to worker pool
+├── Treasury Base (400 USDC): Community treasury reserves
+└── Investor Pool (300 USDC): Distributed to active cohorts
+    ├── Cohort A (Target: 150% ROI, Weight: 60%): 180 USDC
+    │   ├── Investor 1 (Investment: 5000 USDC): 90 USDC
+    │   └── Investor 2 (Investment: 5000 USDC): 90 USDC
+    └── Cohort B (Target: 200% ROI, Weight: 40%): 120 USDC
+        └── Investor 3 (Investment: 8000 USDC): 120 USDC
+```
+
+### Spillover Mechanics
+
+**Active Cohorts Scenario**: All investor pool allocated to cohorts
+**No Active Cohorts**: 100% spillover to workers (default) or treasury
+**Completed Cohorts**: Spillover from inactive cohorts enhances worker/treasury share
+
+### Target ROI Progression
+
+```solidity
+// Cohort completion example
+Initial: investedTotal = 10000 USDC, targetROI = 150%, recovered = 0 USDC
+Target: 15000 USDC total recovery needed
+Progress: After receiving 8000 USDC → unrecovered = 7000 USDC (still active)
+Completion: After receiving 15000+ USDC → cohort deactivated, spillover begins
 ```
 
 ## 🎛️ Configuration Examples
 
-### Startup Phase Configuration
+### Conservative Revenue Policy
+
 ```solidity
-// High investor share during community bootstrapping
-registerInvestor(earlyInvestor, 10000e18, 20000, 4000); // $10k invested, 200% ROI target, 40% initial share
+// High worker security, moderate treasury, lower investor share
+minWorkersBps = 4000;    // 40% workers minimum
+treasuryBps = 4000;      // 40% treasury
+investorsBps = 2000;     // 20% investors
+spilloverTarget = 0;     // Spillover to workers
 ```
 
-### Growth Phase Configuration  
+### Growth-Focused Revenue Policy
+
 ```solidity
-// Lower investor share as community matures
-registerInvestor(growthInvestor, 50000e18, 15000, 2000); // $50k invested, 150% ROI target, 20% initial share
+// Higher investor allocation to attract capital
+minWorkersBps = 3000;    // 30% workers minimum
+treasuryBps = 2000;      // 20% treasury
+investorsBps = 5000;     // 50% investors
+spilloverTarget = 1;     // Spillover to treasury
 ```
 
-### Revenue Distribution Parameters
+### Worker-Centric Revenue Policy
+
 ```solidity
-// Configure community vs investor split
-setWorkersShare(3000);    // 30% to workers
-setTreasuryShare(2000);   // 20% to treasury  
-// Remaining 50% to investors (dynamically allocated)
+// Maximum worker benefit, minimal external investment
+minWorkersBps = 5000;    // 50% workers minimum
+treasuryBps = 3000;      // 30% treasury
+investorsBps = 2000;     // 20% investors
+spilloverTarget = 0;     // Spillover to workers
 ```
 
 ## 🚀 Advanced Features
 
-### ROI Calculation Variants
-
-The contract supports different ROI calculation methods:
+### Revenue Preview Functions
 
 ```solidity
-enum ROICalculationMethod {
-    LINEAR_DECAY,      // Current implementation
-    EXPONENTIAL_DECAY, // Faster transition to community ownership
-    STEP_FUNCTION     // Discrete ROI thresholds
+function previewDistribution(uint256 communityId, uint256 amount)
+    external view returns (uint256 workersMin, uint256 treasuryBase, uint256 investorPool, uint8 spilloverTarget);
+
+function previewCohortDistribution(uint256 communityId, uint256 investorPool)
+    external view returns (uint256[] memory cohortIds, uint256[] memory cohortPayments, uint256 totalDistributed);
+```
+
+**Use Cases**:
+
+- **Governance Transparency**: Communities can simulate revenue distribution before policy changes
+- **Investor Analysis**: Prospective investors can model expected returns
+- **Worker Planning**: Worker cooperatives can forecast income streams
+
+### Multi-Token Support
+
+```solidity
+mapping(uint256 => mapping(address => bool)) public supportedTokens;
+```
+
+- **Flexible Revenue**: Communities can accept multiple revenue tokens (USDC, DAI, etc.)
+- **Isolated Pools**: Each token maintains separate worker pools and treasury reserves
+- **Unified Distribution**: Same waterfall logic applies across all supported tokens
+
+### Emergency Controls
+
+```solidity
+function setParamController(address _paramController) external onlyRole(DEFAULT_ADMIN_ROLE);
+function setCohortRegistry(address _cohortRegistry) external onlyRole(DEFAULT_ADMIN_ROLE);
+```
+
+- **Governance Upgrades**: Communities can upgrade controller contracts
+- **Emergency Response**: Admin role enables rapid system updates
+- **Decentralized Control**: All changes require community governance approval
+
+## Implementation Notes
+
+### Gas Optimization Strategies
+
+**Efficient Cohort Iteration**:
+
+```solidity
+uint256[] memory activeCohorts = cohortRegistry.getActiveCohorts(communityId);
+// Single call vs multiple individual cohort queries
+```
+
+**Batch Weight Calculation**:
+
+```solidity
+for (uint256 i = 0; i < activeCohorts.length; i++) {
+    weights[i] = cohortRegistry.getCohortWeight(activeCohorts[i], true);
+    totalWeight += weights[i];
 }
+// Pre-calculate all weights before distribution
 ```
 
-### Time-Based Adjustments
+### Precision Management
+
+**Rounding Minimization**:
+
+- Workers minimum calculated first (highest precision)
+- Treasury base uses remaining balance after workers
+- Investor pool is remainder after treasury (eliminates compound rounding)
+
+**Spillover Accounting**:
 
 ```solidity
-struct TimeBasedAdjustment {
-    uint256 vestingPeriod;     // Minimum investment period
-    uint256 accelerationRate;  // ROI acceleration for long-term investors
-    uint256 penaltyRate;       // Early exit penalties
+spillover = investorPool;  // Start with full amount
+for (each cohort payment) {
+    spillover -= cohortPayment;  // Track actual distribution
 }
+// Spillover represents actual undistributed amount
 ```
 
-### Multi-Asset Revenue Support
+### Integration Requirements
 
-Future versions can support multiple revenue tokens:
+**Required Dependencies**:
 
-```solidity
-mapping(address => bool) public supportedTokens;
-mapping(address => mapping(address => uint256)) public tokenBalances; // investor => token => balance
-```
+- **ParamController**: Revenue policy configuration and reading
+- **CohortRegistry**: Investment cohort management and weight calculation
+- **AccessControl**: Role-based permission management
+- **ReentrancyGuard**: Protection against reentrancy attacks
+- **SafeERC20**: Secure token transfer operations
 
-## 📈 Economic Model Analysis
+**Optional Integrations**:
 
-### Investor Incentives
-- **Early Risk Compensation**: Higher initial shares for early investors
-- **Predictable Returns**: Clear ROI targets with transparent progress tracking
-- **Automatic Exit**: No manual process needed when targets achieved
-
-### Community Benefits
-- **Gradual Ownership**: Community share increases over time
-- **Sustainable Returns**: Investor returns are capped, preventing excessive extraction
-- **Economic Independence**: Full community control after investor ROI satisfaction
-
-### Long-term Sustainability
-- **Worker Retention**: Increasing worker share over time
-- **Treasury Growth**: Growing treasury reserves for community initiatives  
-- **Reinvestment Capacity**: Revenue available for community expansion
-
----
-
-The RevenueRouter contract creates a **self-terminating investment model** where early financial supporters receive fair returns while ensuring the community ultimately achieves full economic autonomy, aligning short-term capital needs with long-term decentralized ownership goals.
+- **Claims Contract**: Worker revenue allocation after verification
+- **Treasury Contract**: Advanced treasury management features
+- **Analytics Systems**: Event-based revenue tracking and reporting

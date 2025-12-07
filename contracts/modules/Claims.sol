@@ -4,13 +4,13 @@ pragma solidity ^0.8.24;
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {IVerifierManager} from "contracts/core/interfaces/IVerifierManager.sol";
-import {IWorkerSBT} from "contracts/core/interfaces/IWorkerSBT.sol";
+import {IValuableActionSBT} from "contracts/core/interfaces/IValuableActionSBT.sol";
 import {MembershipTokenERC20Votes} from "../tokens/MembershipTokenERC20Votes.sol";
 import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
 
 /// @title Claims
 /// @notice Handles work claim submissions and M-of-N verification with juror panels
-/// @dev Integrates with ValuableActionRegistry for verification parameters and VerifierPool for juror selection
+/// @dev Integrates with ValuableActionRegistry for verification parameters and VerifierManager for juror selection
 contract Claims {
     /// @notice Extended claim structure with verification tracking
     struct Claim {
@@ -45,7 +45,7 @@ contract Claims {
     /// @notice Core contracts
     ValuableActionRegistry public immutable actionRegistry;
     address public verifierManager;
-    address public workerSBT;
+    address public valuableActionSBT;
     address public governance;
     address public membershipToken;
     uint256 public immutable communityId;
@@ -98,27 +98,27 @@ contract Claims {
     /// @param _governance Governance contract address
     /// @param _actionRegistry ValuableActionRegistry contract address  
     /// @param _verifierManager VerifierManager contract address
-    /// @param _workerSBT WorkerSBT contract address
+    /// @param _valuableActionSBT ValuableActionSBT contract address
     /// @param _membershipToken MembershipToken contract address for minting rewards
     /// @param _communityId Community identifier for this claims contract instance
     constructor(
         address _governance,
         address _actionRegistry, 
         address _verifierManager,
-        address _workerSBT,
+        address _valuableActionSBT,
         address _membershipToken,
         uint256 _communityId
     ) {
         if (_governance == address(0)) revert Errors.ZeroAddress();
         if (_actionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_verifierManager == address(0)) revert Errors.ZeroAddress();
-        if (_workerSBT == address(0)) revert Errors.ZeroAddress();
+        if (_valuableActionSBT == address(0)) revert Errors.ZeroAddress();
         if (_membershipToken == address(0)) revert Errors.ZeroAddress();
 
         governance = _governance;
         actionRegistry = ValuableActionRegistry(_actionRegistry);
         verifierManager = _verifierManager;
-        workerSBT = _workerSBT;
+        valuableActionSBT = _valuableActionSBT;
         membershipToken = _membershipToken;
         communityId = _communityId;
     }
@@ -318,7 +318,7 @@ contract Claims {
             }
             
             // Mint SBT and award WorkerPoints
-            if (workerSBT != address(0)) {
+            if (valuableActionSBT != address(0)) {
                 uint256 workerPoints = valuableAction.membershipTokenReward > 0 
                     ? valuableAction.membershipTokenReward 
                     : 10; // Default 10 points
@@ -336,7 +336,7 @@ contract Claims {
                     "}"
                 ));
                 
-                IWorkerSBT(workerSBT).mintAndAwardPoints(claim.worker, workerPoints, metadataURI);
+                IValuableActionSBT(valuableActionSBT).mintAndAwardPoints(claim.worker, workerPoints, metadataURI);
             }
             
             emit CooldownUpdated(claim.worker, claim.typeId, workerCooldowns[claim.worker][claim.typeId]);
@@ -497,13 +497,13 @@ contract Claims {
     /// @notice Update contract addresses (governance only)
     /// @dev actionRegistry and communityId are immutable and cannot be updated
     /// @param _verifierManager New VerifierManager address
-    /// @param _workerSBT New WorkerSBT address
+    /// @param _valuableActionSBT New ValuableActionSBT address
     function updateContracts(
         address _verifierManager, 
-        address _workerSBT
+        address _valuableActionSBT
     ) external onlyGovernance {
         if (_verifierManager != address(0)) verifierManager = _verifierManager;
-        if (_workerSBT != address(0)) workerSBT = _workerSBT;
+        if (_valuableActionSBT != address(0)) valuableActionSBT = _valuableActionSBT;
     }
 
     /// @notice Update governance address

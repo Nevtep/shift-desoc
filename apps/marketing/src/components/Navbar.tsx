@@ -1,1 +1,3 @@
-export default function Navbar(){ return <nav>Shift</nav>; }
+export default function Navbar() {
+  return <nav>Shift</nav>;
+}
