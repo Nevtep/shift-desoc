@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-/// @title IWorkerSBT
-/// @notice Interface for WorkerSBT contract
-interface IWorkerSBT {
+/// @title IValuableActionSBT
+/// @notice Interface for ValuableActionSBT contract
+interface IValuableActionSBT {
     /// @notice Mint SBT and award WorkerPoints to a worker
     /// @param worker Address of the worker
     /// @param points Amount of WorkerPoints to award

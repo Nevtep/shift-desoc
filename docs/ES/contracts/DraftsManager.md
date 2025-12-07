@@ -39,7 +39,7 @@ struct ActionBundle {
 
 struct ReviewState {
     uint256 supportCount;        // Reseñas positivas
-    uint256 opposeCount;         // Retroalimentación negativa  
+    uint256 opposeCount;         // Retroalimentación negativa
     uint256 neutralCount;        // Retroalimentación neutral
     uint256 requestChangesCount; // Solicitudes de cambio
     uint256 totalReviews;        // Conteo total de reseñas
@@ -72,7 +72,7 @@ function createDraft(
 **Crea nuevo borrador colaborativo** con versión inicial y acciones de gobernanza.
 
 - **Integración Comunitaria**: Se vincula a contexto de comunidad específica
-- **Vinculación de Solicitud**: Conexión opcional a discusiones de RequestHub  
+- **Vinculación de Solicitud**: Conexión opcional a discusiones de RequestHub
 - **Definición de Acción**: Especifica acciones exactas de gobernanza para ejecutar
 - **Seguimiento de Versión**: Versionado de contenido IPFS inmutable
 
@@ -103,19 +103,19 @@ function submitReview(
 ) external {
     Draft storage draft = _drafts[draftId];
     require(draft.status == DraftStatus.REVIEW, "No en fase de revisión");
-    
+
     ReviewState storage reviewState = draft.reviews;
     Review storage review = reviewState.reviews[msg.sender];
-    
+
     // Prevenir revisiones duplicadas
     require(review.reviewer == address(0), "Ya revisado");
-    
+
     // Registrar revisión
     review.reviewer = msg.sender;
     review.reviewType = reviewType;
     review.feedback = feedback;
     review.submittedAt = uint64(block.timestamp);
-    
+
     // Actualizar conteos
     if (reviewType == ReviewType.SUPPORT) {
         reviewState.supportCount++;
@@ -126,9 +126,9 @@ function submitReview(
     } else if (reviewType == ReviewType.REQUEST_CHANGES) {
         reviewState.requestChangesCount++;
     }
-    
+
     reviewState.totalReviews++;
-    
+
     emit ReviewSubmitted(draftId, msg.sender, reviewType, feedback);
 }
 ```
@@ -139,10 +139,10 @@ function submitReview(
 function submitForReview(uint256 draftId) external onlyAuthorOrContributor(draftId) {
     Draft storage draft = _drafts[draftId];
     require(draft.status == DraftStatus.DRAFTING, "Estado inválido");
-    
+
     draft.status = DraftStatus.REVIEW;
     draft.reviewStartedAt = uint64(block.timestamp);
-    
+
     emit DraftSubmittedForReview(draftId, msg.sender);
 }
 
@@ -150,10 +150,10 @@ function finalizeDraft(uint256 draftId) external onlyAuthorOrContributor(draftId
     Draft storage draft = _drafts[draftId];
     require(draft.status == DraftStatus.REVIEW, "Debe estar en revisión");
     require(_hasEnoughSupport(draftId), "Soporte insuficiente");
-    
+
     draft.status = DraftStatus.FINALIZED;
     draft.finalizedAt = uint64(block.timestamp);
-    
+
     emit DraftFinalized(draftId, msg.sender);
 }
 ```
@@ -161,6 +161,7 @@ function finalizeDraft(uint256 draftId) external onlyAuthorOrContributor(draftId
 ## 🛡️ Características de Seguridad
 
 ### Control de Acceso
+
 ```solidity
 modifier onlyAuthor(uint256 draftId) {
     require(_drafts[draftId].author == msg.sender, "Solo el autor");
@@ -178,6 +179,7 @@ modifier onlyAuthorOrContributor(uint256 draftId) {
 ```
 
 ### Validación de Estado
+
 ```solidity
 function _validateStatusTransition(DraftStatus from, DraftStatus to) internal pure returns (bool) {
     if (from == DraftStatus.DRAFTING && to == DraftStatus.REVIEW) return true;
@@ -188,6 +190,7 @@ function _validateStatusTransition(DraftStatus from, DraftStatus to) internal pu
 ```
 
 ### Integridad de Acciones
+
 ```solidity
 function _validateActionBundle(ActionBundle calldata actions) internal pure {
     require(actions.targets.length > 0, "Se requieren acciones");
@@ -196,7 +199,7 @@ function _validateActionBundle(ActionBundle calldata actions) internal pure {
         actions.targets.length == actions.calldatas.length,
         "Longitudes de arrays desiguales"
     );
-    
+
     // Verificar hash de integridad
     bytes32 expectedHash = keccak256(abi.encode(actions.targets, actions.values, actions.calldatas));
     require(actions.actionsHash == expectedHash, "Hash de acciones inválido");
@@ -206,6 +209,7 @@ function _validateActionBundle(ActionBundle calldata actions) internal pure {
 ## 🔄 Integración de Flujos de Trabajo
 
 ### Con RequestHub
+
 ```solidity
 // Los borradores pueden originarse desde discusiones de solicitud
 function createDraftFromRequest(
@@ -215,13 +219,14 @@ function createDraftFromRequest(
 ) external returns (uint256 draftId) {
     // 🚧 TODO: Validar que la solicitud existe y está en estado apropiado
     // require(requestHub.isRequestActive(requestId), "Solicitud no activa");
-    
+
     uint256 communityId = requestHub.getRequestCommunity(requestId);
     return createDraft(communityId, requestId, actions, versionCID);
 }
 ```
 
 ### Con ShiftGovernor
+
 ```solidity
 function escalateToProposal(
     uint256 draftId,
@@ -229,11 +234,11 @@ function escalateToProposal(
     uint8 numOptions,
     string calldata description
 ) external onlyAuthorOrContributor(draftId) returns (uint256 proposalId) {
-    
+
     Draft storage draft = _drafts[draftId];
     require(draft.status == DraftStatus.FINALIZED, "Debe estar finalizado");
     require(draft.proposalId == 0, "Ya escalado");
-    
+
     // Crear propuesta de gobernanza
     if (isMultiChoice && numOptions > 1) {
         proposalId = IShiftGovernor(governor).proposeMultiChoice(
@@ -251,16 +256,17 @@ function escalateToProposal(
             description
         );
     }
-    
+
     // Vincular borrador con propuesta
     draft.proposalId = proposalId;
     draft.status = DraftStatus.ESCALATED;
-    
+
     emit DraftEscalated(draftId, proposalId, msg.sender);
 }
 ```
 
 ### Con ValuableActionRegistry
+
 ```solidity
 // Los borradores pueden proponer nuevas Acciones Valiosas
 function proposeDraftWithValuableAction(
@@ -269,30 +275,30 @@ function proposeDraftWithValuableAction(
     string calldata valuableActionDescription,
     string calldata draftVersionCID
 ) external returns (uint256 draftId, uint256 valuableActionId) {
-    
+
     // Crear Acción Valiosa propuesta
     valuableActionId = IValuableActionRegistry(valuableActionRegistry).proposeValuableAction(
         communityId,
         valuableActionParams,
         valuableActionDescription
     );
-    
+
     // Crear borrador que activará la Acción Valiosa después de aprobación
     ActionBundle memory actions;
     actions.targets = new address[](1);
     actions.values = new uint256[](1);
     actions.calldatas = new bytes[](1);
-    
+
     actions.targets[0] = valuableActionRegistry;
     actions.values[0] = 0;
     actions.calldatas[0] = abi.encodeWithSignature(
-        "activateFromGovernance(uint256,uint256)", 
-        valuableActionId, 
+        "activateFromGovernance(uint256,uint256)",
+        valuableActionId,
         0 // proposalId será establecido después del escalamiento
     );
-    
+
     draftId = createDraft(communityId, 0, actions, draftVersionCID);
-    
+
     emit DraftWithValuableActionProposed(draftId, valuableActionId, communityId);
 }
 ```
@@ -300,6 +306,7 @@ function proposeDraftWithValuableAction(
 ## 📊 Análisis y Métricas
 
 ### Análisis de Consenso
+
 ```solidity
 function getConsensusMetrics(uint256 draftId) external view returns (
     uint256 supportPercentage,
@@ -307,24 +314,25 @@ function getConsensusMetrics(uint256 draftId) external view returns (
     bool hasStrongConsensus
 ) {
     ReviewState storage reviews = _drafts[draftId].reviews;
-    
+
     if (reviews.totalReviews == 0) {
         return (0, 0, false);
     }
-    
+
     // Calcular porcentaje de soporte
     supportPercentage = (reviews.supportCount * 10000) / reviews.totalReviews; // Puntos base
-    
+
     // Puntuación de controversia basada en oposición y solicitudes de cambio
     uint256 negativeReviews = reviews.opposeCount + reviews.requestChangesCount;
     controversyScore = (negativeReviews * 10000) / reviews.totalReviews;
-    
+
     // Consenso fuerte si >70% soporte y <20% controversia
     hasStrongConsensus = supportPercentage > 7000 && controversyScore < 2000;
 }
 ```
 
 ### Métricas de Colaboración
+
 ```solidity
 function getCollaborationMetrics(uint256 draftId) external view returns (
     uint256 contributorCount,
@@ -333,12 +341,12 @@ function getCollaborationMetrics(uint256 draftId) external view returns (
     uint256 reviewResponseTime
 ) {
     Draft storage draft = _drafts[draftId];
-    
+
     contributorCount = draft.contributors.length;
     versionCount = draft.versionCIDs.length;
-    
+
     daysInDevelopment = (block.timestamp - draft.createdAt) / 1 days;
-    
+
     if (draft.reviewStartedAt > 0 && draft.finalizedAt > 0) {
         reviewResponseTime = (draft.finalizedAt - draft.reviewStartedAt) / 1 hours;
     }
@@ -348,6 +356,7 @@ function getCollaborationMetrics(uint256 draftId) external view returns (
 ## 🎯 Casos de Uso Prácticos
 
 ### Desarrollo de Propuesta Compleja
+
 ```solidity
 // 1. Crear borrador para nueva política comunitaria
 uint256 draftId = createDraft(
@@ -380,6 +389,7 @@ escalateToProposal(draftId, false, 0, "Propuesta de Nueva Política Comunitaria"
 ```
 
 ### Propuesta Multi-Opción
+
 ```solidity
 // Desarrollar propuesta de asignación de presupuesto con múltiples opciones
 uint256 draftId = createDraft(
@@ -401,6 +411,7 @@ escalateToProposal(
 ## 🔍 Integración Frontend
 
 ### Getters Esenciales para UI
+
 ```solidity
 // Información básica del borrador
 function getDraft(uint256 draftId) external view returns (Draft memory)
@@ -421,6 +432,7 @@ function getDraftsByRequest(uint256 requestId) external view returns (uint256[] 
 ```
 
 ### Eventos para Actualizaciones en Tiempo Real
+
 ```solidity
 event DraftCreated(uint256 indexed draftId, uint256 indexed communityId, address indexed author, uint256 requestId);
 event ContributorAdded(uint256 indexed draftId, address indexed contributor, address indexed addedBy);
@@ -434,6 +446,7 @@ event DraftEscalated(uint256 indexed draftId, uint256 indexed proposalId, addres
 ## 🎛️ Configuración de Parámetros
 
 ### Configuraciones de Revisión
+
 ```solidity
 struct ReviewConfig {
     uint256 minReviewsForFinalization;    // Mínimas revisiones necesarias
@@ -446,6 +459,7 @@ mapping(uint256 => ReviewConfig) public communityReviewConfigs;
 ```
 
 ### Límites de Colaboración
+
 ```solidity
 uint256 constant MAX_CONTRIBUTORS = 10;      // Máximo contribuyentes por borrador
 uint256 constant MAX_VERSIONS = 50;          // Máximo versiones por borrador
@@ -455,16 +469,19 @@ uint256 constant MAX_DRAFT_LIFETIME = 90 days; // Tiempo máximo antes de expira
 ## 📋 Características de Producción
 
 ### Gestión de Estado Robusta
+
 - **Transiciones Validadas**: Solo se permiten transiciones de estado lógicas
 - **Prevención de Condiciones de Carrera**: Protección contra modificaciones concurrentes
 - **Reversión de Estado**: Capacidad de regresar borradores a etapas anteriores si es necesario
 
 ### Escalabilidad
+
 - **Almacenamiento Eficiente**: Uso de arrays dinámicos en lugar de mappings donde sea apropiado
 - **Paginación de Consultas**: Soporte para recuperar grandes conjuntos de borradores por lotes
 - **Carga de Gas Optimizada**: Operaciones de escritura mínimas durante flujos de trabajo colaborativos
 
 ### Integración de Auditoría
+
 - **Seguimiento Completo de Cambios**: Cada modificación registrada con timestamps y autores
 - **Rastro de Versiones Inmutable**: Enlaces IPFS proporcionan historial inmutable
 - **Análisis de Participación**: Métricas sobre participación comunitaria y calidad de retroalimentación
@@ -473,4 +490,4 @@ uint256 constant MAX_DRAFT_LIFETIME = 90 days; // Tiempo máximo antes de expira
 
 ---
 
-*Esta documentación refleja la implementación de producción con integración planificada con RequestHub, ValuableActionRegistry y ShiftGovernor, enfocándose en funcionalidad colaborativa esencial con flujos de trabajo claros.*
+_Esta documentación refleja la implementación de producción con integración planificada con RequestHub, ValuableActionRegistry y ShiftGovernor, enfocándose en funcionalidad colaborativa esencial con flujos de trabajo claros._

@@ -11,6 +11,7 @@ Expo Mobile App → Next.js API Backend → Hardhat Scripts → Base Network →
 ```
 
 ### Key Components
+
 - **Mobile Frontend**: Expo React Native app for community creation UI
 - **Backend API**: Next.js server with community creation endpoints
 - **Deployment Engine**: Hardhat-based contract deployment system
@@ -19,6 +20,7 @@ Expo Mobile App → Next.js API Backend → Hardhat Scripts → Base Network →
 ## 📋 Prerequisites
 
 ### Environment Setup
+
 ```bash
 # Node.js and package management
 node >= 18.0.0
@@ -34,6 +36,7 @@ Base Mainnet: RPC endpoint + real ETH
 ```
 
 ### Required Environment Variables
+
 ```bash
 # Network Configuration
 PRIVATE_KEY="0x..." # Deployer private key with ETH balance
@@ -58,7 +61,7 @@ The first phase deploys the fundamental governance infrastructure:
 // 1. Deploy MembershipToken (ERC20Votes)
 const membershipToken = await MembershipTokenFactory.deploy(
   `${communityName} Membership`,
-  `${communityName.substring(0, 4).toUpperCase()}M`
+  `${communityName.substring(0, 4).toUpperCase()}M`,
 );
 
 // 2. Deploy TimelockController
@@ -66,7 +69,7 @@ const timelock = await TimelockFactory.deploy(
   executionDelay, // e.g., 172800 (48 hours)
   [], // proposers (will be set to governor)
   [], // executors (will be set to governor)
-  deployer // admin (temporary)
+  deployer, // admin (temporary)
 );
 
 // 3. Deploy ShiftGovernor
@@ -74,8 +77,8 @@ const governor = await GovernorFactory.deploy(
   membershipToken.target,
   timelock.target,
   debateWindow, // e.g., 86400 (24 hours)
-  voteWindow,   // e.g., 259200 (72 hours)
-  proposalThreshold // e.g., 100 tokens
+  voteWindow, // e.g., 259200 (72 hours)
+  proposalThreshold, // e.g., 100 tokens
 );
 ```
 
@@ -88,8 +91,8 @@ Register the new community in the global registry:
 ```typescript
 // Connect to existing CommunityRegistry
 const registry = await ethers.getContractAt(
-  "CommunityRegistry", 
-  "0x67eC4cAcC44D80B43Ce7CCA63cEF6D1Ae3E57f8B" // Base Sepolia
+  "CommunityRegistry",
+  "0x67eC4cAcC44D80B43Ce7CCA63cEF6D1Ae3E57f8B", // Base Sepolia
 );
 
 // Register community with governance contracts
@@ -99,12 +102,14 @@ const registerTx = await registry.registerCommunity(
   founderAddress,
   governor.target,
   timelock.target,
-  membershipToken.target
+  membershipToken.target,
 );
 
 const receipt = await registerTx.wait();
-const communityId = receipt.logs.find(log => 
-  log.topics[0] === registry.interface.getEvent("CommunityRegistered").topicHash
+const communityId = receipt.logs.find(
+  (log) =>
+    log.topics[0] ===
+    registry.interface.getEvent("CommunityRegistered").topicHash,
 ).args.communityId;
 ```
 
@@ -118,21 +123,21 @@ Deploy the work verification and claims system:
 // 1. ValuableActionRegistry - Defines what work is valuable
 const actionRegistry = await ActionRegistryFactory.deploy(
   communityId,
-  registry.target
+  registry.target,
 );
 
-// 2. WorkerSBT - Soulbound tokens for verified contributors  
-const workerSBT = await WorkerSBTFactory.deploy(
+// 2. ValuableActionSBT - Soulbound tokens for verified contributors
+const valuableActionSBT = await ValuableActionSBTFactory.deploy(
   `${communityName} Worker`,
   `${communityName.substring(0, 4).toUpperCase()}W`,
-  actionRegistry.target
+  actionRegistry.target,
 );
 
 // 3. VerifierPool - Jury selection for work verification
 const verifierPool = await VerifierPoolFactory.deploy(
-  workerSBT.target,
+  valuableActionSBT.target,
   registry.target,
-  communityId
+  communityId,
 );
 
 // 4. Claims - Work submission and verification workflow
@@ -140,7 +145,7 @@ const claims = await ClaimsFactory.deploy(
   actionRegistry.target,
   verifierPool.target,
   workerSBT.target,
-  membershipToken.target
+  membershipToken.target,
 );
 ```
 
@@ -155,7 +160,7 @@ Deploy discussion and collaboration infrastructure:
 const requestHub = await RequestHubFactory.deploy(
   communityId,
   registry.target,
-  workerSBT.target
+  workerSBT.target,
 );
 
 // 2. DraftsManager - Collaborative proposal development
@@ -163,14 +168,14 @@ const draftsManager = await DraftsManagerFactory.deploy(
   requestHub.target,
   governor.target,
   workerSBT.target,
-  communityId
+  communityId,
 );
 
 // 3. CommunityToken - 1:1 USDC-backed stable token
 const communityToken = await CommunityTokenFactory.deploy(
   `${communityName} Token`,
   `${communityName.substring(0, 4).toUpperCase()}T`,
-  usdcAddress // Base: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+  usdcAddress, // Base: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 );
 ```
 
@@ -197,7 +202,7 @@ await governor.setCountingMulti(countingMultiChoice);
 const MINTER_ROLE = await membershipToken.MINTER_ROLE();
 await membershipToken.grantRole(MINTER_ROLE, claims.target);
 
-// Grant claims contract SBT management permissions  
+// Grant claims contract SBT management permissions
 const MANAGER_ROLE = await workerSBT.MANAGER_ROLE();
 await workerSBT.grantRole(MANAGER_ROLE, claims.target);
 ```
@@ -235,12 +240,12 @@ const moduleRegistrations = [
   { key: "governor", address: governor.target },
   { key: "timelock", address: timelock.target },
   { key: "claimsManager", address: claims.target },
-  { key: "actionTypeRegistry", address: actionRegistry.target },
+  { key: "valuableActionRegistry", address: actionRegistry.target },
   { key: "verifierPool", address: verifierPool.target },
   { key: "workerSBT", address: workerSBT.target },
   { key: "requestHub", address: requestHub.target },
   { key: "draftsManager", address: draftsManager.target },
-  { key: "communityToken", address: communityToken.target }
+  { key: "communityToken", address: communityToken.target },
 ];
 
 for (const { key, address } of moduleRegistrations) {
@@ -254,24 +259,24 @@ for (const { key, address } of moduleRegistrations) {
 
 ### Total Deployment Costs
 
-| Network | Gas Used | ETH Cost | USD Cost (ETH=$3000) |
-|---------|----------|----------|---------------------|
-| **Base Sepolia** | 64M gas | 0.064 ETH | **$0.19** |
-| **Base Mainnet** | 64M gas | 0.064 ETH | **$0.19** |
-| **Ethereum Mainnet** | 64M gas | 3.2 ETH | **$9,600** |
+| Network              | Gas Used | ETH Cost  | USD Cost (ETH=$3000) |
+| -------------------- | -------- | --------- | -------------------- |
+| **Base Sepolia**     | 64M gas  | 0.064 ETH | **$0.19**            |
+| **Base Mainnet**     | 64M gas  | 0.064 ETH | **$0.19**            |
+| **Ethereum Mainnet** | 64M gas  | 3.2 ETH   | **$9,600**           |
 
 ### Cost Breakdown by Phase
 
-| Phase | Gas Used | Base Cost | Description |
-|-------|----------|-----------|-------------|
-| Core Governance | 8.4M | $0.025 | Governor, Timelock, MembershipToken |
-| Community Registration | 425K | $0.001 | Registry entry |
-| Work Modules | 9.8M | $0.030 | Claims, SBTs, Verification |
-| Community Modules | 6.9M | $0.021 | Discussions, Proposals, Token |
-| Permissions | 800K | $0.002 | Role setup |
-| Founder Bootstrap | 400K | $0.001 | Initial tokens |
-| Module Registration | 1.8M | $0.005 | Registry updates |
-| **TOTAL** | **28M** | **$0.085** | **Complete community** |
+| Phase                  | Gas Used | Base Cost  | Description                         |
+| ---------------------- | -------- | ---------- | ----------------------------------- |
+| Core Governance        | 8.4M     | $0.025     | Governor, Timelock, MembershipToken |
+| Community Registration | 425K     | $0.001     | Registry entry                      |
+| Work Modules           | 9.8M     | $0.030     | Claims, SBTs, Verification          |
+| Community Modules      | 6.9M     | $0.021     | Discussions, Proposals, Token       |
+| Permissions            | 800K     | $0.002     | Role setup                          |
+| Founder Bootstrap      | 400K     | $0.001     | Initial tokens                      |
+| Module Registration    | 1.8M     | $0.005     | Registry updates                    |
+| **TOTAL**              | **28M**  | **$0.085** | **Complete community**              |
 
 ## 🌐 Next.js API Integration
 
@@ -279,29 +284,24 @@ for (const { key, address } of moduleRegistrations) {
 
 ```typescript
 // pages/api/communities/create.ts
-import { NextApiRequest, NextApiResponse } from 'next';
-import { createCommunityForUI } from '../../../lib/community-deployer';
+import { NextApiRequest, NextApiResponse } from "next";
+import { createCommunityForUI } from "../../../lib/community-deployer";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
 ) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const {
-      name,
-      description,
-      founderAddress,
-      governanceParams
-    } = req.body;
+    const { name, description, founderAddress, governanceParams } = req.body;
 
     // Validate input parameters
     if (!name || !founderAddress) {
-      return res.status(400).json({ 
-        error: 'Missing required fields' 
+      return res.status(400).json({
+        error: "Missing required fields",
       });
     }
 
@@ -314,8 +314,8 @@ export default async function handler(
         debateWindow: governanceParams?.debateWindow || 86400,
         voteWindow: governanceParams?.voteWindow || 259200,
         executionDelay: governanceParams?.executionDelay || 172800,
-        proposalThreshold: governanceParams?.proposalThreshold || 100
-      }
+        proposalThreshold: governanceParams?.proposalThreshold || 100,
+      },
     });
 
     // Store in database for tracking
@@ -323,10 +323,10 @@ export default async function handler(
 
     res.status(201).json(result);
   } catch (error) {
-    console.error('Community creation failed:', error);
-    res.status(500).json({ 
-      error: 'Community creation failed',
-      details: error.message 
+    console.error("Community creation failed:", error);
+    res.status(500).json({
+      error: "Community creation failed",
+      details: error.message,
     });
   }
 }
@@ -341,7 +341,7 @@ CREATE TABLE community_deployments (
   community_id INTEGER NOT NULL,
   community_name VARCHAR(255) NOT NULL,
   founder_address VARCHAR(42) NOT NULL,
-  
+
   -- Contract addresses
   governor_address VARCHAR(42) NOT NULL,
   timelock_address VARCHAR(42) NOT NULL,
@@ -351,19 +351,19 @@ CREATE TABLE community_deployments (
   request_hub_address VARCHAR(42) NOT NULL,
   drafts_manager_address VARCHAR(42) NOT NULL,
   community_token_address VARCHAR(42) NOT NULL,
-  
+
   -- Deployment metadata
   network_name VARCHAR(50) NOT NULL,
   chain_id INTEGER NOT NULL,
   total_gas_used BIGINT,
   deployment_cost_eth DECIMAL(20, 18),
   tx_hashes TEXT[], -- Array of transaction hashes
-  
+
   -- Status tracking
   status VARCHAR(20) DEFAULT 'deploying',
   created_at TIMESTAMP DEFAULT NOW(),
   completed_at TIMESTAMP,
-  
+
   -- Indexes
   UNIQUE(community_id, network_name),
   INDEX(founder_address),
@@ -382,7 +382,7 @@ import { useCommunityCreation } from '../hooks/useCommunityCreation';
 
 export function CreateCommunityScreen() {
   const { createCommunity, loading, error } = useCommunityCreation();
-  
+
   const handleCreate = async (formData) => {
     try {
       const result = await createCommunity({
@@ -395,11 +395,11 @@ export function CreateCommunityScreen() {
           executionDelay: formData.delayHours * 3600
         }
       });
-      
+
       // Navigate to success screen with community details
-      navigation.navigate('CommunitySuccess', { 
+      navigation.navigate('CommunitySuccess', {
         communityId: result.communityId,
-        contracts: result.contracts 
+        contracts: result.contracts
       });
     } catch (err) {
       setError(err.message);
@@ -421,28 +421,28 @@ export function CreateCommunityScreen() {
 // Hook for community creation with progress tracking
 export function useCommunityCreation() {
   const [progress, setProgress] = useState(0);
-  const [currentStep, setCurrentStep] = useState('');
-  
+  const [currentStep, setCurrentStep] = useState("");
+
   const createCommunity = async (params) => {
     // Connect to WebSocket for real-time updates
-    const ws = new WebSocket('wss://api.shift.com/deploy-progress');
-    
+    const ws = new WebSocket("wss://api.shift.com/deploy-progress");
+
     ws.onmessage = (event) => {
       const { step, progress } = JSON.parse(event.data);
       setCurrentStep(step);
       setProgress(progress);
     };
-    
+
     // Call API endpoint
-    const response = await fetch('/api/communities/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params)
+    const response = await fetch("/api/communities/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
     });
-    
+
     return response.json();
   };
-  
+
   return { createCommunity, progress, currentStep };
 }
 ```
@@ -461,22 +461,22 @@ npx hardhat run scripts/hardhat/create-community-api.ts --network base_sepolia
 ### Programmatic Usage
 
 ```typescript
-import { createCommunityForUI } from './create-community-api';
+import { createCommunityForUI } from "./create-community-api";
 
 const result = await createCommunityForUI({
   name: "Tech Innovators DAO",
   description: "A community for technology innovators",
   founderAddress: "0x73af48d53f75827dB195189e6FeBaB726dF7D0e2",
   governanceParams: {
-    debateWindow: 86400,    // 24 hours
-    voteWindow: 259200,     // 72 hours  
+    debateWindow: 86400, // 24 hours
+    voteWindow: 259200, // 72 hours
     executionDelay: 172800, // 48 hours
-    proposalThreshold: 100  // 100 tokens to propose
-  }
+    proposalThreshold: 100, // 100 tokens to propose
+  },
 });
 
-console.log('Community ID:', result.communityId);
-console.log('Governor:', result.contracts.governor);
+console.log("Community ID:", result.communityId);
+console.log("Governor:", result.contracts.governor);
 ```
 
 ## 📊 Success Response Format
@@ -486,7 +486,7 @@ interface CommunityCreationResult {
   // Community identification
   communityId: number;
   founder: string;
-  
+
   // All deployed contract addresses
   contracts: {
     communityRegistry: string;
@@ -502,18 +502,18 @@ interface CommunityCreationResult {
     draftsManager: string;
     communityToken: string;
   };
-  
+
   // Network information
   network: {
     name: string;
     chainId: string;
   };
-  
+
   // Deployment tracking
   txHashes: string[];
   gasUsed: string;
   founderTokens: string;
-  
+
   // Timestamps
   deployedAt: string;
   completedAt: string;
@@ -523,18 +523,21 @@ interface CommunityCreationResult {
 ## 🛡️ Security Considerations
 
 ### Input Validation
+
 - Validate Ethereum addresses using `ethers.isAddress()`
 - Sanitize community names and descriptions
 - Enforce reasonable governance parameter ranges
 - Rate limit API calls to prevent spam
 
 ### Access Control
+
 - Verify wallet signatures for founder authentication
 - Implement API key authentication for mobile apps
 - Log all deployment attempts for audit trail
 - Monitor for suspicious deployment patterns
 
 ### Error Handling
+
 - Graceful handling of network failures
 - Transaction timeout and retry logic
 - Partial deployment recovery procedures
@@ -543,24 +546,28 @@ interface CommunityCreationResult {
 ## 🚀 Production Deployment Checklist
 
 ### Infrastructure Setup
+
 - [ ] Base mainnet RPC endpoint configured
 - [ ] Deployer wallet funded with sufficient ETH
 - [ ] Database configured for deployment tracking
 - [ ] Error monitoring and alerting setup
 
 ### Contract Verification
+
 - [ ] All contracts verified on Basescan
 - [ ] Contract addresses updated in frontend
 - [ ] Gas price monitoring configured
 - [ ] Backup deployment procedures documented
 
 ### API Security
+
 - [ ] Rate limiting implemented
 - [ ] Input validation comprehensive
 - [ ] Authentication mechanisms active
 - [ ] Monitoring and logging configured
 
 ### Mobile App Integration
+
 - [ ] API endpoints tested with real mobile clients
 - [ ] WebSocket progress tracking functional
 - [ ] Error handling tested across network conditions
@@ -569,20 +576,23 @@ interface CommunityCreationResult {
 ## 📚 Additional Resources
 
 ### Contract Interfaces
+
 - [CommunityRegistry ABI](../contracts/CommunityRegistry.json)
 - [ShiftGovernor ABI](../contracts/ShiftGovernor.json)
 - [Claims ABI](../contracts/Claims.json)
 
 ### Network Information
+
 - [Base Network Documentation](https://docs.base.org/)
 - [Base Sepolia Testnet](https://sepolia.base.org/)
 - [Base Mainnet](https://mainnet.base.org/)
 
 ### Development Tools
+
 - [Hardhat Documentation](https://hardhat.org/docs)
 - [Ethers.js v6 Documentation](https://docs.ethers.org/v6/)
 - [Next.js API Routes](https://nextjs.org/docs/api-routes/introduction)
 
 ---
 
-*This documentation provides a complete guide for integrating community creation into mobile applications via Next.js backend APIs. The process is production-ready, cost-effective, and scalable for thousands of communities.*
+_This documentation provides a complete guide for integrating community creation into mobile applications via Next.js backend APIs. The process is production-ready, cost-effective, and scalable for thousands of communities._

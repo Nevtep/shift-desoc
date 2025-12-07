@@ -4,10 +4,12 @@ import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
 
 export default function Home() {
-  return (<>
-    <Navbar />
-    <Hero />
-    <Feature title="Acciones Valorable" />
-    <Footer />
-  </>);
+  return (
+    <>
+      <Navbar />
+      <Hero />
+      <Feature title="Acciones Valorable" />
+      <Footer />
+    </>
+  );
 }

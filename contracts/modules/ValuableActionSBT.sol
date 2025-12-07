@@ -7,10 +7,10 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Errors} from "../libs/Errors.sol";
 
-/// @title WorkerSBT - Soulbound Tokens for Worker Reputation
-/// @notice Non-transferable tokens representing worker achievements and reputation
+/// @title ValuableActionSBT - Soulbound Tokens for Valuable Action Completion
+/// @notice Non-transferable tokens representing valuable action achievements and reputation
 /// @dev Implements ERC721 with transfer restrictions and WorkerPoints tracking
-contract WorkerSBT is ERC721URIStorage, AccessControl {
+contract ValuableActionSBT is ERC721URIStorage, AccessControl {
     
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -32,6 +32,8 @@ contract WorkerSBT is ERC721URIStorage, AccessControl {
     event AchievementUnlocked(address indexed worker, uint256 indexed achievementId, string name);
     event TokenRevoked(address indexed worker, uint256 indexed tokenId, string reason);
     event WorkerPointsDecayUpdated(uint256 oldDecayRate, uint256 newDecayRate);
+    event InvestmentSBTMinted(address indexed investor, uint256 indexed tokenId, uint256 indexed cohortId, uint256 amount);
+    event CohortRegistryUpdated(address oldRegistry, address newRegistry);
     
     /*//////////////////////////////////////////////////////////////
                                  CONSTANTS
@@ -91,9 +93,24 @@ contract WorkerSBT is ERC721URIStorage, AccessControl {
         bool active;
     }
     
+    /// @notice Investment metadata for Investment SBTs (subtype of ValuableActionSBT)
+    struct InvestmentMeta {
+        uint256 communityId;    // Associated community
+        uint256 cohortId;       // Investment cohort ID
+        uint256 amountInvested; // Amount invested in USDC
+        bytes32 termsHash;      // Immutable cohort terms hash
+        bool isInvestmentSBT;   // Flag to identify investment SBTs
+    }
+    
     /// @notice Achievement definitions
     mapping(uint256 => Achievement) public achievementDefinitions;
     uint256 public nextAchievementId = 1;
+    
+    /// @notice Investment metadata by token ID
+    mapping(uint256 => InvestmentMeta) public investmentMetaOf;
+    
+    /// @notice CohortRegistry contract address for investment integration
+    address public cohortRegistry;
     
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -106,7 +123,7 @@ contract WorkerSBT is ERC721URIStorage, AccessControl {
         address initialOwner,
         address manager,
         address governance
-    ) ERC721("Shift Worker SBT", "SHIFT-SBT") {
+    ) ERC721("Shift ValuableAction SBT", "SHIFT-SBT") {
         if (initialOwner == address(0)) revert Errors.ZeroAddress();
         if (manager == address(0)) revert Errors.ZeroAddress();
         if (governance == address(0)) revert Errors.ZeroAddress();
@@ -187,6 +204,48 @@ contract WorkerSBT is ERC721URIStorage, AccessControl {
         _burn(tokenId);
         
         emit TokenRevoked(worker, tokenId, reason);
+    }
+    
+    /// @notice Mint Investment SBT with cohort metadata
+    /// @param investor Address of the investor
+    /// @param cohortId Cohort ID for the investment
+    /// @param amountInvested Amount invested in USDC
+    /// @param metadataURI IPFS URI for token metadata
+    /// @return tokenId The minted token ID
+    function mintInvestmentSBT(
+        address investor,
+        uint256 cohortId,
+        uint256 amountInvested,
+        string calldata metadataURI
+    ) external onlyRole(MANAGER_ROLE) returns (uint256 tokenId) {
+        if (investor == address(0)) revert Errors.ZeroAddress();
+        if (cohortId == 0) revert Errors.InvalidInput("Invalid cohort ID");
+        if (amountInvested == 0) revert InvalidWorkerPointsAmount(amountInvested);
+        if (cohortRegistry == address(0)) revert Errors.ZeroAddress();
+        
+        // Get cohort information for metadata
+        ICohortRegistry registry = ICohortRegistry(cohortRegistry);
+        ICohortRegistry.Cohort memory cohort = registry.getCohort(cohortId);
+        
+        // Mint new SBT (investors can have multiple investment SBTs)
+        tokenId = nextTokenId++;
+        
+        _safeMint(investor, tokenId);
+        _setTokenURI(tokenId, metadataURI);
+        
+        // Store investment metadata
+        investmentMetaOf[tokenId] = InvestmentMeta({
+            communityId: cohort.communityId,
+            cohortId: cohortId,
+            amountInvested: amountInvested,
+            termsHash: cohort.termsHash,
+            isInvestmentSBT: true
+        });
+        
+        // Register investment with cohort
+        registry.addInvestment(cohortId, investor, amountInvested);
+        
+        emit InvestmentSBTMinted(investor, tokenId, cohortId, amountInvested);
     }
     
     /// @notice Update token metadata URI
@@ -480,4 +539,48 @@ contract WorkerSBT is ERC721URIStorage, AccessControl {
     {
         return super.supportsInterface(interfaceId);
     }
+
+    /// @notice Get investment metadata for an Investment SBT
+    /// @param tokenId Token ID to check
+    /// @return Investment metadata struct
+    function getInvestmentMeta(uint256 tokenId) external view returns (InvestmentMeta memory) {
+        if (_ownerOf(tokenId) == address(0)) revert TokenNotExists(tokenId);
+        return investmentMetaOf[tokenId];
+    }
+
+    /// @notice Check if a token is an Investment SBT
+    /// @param tokenId Token ID to check
+    /// @return Whether the token is an Investment SBT
+    function isInvestmentSBT(uint256 tokenId) external view returns (bool) {
+        if (_ownerOf(tokenId) == address(0)) revert TokenNotExists(tokenId);
+        return investmentMetaOf[tokenId].isInvestmentSBT;
+    }
+
+    /// @notice Set CohortRegistry address (governance only)
+    /// @param _cohortRegistry New CohortRegistry address
+    function setCohortRegistry(address _cohortRegistry) external onlyRole(GOVERNANCE_ROLE) {
+        if (_cohortRegistry == address(0)) revert Errors.ZeroAddress();
+        address oldRegistry = cohortRegistry;
+        cohortRegistry = _cohortRegistry;
+        emit CohortRegistryUpdated(oldRegistry, _cohortRegistry);
+    }
+}
+
+
+/// @notice Interface for CohortRegistry integration
+interface ICohortRegistry {
+    struct Cohort {
+        uint256 id;
+        uint256 communityId;
+        uint16 targetRoiBps;
+        uint64 createdAt;
+        uint32 priorityWeight;
+        uint256 investedTotal;
+        uint256 recoveredTotal;
+        bool active;
+        bytes32 termsHash;
+    }
+    
+    function getCohort(uint256 cohortId) external view returns (Cohort memory);
+    function addInvestment(uint256 cohortId, address investor, uint256 amount) external;
 }

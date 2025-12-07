@@ -23,6 +23,29 @@ contract ParamController {
     /// @notice Parameter storage by community and key
     mapping(uint256 => mapping(bytes32 => uint256)) public uintParams;
     mapping(uint256 => mapping(bytes32 => bool)) public boolParams;
+    mapping(uint256 => mapping(bytes32 => address[])) public addressArrayParams;
+    
+    /// @notice Parameter keys for governance system
+    bytes32 public constant DEBATE_WINDOW = keccak256("DEBATE_WINDOW");
+    bytes32 public constant VOTE_WINDOW = keccak256("VOTE_WINDOW");
+    bytes32 public constant EXECUTION_DELAY = keccak256("EXECUTION_DELAY");
+    
+    /// @notice Parameter keys for eligibility rules
+    bytes32 public constant MIN_SENIORITY = keccak256("MIN_SENIORITY");
+    bytes32 public constant MIN_SBTS = keccak256("MIN_SBTS");
+    bytes32 public constant PROPOSAL_THRESHOLD = keccak256("PROPOSAL_THRESHOLD");
+    
+    /// @notice Parameter keys for economic system
+    bytes32 public constant REVENUE_SPLIT_TREASURY = keccak256("REVENUE_SPLIT_TREASURY");
+    bytes32 public constant REVENUE_SPLIT_INVESTORS = keccak256("REVENUE_SPLIT_INVESTORS");
+    bytes32 public constant MIN_WORKERS_BPS = keccak256("MIN_WORKERS_BPS");
+    bytes32 public constant SPILLOVER_TARGET = keccak256("SPILLOVER_TARGET");
+    bytes32 public constant FEE_ON_WITHDRAW = keccak256("FEE_ON_WITHDRAW");
+    bytes32 public constant BACKING_ASSETS = keccak256("BACKING_ASSETS");
+    
+    /// @notice Parameter keys for cohort system
+    bytes32 public constant MAX_INVESTOR_COHORTS_ACTIVE = keccak256("MAX_INVESTOR_COHORTS_ACTIVE");
+    bytes32 public constant COHORT_PRIORITY_SCHEME = keccak256("COHORT_PRIORITY_SCHEME");
     
     /// @notice Parameter keys for verifier system
     bytes32 public constant VERIFIER_PANEL_SIZE = keccak256("VERIFIER_PANEL_SIZE");
@@ -36,6 +59,7 @@ contract ParamController {
     event FeeScheduled(uint256 indexed communityId, FeePeriod p);
     event UintParamSet(uint256 indexed communityId, bytes32 indexed key, uint256 value);
     event BoolParamSet(uint256 indexed communityId, bytes32 indexed key, bool value);
+    event AddressArrayParamSet(uint256 indexed communityId, bytes32 indexed key, address[] value);
     event GovernanceUpdated(address oldGov, address newGov);
     
     /// @notice Access control modifier
@@ -112,6 +136,23 @@ contract ParamController {
         return boolParams[communityId][key];
     }
     
+    /// @notice Set address array parameter for a community
+    /// @param communityId Community identifier
+    /// @param key Parameter key
+    /// @param value Parameter value
+    function setAddressArray(uint256 communityId, bytes32 key, address[] calldata value) external onlyGovernance {
+        addressArrayParams[communityId][key] = value;
+        emit AddressArrayParamSet(communityId, key, value);
+    }
+    
+    /// @notice Get address array parameter for a community
+    /// @param communityId Community identifier
+    /// @param key Parameter key
+    /// @return Parameter value (empty array if not set)
+    function getAddressArray(uint256 communityId, bytes32 key) external view returns (address[] memory) {
+        return addressArrayParams[communityId][key];
+    }
+    
     /// @notice Set multiple verifier parameters at once
     /// @param communityId Community identifier
     /// @param verifierPanelSize Number of verifiers to select for panels
@@ -169,6 +210,164 @@ contract ParamController {
         useVPTWeighting = boolParams[communityId][USE_VPT_WEIGHTING];
         maxWeightPerVerifier = uintParams[communityId][MAX_WEIGHT_PER_VERIFIER];
         cooldownAfterFraud = uintParams[communityId][COOLDOWN_AFTER_FRAUD];
+    }
+    
+    /// @notice Set governance parameters for a community
+    /// @param communityId Community identifier
+    /// @param debateWindow Time for proposal debate (seconds)
+    /// @param voteWindow Time for voting (seconds)
+    /// @param executionDelay Time before execution (seconds)
+    function setGovernanceParams(
+        uint256 communityId,
+        uint256 debateWindow,
+        uint256 voteWindow,
+        uint256 executionDelay
+    ) external onlyGovernance {
+        uintParams[communityId][DEBATE_WINDOW] = debateWindow;
+        uintParams[communityId][VOTE_WINDOW] = voteWindow;
+        uintParams[communityId][EXECUTION_DELAY] = executionDelay;
+        
+        emit UintParamSet(communityId, DEBATE_WINDOW, debateWindow);
+        emit UintParamSet(communityId, VOTE_WINDOW, voteWindow);
+        emit UintParamSet(communityId, EXECUTION_DELAY, executionDelay);
+    }
+    
+    /// @notice Get governance parameters for a community
+    /// @param communityId Community identifier
+    /// @return debateWindow Time for proposal debate (seconds)
+    /// @return voteWindow Time for voting (seconds)
+    /// @return executionDelay Time before execution (seconds)
+    function getGovernanceParams(uint256 communityId) external view returns (
+        uint256 debateWindow,
+        uint256 voteWindow,
+        uint256 executionDelay
+    ) {
+        debateWindow = uintParams[communityId][DEBATE_WINDOW];
+        voteWindow = uintParams[communityId][VOTE_WINDOW];
+        executionDelay = uintParams[communityId][EXECUTION_DELAY];
+    }
+    
+    /// @notice Set eligibility parameters for a community
+    /// @param communityId Community identifier
+    /// @param minSeniority Minimum account age to participate (seconds)
+    /// @param minSBTs Minimum SBT count to participate
+    /// @param proposalThreshold Minimum tokens to create proposal
+    function setEligibilityParams(
+        uint256 communityId,
+        uint256 minSeniority,
+        uint256 minSBTs,
+        uint256 proposalThreshold
+    ) external onlyGovernance {
+        uintParams[communityId][MIN_SENIORITY] = minSeniority;
+        uintParams[communityId][MIN_SBTS] = minSBTs;
+        uintParams[communityId][PROPOSAL_THRESHOLD] = proposalThreshold;
+        
+        emit UintParamSet(communityId, MIN_SENIORITY, minSeniority);
+        emit UintParamSet(communityId, MIN_SBTS, minSBTs);
+        emit UintParamSet(communityId, PROPOSAL_THRESHOLD, proposalThreshold);
+    }
+    
+    /// @notice Get eligibility parameters for a community
+    /// @param communityId Community identifier
+    /// @return minSeniority Minimum account age to participate (seconds)
+    /// @return minSBTs Minimum SBT count to participate
+    /// @return proposalThreshold Minimum tokens to create proposal
+    function getEligibilityParams(uint256 communityId) external view returns (
+        uint256 minSeniority,
+        uint256 minSBTs,
+        uint256 proposalThreshold
+    ) {
+        minSeniority = uintParams[communityId][MIN_SENIORITY];
+        minSBTs = uintParams[communityId][MIN_SBTS];
+        proposalThreshold = uintParams[communityId][PROPOSAL_THRESHOLD];
+    }
+    
+
+    
+
+    
+    /// @notice Set revenue policy parameters for cohort-based distribution
+    /// @param communityId Community identifier
+    /// @param minWorkersBps Minimum workers share in basis points (hard floor)
+    /// @param treasuryBps Treasury base share in basis points
+    /// @param investorsBps Investors pool share in basis points
+    /// @param spilloverTarget 0 = spillover to workers, 1 = spillover to treasury
+    function setRevenuePolicy(
+        uint256 communityId,
+        uint256 minWorkersBps,
+        uint256 treasuryBps,
+        uint256 investorsBps,
+        uint8 spilloverTarget
+    ) external onlyGovernance {
+        if (minWorkersBps + treasuryBps + investorsBps != 10000) {
+            revert Errors.InvalidInput("Revenue policy must sum to 100%");
+        }
+        if (spilloverTarget > 1) {
+            revert Errors.InvalidInput("Spillover target must be 0 (workers) or 1 (treasury)");
+        }
+        
+        uintParams[communityId][MIN_WORKERS_BPS] = minWorkersBps;
+        uintParams[communityId][REVENUE_SPLIT_TREASURY] = treasuryBps;
+        uintParams[communityId][REVENUE_SPLIT_INVESTORS] = investorsBps;
+        uintParams[communityId][SPILLOVER_TARGET] = spilloverTarget;
+        
+        emit UintParamSet(communityId, MIN_WORKERS_BPS, minWorkersBps);
+        emit UintParamSet(communityId, REVENUE_SPLIT_TREASURY, treasuryBps);
+        emit UintParamSet(communityId, REVENUE_SPLIT_INVESTORS, investorsBps);
+        emit UintParamSet(communityId, SPILLOVER_TARGET, spilloverTarget);
+    }
+    
+    /// @notice Get revenue policy parameters for cohort-based distribution
+    /// @param communityId Community identifier
+    /// @return minWorkersBps Minimum workers share in basis points
+    /// @return treasuryBps Treasury base share in basis points
+    /// @return investorsBps Investors pool share in basis points
+    /// @return spilloverTarget 0 = spillover to workers, 1 = spillover to treasury
+    function getRevenuePolicy(uint256 communityId) external view returns (
+        uint256 minWorkersBps,
+        uint256 treasuryBps,
+        uint256 investorsBps,
+        uint8 spilloverTarget
+    ) {
+        minWorkersBps = uintParams[communityId][MIN_WORKERS_BPS];
+        treasuryBps = uintParams[communityId][REVENUE_SPLIT_TREASURY];
+        investorsBps = uintParams[communityId][REVENUE_SPLIT_INVESTORS];
+        spilloverTarget = uint8(uintParams[communityId][SPILLOVER_TARGET]);
+    }
+    
+    /// @notice Set cohort system parameters
+    /// @param communityId Community identifier
+    /// @param maxActiveCohortsLimit Maximum number of active investment cohorts
+    /// @param priorityScheme 0 = ProRataByUnrecovered, 1 = ProRataByUnrecoveredWeighted
+    function setCohortParams(
+        uint256 communityId,
+        uint256 maxActiveCohortsLimit,
+        uint8 priorityScheme
+    ) external onlyGovernance {
+        if (maxActiveCohortsLimit == 0) {
+            revert Errors.InvalidInput("Max cohorts must be greater than 0");
+        }
+        if (priorityScheme > 1) {
+            revert Errors.InvalidInput("Priority scheme must be 0 or 1");
+        }
+        
+        uintParams[communityId][MAX_INVESTOR_COHORTS_ACTIVE] = maxActiveCohortsLimit;
+        uintParams[communityId][COHORT_PRIORITY_SCHEME] = priorityScheme;
+        
+        emit UintParamSet(communityId, MAX_INVESTOR_COHORTS_ACTIVE, maxActiveCohortsLimit);
+        emit UintParamSet(communityId, COHORT_PRIORITY_SCHEME, priorityScheme);
+    }
+    
+    /// @notice Get cohort system parameters
+    /// @param communityId Community identifier
+    /// @return maxActiveCohorts Maximum number of active investment cohorts
+    /// @return priorityScheme 0 = ProRataByUnrecovered, 1 = ProRataByUnrecoveredWeighted
+    function getCohortParams(uint256 communityId) external view returns (
+        uint256 maxActiveCohorts,
+        uint8 priorityScheme
+    ) {
+        maxActiveCohorts = uintParams[communityId][MAX_INVESTOR_COHORTS_ACTIVE];
+        priorityScheme = uint8(uintParams[communityId][COHORT_PRIORITY_SCHEME]);
     }
     
     /// @notice Update governance address

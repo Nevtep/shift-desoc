@@ -5,16 +5,18 @@ This directory contains comprehensive E2E tests that interact with the actual de
 ## 🎯 Test Coverage
 
 ### **Governance Workflow Tests**
+
 Tests the complete `Request → Draft → Proposal → Vote → Execute` pipeline:
 
 1. **Request Creation** - Community members post requests for changes/features
-2. **Draft Development** - Collaborative proposal development with multiple contributors  
+2. **Draft Development** - Collaborative proposal development with multiple contributors
 3. **Community Review** - Draft review and refinement process
 4. **Governance Escalation** - Draft escalation to formal governance proposal
 5. **Voting Process** - Multi-user voting with different preferences
 6. **Execution** - Timelock execution and parameter updates
 
-### **Work Verification Workflow Tests**  
+### **Work Verification Workflow Tests**
+
 Tests the complete `Define Action → Claim → Verify → Reward` pipeline:
 
 1. **Action Definition** - Community defines valuable work types with verification parameters
@@ -24,7 +26,9 @@ Tests the complete `Define Action → Claim → Verify → Reward` pipeline:
 5. **Reward Distribution** - Automatic distribution of governance tokens and SBTs
 
 ### **Integration Tests**
+
 Tests interaction between governance and work verification systems:
+
 - Governance proposals that create new action types
 - Work verification using governance-created actions
 - Cross-system parameter updates and configuration
@@ -32,10 +36,12 @@ Tests interaction between governance and work verification systems:
 ## 📋 Deployed Contract Addresses (Base Sepolia)
 
 ### Master Infrastructure
+
 - **CommunityRegistry**: `0x67eC4cAcC44D80B43Ce7CCA63cEF6D1Ae3E57f8B`
 - **CountingMultiChoice**: `0x9a254605ccEf5c69Ce51b0a8C0a65016dD476c83`
 
-### Community ID 1 Contracts  
+### Community ID 1 Contracts
+
 - **ShiftGovernor**: `0x42362f0f2Cdd96902848e21d878927234C5C9425`
 - **TimelockController**: `0xF140d690BadDf50C3a1006AD587298Eed61ADCfA`
 - **MembershipTokenERC20Votes**: `0xFf60937906c537685Ad21a67a2A4E8Dbf7A0F9cb`
@@ -50,11 +56,13 @@ Tests interaction between governance and work verification systems:
 ## 🛠️ Running the Tests
 
 ### Prerequisites
+
 1. **Base Sepolia RPC Access** - Get RPC endpoint from [Base docs](https://docs.base.org/guides/run-a-base-node)
 2. **Test ETH** - Get Base Sepolia ETH from [Base faucet](https://bridge.base.org/deposit)
 3. **Environment Variables** - Set up your `.env` file
 
 ### Environment Setup
+
 ```bash
 # .env file
 BASE_SEPOLIA_RPC_URL="https://sepolia.base.org"  # or your RPC provider
@@ -62,6 +70,7 @@ PRIVATE_KEY="your-test-private-key"               # Account with Base Sepolia ET
 ```
 
 ### Running Foundry Tests (Solidity)
+
 ```bash
 # Run all E2E tests
 forge test --match-contract E2EBaseSepolia --fork-url $BASE_SEPOLIA_RPC_URL -vvv
@@ -77,6 +86,7 @@ forge test --match-test testIntegration --fork-url $BASE_SEPOLIA_RPC_URL -vvv
 ```
 
 ### Running Hardhat Tests (TypeScript)
+
 ```bash
 # Run all E2E tests
 npx hardhat test test/E2EBaseSepolia.test.ts --network base_sepolia
@@ -89,10 +99,11 @@ npx hardhat test test/E2EBaseSepolia.test.ts --network base_sepolia --grep "Work
 ## 🧪 Test Scenarios
 
 ### **Scenario 1: Community Parameter Update**
+
 ```
 User1 → Creates request for debate window update
 User2 → Creates draft with governance calldata
-Users 3,4 → Collaborate and provide feedback  
+Users 3,4 → Collaborate and provide feedback
 User2 → Escalates draft to proposal
 Users 1-5 → Vote (3 for, 1 against, 1 abstain)
 System → Queues and executes via timelock
@@ -100,16 +111,18 @@ Result → Community debate window updated to 2 days
 ```
 
 ### **Scenario 2: Code Review Verification**
+
 ```
 Deployer → Defines "Code Review" action type (50 tokens, M=2, N=3)
 Users 2,3,4 → Register as verifiers with 100 token bonds
 User1 → Submits code review claim with evidence
 Users 2,3 → Approve (quality standards met)
-User4 → Rejects (missing security analysis)  
+User4 → Rejects (missing security analysis)
 System → Approves claim (2/3 majority), distributes 50 tokens + SBT
 ```
 
 ### **Scenario 3: Governance Creates New Action Type**
+
 ```
 User1 → Requests new "Documentation Review" action type
 User2 → Creates draft with ValuableActionRegistry.createAction calldata
@@ -121,6 +134,7 @@ Verifiers → Process claim and distribute rewards
 ## 🔍 Test Validation
 
 ### **Smart Contract State Verification**
+
 - ✅ Request metadata stored correctly in RequestHub
 - ✅ Draft versioning and contributor tracking in DraftsManager
 - ✅ Proposal creation and voting in ShiftGovernor
@@ -131,6 +145,7 @@ Verifiers → Process claim and distribute rewards
 - ✅ Token minting and SBT distribution in WorkerSBT/MembershipToken
 
 ### **Economic Model Verification**
+
 - ✅ Membership tokens minted on claim approval
 - ✅ Worker SBTs issued for verified work
 - ✅ Verifier bonds locked during verification
@@ -138,24 +153,28 @@ Verifiers → Process claim and distribute rewards
 - ✅ Anti-plutocracy mechanisms enforced
 
 ### **Governance Integrity**
+
 - ✅ Timelock delays enforced for sensitive operations
-- ✅ Quorum requirements met for proposal execution  
+- ✅ Quorum requirements met for proposal execution
 - ✅ Multi-choice voting weights calculated correctly
 - ✅ Delegation and voting power tracking accurate
 
 ## 🚨 Known Limitations & Considerations
 
 ### **Network Dependencies**
+
 - Tests require Base Sepolia network connectivity
 - Gas costs may vary based on network congestion
 - Some operations may fail if contracts are paused/upgraded
 
-### **State Dependencies**  
+### **State Dependencies**
+
 - Tests assume contracts are in operational state
 - Some tests require deployer permissions for setup
 - Existing community state may affect test outcomes
 
 ### **Test Isolation**
+
 - Tests may affect each other due to shared contract state
 - Consider using different community IDs for parallel testing
 - Reset or fork from specific blocks for consistent testing
@@ -163,6 +182,7 @@ Verifiers → Process claim and distribute rewards
 ## 📊 Success Metrics
 
 ### **Governance Workflow Success**
+
 - [ ] Request created with correct metadata and status
 - [ ] Draft tracks multiple contributors and versions
 - [ ] Proposal escalation creates governance proposal with correct parameters
@@ -171,6 +191,7 @@ Verifiers → Process claim and distribute rewards
 - [ ] All events emitted correctly for off-chain indexing
 
 ### **Work Verification Success**
+
 - [ ] Action definition includes all required parameters
 - [ ] Verifier registration locks bonds correctly
 - [ ] Claim submission creates pending verification
@@ -179,6 +200,7 @@ Verifiers → Process claim and distribute rewards
 - [ ] Verifier reputation updated based on accuracy
 
 ### **Integration Success**
+
 - [ ] Cross-contract calls execute successfully
 - [ ] State consistency maintained across modules
 - [ ] Economic incentives align with expected behavior
@@ -188,6 +210,7 @@ Verifiers → Process claim and distribute rewards
 ## 🔧 Debugging & Troubleshooting
 
 ### **Common Issues**
+
 1. **RPC Connection Failures** - Check Base Sepolia RPC URL and rate limits
 2. **Insufficient Gas** - Increase gas limits in hardhat.config.ts
 3. **Permission Errors** - Verify deployer account has required roles
@@ -195,6 +218,7 @@ Verifiers → Process claim and distribute rewards
 5. **State Conflicts** - Use fresh addresses or reset contract state
 
 ### **Useful Commands**
+
 ```bash
 # Check contract verification on BaseScan
 npx hardhat verify --network base_sepolia <address> <constructor_args>

@@ -3,10 +3,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import {CommunityRegistry} from "contracts/modules/CommunityRegistry.sol";
+import {ParamController} from "contracts/modules/ParamController.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
 contract CommunityRegistryTest is Test {
     CommunityRegistry public registry;
+    ParamController public paramController;
     
     address public admin = address(0x1);
     address public user1 = address(0x101);
@@ -19,12 +21,6 @@ contract CommunityRegistryTest is Test {
         string name,
         address indexed creator,
         uint256 parentCommunityId
-    );
-    
-    event CommunityParametersUpdated(
-        uint256 indexed communityId,
-        bytes32[] keys,
-        uint256[] values
     );
     
     event ModuleAddressUpdated(
@@ -58,7 +54,8 @@ contract CommunityRegistryTest is Test {
     
     function setUp() public {
         vm.startPrank(admin);
-        registry = new CommunityRegistry(admin);
+        paramController = new ParamController(admin);
+        registry = new CommunityRegistry(admin, address(paramController));
         // Grant admin role to test contract to handle internal call context
         registry.grantRole(registry.DEFAULT_ADMIN_ROLE(), address(this));
         vm.stopPrank();
@@ -75,8 +72,12 @@ contract CommunityRegistryTest is Test {
     }
     
     function testDeploymentZeroAddress() public {
+        ParamController testController = new ParamController(admin);
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new CommunityRegistry(address(0));
+        new CommunityRegistry(address(0), address(testController));
+        
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new CommunityRegistry(admin, address(0));
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -107,17 +108,8 @@ contract CommunityRegistryTest is Test {
         assertEq(community.createdAt, block.timestamp);
         assertEq(community.parentCommunityId, 0);
         
-        // Check default parameters
-        assertEq(community.debateWindow, 7 days);
-        assertEq(community.voteWindow, 3 days);
-        assertEq(community.executionDelay, 2 days);
-        assertEq(community.minSeniority, 0);
-        assertEq(community.minSBTs, 0);
-        assertEq(community.proposalThreshold, 1e18);
-        assertEq(community.revenueSplit[0], 70); // workers
-        assertEq(community.revenueSplit[1], 20); // treasury
-        assertEq(community.revenueSplit[2], 10); // investors
-        assertEq(community.feeOnWithdraw, 0);
+        // Note: Parameters are now managed by ParamController
+        // They need to be set separately via initializeDefaultParameters or ParamController directly
     }
     
     function testRegisterCommunityEmptyName() public {
@@ -196,74 +188,21 @@ contract CommunityRegistryTest is Test {
                         PARAMETER MANAGEMENT TESTS
     //////////////////////////////////////////////////////////////*/
     
-    function testUpdateParameters() public {
-        vm.prank(user1);
-        uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
-        
-        CommunityRegistry.ParameterUpdate[] memory updates = new CommunityRegistry.ParameterUpdate[](3);
-        updates[0] = CommunityRegistry.ParameterUpdate(keccak256("debateWindow"), 10 days);
-        updates[1] = CommunityRegistry.ParameterUpdate(keccak256("voteWindow"), 5 days);
-        updates[2] = CommunityRegistry.ParameterUpdate(keccak256("minSBTs"), 5);
-        
-        bytes32[] memory expectedKeys = new bytes32[](3);
-        expectedKeys[0] = keccak256("debateWindow");
-        expectedKeys[1] = keccak256("voteWindow");
-        expectedKeys[2] = keccak256("minSBTs");
-        
-        uint256[] memory expectedValues = new uint256[](3);
-        expectedValues[0] = 10 days;
-        expectedValues[1] = 5 days;
-        expectedValues[2] = 5;
-        
-        vm.expectEmit(true, false, false, true);
-        emit CommunityParametersUpdated(communityId, expectedKeys, expectedValues);
-        
-        vm.prank(user1);
-        registry.updateParameters(communityId, updates);
-        
-        CommunityRegistry.Community memory community = registry.getCommunity(communityId);
-        assertEq(community.debateWindow, 10 days);
-        assertEq(community.voteWindow, 5 days);
-        assertEq(community.minSBTs, 5);
-    }
+
     
-    function testUpdateParametersUnauthorized() public {
+    function testParameterManagement() public {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
-        CommunityRegistry.ParameterUpdate[] memory updates = new CommunityRegistry.ParameterUpdate[](1);
-        updates[0] = CommunityRegistry.ParameterUpdate(keccak256("debateWindow"), 10 days);
+        // Set parameters via ParamController
+        vm.prank(admin);
+        paramController.setGovernanceParams(communityId, 10 days, 5 days, 3 days);
         
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user2));
-        
-        vm.prank(user2);
-        registry.updateParameters(communityId, updates);
-    }
-    
-    function testUpdateParametersInvalidFee() public {
-        vm.prank(user1);
-        uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
-        
-        CommunityRegistry.ParameterUpdate[] memory updates = new CommunityRegistry.ParameterUpdate[](1);
-        updates[0] = CommunityRegistry.ParameterUpdate(keccak256("feeOnWithdraw"), 10001); // > 100%
-        
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Fee cannot exceed 100%"));
-        
-        vm.prank(user1);
-        registry.updateParameters(communityId, updates);
-    }
-    
-    function testUpdateParametersUnknownKey() public {
-        vm.prank(user1);
-        uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
-        
-        CommunityRegistry.ParameterUpdate[] memory updates = new CommunityRegistry.ParameterUpdate[](1);
-        updates[0] = CommunityRegistry.ParameterUpdate(keccak256("unknownParameter"), 100);
-        
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Unknown parameter key"));
-        
-        vm.prank(user1);
-        registry.updateParameters(communityId, updates);
+        // Verify parameters are accessible through CommunityRegistry
+        (uint256 debateWindow, uint256 voteWindow, uint256 executionDelay) = registry.getGovernanceParameters(communityId);
+        assertEq(debateWindow, 10 days);
+        assertEq(voteWindow, 5 days);
+        assertEq(executionDelay, 3 days);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -282,7 +221,7 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         registry.setModuleAddress(communityId, keccak256("governor"), governorAddress);
         
-        (address governor, , , , , , , , , ) = registry.getModuleAddresses(communityId);
+        (address governor, , , , , , , , ) = registry.getModuleAddresses(communityId);
         assertEq(governor, governorAddress);
     }
     
@@ -321,11 +260,11 @@ contract CommunityRegistryTest is Test {
         moduleKeys[2] = keccak256("requestHub");
         moduleKeys[3] = keccak256("draftsManager");
         moduleKeys[4] = keccak256("claimsManager");
-        moduleKeys[5] = keccak256("actionTypeRegistry");
-        moduleKeys[6] = keccak256("verifierPool");
-        moduleKeys[7] = keccak256("workerSBT");
-        moduleKeys[8] = keccak256("treasuryAdapter");
-        moduleKeys[9] = keccak256("communityToken");
+        moduleKeys[5] = keccak256("valuableActionRegistry");
+        moduleKeys[6] = keccak256("valuableActionSBT");
+        moduleKeys[7] = keccak256("treasuryAdapter");
+        moduleKeys[8] = keccak256("communityToken");
+        moduleKeys[9] = keccak256("paramController");
         
         vm.startPrank(user1);
         for (uint256 i = 0; i < 10; i++) {
@@ -339,9 +278,8 @@ contract CommunityRegistryTest is Test {
             address requestHub,
             address draftsManager,
             address claimsManager,
-            address actionTypeRegistry,
-            address verifierPool,
-            address workerSBT,
+            address valuableActionRegistry,
+            address valuableActionSBT,
             address treasuryAdapter,
             address communityToken
         ) = registry.getModuleAddresses(communityId);
@@ -351,11 +289,10 @@ contract CommunityRegistryTest is Test {
         assertEq(requestHub, addresses[2]);
         assertEq(draftsManager, addresses[3]);
         assertEq(claimsManager, addresses[4]);
-        assertEq(actionTypeRegistry, addresses[5]);
-        assertEq(verifierPool, addresses[6]);
-        assertEq(workerSBT, addresses[7]);
-        assertEq(treasuryAdapter, addresses[8]);
-        assertEq(communityToken, addresses[9]);
+        assertEq(valuableActionRegistry, addresses[5]);
+        assertEq(valuableActionSBT, addresses[6]);
+        assertEq(treasuryAdapter, addresses[7]);
+        assertEq(communityToken, addresses[8]);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -552,6 +489,10 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
+        // Set parameters first via ParamController
+        vm.prank(admin);
+        paramController.setGovernanceParams(communityId, 7 days, 3 days, 2 days);
+        
         (uint256 debateWindow, uint256 voteWindow, uint256 executionDelay) = registry.getGovernanceParameters(communityId);
         
         assertEq(debateWindow, 7 days);
@@ -562,6 +503,10 @@ contract CommunityRegistryTest is Test {
     function testGetEligibilityRules() public {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
+        
+        // Set parameters first via ParamController
+        vm.prank(admin);
+        paramController.setEligibilityParams(communityId, 0, 0, 1e18);
         
         (uint256 minSeniority, uint256 minSBTs, uint256 proposalThreshold) = registry.getEligibilityRules(communityId);
         
@@ -574,11 +519,21 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
-        (uint256[3] memory revenueSplit, uint256 feeOnWithdraw, address[] memory backingAssets) = registry.getEconomicParameters(communityId);
+        // Set parameters first via ParamController
+        vm.startPrank(admin);
+        paramController.setRevenuePolicy(communityId, 7000, 2000, 1000, 0); // 70%, 20%, 10% in basis points
         
-        assertEq(revenueSplit[0], 70);
-        assertEq(revenueSplit[1], 20);
-        assertEq(revenueSplit[2], 10);
+        address[] memory assets = new address[](0);
+        paramController.setAddressArray(communityId, paramController.BACKING_ASSETS(), assets);
+        vm.stopPrank();
+        
+        (uint256 minWorkersBps, uint256 treasuryBps, uint256 investorsBps, 
+         uint8 spilloverTarget, uint256 feeOnWithdraw, address[] memory backingAssets) = registry.getEconomicParameters(communityId);
+        
+        assertEq(minWorkersBps, 7000); // 70% min workers
+        assertEq(treasuryBps, 2000); // 20% treasury
+        assertEq(investorsBps, 1000); // 10% investors
+        assertEq(spilloverTarget, 0); // spillover to workers
         assertEq(feeOnWithdraw, 0);
         assertEq(backingAssets.length, 0);
     }
@@ -650,14 +605,14 @@ contract CommunityRegistryTest is Test {
         vm.prank(admin);
         registry.grantRole(registry.DEFAULT_ADMIN_ROLE(), user2);
         
-        // Now user2 should be able to update parameters
-        CommunityRegistry.ParameterUpdate[] memory updates = new CommunityRegistry.ParameterUpdate[](1);
-        updates[0] = CommunityRegistry.ParameterUpdate(keccak256("debateWindow"), 10 days);
+        // Parameters are now managed via ParamController
+        // Test that user2 can set module addresses as community admin
+        address governorAddress = address(0x1234);
         
-        vm.prank(user2);
-        registry.updateParameters(communityId, updates);
+        vm.prank(user2); // user2 has global admin role now
+        registry.setModuleAddress(communityId, keccak256("governor"), governorAddress);
         
-        CommunityRegistry.Community memory community = registry.getCommunity(communityId);
-        assertEq(community.debateWindow, 10 days);
+        (address governor, , , , , , , , ) = registry.getModuleAddresses(communityId);
+        assertEq(governor, governorAddress);
     }
 }

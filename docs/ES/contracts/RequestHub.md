@@ -63,22 +63,22 @@ function createRequest(
     uint256 bountyAmount,
     uint256 actionTypeId
 ) external payable returns (uint256 requestId) {
-    
+
     // Verificar elegibilidad del autor
     require(_isEligibleToPost(msg.sender), "No elegible para publicar");
     require(bytes(title).length > 0 && bytes(title).length <= 200, "Título inválido");
     require(tags.length <= MAX_TAGS, "Demasiados tags");
-    
+
     // Verificar stake anti-spam si es requerido
     if (postingStakeRequired) {
         require(msg.value >= POSTING_STAKE, "Stake insuficiente");
         postingStakes[msg.sender] += msg.value;
     }
-    
+
     // Crear nueva request
     requestId = ++nextRequestId;
     RequestMeta storage newRequest = requests[requestId];
-    
+
     newRequest.id = requestId;
     newRequest.communityId = _getCommunityId(msg.sender);
     newRequest.author = msg.sender;
@@ -90,21 +90,21 @@ function createRequest(
     newRequest.tags = tags;
     newRequest.bountyAmount = bountyAmount;
     newRequest.linkedActionTypeId = actionTypeId;
-    
+
     // Actualizar índices
     authorRequests[msg.sender].push(requestId);
     communityRequests[newRequest.communityId].push(requestId);
-    
+
     // Actualizar rate limiting
     lastPostTime[msg.sender] = block.timestamp;
-    
+
     emit RequestCreated(requestId, msg.sender, title, contentCID);
-    
+
     // Configurar bounty si se especifica
     if (bountyAmount > 0 && actionTypeId != 0) {
         _setupBounty(requestId, bountyAmount, actionTypeId);
     }
-    
+
     return requestId;
 }
 ```
@@ -117,46 +117,46 @@ function postComment(
     uint256 parentCommentId,
     string calldata contentCID
 ) external returns (uint256 commentId) {
-    
+
     RequestMeta storage request = requests[requestId];
     require(request.id != 0, "Request no existe");
     require(request.status == RequestStatus.OPEN_DEBATE, "Request cerrada para comentarios");
     require(_canComment(msg.sender, requestId), "No autorizado para comentar");
-    
+
     // Verificar rate limiting
     require(
         lastCommentTime[msg.sender] + COMMENT_COOLDOWN <= block.timestamp,
         "En cooldown de comentarios"
     );
-    
+
     // Verificar comentario padre si existe
     if (parentCommentId != 0) {
         require(comments[parentCommentId].requestId == requestId, "Comentario padre inválido");
     }
-    
+
     // Crear nuevo comentario
     commentId = ++nextCommentId;
     Comment storage newComment = comments[commentId];
-    
+
     newComment.id = commentId;
     newComment.requestId = requestId;
     newComment.parentCommentId = parentCommentId;
     newComment.author = msg.sender;
     newComment.contentCID = contentCID;
     newComment.createdAt = block.timestamp;
-    
+
     // Actualizar actividad de request
     request.lastActivityAt = block.timestamp;
-    
+
     // Actualizar índices
     requestComments[requestId].push(commentId);
     authorComments[msg.sender].push(commentId);
-    
+
     // Actualizar rate limiting
     lastCommentTime[msg.sender] = block.timestamp;
-    
+
     emit CommentPosted(commentId, requestId, msg.sender, parentCommentId, contentCID);
-    
+
     return commentId;
 }
 ```
@@ -169,15 +169,15 @@ function upvoteRequest(uint256 requestId) external {
     require(request.id != 0, "Request no existe");
     require(!hasUpvoted[requestId][msg.sender], "Ya votaste");
     require(_canVote(msg.sender), "No elegible para votar");
-    
+
     hasUpvoted[requestId][msg.sender] = true;
     request.upvotes++;
-    
+
     // Otorgar reputación al autor si alcanza umbral
     if (request.upvotes == UPVOTE_REPUTATION_THRESHOLD) {
         _rewardAuthor(request.author, UPVOTE_REPUTATION_REWARD);
     }
-    
+
     emit RequestUpvoted(requestId, msg.sender, request.upvotes);
 }
 
@@ -186,10 +186,10 @@ function upvoteComment(uint256 commentId) external {
     require(comment.id != 0, "Comentario no existe");
     require(!hasUpvotedComment[commentId][msg.sender], "Ya votaste");
     require(_canVote(msg.sender), "No elegible para votar");
-    
+
     hasUpvotedComment[commentId][msg.sender] = true;
     comment.upvotes++;
-    
+
     emit CommentUpvoted(commentId, msg.sender, comment.upvotes);
 }
 ```
@@ -210,23 +210,23 @@ modifier onlyModerator(uint256 requestId) {
     _;
 }
 
-function freezeRequest(uint256 requestId, string calldata reason) 
+function freezeRequest(uint256 requestId, string calldata reason)
     external onlyModerator(requestId) {
     RequestMeta storage request = requests[requestId];
     require(request.status == RequestStatus.OPEN_DEBATE, "Solo requests abiertas pueden congelarse");
-    
+
     request.status = RequestStatus.FROZEN;
-    
+
     emit RequestFrozen(requestId, msg.sender, reason);
 }
 
-function hideComment(uint256 commentId, string calldata reason) 
+function hideComment(uint256 commentId, string calldata reason)
     external onlyModerator(comments[commentId].requestId) {
     Comment storage comment = comments[commentId];
     require(!comment.hidden, "Comentario ya oculto");
-    
+
     comment.hidden = true;
-    
+
     emit CommentHidden(commentId, msg.sender, reason);
 }
 ```
@@ -239,22 +239,22 @@ function _isEligibleToPost(address user) internal view returns (bool) {
     if (lastPostTime[user] + POST_COOLDOWN > block.timestamp) {
         return false;
     }
-    
+
     // Verificar requisitos de membership
     if (requireWorkerSBT && workerSBT.balanceOf(user) == 0) {
         return false;
     }
-    
+
     // Verificar minimum token balance
     if (membershipToken.balanceOf(user) < MIN_TOKEN_BALANCE) {
         return false;
     }
-    
+
     // Verificar que no esté en lista negra
     if (isBlacklisted[user]) {
         return false;
     }
-    
+
     return true;
 }
 
@@ -267,13 +267,13 @@ function reclaimPostingStake(uint256 requestId) external {
         block.timestamp > request.createdAt + STAKE_LOCK_PERIOD, // O periodo expirado
         "Stake aún bloqueado"
     );
-    
+
     uint256 stakeAmount = postingStakes[msg.sender];
     require(stakeAmount > 0, "Sin stake para reclamar");
-    
+
     postingStakes[msg.sender] = 0;
     payable(msg.sender).transfer(stakeAmount);
-    
+
     emit StakeReclaimed(msg.sender, stakeAmount);
 }
 ```
@@ -283,30 +283,30 @@ function reclaimPostingStake(uint256 requestId) external {
 ### Con DraftsManager
 
 ```solidity
-function createDraftFromRequest(uint256 requestId, string calldata draftTitle) 
+function createDraftFromRequest(uint256 requestId, string calldata draftTitle)
     external returns (uint256 draftId) {
     RequestMeta storage request = requests[requestId];
     require(request.id != 0, "Request no existe");
     require(_canCreateDraft(msg.sender, requestId), "No autorizado");
-    
+
     // Crear draft vinculado en DraftsManager
     draftId = draftsManager.createDraftFromRequest(requestId, draftTitle, msg.sender);
-    
+
     // Actualizar vínculos
     request.linkedDraftIds.push(draftId);
     requestDrafts[requestId].push(draftId);
-    
+
     emit DraftCreatedFromRequest(requestId, draftId, msg.sender);
-    
+
     return draftId;
 }
 
 // Callback desde DraftsManager cuando draft es aprobado
-function notifyRequestResolved(uint256 requestId, uint256 approvedDraftId) 
+function notifyRequestResolved(uint256 requestId, uint256 approvedDraftId)
     external onlyDraftsManager {
     RequestMeta storage request = requests[requestId];
     request.status = RequestStatus.RESOLVED;
-    
+
     emit RequestResolved(requestId, approvedDraftId);
 }
 ```
@@ -316,33 +316,33 @@ function notifyRequestResolved(uint256 requestId, uint256 approvedDraftId)
 ```solidity
 function _setupBounty(uint256 requestId, uint256 bountyAmount, uint256 actionTypeId) internal {
     require(actionTypeRegistry.isValidActionType(actionTypeId), "ActionType inválido");
-    
+
     // Reservar fondos para bounty
     bytes32 bountyId = keccak256(abi.encodePacked("bounty", requestId));
     communityToken.reserveFunds(bountyId, bountyAmount, address(this));
-    
+
     requestBounties[requestId] = BountyInfo({
         amount: bountyAmount,
         actionTypeId: actionTypeId,
         active: true,
         claimIds: new uint256[](0)
     });
-    
+
     emit BountyCreated(requestId, actionTypeId, bountyAmount);
 }
 
-function submitBountyClaim(uint256 requestId, string calldata evidenceCID) 
+function submitBountyClaim(uint256 requestId, string calldata evidenceCID)
     external returns (uint256 claimId) {
     BountyInfo storage bounty = requestBounties[requestId];
     require(bounty.active, "Bounty no activo");
-    
+
     // Crear claim en Claims contract
     claimId = claims.submitClaim(bounty.actionTypeId, evidenceCID, abi.encode(requestId));
-    
+
     // Vincular claim a bounty
     bounty.claimIds.push(claimId);
     claimToBounty[claimId] = requestId;
-    
+
     emit BountyClaimSubmitted(requestId, claimId, msg.sender);
 }
 ```
@@ -360,20 +360,20 @@ struct BountyInfo {
     uint256 winnerClaimId;       // Claim ganador (0 si no hay)
 }
 
-function awardBounty(uint256 requestId, uint256 winningClaimId) 
+function awardBounty(uint256 requestId, uint256 winningClaimId)
     external onlyClaimsContract {
     BountyInfo storage bounty = requestBounties[requestId];
     require(bounty.active, "Bounty no activo");
     require(_isValidClaim(winningClaimId, requestId), "Claim inválido");
-    
+
     bounty.active = false;
     bounty.winnerClaimId = winningClaimId;
-    
+
     // Transferir bounty al ganador
     address winner = claims.getClaimWorker(winningClaimId);
     bytes32 bountyPaymentId = keccak256(abi.encodePacked("bounty_award", requestId));
     communityToken.executePayment(bountyPaymentId, winner, bounty.amount);
-    
+
     emit BountyAwarded(requestId, winningClaimId, winner, bounty.amount);
 }
 ```
@@ -384,11 +384,11 @@ function awardBounty(uint256 requestId, uint256 winningClaimId)
 // Recompensas por contenido de calidad
 function rewardQualityContent(uint256 requestId) external onlyGovernance {
     RequestMeta storage request = requests[requestId];
-    
+
     if (request.upvotes >= QUALITY_THRESHOLD) {
         uint256 reward = QUALITY_CONTENT_REWARD;
         membershipToken.mint(request.author, reward);
-        
+
         emit QualityContentRewarded(requestId, request.author, reward);
     }
 }
@@ -396,7 +396,7 @@ function rewardQualityContent(uint256 requestId) external onlyGovernance {
 // Penalizaciones por spam
 function penalizeSpamContent(uint256 requestId) external onlyModerator(requestId) {
     RequestMeta storage request = requests[requestId];
-    
+
     // Confiscar posting stake
     uint256 stake = postingStakes[request.author];
     if (stake > 0) {
@@ -404,10 +404,10 @@ function penalizeSpamContent(uint256 requestId) external onlyModerator(requestId
         // Enviar stake confiscado a tesorería comunitaria
         communityTreasury.transfer(stake);
     }
-    
+
     // Aplicar cooldown extendido
     lastPostTime[request.author] = block.timestamp + SPAM_PENALTY_COOLDOWN;
-    
+
     emit SpamPenaltyApplied(requestId, request.author, stake);
 }
 ```
@@ -451,17 +451,17 @@ RequestHubConfig memory contentConfig = RequestHubConfig({
 ### Descubrimiento y Búsqueda
 
 ```solidity
-function getRequestsByTag(string calldata tag, uint256 limit) 
+function getRequestsByTag(string calldata tag, uint256 limit)
     external view returns (uint256[] memory requestIds) {
     // Implementar búsqueda por tag con paginación
 }
 
-function getTrendingRequests(uint256 timeWindow, uint256 limit) 
+function getTrendingRequests(uint256 timeWindow, uint256 limit)
     external view returns (uint256[] memory) {
     // Requests con más actividad reciente
 }
 
-function getRequestsNeedingAttention(uint256 communityId) 
+function getRequestsNeedingAttention(uint256 communityId)
     external view returns (uint256[] memory) {
     // Requests con bounties sin resolver, alta actividad, etc.
 }
@@ -472,7 +472,7 @@ function getRequestsNeedingAttention(uint256 communityId)
 ```solidity
 function getCommunityMetrics(uint256 communityId) external view returns (
     uint256 totalRequests,
-    uint256 activeRequests, 
+    uint256 activeRequests,
     uint256 totalBounties,
     uint256 averageResolutionTime,
     uint256 participationRate

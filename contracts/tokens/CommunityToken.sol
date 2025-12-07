@@ -9,6 +9,7 @@ import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {Errors} from "contracts/libs/Errors.sol";
+import {ParamController} from "contracts/modules/ParamController.sol";
 
 /**
  * @title CommunityToken
@@ -57,12 +58,14 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
     mapping(uint256 => EmergencyWithdrawal) public emergencyWithdrawals;
     uint256 public emergencyWithdrawalCount;
     
-    /// @notice Fee on redemption (basis points, max 1000 = 10%)
-    uint256 public redemptionFeeBps;
+    /// @notice Maximum redemption fee (10% in basis points)
     uint256 public constant MAX_REDEMPTION_FEE = 1000; // 10%
     
     /// @notice Community treasury for fee collection
     address public treasury;
+    
+    /// @notice ParamController for reading withdrawal fees
+    ParamController public paramController;
 
     /* ======== EVENTS ======== */
 
@@ -104,6 +107,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      * @param _symbol Token symbol (e.g., "SCT")
      * @param _treasury Initial treasury address for fee collection
      * @param _maxSupply Maximum token supply cap
+     * @param _paramController ParamController address for reading withdrawal fees
      */
     constructor(
         address _usdc,
@@ -111,10 +115,12 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
         string memory _name,
         string memory _symbol,
         address _treasury,
-        uint256 _maxSupply
+        uint256 _maxSupply,
+        address _paramController
     ) ERC20(_name, _symbol) {
         if (_usdc == address(0)) revert Errors.ZeroAddress();
         if (_treasury == address(0)) revert Errors.ZeroAddress();
+        if (_paramController == address(0)) revert Errors.ZeroAddress();
         if (_communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
         if (_maxSupply == 0) revert Errors.InvalidInput("Max supply cannot be zero");
 
@@ -122,6 +128,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
         communityId = _communityId;
         treasury = _treasury;
         maxSupply = _maxSupply;
+        paramController = ParamController(_paramController);
         
         // Grant admin role to deployer
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -174,9 +181,10 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
             revert InsufficientTokenBalance(tokenAmount, balanceOf(msg.sender));
         }
 
-        // Calculate USDC amount and fee
+        // Calculate USDC amount and fee (read from ParamController)
         uint256 grossUsdcAmount = tokenAmount; // 1:1 base ratio
-        uint256 fee = (grossUsdcAmount * redemptionFeeBps) / 10000;
+        uint256 feeBps = _getRedemptionFeeBps();
+        uint256 fee = (grossUsdcAmount * feeBps) / 10000;
         usdcAmount = grossUsdcAmount - fee;
 
         // Check USDC reserves
@@ -326,19 +334,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
 
     /* ======== GOVERNANCE FUNCTIONS ======== */
 
-    /**
-     * @notice Update redemption fee
-     * @param newFeeBps New fee in basis points
-     */
-    function setRedemptionFee(uint256 newFeeBps) external onlyValidRole(DEFAULT_ADMIN_ROLE) {
-        if (newFeeBps > MAX_REDEMPTION_FEE) {
-            revert InvalidRedemptionFee(newFeeBps, MAX_REDEMPTION_FEE);
-        }
 
-        uint256 oldFee = redemptionFeeBps;
-        redemptionFeeBps = newFeeBps;
-        emit RedemptionFeeUpdated(oldFee, newFeeBps);
-    }
 
     /**
      * @notice Update treasury address
@@ -346,13 +342,28 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      */
     function setTreasury(address newTreasury) external onlyValidRole(DEFAULT_ADMIN_ROLE) {
         if (newTreasury == address(0)) revert Errors.ZeroAddress();
-
+        
         address oldTreasury = treasury;
         treasury = newTreasury;
         emit TreasuryUpdated(oldTreasury, newTreasury);
     }
-
+    
     /**
+     * @notice Update ParamController address
+     * @param newParamController New ParamController address
+     */
+    function setParamController(address newParamController) external onlyValidRole(DEFAULT_ADMIN_ROLE) {
+        if (newParamController == address(0)) revert Errors.ZeroAddress();
+        paramController = ParamController(newParamController);
+    }
+    
+    /**
+     * @notice Get current effective redemption fee (reads from ParamController)
+     * @return feeBps Current redemption fee in basis points
+     */
+    function getEffectiveRedemptionFee() external view returns (uint256 feeBps) {
+        return _getRedemptionFeeBps();
+    }    /**
      * @notice Update maximum supply
      * @param newMaxSupply New maximum supply
      */
@@ -393,7 +404,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
         uint256 netUsdc
     ) {
         grossUsdc = tokenAmount; // 1:1 ratio
-        fee = (grossUsdc * redemptionFeeBps) / 10000;
+        fee = (grossUsdc * _getRedemptionFeeBps()) / 10000;
         netUsdc = grossUsdc - fee;
     }
 
@@ -435,6 +446,18 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
         } else {
             ready = false;
             timeRemaining = readyTime - block.timestamp;
+        }
+    }
+    
+    /**
+     * @notice Get redemption fee from ParamController
+     * @return feeBps Fee in basis points
+     */
+    function _getRedemptionFeeBps() internal view returns (uint256 feeBps) {
+        feeBps = paramController.getUint256(communityId, paramController.FEE_ON_WITHDRAW());
+        // Cap at maximum allowed fee
+        if (feeBps > MAX_REDEMPTION_FEE) {
+            feeBps = MAX_REDEMPTION_FEE;
         }
     }
 }

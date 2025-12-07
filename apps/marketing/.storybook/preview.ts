@@ -10,9 +10,9 @@ const preview: Preview = {
       values: [
         { name: "surface", value: "#e8e6e0" },
         { name: "white", value: "#ffffff" },
-        { name: "primary", value: "#6c8158" }
-      ]
-    }
+        { name: "primary", value: "#6c8158" },
+      ],
+    },
   },
 };
 export default preview;

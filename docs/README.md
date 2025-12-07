@@ -1,21 +1,25 @@
 # Shift DeSoc Documentation
 
-*Building the infrastructure for Decentralized Society: Where communities coordinate work, make decisions, and create value together*
+_Building the infrastructure for Decentralized Society: Where communities coordinate work, make decisions, and create value together_
 
 ## 🌍 Language Versions | Versiones de Idioma
 
 ### 🇺🇸 English Documentation
+
 **[📖 English Documentation](./EN/README.md)**
 
 Complete documentation in English including:
+
 - **[Whitepaper](./EN/Whitepaper.md)** - Business overview for investors, communities & managers
 - **[Technical Architecture](./EN/Architecture.md)** - Smart contract specifications and implementation details
 - **Contract Documentation** - Detailed technical documentation for developers
 
-### 🇪🇸 Documentación en Español  
+### 🇪🇸 Documentación en Español
+
 **[📖 Documentación en Español](./ES/README.md)**
 
 Documentación completa en español incluyendo:
+
 - **[Whitepaper](./ES/Whitepaper.md)** - Visión de negocio para inversores, comunidades y gestores
 - **[Arquitectura Técnica](./ES/Architecture.md)** - Especificaciones de contratos inteligentes y detalles de implementación
 - **Documentación de Contratos** - Documentación técnica detallada para desarrolladores
@@ -25,6 +29,7 @@ Documentación completa en español incluyendo:
 ## 🎯 **Project Status** | **Estado del Proyecto**
 
 **✅ PRODUCTION-READY MVP COMPLETED** (November 2025)
+
 - Real community deployments operating on Base Sepolia
 - Complete API-based deployment system (~$0.19 per community)
 - 11 contracts fully documented and verified
@@ -37,14 +42,17 @@ Documentación completa en español incluyendo:
 ## 🚀 Quick Links | Enlaces Rápidos
 
 ### For Investors | Para Inversores
+
 - **EN**: [Investment Overview](./EN/Whitepaper.md#executive-summary)
 - **ES**: [Resumen Ejecutivo](./ES/Whitepaper.md#resumen-ejecutivo)
 
-### For Communities | Para Comunidades  
+### For Communities | Para Comunidades
+
 - **EN**: [How to Get Started](./EN/Whitepaper.md#how-to-get-started-from-idea-to-thriving-community-node)
 - **ES**: [Cómo Empezar](./ES/Whitepaper.md#cómo-empezar-de-la-idea-a-un-nodo-comunitario-próspero)
 
 ### For Developers | Para Desarrolladores
+
 - **EN**: [Technical Architecture](./EN/Architecture.md)
 - **ES**: [Arquitectura Técnica](./ES/Architecture.md)
 
@@ -58,4 +66,4 @@ Documentación completa en español incluyendo:
 
 ---
 
-*Building the future of collaborative abundance | Construyendo el futuro de la abundancia colaborativa*
+_Building the future of collaborative abundance | Construyendo el futuro de la abundancia colaborativa_

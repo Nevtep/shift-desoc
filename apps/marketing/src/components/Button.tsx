@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import styles from './Button.module.css';
+import React from "react";
+import styles from "./Button.module.css";
 
 export interface ButtonProps {
   variant?: "primary" | "secondary" | "ghost";
@@ -13,21 +13,18 @@ export interface ButtonProps {
   className?: string;
 }
 
-export default function Button({ 
-  variant = "primary", 
-  size = "sm", 
+export default function Button({
+  variant = "primary",
+  size = "sm",
   disabled = false,
   children = "Button",
   onClick,
   type = "button",
-  className = ""
+  className = "",
 }: ButtonProps) {
-  const classes = [
-    styles.button,
-    styles[variant],
-    styles[size],
-    className
-  ].filter(Boolean).join(' ');
+  const classes = [styles.button, styles[variant], styles[size], className]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button

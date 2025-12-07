@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Errors} from "../libs/Errors.sol";
+import {ParamController} from "./ParamController.sol";
 
 /// @title CommunityRegistry
 /// @notice Central registry for community metadata, parameters, and module addresses
@@ -21,21 +22,6 @@ contract CommunityRegistry is AccessControl {
         bool active;                  // Whether community is active
         uint256 createdAt;            // Creation timestamp
         
-        // Governance Parameters
-        uint256 debateWindow;         // Time for proposal debate (seconds)
-        uint256 voteWindow;           // Time for voting (seconds)
-        uint256 executionDelay;       // Time before execution (seconds)
-        
-        // Eligibility Rules
-        uint256 minSeniority;         // Minimum account age to participate
-        uint256 minSBTs;              // Minimum SBT count to participate
-        uint256 proposalThreshold;    // Minimum tokens to create proposal
-        
-        // Economic Parameters
-        uint256[3] revenueSplit;      // [workers%, treasury%, investors%]
-        uint256 feeOnWithdraw;        // Fee percentage on withdrawals (basis points)
-        address[] backingAssets;      // Approved collateral tokens
-        
         // Module Addresses
         address governor;             // Governor contract
         address timelock;             // Timelock contract
@@ -43,26 +29,41 @@ contract CommunityRegistry is AccessControl {
         address draftsManager;        // DraftsManager contract
         address claimsManager;        // Claims contract
         address valuableActionRegistry; // ValuableActionRegistry contract
-        address verifierPool;         // VerifierPool contract
-        address workerSBT;            // WorkerSBT contract
+        address verifierPowerToken;   // VerifierPowerToken1155 contract (VPT system)
+        address verifierElection;     // VerifierElection contract (VPT system)
+        address verifierManager;      // VerifierManager contract (VPT system)
+        address valuableActionSBT;    // ValuableActionSBT contract
         address treasuryAdapter;      // TreasuryAdapter contract
         address communityToken;       // CommunityToken contract
+        address paramController;      // ParamController contract
         
         // Cross-Community Links
         uint256 parentCommunityId;   // Parent community (0 if root)
         uint256[] allyCommunityIds;  // Allied communities
     }
     
-    /// @notice Parameter update structure
-    struct ParameterUpdate {
-        bytes32 key;                 // Parameter key
-        uint256 value;               // New value
+    /// @notice Module addresses structure for easy return
+    struct ModuleAddresses {
+        address governor;
+        address timelock;
+        address requestHub;
+        address draftsManager;
+        address claimsManager;
+        address valuableActionRegistry;
+        address verifierPowerToken;
+        address verifierElection;
+        address verifierManager;
+        address valuableActionSBT;
+        address treasuryAdapter;
+        address communityToken;
+        address paramController;
     }
-    
+
+
+
     /*//////////////////////////////////////////////////////////////
                                 ROLES
-    //////////////////////////////////////////////////////////////*/
-    
+    //////////////////////////////////////////////////////////////*/    
     /// @notice Role for governance operations
     bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     
@@ -97,6 +98,9 @@ contract CommunityRegistry is AccessControl {
     /// @notice Total number of active communities
     uint256 public activeCommunityCount;
     
+    /// @notice ParamController contract for parameter management
+    ParamController public immutable paramController;
+    
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -107,13 +111,6 @@ contract CommunityRegistry is AccessControl {
         string name,
         address indexed creator,
         uint256 parentCommunityId
-    );
-    
-    /// @notice Emitted when community parameters are updated
-    event CommunityParametersUpdated(
-        uint256 indexed communityId,
-        bytes32[] keys,
-        uint256[] values
     );
     
     /// @notice Emitted when a module address is updated
@@ -155,9 +152,12 @@ contract CommunityRegistry is AccessControl {
     //////////////////////////////////////////////////////////////*/
     
     /// @param initialAdmin Address that will have DEFAULT_ADMIN_ROLE
-    constructor(address initialAdmin) {
+    /// @param _paramController ParamController contract address
+    constructor(address initialAdmin, address _paramController) {
         if (initialAdmin == address(0)) revert Errors.ZeroAddress();
+        if (_paramController == address(0)) revert Errors.ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
+        paramController = ParamController(_paramController);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -197,19 +197,7 @@ contract CommunityRegistry is AccessControl {
         community.createdAt = block.timestamp;
         community.parentCommunityId = parentCommunityId;
         
-        // Set default governance parameters
-        community.debateWindow = 7 days;
-        community.voteWindow = 3 days;
-        community.executionDelay = 2 days;
-        
-        // Set default eligibility rules
-        community.minSeniority = 0;
-        community.minSBTs = 0;
-        community.proposalThreshold = 1e18; // 1 token
-        
-        // Set default economic parameters
-        community.revenueSplit = [70, 20, 10]; // 70% workers, 20% treasury, 10% investors
-        community.feeOnWithdraw = 0; // No withdrawal fee by default
+        // Parameters are set separately via initializeDefaultParameters() or ParamController directly
         
         // Grant creator admin role for this community
         communityRoles[communityId][msg.sender][DEFAULT_ADMIN_ROLE] = true;
@@ -225,62 +213,30 @@ contract CommunityRegistry is AccessControl {
                         PARAMETER MANAGEMENT
     //////////////////////////////////////////////////////////////*/
     
-    /// @notice Update community parameters
-    /// @param communityId Community to update
-    /// @param updates Array of parameter updates
-    function updateParameters(
-        uint256 communityId,
-        ParameterUpdate[] calldata updates
-    ) external {
+    /// @notice Initialize default parameters for a community
+    /// @param communityId Community ID to initialize parameters for
+    /// @dev This function requires that the caller has governance permissions in ParamController
+    function initializeDefaultParameters(uint256 communityId) external {
         _requireValidCommunity(communityId);
         _requireCommunityAdmin(communityId);
         
-        bytes32[] memory keys = new bytes32[](updates.length);
-        uint256[] memory values = new uint256[](updates.length);
+        // Set default governance parameters (7 day debate, 3 day vote, 2 day execution delay)
+        paramController.setGovernanceParams(communityId, 7 days, 3 days, 2 days);
         
-        for (uint256 i = 0; i < updates.length; i++) {
-            bytes32 key = updates[i].key;
-            uint256 value = updates[i].value;
-            
-            keys[i] = key;
-            values[i] = value;
-            
-            _updateParameter(communityId, key, value);
-        }
+        // Set default eligibility rules (no restrictions by default)
+        paramController.setEligibilityParams(communityId, 0, 0, 1e18);
         
-        emit CommunityParametersUpdated(communityId, keys, values);
+        // Set default revenue policy (25% min workers, 25% treasury, 50% investors, spillover to treasury)
+
+        // Using basis points: 2500 = 25%, 2500 = 25%, 5000 = 50%
+        paramController.setRevenuePolicy(communityId, 2500, 2500, 5000, 1);
+        
+        // Set default backing assets (empty by default)
+        address[] memory emptyAssets = new address[](0);
+        paramController.setAddressArray(communityId, paramController.BACKING_ASSETS(), emptyAssets);
     }
     
-    /// @notice Internal function to update a single parameter
-    /// @param communityId Community ID
-    /// @param key Parameter key
-    /// @param value New value
-    function _updateParameter(
-        uint256 communityId,
-        bytes32 key,
-        uint256 value
-    ) internal {
-        Community storage community = communities[communityId];
-        
-        if (key == keccak256("debateWindow")) {
-            community.debateWindow = value;
-        } else if (key == keccak256("voteWindow")) {
-            community.voteWindow = value;
-        } else if (key == keccak256("executionDelay")) {
-            community.executionDelay = value;
-        } else if (key == keccak256("minSeniority")) {
-            community.minSeniority = value;
-        } else if (key == keccak256("minSBTs")) {
-            community.minSBTs = value;
-        } else if (key == keccak256("proposalThreshold")) {
-            community.proposalThreshold = value;
-        } else if (key == keccak256("feeOnWithdraw")) {
-            if (value > 10000) revert Errors.InvalidInput("Fee cannot exceed 100%");
-            community.feeOnWithdraw = value;
-        } else {
-            revert Errors.InvalidInput("Unknown parameter key");
-        }
-    }
+
     
     /*//////////////////////////////////////////////////////////////
                          MODULE MANAGEMENT
@@ -319,29 +275,106 @@ contract CommunityRegistry is AccessControl {
         } else if (moduleKey == keccak256("valuableActionRegistry")) {
             oldAddress = community.valuableActionRegistry;
             community.valuableActionRegistry = moduleAddress;
-        } else if (moduleKey == keccak256("verifierPool")) {
-            oldAddress = community.verifierPool;
-            community.verifierPool = moduleAddress;
-        } else if (moduleKey == keccak256("workerSBT")) {
-            oldAddress = community.workerSBT;
-            community.workerSBT = moduleAddress;
+        } else if (moduleKey == keccak256("verifierPowerToken")) {
+            oldAddress = community.verifierPowerToken;
+            community.verifierPowerToken = moduleAddress;
+        } else if (moduleKey == keccak256("verifierElection")) {
+            oldAddress = community.verifierElection;
+            community.verifierElection = moduleAddress;
+        } else if (moduleKey == keccak256("verifierManager")) {
+            oldAddress = community.verifierManager;
+            community.verifierManager = moduleAddress;
+        } else if (moduleKey == keccak256("valuableActionSBT")) {
+            oldAddress = community.valuableActionSBT;
+            community.valuableActionSBT = moduleAddress;
         } else if (moduleKey == keccak256("treasuryAdapter")) {
             oldAddress = community.treasuryAdapter;
             community.treasuryAdapter = moduleAddress;
         } else if (moduleKey == keccak256("communityToken")) {
             oldAddress = community.communityToken;
             community.communityToken = moduleAddress;
+        } else if (moduleKey == keccak256("paramController")) {
+            oldAddress = community.paramController;
+            community.paramController = moduleAddress;
         } else {
             revert Errors.InvalidInput("Unknown module key");
         }
         
         emit ModuleAddressUpdated(communityId, moduleKey, oldAddress, moduleAddress);
     }
-    
+
+    /// @notice Set multiple module addresses at once
+    /// @param communityId Community ID
+    /// @param modules ModuleAddresses struct with all module addresses
+    function setModuleAddresses(
+        uint256 communityId,
+        ModuleAddresses calldata modules
+    ) external {
+        _requireValidCommunity(communityId);
+        _requireCommunityAdmin(communityId);
+        
+        Community storage community = communities[communityId];
+        
+        // Update all module addresses
+        if (modules.governor != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("governor"), community.governor, modules.governor);
+            community.governor = modules.governor;
+        }
+        if (modules.timelock != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("timelock"), community.timelock, modules.timelock);
+            community.timelock = modules.timelock;
+        }
+        if (modules.requestHub != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("requestHub"), community.requestHub, modules.requestHub);
+            community.requestHub = modules.requestHub;
+        }
+        if (modules.draftsManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("draftsManager"), community.draftsManager, modules.draftsManager);
+            community.draftsManager = modules.draftsManager;
+        }
+        if (modules.claimsManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("claimsManager"), community.claimsManager, modules.claimsManager);
+            community.claimsManager = modules.claimsManager;
+        }
+        if (modules.valuableActionRegistry != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("valuableActionRegistry"), community.valuableActionRegistry, modules.valuableActionRegistry);
+            community.valuableActionRegistry = modules.valuableActionRegistry;
+        }
+        if (modules.verifierPowerToken != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("verifierPowerToken"), community.verifierPowerToken, modules.verifierPowerToken);
+            community.verifierPowerToken = modules.verifierPowerToken;
+        }
+        if (modules.verifierElection != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("verifierElection"), community.verifierElection, modules.verifierElection);
+            community.verifierElection = modules.verifierElection;
+        }
+        if (modules.verifierManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("verifierManager"), community.verifierManager, modules.verifierManager);
+            community.verifierManager = modules.verifierManager;
+        }
+        if (modules.valuableActionSBT != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("valuableActionSBT"), community.valuableActionSBT, modules.valuableActionSBT);
+            community.valuableActionSBT = modules.valuableActionSBT;
+        }
+        if (modules.treasuryAdapter != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("treasuryAdapter"), community.treasuryAdapter, modules.treasuryAdapter);
+            community.treasuryAdapter = modules.treasuryAdapter;
+        }
+        if (modules.communityToken != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("communityToken"), community.communityToken, modules.communityToken);
+            community.communityToken = modules.communityToken;
+        }
+        if (modules.paramController != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("paramController"), community.paramController, modules.paramController);
+            community.paramController = modules.paramController;
+        }
+    }
+
+
+
     /*//////////////////////////////////////////////////////////////
                           ROLE MANAGEMENT
-    //////////////////////////////////////////////////////////////*/
-    
+    //////////////////////////////////////////////////////////////*/    
     /// @notice Grant a community-specific role to a user
     /// @param communityId Community ID
     /// @param user User to grant role to
@@ -471,8 +504,7 @@ contract CommunityRegistry is AccessControl {
         uint256 executionDelay
     ) {
         _requireValidCommunity(communityId);
-        Community storage community = communities[communityId];
-        return (community.debateWindow, community.voteWindow, community.executionDelay);
+        return paramController.getGovernanceParams(communityId);
     }
     
     /// @notice Get community eligibility rules
@@ -486,23 +518,30 @@ contract CommunityRegistry is AccessControl {
         uint256 proposalThreshold
     ) {
         _requireValidCommunity(communityId);
-        Community storage community = communities[communityId];
-        return (community.minSeniority, community.minSBTs, community.proposalThreshold);
+        return paramController.getEligibilityParams(communityId);
     }
     
-    /// @notice Get community economic parameters
+    /// @notice Get revenue policy parameters for a community
     /// @param communityId Community ID
-    /// @return revenueSplit Revenue split percentages
+    /// @return minWorkersBps Minimum workers share in basis points
+    /// @return treasuryBps Treasury base share in basis points
+    /// @return investorsBps Investors pool share in basis points
+    /// @return spilloverTarget 0 = spillover to workers, 1 = spillover to treasury
     /// @return feeOnWithdraw Withdrawal fee in basis points
     /// @return backingAssets Array of backing asset addresses
     function getEconomicParameters(uint256 communityId) external view returns (
-        uint256[3] memory revenueSplit,
+        uint256 minWorkersBps,
+        uint256 treasuryBps,
+        uint256 investorsBps,
+        uint8 spilloverTarget,
         uint256 feeOnWithdraw,
         address[] memory backingAssets
     ) {
         _requireValidCommunity(communityId);
-        Community storage community = communities[communityId];
-        return (community.revenueSplit, community.feeOnWithdraw, community.backingAssets);
+        (minWorkersBps, treasuryBps, investorsBps, spilloverTarget) = 
+            paramController.getRevenuePolicy(communityId);
+        feeOnWithdraw = paramController.getUint256(communityId, paramController.FEE_ON_WITHDRAW());
+        backingAssets = paramController.getAddressArray(communityId, paramController.BACKING_ASSETS());
     }
     
     /// @notice Get all module addresses for a community
@@ -513,8 +552,7 @@ contract CommunityRegistry is AccessControl {
     /// @return draftsManager DraftsManager contract address
     /// @return claimsManager Claims contract address
     /// @return valuableActionRegistry ValuableActionRegistry contract address
-    /// @return verifierPool VerifierPool contract address
-    /// @return workerSBT WorkerSBT contract address
+    /// @return valuableActionSBT ValuableActionSBT contract address
     /// @return treasuryAdapter TreasuryAdapter contract address
     /// @return communityToken CommunityToken contract address
     function getModuleAddresses(uint256 communityId) external view returns (
@@ -524,8 +562,7 @@ contract CommunityRegistry is AccessControl {
         address draftsManager,
         address claimsManager,
         address valuableActionRegistry,
-        address verifierPool,
-        address workerSBT,
+        address valuableActionSBT,
         address treasuryAdapter,
         address communityToken
     ) {
@@ -538,8 +575,7 @@ contract CommunityRegistry is AccessControl {
             community.draftsManager,
             community.claimsManager,
             community.valuableActionRegistry,
-            community.verifierPool,
-            community.workerSBT,
+            community.valuableActionSBT,
             community.treasuryAdapter,
             community.communityToken
         );
@@ -588,11 +624,36 @@ contract CommunityRegistry is AccessControl {
         Community storage community = communities[communityId];
         return (community.parentCommunityId, community.allyCommunityIds);
     }
-    
+
+    /// @notice Get all module addresses for a community
+    /// @param communityId Community ID
+    /// @return ModuleAddresses struct containing all module addresses
+    function getCommunityModules(uint256 communityId) external view returns (ModuleAddresses memory) {
+        _requireValidCommunity(communityId);
+        Community storage community = communities[communityId];
+        
+        return ModuleAddresses({
+            governor: community.governor,
+            timelock: community.timelock,
+            requestHub: community.requestHub,
+            draftsManager: community.draftsManager,
+            claimsManager: community.claimsManager,
+            valuableActionRegistry: community.valuableActionRegistry,
+            verifierPowerToken: community.verifierPowerToken,
+            verifierElection: community.verifierElection,
+            verifierManager: community.verifierManager,
+            valuableActionSBT: community.valuableActionSBT,
+            treasuryAdapter: community.treasuryAdapter,
+            communityToken: community.communityToken,
+            paramController: community.paramController
+        });
+    }
+
+
+
     /*//////////////////////////////////////////////////////////////
                             INTERNAL HELPERS
-    //////////////////////////////////////////////////////////////*/
-    
+    //////////////////////////////////////////////////////////////*/    
     /// @notice Require that community exists
     /// @param communityId Community ID to check
     function _requireValidCommunity(uint256 communityId) internal view {

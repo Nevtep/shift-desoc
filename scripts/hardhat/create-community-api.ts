@@ -4,10 +4,10 @@ import { join } from "path";
 
 /**
  * API-Friendly Community Creation Script
- * 
+ *
  * This script can be called from a UI/API to create complete Shift DeSoc communities
  * using the existing successfully deployed infrastructure.
- * 
+ *
  * Usage from API:
  * POST /api/create-community
  * Body: { name, description, founderAddress, governanceParams }
@@ -55,7 +55,7 @@ interface DeployedCommunity {
 // Existing deployed addresses
 const DEPLOYED_ADDRESSES = {
   communityRegistry: "0x67eC4cAcC44D80B43Ce7CCA63cEF6D1Ae3E57f8B",
-  countingMultiChoice: "0x9a254605ccEf5c69Ce51b0a8C0a65016dD476c83"
+  countingMultiChoice: "0x9a254605ccEf5c69Ce51b0a8C0a65016dD476c83",
 };
 
 const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
@@ -64,7 +64,9 @@ const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
  * Main function to create a community
  * This can be called from an Express.js API endpoint
  */
-export async function createCommunityForUI(params: CommunityParams): Promise<DeployedCommunity> {
+export async function createCommunityForUI(
+  params: CommunityParams,
+): Promise<DeployedCommunity> {
   console.log("🏠 Creating Community for UI:", params.name);
   console.log("Founder:", params.founderAddress);
 
@@ -76,16 +78,18 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   // =================================================================
   // STEP 1: Deploy Core Governance Contracts
   // =================================================================
-  
+
   console.log("\n🏛️ Deploying core governance...");
-  
+
   // 1. Deploy MembershipToken
-  const MembershipToken = await ethers.getContractFactory("MembershipTokenERC20Votes");
+  const MembershipToken = await ethers.getContractFactory(
+    "MembershipTokenERC20Votes",
+  );
   const membershipToken = await MembershipToken.deploy(
     `${params.name} Membership`,
     "MEMBER-TBD", // Will update after getting community ID
     1, // Temporary community ID
-    params.founderAddress
+    params.founderAddress,
   );
   await membershipToken.waitForDeployment();
   const membershipTokenAddress = await membershipToken.getAddress();
@@ -93,12 +97,13 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   txHashes.push(membershipToken.deploymentTransaction()?.hash || "");
 
   // 2. Deploy TimelockController
-  const TimelockController = await ethers.getContractFactory("TimelockController");
+  const TimelockController =
+    await ethers.getContractFactory("TimelockController");
   const timelock = await TimelockController.deploy(
     params.governanceParams.executionDelay,
     [], // Empty proposers initially
     [], // Public execution
-    params.founderAddress
+    params.founderAddress,
   );
   await timelock.waitForDeployment();
   const timelockAddress = await timelock.getAddress();
@@ -109,7 +114,7 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   const ShiftGovernor = await ethers.getContractFactory("ShiftGovernor");
   const governor = await ShiftGovernor.deploy(
     membershipTokenAddress,
-    timelockAddress
+    timelockAddress,
   );
   await governor.waitForDeployment();
   const governorAddress = await governor.getAddress();
@@ -119,20 +124,23 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   // =================================================================
   // STEP 2: Register Community in CommunityRegistry
   // =================================================================
-  
+
   console.log("\n📋 Registering community...");
-  
-  const communityRegistry = await ethers.getContractAt("CommunityRegistry", DEPLOYED_ADDRESSES.communityRegistry);
-  
+
+  const communityRegistry = await ethers.getContractAt(
+    "CommunityRegistry",
+    DEPLOYED_ADDRESSES.communityRegistry,
+  );
+
   const registerTx = await communityRegistry.registerCommunity(
     params.name,
     params.description,
     params.metadataURI || `ipfs://QmCommunityMetadata${Date.now()}`,
-    0 // Root community
+    0, // Root community
   );
   const registerReceipt = await registerTx.wait();
   txHashes.push(registerTx.hash);
-  
+
   // Get community ID from events
   const communityRegisteredEvent = registerReceipt?.logs?.find((log: any) => {
     try {
@@ -142,26 +150,34 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
       return false;
     }
   });
-  
+
   if (!communityRegisteredEvent) {
     throw new Error("Could not find CommunityRegistered event");
   }
-  
-  const parsedEvent = communityRegistry.interface.parseLog(communityRegisteredEvent);
-  const communityId = parseInt(parsedEvent?.args?.communityId.toString() || "0");
+
+  const parsedEvent = communityRegistry.interface.parseLog(
+    communityRegisteredEvent,
+  );
+  const communityId = parseInt(
+    parsedEvent?.args?.communityId.toString() || "0",
+  );
   console.log("✅ Community registered with ID:", communityId);
 
   // =================================================================
   // STEP 3: Deploy Work & Community Modules
   // =================================================================
-  
+
   console.log("\n⚙️ Deploying work modules...");
-  
+
   // ValuableActionRegistry
-  const ValuableActionRegistry = await ethers.getContractFactory("ValuableActionRegistry");
-  const valuableActionRegistry = await ValuableActionRegistry.deploy(governorAddress);
+  const ValuableActionRegistry = await ethers.getContractFactory(
+    "ValuableActionRegistry",
+  );
+  const valuableActionRegistry =
+    await ValuableActionRegistry.deploy(governorAddress);
   await valuableActionRegistry.waitForDeployment();
-  const valuableActionRegistryAddress = await valuableActionRegistry.getAddress();
+  const valuableActionRegistryAddress =
+    await valuableActionRegistry.getAddress();
   console.log("✅ ValuableActionRegistry:", valuableActionRegistryAddress);
   txHashes.push(valuableActionRegistry.deploymentTransaction()?.hash || "");
 
@@ -170,7 +186,7 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   const workerSBT = await WorkerSBT.deploy(
     params.founderAddress, // owner
     params.founderAddress, // manager (will be updated to Claims)
-    governorAddress        // governance
+    governorAddress, // governance
   );
   await workerSBT.waitForDeployment();
   const workerSBTAddress = await workerSBT.getAddress();
@@ -188,11 +204,11 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   // Claims
   const Claims = await ethers.getContractFactory("Claims");
   const claims = await Claims.deploy(
-    params.founderAddress,           // governance
+    params.founderAddress, // governance
     valuableActionRegistryAddress,
     verifierPoolAddress,
     workerSBTAddress,
-    membershipTokenAddress          // for minting governance tokens
+    membershipTokenAddress, // for minting governance tokens
   );
   await claims.waitForDeployment();
   const claimsAddress = await claims.getAddress();
@@ -203,7 +219,9 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
 
   // RequestHub
   const RequestHub = await ethers.getContractFactory("RequestHub");
-  const requestHub = await RequestHub.deploy(DEPLOYED_ADDRESSES.communityRegistry);
+  const requestHub = await RequestHub.deploy(
+    DEPLOYED_ADDRESSES.communityRegistry,
+  );
   await requestHub.waitForDeployment();
   const requestHubAddress = await requestHub.getAddress();
   console.log("✅ RequestHub:", requestHubAddress);
@@ -213,7 +231,7 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   const DraftsManager = await ethers.getContractFactory("DraftsManager");
   const draftsManager = await DraftsManager.deploy(
     DEPLOYED_ADDRESSES.communityRegistry,
-    governorAddress
+    governorAddress,
   );
   await draftsManager.waitForDeployment();
   const draftsManagerAddress = await draftsManager.getAddress();
@@ -228,7 +246,7 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
     `${params.name} Token`,
     `CT-${communityId}`,
     params.founderAddress, // treasury
-    ethers.parseEther("1000000") // 1M max supply
+    ethers.parseEther("1000000"), // 1M max supply
   );
   await communityToken.waitForDeployment();
   const communityTokenAddress = await communityToken.getAddress();
@@ -238,11 +256,13 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   // =================================================================
   // STEP 4: Setup Governance & Permissions
   // =================================================================
-  
+
   console.log("\n🔐 Setting up permissions...");
 
   // Connect governor to CountingMultiChoice
-  const initCountingTx = await governor.initCountingMulti(DEPLOYED_ADDRESSES.countingMultiChoice);
+  const initCountingTx = await governor.initCountingMulti(
+    DEPLOYED_ADDRESSES.countingMultiChoice,
+  );
   await initCountingTx.wait();
   console.log("✅ Governor connected to CountingMultiChoice");
   txHashes.push(initCountingTx.hash);
@@ -250,10 +270,16 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   // Setup timelock roles
   const PROPOSER_ROLE = await timelock.PROPOSER_ROLE();
   const EXECUTOR_ROLE = await timelock.EXECUTOR_ROLE();
-  
-  const grantProposerTx = await timelock.grantRole(PROPOSER_ROLE, governorAddress);
+
+  const grantProposerTx = await timelock.grantRole(
+    PROPOSER_ROLE,
+    governorAddress,
+  );
   await grantProposerTx.wait();
-  const grantExecutorTx = await timelock.grantRole(EXECUTOR_ROLE, governorAddress);  
+  const grantExecutorTx = await timelock.grantRole(
+    EXECUTOR_ROLE,
+    governorAddress,
+  );
   await grantExecutorTx.wait();
   console.log("✅ Governor granted timelock roles");
   txHashes.push(grantProposerTx.hash, grantExecutorTx.hash);
@@ -261,25 +287,38 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   // =================================================================
   // STEP 5: Bootstrap Founder (Grant deployer minter role temporarily)
   // =================================================================
-  
+
   console.log("\n👑 Bootstrapping founder...");
 
   // Grant deployer temporary minter role for founder bootstrap
   const MINTER_ROLE = await membershipToken.MINTER_ROLE();
-  const grantDeployerMinterTx = await membershipToken.grantRole(MINTER_ROLE, deployer.address);
+  const grantDeployerMinterTx = await membershipToken.grantRole(
+    MINTER_ROLE,
+    deployer.address,
+  );
   await grantDeployerMinterTx.wait();
   txHashes.push(grantDeployerMinterTx.hash);
 
   const FOUNDER_TOKENS = ethers.parseEther("10000");
-  const mintTx = await membershipToken.mint(params.founderAddress, FOUNDER_TOKENS, "Founder bootstrap allocation");
+  const mintTx = await membershipToken.mint(
+    params.founderAddress,
+    FOUNDER_TOKENS,
+    "Founder bootstrap allocation",
+  );
   await mintTx.wait();
   console.log("✅ Founder tokens minted:", ethers.formatEther(FOUNDER_TOKENS));
   txHashes.push(mintTx.hash);
 
   // Grant claims minter role and revoke deployer's role
-  const grantMinterTx = await membershipToken.grantRole(MINTER_ROLE, claimsAddress);
+  const grantMinterTx = await membershipToken.grantRole(
+    MINTER_ROLE,
+    claimsAddress,
+  );
   await grantMinterTx.wait();
-  const revokeMinterTx = await membershipToken.renounceRole(MINTER_ROLE, deployer.address);
+  const revokeMinterTx = await membershipToken.renounceRole(
+    MINTER_ROLE,
+    deployer.address,
+  );
   await revokeMinterTx.wait();
   console.log("✅ Claims granted minter role, deployer role revoked");
   txHashes.push(grantMinterTx.hash, revokeMinterTx.hash);
@@ -294,7 +333,7 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   // =================================================================
   // STEP 6: Register Modules in Community Registry
   // =================================================================
-  
+
   console.log("\n📝 Registering modules in community registry...");
 
   const moduleRegistrations = [
@@ -306,13 +345,17 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
     { key: "workerSBT", address: workerSBTAddress },
     { key: "requestHub", address: requestHubAddress },
     { key: "draftsManager", address: draftsManagerAddress },
-    { key: "communityToken", address: communityTokenAddress }
+    { key: "communityToken", address: communityTokenAddress },
   ];
 
   for (const module of moduleRegistrations) {
     try {
       const keyHash = ethers.keccak256(ethers.toUtf8Bytes(module.key));
-      const setModuleTx = await communityRegistry.setModuleAddress(communityId, keyHash, module.address);
+      const setModuleTx = await communityRegistry.setModuleAddress(
+        communityId,
+        keyHash,
+        module.address,
+      );
       await setModuleTx.wait();
       txHashes.push(setModuleTx.hash);
       console.log(`✅ Registered ${module.key}`);
@@ -324,9 +367,9 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
   // =================================================================
   // FINAL RESULT
   // =================================================================
-  
+
   console.log("\n🎉 COMMUNITY CREATED SUCCESSFULLY!");
-  
+
   const deployedCommunity: DeployedCommunity = {
     communityId,
     founder: params.founderAddress,
@@ -342,15 +385,15 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
       workerSBT: workerSBTAddress,
       requestHub: requestHubAddress,
       draftsManager: draftsManagerAddress,
-      communityToken: communityTokenAddress
+      communityToken: communityTokenAddress,
     },
     network: {
       name: network.name,
-      chainId: network.chainId.toString()
+      chainId: network.chainId.toString(),
     },
-    txHashes: txHashes.filter(hash => hash),
+    txHashes: txHashes.filter((hash) => hash),
     gasUsed: totalGasUsed.toString(),
-    founderTokens: ethers.formatEther(FOUNDER_TOKENS)
+    founderTokens: ethers.formatEther(FOUNDER_TOKENS),
   };
 
   return deployedCommunity;
@@ -360,29 +403,37 @@ export async function createCommunityForUI(params: CommunityParams): Promise<Dep
 async function main() {
   const params: CommunityParams = {
     name: process.env.COMMUNITY_NAME || "API Test Community",
-    description: process.env.COMMUNITY_DESCRIPTION || "A test community created via API",
-    founderAddress: process.env.FOUNDER_ADDRESS || (await ethers.getSigners())[0].address,
+    description:
+      process.env.COMMUNITY_DESCRIPTION || "A test community created via API",
+    founderAddress:
+      process.env.FOUNDER_ADDRESS || (await ethers.getSigners())[0].address,
     governanceParams: {
       debateWindow: parseInt(process.env.DEBATE_WINDOW || "86400"), // 1 day
-      voteWindow: parseInt(process.env.VOTE_WINDOW || "259200"),    // 3 days
+      voteWindow: parseInt(process.env.VOTE_WINDOW || "259200"), // 3 days
       executionDelay: parseInt(process.env.EXECUTION_DELAY || "172800"), // 2 days
-      proposalThreshold: process.env.PROPOSAL_THRESHOLD || "100"    // 100 tokens
-    }
+      proposalThreshold: process.env.PROPOSAL_THRESHOLD || "100", // 100 tokens
+    },
   };
 
-  console.log("Creating community with params:", JSON.stringify(params, null, 2));
-  
+  console.log(
+    "Creating community with params:",
+    JSON.stringify(params, null, 2),
+  );
+
   try {
     const result = await createCommunityForUI(params);
-    
+
     console.log("\n📄 RESULT FOR FRONTEND:");
     console.log(JSON.stringify(result, null, 2));
-    
+
     // Save result to file for UI integration
-    const outputFile = join(__dirname, `community-${result.communityId}-${Date.now()}.json`);
+    const outputFile = join(
+      __dirname,
+      `community-${result.communityId}-${Date.now()}.json`,
+    );
     writeFileSync(outputFile, JSON.stringify(result, null, 2));
     console.log(`\n💾 Result saved to: ${outputFile}`);
-    
+
     return result;
   } catch (error) {
     console.error("❌ Community creation failed:", error);

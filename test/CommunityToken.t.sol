@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "contracts/tokens/CommunityToken.sol";
+import "contracts/modules/ParamController.sol";
 import "contracts/libs/Errors.sol";
 
 contract MockUSDC is ERC20 {
@@ -15,9 +16,26 @@ contract MockUSDC is ERC20 {
     }
 }
 
+contract MockParamController {
+    mapping(uint256 => mapping(bytes32 => uint256)) public params;
+    
+    function getUint256(uint256 communityId, bytes32 key) external view returns (uint256) {
+        return params[communityId][key];
+    }
+    
+    function setUint256(uint256 communityId, bytes32 key, uint256 value) external {
+        params[communityId][key] = value;
+    }
+    
+    function FEE_ON_WITHDRAW() external pure returns (bytes32) {
+        return keccak256("FEE_ON_WITHDRAW");
+    }
+}
+
 contract CommunityTokenTest is Test {
     CommunityToken public communityToken;
     MockUSDC public usdc;
+    MockParamController public paramController;
     
     address public admin = address(0x1001);
     address public minter = address(0x1002); 
@@ -43,6 +61,7 @@ contract CommunityTokenTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
+        paramController = new MockParamController();
         
         vm.prank(admin);
         communityToken = new CommunityToken(
@@ -51,7 +70,8 @@ contract CommunityTokenTest is Test {
             "Test Community Token",
             "TCT",
             treasury,
-            MAX_SUPPLY
+            MAX_SUPPLY,
+            address(paramController)
         );
 
         // Grant roles
@@ -81,7 +101,6 @@ contract CommunityTokenTest is Test {
         assertEq(communityToken.symbol(), "TCT");
         assertEq(communityToken.treasury(), treasury);
         assertEq(communityToken.maxSupply(), MAX_SUPPLY);
-        assertEq(communityToken.redemptionFeeBps(), 0); // Default 0%
         
         // Check roles
         assertTrue(communityToken.hasRole(communityToken.DEFAULT_ADMIN_ROLE(), admin));
@@ -95,10 +114,11 @@ contract CommunityTokenTest is Test {
         new CommunityToken(
             address(0),
             COMMUNITY_ID,
-            "Test Token",
-            "TT",
+            "Test Community Token",
+            "TCT",
             treasury,
-            MAX_SUPPLY
+            MAX_SUPPLY,
+            address(paramController)
         );
     }
 
@@ -107,10 +127,24 @@ contract CommunityTokenTest is Test {
         new CommunityToken(
             address(usdc),
             COMMUNITY_ID,
-            "Test Token",
-            "TT",
+            "Test Community Token",
+            "TCT",
             address(0),
-            MAX_SUPPLY
+            MAX_SUPPLY,
+            address(paramController)
+        );
+    }
+    
+    function testConstructorZeroParamControllerReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        new CommunityToken(
+            address(usdc),
+            COMMUNITY_ID,
+            "Test Community Token",
+            "TCT",
+            treasury,
+            MAX_SUPPLY,
+            address(0)
         );
     }
 
@@ -119,10 +153,11 @@ contract CommunityTokenTest is Test {
         new CommunityToken(
             address(usdc),
             0,
-            "Test Token",
-            "TT",
+            "Test Community Token",
+            "TCT",
             treasury,
-            MAX_SUPPLY
+            MAX_SUPPLY,
+            address(paramController)
         );
     }
 
@@ -131,10 +166,11 @@ contract CommunityTokenTest is Test {
         new CommunityToken(
             address(usdc),
             COMMUNITY_ID,
-            "Test Token",
-            "TT",
+            "Test Community Token",
+            "TCT",
             treasury,
-            0
+            0,
+            address(paramController)
         );
     }
 
@@ -253,9 +289,8 @@ contract CommunityTokenTest is Test {
     }
 
     function testRedeemWithFee() public {
-        // Set redemption fee to 2%
-        vm.prank(admin);
-        communityToken.setRedemptionFee(200); // 2%
+        // Set redemption fee to 2% in ParamController
+        paramController.setUint256(COMMUNITY_ID, paramController.FEE_ON_WITHDRAW(), 200); // 2%
         
         // First mint some tokens
         uint256 usdcAmount = 2000e18;
@@ -470,25 +505,73 @@ contract CommunityTokenTest is Test {
 
     /* ======== GOVERNANCE TESTS ======== */
 
-    function testSetRedemptionFee() public {
+    function testRedemptionFeeFromParamControllerBasic() public {
         uint256 newFee = 250; // 2.5%
         
-        vm.prank(admin);
-        vm.expectEmit(true, true, true, true);
-        emit RedemptionFeeUpdated(0, newFee);
+        // Set fee in ParamController
+        paramController.setUint256(COMMUNITY_ID, paramController.FEE_ON_WITHDRAW(), newFee);
         
-        communityToken.setRedemptionFee(newFee);
-        assertEq(communityToken.redemptionFeeBps(), newFee);
+        // Test that redemption uses the ParamController fee
+        uint256 mintAmount = 1000e18;
+        
+        vm.startPrank(user1);
+        usdc.approve(address(communityToken), mintAmount);
+        communityToken.mint(mintAmount);
+        
+        // Calculate expected redemption amounts with fee
+        uint256 expectedFee = (mintAmount * newFee) / 10000;
+        uint256 expectedUSDC = mintAmount - expectedFee;
+        
+        vm.expectEmit(true, true, true, true);
+        emit TokensRedeemed(user1, mintAmount, expectedUSDC, expectedFee);
+        communityToken.redeem(mintAmount);
+        vm.stopPrank();
     }
 
-    function testSetRedemptionFeeExceedsMaxReverts() public {
-        vm.prank(admin);
-        vm.expectRevert(abi.encodeWithSelector(
-            CommunityToken.InvalidRedemptionFee.selector,
-            1001,
-            1000
-        ));
-        communityToken.setRedemptionFee(1001); // > 10%
+    function testRedemptionFeeCapAtMaximum() public {
+        // Set fee above maximum in ParamController
+        uint256 excessiveFee = 1500; // 15% > 10% max
+        paramController.setUint256(COMMUNITY_ID, paramController.FEE_ON_WITHDRAW(), excessiveFee);
+        
+        uint256 mintAmount = 1000e18;
+        
+        vm.startPrank(user1);
+        usdc.approve(address(communityToken), mintAmount);
+        communityToken.mint(mintAmount);
+        
+        // Calculate expected redemption amounts with capped fee
+        uint256 maxFee = 1000; // 10% maximum
+        uint256 expectedFee = (mintAmount * maxFee) / 10000;
+        uint256 expectedUSDC = mintAmount - expectedFee;
+        
+        vm.expectEmit(true, true, true, true);
+        emit TokensRedeemed(user1, mintAmount, expectedUSDC, expectedFee);
+        communityToken.redeem(mintAmount);
+        vm.stopPrank();
+    }
+    
+    function testRedemptionFeeFromParamController() public {
+        // Set fee in ParamController
+        uint256 testFee = 300; // 3%
+        paramController.setUint256(COMMUNITY_ID, paramController.FEE_ON_WITHDRAW(), testFee);
+        
+        // Verify effective fee reads from ParamController
+        assertEq(communityToken.getEffectiveRedemptionFee(), testFee);
+        
+        // Test redemption with ParamController fee
+        uint256 usdcAmount = 1000e18;
+        vm.startPrank(user1);
+        usdc.approve(address(communityToken), usdcAmount);
+        communityToken.mint(usdcAmount);
+        
+        uint256 redeemAmount = 500e18;
+        uint256 expectedFee = (redeemAmount * testFee) / 10000;
+        uint256 expectedNet = redeemAmount - expectedFee;
+        
+        uint256 usdcReceived = communityToken.redeem(redeemAmount);
+        vm.stopPrank();
+        
+        assertEq(usdcReceived, expectedNet);
     }
 
     function testSetTreasury() public {
@@ -552,9 +635,8 @@ contract CommunityTokenTest is Test {
     }
 
     function testCalculateRedemption() public {
-        // Set fee to 2%
-        vm.prank(admin);
-        communityToken.setRedemptionFee(200);
+        // Set fee to 2% in ParamController
+        paramController.setUint256(COMMUNITY_ID, paramController.FEE_ON_WITHDRAW(), 200);
 
         uint256 tokenAmount = 1000e18;
         (uint256 grossUsdc, uint256 fee, uint256 netUsdc) = 
@@ -621,9 +703,8 @@ contract CommunityTokenTest is Test {
         communityToken.depositToTreasury(treasuryAmount);
         vm.stopPrank();
 
-        // 3. Set redemption fee
-        vm.prank(admin);
-        communityToken.setRedemptionFee(100); // 1%
+        // 3. Set redemption fee via ParamController
+        paramController.setUint256(COMMUNITY_ID, paramController.FEE_ON_WITHDRAW(), 100); // 1%
 
         // 4. Mint additional tokens via governance (with backing)
         uint256 govMintAmount = 500e18; // Reduced to ensure sufficient backing
@@ -665,8 +746,9 @@ contract CommunityTokenTest is Test {
         communityToken.pause();
 
         // Only admin can set parameters
+        // Test that only authorized users can pause
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
-        communityToken.setRedemptionFee(100);
+        communityToken.pause();
     }
 }

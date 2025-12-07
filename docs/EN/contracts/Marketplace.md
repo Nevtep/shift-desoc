@@ -28,7 +28,7 @@ contract Marketplace {
         bool active;                // Product availability
         uint256 createdAt;          // Listing timestamp
     }
-    
+
     struct Purchase {
         uint256 purchaseId;         // Unique purchase identifier
         uint256 skuId;             // Purchased product
@@ -39,7 +39,7 @@ contract Marketplace {
         uint256 timestamp;         // Purchase timestamp
         PurchaseStatus status;     // Current status
     }
-    
+
     enum PurchaseStatus {
         PENDING,
         CONFIRMED,
@@ -76,13 +76,13 @@ contract Marketplace {
     event SkuListed(uint256 indexed skuId, address indexed token, uint256 price, bool stable);
     event Purchased(uint256 indexed skuId, address indexed buyer, uint256 qty, bool paidStable);
 
-    function listSku(address token, uint256 price, bool paidInStable) 
+    function listSku(address token, uint256 price, bool paidInStable)
         external returns (uint256 skuId) {
         // TODO almacenar SKU (ERC1155 o ERC721) + price
-        skuId = 1; 
+        skuId = 1;
         emit SkuListed(skuId, token, price, paidInStable);
     }
-    
+
     function buy(uint256 skuId, uint256 qty, bool payStable) external {
         // TODO transferencias y recaudación
         emit Purchased(skuId, msg.sender, qty, payStable);
@@ -91,28 +91,32 @@ contract Marketplace {
 ```
 
 **Current Functionality**:
+
 - ✅ Basic event emission for product listings
 - ✅ Basic event emission for purchases
 - ❌ No actual product storage or inventory management
 - ❌ No payment processing or token transfers
-- ❌ No fee collection or revenue distribution  
+- ❌ No fee collection or revenue distribution
 - ❌ No dispute resolution or escrow systems
 
 ## 🛡️ Planned Security Features
 
 ### Payment Security
+
 - Escrow system for high-value transactions
 - Automatic payment processing with community tokens
 - Multi-token support (Community Token + USDC)
 - Protection against double-spending and fraud
 
 ### Seller Protection
+
 - Reputation system for buyers and sellers
 - Dispute resolution through community governance
 - Seller verification through WorkerSBT integration
 - Protection against chargebacks and false claims
 
 ### Quality Control
+
 - Community moderation of product listings
 - Reporting system for inappropriate content
 - Automated filtering based on community rules
@@ -131,10 +135,10 @@ function processPurchase(
 ) external nonReentrant {
     Product storage product = products[skuId];
     require(product.active && product.quantity >= quantity, "Product unavailable");
-    
+
     uint256 totalPrice;
     address paymentToken;
-    
+
     if (useStablePayment && product.acceptsStable) {
         totalPrice = product.priceStable * quantity;
         paymentToken = USDC;
@@ -142,18 +146,18 @@ function processPurchase(
         totalPrice = product.price * quantity;
         paymentToken = communityToken;
     }
-    
+
     // Process payment with fee collection
     uint256 fee = (totalPrice * transactionFeeBps) / 10000;
     uint256 sellerAmount = totalPrice - fee;
-    
+
     IERC20(paymentToken).safeTransferFrom(msg.sender, product.seller, sellerAmount);
     IERC20(paymentToken).safeTransferFrom(msg.sender, treasury, fee);
-    
+
     // Update inventory and create purchase record
     product.quantity -= quantity;
     _createPurchaseRecord(skuId, msg.sender, quantity, totalPrice, paymentToken);
-    
+
     emit PurchaseCompleted(skuId, msg.sender, quantity, totalPrice, paymentToken);
 }
 ```
@@ -170,9 +174,9 @@ interface IWorkerSBT {
 function getSellerTier(address seller) external view returns (uint8) {
     uint256 sbtCount = workerSBT.balanceOf(seller);
     uint256 reputation = workerSBT.getReputation(seller);
-    
+
     if (sbtCount >= 5 && reputation >= 1000) return 3; // Premium seller
-    if (sbtCount >= 2 && reputation >= 500) return 2;  // Verified seller  
+    if (sbtCount >= 2 && reputation >= 500) return 2;  // Verified seller
     if (sbtCount >= 1) return 1;                       // Basic seller
     return 0; // Unverified
 }
@@ -189,10 +193,10 @@ function listNFTProduct(
     bool acceptsStable
 ) external returns (uint256 skuId) {
     require(IERC721(nftContract).ownerOf(tokenId) == msg.sender, "Not token owner");
-    
+
     // Transfer NFT to marketplace escrow
     IERC721(nftContract).safeTransferFrom(msg.sender, address(this), tokenId);
-    
+
     skuId = ++lastSkuId;
     products[skuId] = Product({
         skuId: skuId,
@@ -207,7 +211,7 @@ function listNFTProduct(
         active: true,
         createdAt: block.timestamp
     });
-    
+
     emit NFTListed(skuId, nftContract, tokenId, price);
 }
 ```
@@ -253,7 +257,7 @@ setMarketplaceFees(MarketplaceFees({
 
 setRevenueDistribution(RevenueDistribution({
     treasuryShare: 6000,           // 60% to community treasury
-    workerShare: 3000,             // 30% to worker reward pool  
+    workerShare: 3000,             // 30% to worker reward pool
     marketplaceShare: 1000         // 10% for marketplace operations
 }));
 ```
@@ -295,7 +299,7 @@ setSellerBenefits(3, SellerBenefits({
 
 3. **Advanced Commerce Features**
    - Escrow system for high-value transactions
-   - Subscription and recurring payment support  
+   - Subscription and recurring payment support
    - Auction and bidding functionality
    - Cross-community marketplace federation
 
@@ -315,16 +319,19 @@ setSellerBenefits(3, SellerBenefits({
 ## 💡 Innovation Opportunities
 
 ### Community-Centric Commerce
+
 - Local community goods and services prioritization
 - Community currency circulation incentives
 - Collaborative purchasing and group buying features
 
 ### Sustainable Commerce Model
+
 - Carbon footprint tracking for shipped products
 - Local-first marketplace optimization
 - Circular economy and product lifecycle tracking
 
 ### Integration with Work Verification
+
 - Products created through verified community work
 - Quality assurance through community review processes
 - Revenue sharing with communities that contributed to product creation
@@ -334,6 +341,7 @@ setSellerBenefits(3, SellerBenefits({
 **Note**: The Marketplace stub establishes the foundation for a comprehensive community commerce system. The minimal current implementation allows the architecture to account for future marketplace features without blocking current community deployment.
 
 For immediate commerce needs, communities can:
+
 1. Use external marketplaces with community token integration
 2. Coordinate sales through RequestHub discussions
 3. Create ValuableActions for commerce-related contributions

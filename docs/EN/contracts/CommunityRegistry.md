@@ -4,31 +4,31 @@
 
 The **CommunityRegistry** serves as the single source of truth for community metadata, governance parameters, module addresses, and cross-community relationships in the Shift DeSoc ecosystem. It acts as the central coordination hub that enables communities to configure their governance systems, manage their organizational structure, and establish relationships with other communities.
 
-## 🏗️ Core Architecture  
+## 🏗️ Core Architecture
 
 ### Data Structures
 
 ```solidity
 struct Community {
     string name;
-    string description; 
+    string description;
     string metadataURI;
-    
+
     // Governance Parameters
     uint256 debateWindow;
     uint256 voteWindow;
     uint256 executionDelay;
-    
+
     // Eligibility Rules
     uint256 minSeniority;
     uint256 minSBTs;
     uint256 proposalThreshold;
-    
+
     // Economic Parameters
     uint256[3] revenueSplit;     // [workers%, treasury%, investors%]
     uint256 feeOnWithdraw;
     address[] backingAssets;     // Approved collateral tokens
-    
+
     // Module Addresses
     address governor;
     address timelock;
@@ -36,11 +36,13 @@ struct Community {
     address draftsManager;
     address claimsManager;
     address valuableActionRegistry;
-    address verifierPool;
-    address workerSBT;
+    address verifierElection;
+    address verifierPowerToken1155;
+    address verifierManager;
+    address valuableActionSBT;
     address treasuryAdapter;
-    
-    // Status and Relationships  
+
+    // Status and Relationships
     bool active;                 // Whether community is active
     uint256 createdAt;           // Creation timestamp
     uint256 parentCommunityId;   // Federation/hierarchy support
@@ -71,8 +73,9 @@ function registerCommunity(
 **Purpose**: Creates a new community with initial parameters and governance structure.
 
 **Key Logic**:
+
 - Validates community name uniqueness and parameter constraints
-- Assigns sequential community ID and sets default governance parameters  
+- Assigns sequential community ID and sets default governance parameters
 - Establishes initial admin role for the registrant
 - Enables parent-child relationships for community federations
 - Emits `CommunityRegistered` event for indexing
@@ -80,20 +83,22 @@ function registerCommunity(
 ### Parameter Management
 
 ```solidity
-function updateParameters(uint256 communityId, ParameterUpdate[] calldata updates) 
+function updateParameters(uint256 communityId, ParameterUpdate[] calldata updates)
     external onlyAdmin(communityId)
 ```
 
 **Purpose**: Allows community admins to modify governance and economic parameters.
 
 **Supported Parameters**:
+
 - **Governance Timing**: `debateWindow`, `voteWindow`, `executionDelay`
-- **Eligibility Rules**: `minSeniority`, `minSBTs`, `proposalThreshold`  
+- **Eligibility Rules**: `minSeniority`, `minSBTs`, `proposalThreshold`
 - **Economic Settings**: `feeOnWithdraw`
 
 **Note**: Revenue splits and backing assets are set during community creation and cannot be updated through parameter system
 
 **Validation Logic**:
+
 - Community name cannot be empty
 - Parent community must exist and be active (if specified)
 - Fee rates cannot exceed 100% (10000 basis points)
@@ -103,26 +108,28 @@ function updateParameters(uint256 communityId, ParameterUpdate[] calldata update
 ### Module Address Management
 
 ```solidity
-function setModuleAddress(uint256 communityId, bytes32 moduleKey, address moduleAddress) 
+function setModuleAddress(uint256 communityId, bytes32 moduleKey, address moduleAddress)
     external onlyAdmin(communityId)
 ```
 
 **Purpose**: Links community to its governance and operational contract instances.
 
 **Supported Modules**:
+
 - Core governance: `governor`, `timelock`, `requestHub`, `draftsManager`
-- Work verification: `claimsManager`, `valuableActionRegistry`, `verifierPool`, `workerSBT`
+- Work verification: `claimsManager`, `valuableActionRegistry`, `verifierElection`, `verifierPowerToken1155`, `verifierManager`, `valuableActionSBT`
 - Economic: `communityToken`, `treasuryAdapter`
 - Treasury management: `treasuryAdapter`
 
 ### Role Management
 
 ```solidity
-function grantCommunityRole(uint256 communityId, address user, bytes32 role) 
+function grantCommunityRole(uint256 communityId, address user, bytes32 role)
     external onlyAdmin(communityId)
 ```
 
 **Role Hierarchy**:
+
 - **ADMIN_ROLE**: Full community management permissions
 - **MODERATOR_ROLE**: Content moderation in RequestHub and discussions
 - **CURATOR_ROLE**: ValuableAction management and verification oversight
@@ -159,13 +166,14 @@ modifier validAlliance(uint256 communityId, uint256 allyCommunityId) {
 ### Emergency Controls
 
 ```solidity
-function setCommunityStatus(uint256 communityId, bool active) 
+function setCommunityStatus(uint256 communityId, bool active)
     external
 ```
 
 **Community admins can**:
+
 - Activate/deactivate their own communities
-- Manage community lifecycle and governance  
+- Manage community lifecycle and governance
 - Control community visibility and participation
 
 **Access Control**: Only community admins or global admins can change community status
@@ -177,7 +185,7 @@ function setCommunityStatus(uint256 communityId, bool active)
 ```solidity
 // ShiftGovernor queries community parameters
 CommunityRegistry registry = CommunityRegistry(communityRegistryAddress);
-(uint256 debateWindow, uint256 voteWindow, uint256 executionDelay) = 
+(uint256 debateWindow, uint256 voteWindow, uint256 executionDelay) =
     registry.getGovernanceParameters(communityId);
 ```
 
@@ -214,6 +222,7 @@ struct EconomicParameters {
 ```
 
 **Default Configuration**:
+
 - Workers: 70% (7000 bp) - Rewards for verified work
 - Treasury: 20% (2000 bp) - Community development fund
 - Investors: 10% (1000 bp) - Return for community supporters
@@ -232,14 +241,14 @@ struct EconomicParameters {
 // Register community with basic metadata
 uint256 communityId = registry.registerCommunity(
     "DeveloperDAO",
-    "Decentralized community for Web3 developers", 
+    "Decentralized community for Web3 developers",
     "ipfs://QmCommunityMetadata...",
     0 // No parent community
 );
 
 // Default parameters are automatically set:
 // - debateWindow: 7 days
-// - voteWindow: 3 days  
+// - voteWindow: 3 days
 // - executionDelay: 2 days
 // - minSeniority: 0
 // - minSBTs: 0
@@ -250,7 +259,7 @@ uint256 communityId = registry.registerCommunity(
 
 ### Federation Setup
 
-```solidity  
+```solidity
 // Parent community (e.g., "DeSoc Ecosystem")
 uint256 parentId = registry.registerCommunity(
     "DeSoc Ecosystem",
@@ -261,13 +270,13 @@ uint256 parentId = registry.registerCommunity(
 
 // Child community with parent relationship
 uint256 childId = registry.registerCommunity(
-    "DeSoc - Developer Chapter", 
+    "DeSoc - Developer Chapter",
     "Developer-focused subcommunity",
     "ipfs://QmChildMetadata...",
     parentId // Set parent community
 );
 
-// Establish alliance between peer communities  
+// Establish alliance between peer communities
 registry.formAlliance(childId, anotherCommunityId);
 ```
 
@@ -278,7 +287,7 @@ registry.formAlliance(childId, anotherCommunityId);
 ParameterUpdate[] memory updates = new ParameterUpdate[](2);
 updates[0] = ParameterUpdate({
     key: keccak256("voteWindow"),
-    value: 5 days // Reduce from 3 to 5 days  
+    value: 5 days // Reduce from 3 to 5 days
 });
 updates[1] = ParameterUpdate({
     key: keccak256("feeOnWithdraw"),
@@ -293,11 +302,13 @@ registry.updateParameters(communityId, updates);
 ### Community Federation
 
 **Hierarchical Governance**:
+
 - Child communities can inherit policies from parents
 - Parent communities can set binding constraints on children
 - Federal voting can affect multiple communities simultaneously
 
 **Alliance Networks**:
+
 - Peer communities can form alliances for resource sharing
 - Alliance members get preferential treatment in cross-community work
 - Shared dispute resolution and reputation systems
@@ -305,23 +316,27 @@ registry.updateParameters(communityId, updates);
 ### Dynamic Parameter Adjustment
 
 **Governance Evolution**:
+
 - Communities can adapt their governance as they mature
 - Parameter changes require community approval through governance
 - Emergency overrides for protocol security
 
 **Economic Adaptation**:
-- Revenue splits can be adjusted based on community needs  
+
+- Revenue splits can be adjusted based on community needs
 - Fee structures can incentivize desired behaviors
 - Asset backing can be expanded to support growth
 
 ### Cross-Community Workflows
 
 **Federated Governance**:
+
 - Proposals can affect multiple communities in a federation
 - Cross-community reputation and work verification
 - Shared treasury and resource pools
 
 **Alliance Benefits**:
+
 - Reduced transaction fees between allied communities
 - Shared ValuableAction libraries and verification pools
 - Collaborative project funding and execution
