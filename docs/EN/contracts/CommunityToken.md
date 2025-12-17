@@ -6,24 +6,27 @@ The **CommunityToken** serves as a 1:1 USDC-backed stablecoin that provides tran
 
 ## 🏗️ Core Architecture  
 
-### 1:1 USDC Backing Model
+### Enhanced USDC-Backed Token Model
 
 ```solidity
-contract CommunityToken is ERC20 {
+contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
     IERC20 public immutable USDC;
-    uint256 public totalBacking;     // Total USDC held as backing
+    uint256 public immutable communityId;
+    uint256 public maxSupply;
+    uint256 public redemptionFeeBps;    // Configurable redemption fee
+    address public treasury;            // Fee collection address
     
-    // 1:1 redemption guarantee
-    function mint(uint256 usdcAmount) external {
-        USDC.transferFrom(msg.sender, address(this), usdcAmount);
-        totalBacking += usdcAmount;
-        _mint(msg.sender, usdcAmount);
-    }
+    // Role-based access control
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
+    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     
-    function redeem(uint256 tokenAmount) external {
-        _burn(msg.sender, tokenAmount);
-        totalBacking -= tokenAmount;
-        USDC.transfer(msg.sender, tokenAmount);
+    // Fee-based redemption (not pure 1:1)
+    function redeem(uint256 tokenAmount) external returns (uint256 usdcAmount) {
+        uint256 grossUsdcAmount = tokenAmount; // 1:1 base ratio
+        uint256 fee = (grossUsdcAmount * redemptionFeeBps) / 10000;
+        usdcAmount = grossUsdcAmount - fee;
+        // ... burn tokens, transfer USDC minus fee, send fee to treasury
     }
 }
 ```
@@ -36,15 +39,30 @@ contract CommunityToken is ERC20 {
 - Transparent on-chain verification of backing ratio
 - Instant redemption without penalty or delay
 
-**Reserve Tracking**:
+**Reserve Tracking & Analytics**:
 ```solidity
-function getBackingRatio() external view returns (uint256) {
-    uint256 totalSupply = totalSupply();
-    if (totalSupply == 0) return 1e18; // 100% when no tokens exist
-    return (USDC.balanceOf(address(this)) * 1e18) / totalSupply;
+function getBackingRatio() external view returns (uint256 ratio) {
+    uint256 supply = totalSupply();
+    if (supply == 0) return 10000; // 100% if no tokens minted
+    uint256 usdcBalance = USDC.balanceOf(address(this));
+    ratio = (usdcBalance * 10000) / supply; // Returns basis points
 }
 
-// Should always return 1e18 (100%) in normal operation
+function calculateRedemption(uint256 tokenAmount) external view returns (
+    uint256 grossUsdc,
+    uint256 fee, 
+    uint256 netUsdc
+) {
+    grossUsdc = tokenAmount; // 1:1 base ratio
+    fee = (grossUsdc * redemptionFeeBps) / 10000;
+    netUsdc = grossUsdc - fee;
+}
+
+function getAvailableTreasuryBalance() external view returns (uint256 available) {
+    uint256 usdcBalance = USDC.balanceOf(address(this));
+    uint256 requiredReserve = totalSupply();
+    available = usdcBalance > requiredReserve ? usdcBalance - requiredReserve : 0;
+}
 ```
 
 ## ⚙️ Key Functions & Logic
@@ -99,61 +117,89 @@ function redeem(uint256 tokenAmount) external returns (uint256 usdcRedeemed) {
 
 **Guaranteed Liquidity**:
 - No minimum redemption amount
-- No redemption fees or penalties
+- Configurable redemption fees (0-10%, collected by treasury)
 - Immediate settlement without waiting periods
-- Always maintains 1:1 parity with USDC
+- Maintains backing ratio with fee going to community treasury
 
-### Treasury Integration
+### Treasury Management
 
 ```solidity
-function mintForTreasury(uint256 amount, address treasury) 
-    external onlyRole(TREASURY_MANAGER_ROLE)
+function mintTo(address to, uint256 amount) external onlyValidRole(MINTER_ROLE) {
+    // Mint tokens for governance rewards without USDC backing
+    // Used by Claims contract and governance distribution
+}
+
+function depositToTreasury(uint256 amount) external nonReentrant {
+    // Anyone can strengthen reserves by depositing USDC
+    USDC.safeTransferFrom(msg.sender, address(this), amount);
+}
+
+function withdrawFromTreasury(
+    address recipient,
+    uint256 amount, 
+    string calldata reason
+) external onlyValidRole(TREASURY_ROLE) {
+    // Withdraw excess USDC while maintaining 1:1 backing requirement
+    uint256 reserveRequired = totalSupply();
+    require(USDC.balanceOf(address(this)) >= reserveRequired + amount);
+}
 ```
 
-**Purpose**: Enables automated treasury operations without requiring USDC pre-funding.
-
-**Mechanics**:
-- Used by revenue distribution systems
-- Allows atomic treasury funding and token distribution
-- Maintains backing ratio through coordinated operations
-- Requires proper access control and audit trails
+**Treasury Operations**:
+- **Deposit Strengthening**: Community members can add USDC to strengthen reserves
+- **Controlled Withdrawals**: Treasury role can withdraw excess USDC above backing requirements
+- **Backing Protection**: All withdrawals validate that 1:1 backing is maintained
+- **Audit Trail**: All treasury operations include reason strings for transparency
 
 ## 🛡️ Security Features
 
 ### Access Control
 
 ```solidity
-bytes32 public constant TREASURY_MANAGER_ROLE = keccak256("TREASURY_MANAGER");
-bytes32 public constant PAUSE_MANAGER_ROLE = keccak256("PAUSE_MANAGER");
+bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
+bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
 
-modifier onlyTreasuryManager() {
-    require(hasRole(TREASURY_MANAGER_ROLE, msg.sender), "Not treasury manager");
+modifier onlyValidRole(bytes32 role) {
+    if (!hasRole(role, msg.sender)) revert Errors.NotAuthorized(msg.sender);
     _;
 }
 ```
 
 **Role Hierarchy**:
-- **DEFAULT_ADMIN_ROLE**: Protocol governance for emergency situations
-- **TREASURY_MANAGER_ROLE**: Revenue router and treasury contracts
-- **PAUSE_MANAGER_ROLE**: Emergency pause capability for security incidents
+- **DEFAULT_ADMIN_ROLE**: Protocol governance for fee settings and treasury management
+- **MINTER_ROLE**: Revenue router and governance contracts for reward distribution
+- **TREASURY_ROLE**: Treasury operations and USDC withdrawal controls
+- **EMERGENCY_ROLE**: Emergency pause and withdrawal capabilities
 
 ### Emergency Controls
 
 ```solidity
-contract CommunityToken is ERC20, Pausable, AccessControl {
-    function pause() external onlyRole(PAUSE_MANAGER_ROLE) {
+contract CommunityToken is ERC20, Pausable, AccessControl, ReentrancyGuard {
+    uint256 public constant EMERGENCY_DELAY = 7 days;
+    
+    struct EmergencyWithdrawal {
+        uint256 amount;
+        uint256 requestTime;
+        bool executed;
+        address requestedBy;
+    }
+    
+    function pause() external onlyValidRole(EMERGENCY_ROLE) {
         _pause();
     }
     
-    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function unpause() external onlyValidRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
     
-    // All transfers blocked when paused
-    function _beforeTokenTransfer(address from, address to, uint256 amount) 
-        internal override whenNotPaused
-    {
-        super._beforeTokenTransfer(from, to, amount);
+    // Two-step emergency withdrawal with time delay
+    function requestEmergencyWithdrawal(uint256 amount) external onlyValidRole(EMERGENCY_ROLE) {
+        // Creates withdrawal request with 7-day delay for security
+    }
+    
+    function executeEmergencyWithdrawal(uint256 requestId, address recipient) external onlyValidRole(EMERGENCY_ROLE) {
+        // Executes withdrawal after delay period
     }
 }
 ```
@@ -269,38 +315,85 @@ struct TreasuryBalance {
 
 ### Fee Structure
 
-**No User Fees**:
-- Minting: Free (only gas costs)
-- Redemption: Free (only gas costs)  
-- Transfers: Standard ERC-20 gas costs
-- Governance operations: Subsidized by treasury
+**User Fees**:
+- **Minting**: Free (only gas costs)
+- **Redemption**: 0-10% configurable fee (goes to community treasury)  
+- **Transfers**: Standard ERC-20 gas costs
+- **Treasury Deposits**: Free (strengthens community reserves)
 
-**Operational Costs**:
-- Smart contract deployment and upgrades
-- Oracle feeds for multi-asset backing (future)
-- Insurance and security audits
-- Governance and administrative overhead
+**Fee Configuration**:
+```solidity
+uint256 public redemptionFeeBps;              // Current fee rate
+uint256 public constant MAX_REDEMPTION_FEE = 1000; // 10% maximum
+
+function setRedemptionFee(uint256 newFeeBps) external onlyValidRole(DEFAULT_ADMIN_ROLE) {
+    require(newFeeBps <= MAX_REDEMPTION_FEE);
+    redemptionFeeBps = newFeeBps;
+}
+```
+
+**Revenue Generation**:
+- Redemption fees fund community operations and development
+- Fees create sustainable revenue stream for community treasury
+- Configurable rates allow communities to balance user experience with sustainability
+
+## 🎛️ Configuration & Governance
+
+### Key Parameters
+
+```solidity
+struct CommunityTokenParams {
+    uint256 maxSupply;              // Maximum token supply cap
+    uint256 redemptionFeeBps;       // Redemption fee (0-1000 basis points)
+    address treasury;               // Fee collection and excess USDC management
+    uint256 communityId;            // Immutable community identifier
+    address USDC;                   // Immutable USDC backing token
+}
+```
+
+### Governance Functions
+
+```solidity
+function setRedemptionFee(uint256 newFeeBps) external onlyValidRole(DEFAULT_ADMIN_ROLE)
+function setTreasury(address newTreasury) external onlyValidRole(DEFAULT_ADMIN_ROLE)  
+function setMaxSupply(uint256 newMaxSupply) external onlyValidRole(DEFAULT_ADMIN_ROLE)
+```
+
+**Governance Controls**:
+- **Redemption Fee Adjustment**: Balance user experience with sustainability (0-10%)
+- **Treasury Management**: Update treasury address for fee collection and operations
+- **Supply Cap Management**: Increase maximum supply as community grows
+- **Role Management**: Grant/revoke minting, treasury, and emergency roles
+
+### Security Features
+
+**Multi-Layer Protection**:
+- **Supply Caps**: Prevents infinite token inflation
+- **Backing Validation**: Treasury withdrawals cannot break 1:1 backing ratio
+- **Emergency Delays**: 7-day timelock on emergency withdrawals
+- **Role Separation**: Different roles for different operational aspects
+- **Pause Mechanism**: Emergency halt of all operations
+- **Reentrancy Protection**: SafeERC20 and ReentrancyGuard throughout
 
 ## 🎛️ Configuration Examples
 
 ### Basic Deployment
 
 ```solidity
-// Deploy with USDC backing
+// Deploy community token with full configuration
 CommunityToken communityToken = new CommunityToken(
-    "DeveloperDAO Token",
-    "DEVDAO",
-    USDC_ADDRESS,
-    treasuryManager,    // Revenue router contract
-    pauseManager        // Emergency response multisig
+    USDC_ADDRESS,           // Backing token
+    1,                      // Community ID
+    "DeveloperDAO Token",   // Token name
+    "DEVDAO",              // Token symbol  
+    treasuryAddress,        // Fee collection address
+    1000000e18             // Max supply (1M tokens)
 );
 
-// Set up revenue distribution
-RevenueRouter router = new RevenueRouter(
-    address(communityToken),
-    communityId,
-    [7000, 2000, 1000]  // 70% workers, 20% treasury, 10% investors
-);
+// Configure initial parameters
+communityToken.setRedemptionFee(100);  // 1% redemption fee
+communityToken.grantRole(MINTER_ROLE, claimsContract);
+communityToken.grantRole(TREASURY_ROLE, treasuryManager);
 ```
 
 ### Treasury Operations
@@ -407,7 +500,45 @@ contract GovernanceCommunityToken is CommunityToken, ERC20Votes {
 }
 ```
 
-## 📈 Scaling Considerations
+## � Implementation Status
+
+### Production-Ready Features ✅
+- **1:1 USDC Backing**: Full collateralization with instant redemption
+- **Fee System**: Configurable redemption fees (0-10%) for sustainability  
+- **Role-Based Security**: Multi-role access control with emergency functions
+- **Treasury Management**: Controlled USDC deposits and withdrawals
+- **Emergency Controls**: Two-step emergency withdrawals with 7-day delay
+- **Supply Management**: Configurable maximum supply caps
+- **Integration Ready**: MINTER_ROLE for Claims contract integration
+
+### Advanced Security ✅
+- **Reentrancy Protection**: SafeERC20 and ReentrancyGuard throughout
+- **Pause Mechanism**: Emergency halt capability with role separation
+- **Backing Protection**: Treasury withdrawals validate 1:1 backing maintained
+- **Input Validation**: Comprehensive zero-address and bounds checking
+- **Event Emission**: Complete audit trail for all operations
+
+### Current Limitations 📋
+- **Single Asset Backing**: Only USDC, no multi-asset diversification
+- **No Yield Generation**: Reserves don't earn yield (future enhancement)
+- **No Cross-Chain**: Single-chain deployment (multi-chain support planned)
+- **Basic Treasury Logic**: Simple excess withdrawal (advanced treasury management planned)
+
+### Integration Points 🔗
+```solidity
+// Claims contract mints rewards
+function mintTo(address worker, uint256 amount) external onlyValidRole(MINTER_ROLE)
+
+// Treasury operations  
+function depositToTreasury(uint256 amount) external
+function withdrawFromTreasury(address recipient, uint256 amount, string reason) external
+
+// Emergency functions
+function requestEmergencyWithdrawal(uint256 amount) external onlyValidRole(EMERGENCY_ROLE)
+function pause() external onlyValidRole(EMERGENCY_ROLE)
+```
+
+## �📈 Scaling Considerations
 
 ### Network Efficiency
 

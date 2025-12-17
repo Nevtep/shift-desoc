@@ -42,7 +42,7 @@ contract CommunityRegistry is AccessControl {
         address requestHub;           // RequestHub contract
         address draftsManager;        // DraftsManager contract
         address claimsManager;        // Claims contract
-        address actionTypeRegistry;  // ActionTypeRegistry contract
+        address valuableActionRegistry; // ValuableActionRegistry contract
         address verifierPool;         // VerifierPool contract
         address workerSBT;            // WorkerSBT contract
         address treasuryAdapter;      // TreasuryAdapter contract
@@ -316,9 +316,9 @@ contract CommunityRegistry is AccessControl {
         } else if (moduleKey == keccak256("claimsManager")) {
             oldAddress = community.claimsManager;
             community.claimsManager = moduleAddress;
-        } else if (moduleKey == keccak256("actionTypeRegistry")) {
-            oldAddress = community.actionTypeRegistry;
-            community.actionTypeRegistry = moduleAddress;
+        } else if (moduleKey == keccak256("valuableActionRegistry")) {
+            oldAddress = community.valuableActionRegistry;
+            community.valuableActionRegistry = moduleAddress;
         } else if (moduleKey == keccak256("verifierPool")) {
             oldAddress = community.verifierPool;
             community.verifierPool = moduleAddress;
@@ -512,7 +512,7 @@ contract CommunityRegistry is AccessControl {
     /// @return requestHub RequestHub contract address
     /// @return draftsManager DraftsManager contract address
     /// @return claimsManager Claims contract address
-    /// @return actionTypeRegistry ActionTypeRegistry contract address
+    /// @return valuableActionRegistry ValuableActionRegistry contract address
     /// @return verifierPool VerifierPool contract address
     /// @return workerSBT WorkerSBT contract address
     /// @return treasuryAdapter TreasuryAdapter contract address
@@ -523,7 +523,7 @@ contract CommunityRegistry is AccessControl {
         address requestHub,
         address draftsManager,
         address claimsManager,
-        address actionTypeRegistry,
+        address valuableActionRegistry,
         address verifierPool,
         address workerSBT,
         address treasuryAdapter,
@@ -537,7 +537,7 @@ contract CommunityRegistry is AccessControl {
             community.requestHub,
             community.draftsManager,
             community.claimsManager,
-            community.actionTypeRegistry,
+            community.valuableActionRegistry,
             community.verifierPool,
             community.workerSBT,
             community.treasuryAdapter,

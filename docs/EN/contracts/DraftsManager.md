@@ -27,6 +27,9 @@ struct Draft {
     mapping(address => bool) isContributor;
 }
 
+// Storage: Dynamic array of drafts
+Draft[] internal _drafts;
+
 struct ActionBundle {
     address[] targets;      // Contract addresses to call
     uint256[] values;       // ETH values for each call
@@ -72,6 +75,8 @@ function createDraft(
 - **Request Linking**: Optional connection to RequestHub discussions  
 - **Action Definition**: Specifies exact governance actions to execute
 - **Version Tracking**: Immutable IPFS content versioning
+
+**🚧 Validation Status**: Currently accepts any communityId and requestId without validation. Community and request existence checks are planned for future implementation.
 
 ### Collaborative Features
 
@@ -146,6 +151,11 @@ modifier onlyAuthorOrContributor(uint256 draftId) {
 - **Review Restrictions**: Contributors cannot review their own drafts
 - **Status Gates**: Operations restricted by current workflow stage
 
+**⚠️ Admin Access Control Gap**: 
+- `updateGovernor()` and `updateConfiguration()` functions currently lack proper governance authorization
+- `updateProposalOutcome()` needs authorization from governance or proposal outcome oracle
+- These functions are marked with TODOs for future security implementation
+
 ### Consensus Validation
 
 ```solidity
@@ -215,6 +225,8 @@ if (multiChoice) {
 - **Proposal Tracking**: Bidirectional ID linking
 - **Outcome Updates**: Success/failure status tracking
 
+**⚠️ Implementation Note**: Proposal outcome updates currently lack proper authorization checks and should only be callable by governance or authorized systems.
+
 ### CommunityRegistry Integration
 
 **Community context**:
@@ -222,6 +234,8 @@ if (multiChoice) {
 - **Permission Inheritance**: Uses community role system
 - **Configuration Binding**: Community-specific thresholds
 - **Cross-Community Coordination**: Supports alliance workflows
+
+**🚧 Development Status**: Community and request validation are not yet implemented but are planned for future versions.
 
 ## 📊 Economic Model
 
@@ -284,7 +298,34 @@ uint256 proposalId = draftsManager.escalateToProposal(draftId, false, 0, descrip
 draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 ```
 
-## 🚀 Advanced Features
+## � Current Implementation Status
+
+### Completed Features ✅
+- **Draft Creation & Management**: Full collaborative editing system
+- **Version Control**: Immutable IPFS-based versioning
+- **Review System**: Complete consensus-building mechanism
+- **Governance Escalation**: Direct integration with ShiftGovernor
+- **Multi-Choice Support**: Complex proposal types
+- **Access Control**: Author/contributor permission system
+
+### Pending Implementation 🔄
+- **Authorization System**: Admin functions lack governance checks
+- **Community Validation**: Registry integration not implemented
+- **Request Validation**: RequestHub linking validation missing
+- **Event System**: Missing governance and configuration update events
+- **Advanced Security**: Additional authorization layers needed
+
+### Technical Debt 📋
+```solidity
+// Current TODOs in contract:
+// 1. updateProposalOutcome: Add proper authorization check
+// 2. updateGovernor: Add governance authorization + emit events  
+// 3. updateConfiguration: Add governance authorization + emit events
+// 4. createDraft: Validate community exists via CommunityRegistry
+// 5. createDraft: Validate request exists if requestId > 0
+```
+
+## �🚀 Advanced Features
 
 ### Version Control System
 
@@ -318,9 +359,35 @@ draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 - **Review Quality**: Feedback effectiveness measurement
 - **Community Health**: Engagement and consensus indicators
 
+### Administrative Functions (⚠️ Incomplete)
+
+**Current admin functions lack proper authorization:**
+
+```solidity
+function updateGovernor(address newGovernor) external {
+    // TODO: Add governance authorization
+    // TODO: Emit GovernanceUpdated event with oldGovernor
+}
+
+function updateConfiguration(
+    uint256 newReviewPeriod,
+    uint256 newMinReviews, 
+    uint256 newSupportThreshold
+) external {
+    // TODO: Add governance authorization
+    // TODO: Emit configuration updated event
+}
+```
+
+**Security Implications**:
+- Functions are currently callable by anyone
+- No event emissions for governance changes
+- Missing proper access control integration
+
 ### Future Enhancements
 
 **Planned improvements**:
+- **Authorization System**: Proper governance-gated admin functions
 - **AI-Assisted Drafting**: Content suggestions and optimization
 - **Automated Testing**: Proposal simulation before voting
 - **Cross-Chain Coordination**: Multi-network governance

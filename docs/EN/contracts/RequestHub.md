@@ -10,7 +10,7 @@ RequestHub is the **decentralized discussion entry point** for community coordin
 - Moderation system with role-based access control
 - Rate limiting and spam prevention mechanisms
 - Bounty system for incentivizing work
-- ActionType integration for work verification workflows
+- ValuableAction integration for work verification workflows
 
 ## 🏗️ Core Architecture
 
@@ -29,7 +29,7 @@ struct Request {
     string[] tags;            // Categorization for discovery
     uint256 commentCount;     // Discussion activity metrics
     uint256 bountyAmount;     // Optional financial incentive
-    uint256 linkedActionType; // Work verification integration (0 if none)
+    uint256 linkedValuableAction; // Work verification integration (0 if none)
 }
 
 /// Comment structure supporting threaded discussions
@@ -197,7 +197,7 @@ function _requireNotRateLimited(uint256 communityId, address user) internal view
 ### Access Control Integration
 - **Community Validation:** All operations validate community membership via `CommunityRegistry`
 - **Role-Based Moderation:** Moderator and admin roles defined by community governance
-- **Creator Privileges:** Request authors have special permissions for ActionType linking
+- **Creator Privileges**: Request authors have special permissions for ValuableAction linking
 
 ### Rate Limiting & Spam Prevention
 - **Time-based throttling:** 60-second minimum between posts
@@ -248,19 +248,20 @@ function _requireModerator(uint256 communityId, address user) internal view {
 }
 ```
 
-### ActionType Integration (Work Verification)
+### ValuableAction Integration (Work Verification)
 ```solidity
 // Link requests to work verification system
-function linkActionType(uint256 requestId, uint256 actionTypeId) external {
+function linkValuableAction(uint256 requestId, uint256 valuableActionId) external {
     Request storage request = requests[requestId];
+    if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
     
-    // Only request author or community admin can link ActionTypes
+    // Only request author or community admin can link ValuableActions
     if (msg.sender != request.author) {
         _requireCommunityAdmin(request.communityId, msg.sender);
     }
     
-    request.linkedActionType = actionTypeId;
-    emit ActionTypeLinking(requestId, actionTypeId, msg.sender);
+    request.linkedValuableAction = valuableActionId;
+    emit ValuableActionLinking(requestId, valuableActionId, msg.sender);
 }
 ```
 
@@ -269,10 +270,13 @@ function linkActionType(uint256 requestId, uint256 actionTypeId) external {
 // Add financial incentives to requests
 function addBounty(uint256 requestId, uint256 amount) external {
     Request storage request = requests[requestId];
+    if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
     if (amount == 0) revert Errors.InvalidInput("Bounty amount must be positive");
     
     // TODO: Transfer tokens from sender to this contract
+    // For now, just update the bounty amount
     request.bountyAmount += amount;
+    
     emit BountyAdded(requestId, amount, msg.sender);
 }
 ```
@@ -284,7 +288,7 @@ event RequestCreated(uint256 indexed requestId, uint256 indexed communityId, add
 event CommentPosted(uint256 indexed requestId, uint256 indexed commentId, address indexed author, string cid, uint256 parentCommentId);
 event RequestStatusChanged(uint256 indexed requestId, Status indexed newStatus, address indexed moderator);
 event BountyAdded(uint256 indexed requestId, uint256 amount, address indexed funder);
-event ActionTypeLinking(uint256 indexed requestId, uint256 indexed actionTypeId, address indexed linker);
+event ValuableActionLinking(uint256 indexed requestId, uint256 indexed valuableActionId, address indexed linker);
 ```
 
 ## 📊 Economic Model
@@ -293,7 +297,7 @@ event ActionTypeLinking(uint256 indexed requestId, uint256 indexed actionTypeId,
 - **Direct Incentives:** Community members can add bounties to requests to incentivize solutions
 - **Token Agnostic:** Current implementation tracks amounts; token transfers to be implemented
 - **Cumulative Bounties:** Multiple contributors can add to the same request's bounty pool
-- **Governance Integration:** Bounty distribution linked to work verification through ActionTypes
+- **Governance Integration**: Bounty distribution linked to work verification through ValuableActions
 
 ### Rate Limiting Economics  
 - **Free First Posts:** No barriers for new community members
@@ -421,7 +425,7 @@ function shareRequest(uint256 requestId, uint256 targetCommunityId) external;
 1. **Request Creation:** Community member identifies need/opportunity
 2. **Discussion Phase:** Open debate and solution development  
 3. **Escalation:** High-engagement requests become formal proposals
-4. **Work Assignment:** Requests linked to ActionTypes for verification
+4. **Work Assignment**: Requests linked to ValuableActions for verification
 5. **Resolution:** Bounty distribution and request archival
 
 ### Moderation Workflows
@@ -431,7 +435,7 @@ function shareRequest(uint256 requestId, uint256 targetCommunityId) external;
 4. **Policy Evolution:** Community-driven moderation guideline updates
 
 ### Integration Workflows
-1. **Request → Claims:** Link requests to work verification via ActionTypes
+1. **Request → Claims**: Link requests to work verification via ValuableActions
 2. **Discussion → Proposals:** RequestHub feeds into DraftsManager for formal governance
 3. **Bounties → Payment:** Integration with CommunityToken for incentive distribution
 4. **Activity → Reputation:** Discussion participation influences SBT scoring
