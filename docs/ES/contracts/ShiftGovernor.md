@@ -5,6 +5,7 @@ ShiftGovernor es el contrato de gobernanza listo para producción de Shift DeSoc
 ## 🎯 Propósito y Función
 
 ShiftGovernor sirve como el **motor de toma de decisiones democrático** de las comunidades Shift DeSoc al:
+
 - Gestionar la creación de propuestas, votación y ejecución segura a través de timelock
 - Soportar tanto votación binaria (sí/no) como multi-opción (distribución de preferencias)
 - Integrarse perfectamente con CountingMultiChoice para recuento avanzado de votos
@@ -20,6 +21,7 @@ ShiftGovernor sirve como el **motor de toma de decisiones democrático** de las 
 ShiftGovernor soporta dos modos de votación dentro de la misma infraestructura de gobernanza:
 
 **Votación Binaria** (Tradicional):
+
 ```solidity
 // Votación estándar del Governor de OpenZeppelin
 function castVote(uint256 proposalId, uint8 support) external
@@ -27,10 +29,11 @@ function castVote(uint256 proposalId, uint8 support) external
 ```
 
 **Votación Multi-Opción** (Innovación):
+
 ```solidity
 // Distribuir poder de voto entre múltiples opciones
 function castVoteMultiChoice(
-    uint256 proposalId, 
+    uint256 proposalId,
     uint256[] calldata weights,
     string calldata reason
 ) external
@@ -39,6 +42,7 @@ function castVoteMultiChoice(
 ### Implementación Multi-Opción
 
 #### Creación de Propuestas
+
 ```solidity
 function proposeMultiChoice(
     address[] memory targets,
@@ -49,7 +53,7 @@ function proposeMultiChoice(
 ) public returns (uint256 proposalId) {
     proposalId = propose(targets, values, calldatas, description);
     _numOptions[proposalId] = numOptions;
-    
+
     if (multiCounter != address(0)) {
         ICountingMultiChoice(multiCounter).enableMulti(proposalId, numOptions);
     }
@@ -57,6 +61,7 @@ function proposeMultiChoice(
 ```
 
 **Características Clave**:
+
 - Extiende las propuestas estándar de OpenZeppelin con capacidad multi-opción
 - Mantiene total compatibilidad con la infraestructura Governor existente
 - Separación limpia entre creación de propuestas y conteo de votos
@@ -69,10 +74,10 @@ function proposeMultiChoice(
 // Propuesta binaria (heredada de OpenZeppelin)
 uint256 proposalId = propose(targets, values, calldatas, "Decisión simple");
 
-// Propuesta multi-opción (Innovación Shift)  
+// Propuesta multi-opción (Innovación Shift)
 uint256 multiId = proposeMultiChoice(
-    targets, values, calldatas, 
-    "Decisión compleja con opciones", 
+    targets, values, calldatas,
+    "Decisión compleja con opciones",
     4  // Número de opciones de voto
 );
 ```
@@ -80,19 +85,21 @@ uint256 multiId = proposeMultiChoice(
 ### 2. Proceso de Votación
 
 **Votación Binaria**:
+
 ```solidity
 // Votación estándar de OpenZeppelin
 castVote(proposalId, 1); // A Favor
-castVote(proposalId, 0); // En Contra  
+castVote(proposalId, 0); // En Contra
 castVote(proposalId, 2); // Abstención
 ```
 
 **Votación Multi-Opción**:
+
 ```solidity
 // Distribuir 100% del poder de voto entre opciones
 uint256[] memory weights = new uint256[](4);
 weights[0] = 0.5e18;  // 50% a Opción A
-weights[1] = 0.3e18;  // 30% a Opción B  
+weights[1] = 0.3e18;  // 30% a Opción B
 weights[2] = 0.2e18;  // 20% a Opción C
 weights[3] = 0;       // 0% a Opción D
 
@@ -105,7 +112,7 @@ castVoteMultiChoice(proposalId, weights, "Mi razonamiento");
 // Ambos tipos de propuestas usan el mismo mecanismo de ejecución
 execute(
     targets,
-    values, 
+    values,
     calldatas,
     keccak256(bytes(description))
 );
@@ -116,17 +123,19 @@ execute(
 ## 🛡️ Características de Seguridad
 
 ### Integración OpenZeppelin Probada
+
 ```solidity
-contract ShiftGovernor is Governor, GovernorSettings, GovernorCountingSimple, 
-                          GovernorVotes, GovernorVotesQuorumFraction, 
+contract ShiftGovernor is Governor, GovernorSettings, GovernorCountingSimple,
+                          GovernorVotes, GovernorVotesQuorumFraction,
                           GovernorTimelockControl {
-    
+
     // Toda la lógica central se basa en contratos OpenZeppelin auditados
     // Extensiones personalizadas mínimas y enfocadas
 }
 ```
 
 ### Control de Acceso Multi-Opción
+
 ```solidity
 modifier onlyMultiCounter() {
     if (msg.sender != multiCounter) {
@@ -137,6 +146,7 @@ modifier onlyMultiCounter() {
 ```
 
 ### Validación de Parámetros
+
 - **Validación de pesos**: Los pesos de votación multi-opción deben sumar ≤ 100%
 - **Límites de opciones**: El número de opciones está limitado para prevenir ataques de complejidad
 - **Verificaciones de estado**: Solo se permite votación durante períodos de votación activos
@@ -144,6 +154,7 @@ modifier onlyMultiCounter() {
 ## 🔄 Integración de Sistemas
 
 ### Con CountingMultiChoice
+
 ```solidity
 // ShiftGovernor delega el conteo multi-opción a un contrato especializado
 function _countVote(
@@ -158,26 +169,28 @@ function _countVote(
             proposalId, account, support, weight, params
         );
     }
-    
+
     return super._countVote(proposalId, account, support, weight, params);
 }
 ```
 
 ### Con MembershipTokenERC20Votes
+
 ```solidity
 // El poder de voto se deriva de tokens de gobernanza basados en méritos
 constructor(
     IVotes _token,    // MembershipTokenERC20Votes
     TimelockController _timelock
-) Governor("ShiftGovernor") 
+) Governor("ShiftGovernor")
   GovernorVotes(_token)
   GovernorTimelockControl(_timelock) {
-    
+
     // El poder de voto se basa en contribuciones verificadas de trabajo
 }
 ```
 
 ### Con DraftsManager
+
 ```solidity
 // Las propuestas pueden originarse desde borradores comunitarios
 function proposeFromDraft(
@@ -189,16 +202,16 @@ function proposeFromDraft(
     bool isMultiChoice,
     uint8 numOptions
 ) external returns (uint256 proposalId) {
-    
+
     // Verificar que el borrador está listo para escalamiento
     require(draftsManager.isDraftReadyForProposal(draftId), "Draft not ready");
-    
+
     if (isMultiChoice && numOptions > 1) {
         proposalId = proposeMultiChoice(targets, values, calldatas, description, numOptions);
     } else {
         proposalId = propose(targets, values, calldatas, description);
     }
-    
+
     // Vincular propuesta con borrador de origen
     draftProposals[draftId] = proposalId;
 }
@@ -207,6 +220,7 @@ function proposeFromDraft(
 ## 📊 Casos de Uso Multi-Opción
 
 ### Selección de Proveedores
+
 ```solidity
 // Votar entre múltiples proveedores con distribución de preferencias
 string memory description = "Selección de Proveedor de Desarrollo: "
@@ -225,11 +239,12 @@ uint256 proposalId = proposeMultiChoice(
 ```
 
 ### Asignación de Presupuesto
+
 ```solidity
 // Distribuir presupuesto comunitario entre categorías
 string memory description = "Asignación de Presupuesto Q1 ($100k total): "
     "Opción A: Desarrollo (40%), "
-    "Opción B: Marketing (25%), " 
+    "Opción B: Marketing (25%), "
     "Opción C: Operaciones (20%), "
     "Opción D: Reservas (15%)";
 
@@ -237,6 +252,7 @@ string memory description = "Asignación de Presupuesto Q1 ($100k total): "
 ```
 
 ### Características de Producto
+
 ```solidity
 // Priorización de características con preferencias matizadas
 string memory description = "Prioridades de Desarrollo Q2: "
@@ -251,6 +267,7 @@ string memory description = "Prioridades de Desarrollo Q2: "
 ## 🔍 Integración Frontend
 
 ### Getters Esenciales para UI
+
 ```solidity
 // Verificar tipo de propuesta
 function isMultiChoice(uint256 proposalId) external view returns (bool)
@@ -267,6 +284,7 @@ function hasVoted(uint256 proposalId, address account) public view override retu
 ```
 
 ### Seguimiento de Eventos
+
 ```solidity
 // Eventos estándar del Governor (heredados)
 event ProposalCreated(uint256 indexed proposalId, address indexed proposer, ...);
@@ -280,6 +298,7 @@ event MultiChoiceVoteCast(address indexed voter, uint256 indexed proposalId, uin
 ## 📈 Características Avanzadas
 
 ### Configuración Dinámica
+
 ```solidity
 // Parámetros configurables por gobernanza
 function setVotingDelay(uint256 newVotingDelay) public override onlyGovernance
@@ -291,24 +310,26 @@ function setMultiCounter(address _multiCounter) external onlyGovernance
 ```
 
 ### Análisis de Votación
+
 ```solidity
 // Las métricas de participación están disponibles a través de CountingMultiChoice
 function getVotingAnalytics(uint256 proposalId) external view returns (
     uint256 totalVotes,
-    uint256 participationRate, 
+    uint256 participationRate,
     uint256[] memory optionTotals,
     bool quorumReached
 ) {
     if (_isMultiChoice(proposalId)) {
         return ICountingMultiChoice(multiCounter).getProposalAnalytics(proposalId);
     }
-    
+
     // Retornar análisis de votación binaria
     return _getBinaryVotingAnalytics(proposalId);
 }
 ```
 
 ### Integración de Timelock
+
 ```solidity
 // Control completo de timelock con retrasos configurables
 function updateTimelock(TimelockController newTimelock) external onlyGovernance
@@ -320,6 +341,7 @@ function proposalEta(uint256 proposalId) public view override returns (uint256)
 ## 🎛️ Ejemplos de Configuración
 
 ### Gobernanza de Desarrollo Ágil
+
 ```solidity
 // Parámetros optimizados para iteración rápida
 ShiftGovernor governor = new ShiftGovernor({
@@ -333,6 +355,7 @@ ShiftGovernor governor = new ShiftGovernor({
 ```
 
 ### Gobernanza de Consenso Comunitario
+
 ```solidity
 // Parámetros para decisiones consideradas
 ShiftGovernor governor = new ShiftGovernor({
@@ -348,6 +371,7 @@ ShiftGovernor governor = new ShiftGovernor({
 ## 📋 Flujo de Trabajo de Producción
 
 ### 1. Creación de Propuesta Estándar
+
 ```solidity
 // Para decisiones binarias simples
 uint256 proposalId = propose(
@@ -359,6 +383,7 @@ uint256 proposalId = propose(
 ```
 
 ### 2. Creación de Propuesta Multi-Opción
+
 ```solidity
 // Para decisiones complejas con múltiples alternativas
 uint256 proposalId = proposeMultiChoice(
@@ -366,7 +391,7 @@ uint256 proposalId = proposeMultiChoice(
     [0, 0, 0],
     [
         abi.encodeWithSignature("setParameter(string,uint256)", "param1", value1),
-        abi.encodeWithSignature("setParameter(string,uint256)", "param2", value2), 
+        abi.encodeWithSignature("setParameter(string,uint256)", "param2", value2),
         abi.encodeWithSignature("setParameter(string,uint256)", "param3", value3)
     ],
     "Configuración de Parámetros Comunitarios: Opción A (Conservador), Opción B (Moderado), Opción C (Agresivo)",
@@ -378,4 +403,4 @@ uint256 proposalId = proposeMultiChoice(
 
 ---
 
-*Esta documentación refleja la implementación de producción enfocada en funcionalidad esencial de gobernanza con extensiones multi-opción, en lugar de características teóricas no implementadas.*
+_Esta documentación refleja la implementación de producción enfocada en funcionalidad esencial de gobernanza con extensiones multi-opción, en lugar de características teóricas no implementadas._

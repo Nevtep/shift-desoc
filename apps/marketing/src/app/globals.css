@@ -1,21 +1,15 @@
-/* Global styles for Next.js app */
-html,
-body {
-  padding: 0;
-  margin: 0;
-  font-family: var(--font-family-base);
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
-.antialiased {
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body, html {
+  min-height: 100%;
 }

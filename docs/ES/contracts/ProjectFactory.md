@@ -9,7 +9,7 @@ El contrato ProjectFactory habilita **creación de proyectos descentralizada y c
 ### Estructura de Gestión de Proyectos
 
 ```solidity
-struct Project { 
+struct Project {
     address creator;             // Iniciador del proyecto
     string cid;                 // Identificador de contenido IPFS
     address token1155;          // Token ERC-1155 de crowdfunding
@@ -27,23 +27,25 @@ uint256 public lastId;
 ### Creación de Proyectos
 
 ```solidity
-function create(string calldata cid, address token1155) 
+function create(string calldata cid, address token1155)
     external returns (uint256 id) {
-    
-    id = ++lastId; 
+
+    id = ++lastId;
     projects[id] = Project(msg.sender, cid, token1155, true);
-    
+
     emit ProjectCreated(id, msg.sender, cid, token1155);
 }
 ```
 
 **Funcionalidad Actual**:
+
 - ✅ Registro de proyectos con metadatos IPFS
 - ✅ Asociación de tokens ERC-1155 para crowdfunding
 - ✅ Atribución de creador y seguimiento de proyectos
 - ✅ Generación de ID único de proyecto
 
 **Funcionalidad Faltante** (Planificada para Mejoras Futuras):
+
 - ❌ Gestión y validación de hitos
 - ❌ Mecánicas de crowdfunding y protección de inversionistas
 - ❌ Sistemas de seguimiento de progreso y reportes
@@ -52,11 +54,13 @@ function create(string calldata cid, address token1155)
 ## 🛡️ Características de Seguridad
 
 ### Control de Acceso
+
 - **Atribución de Creador**: Cada proyecto está permanentemente vinculado a su creador
 - **Estado de Proyecto**: El estado activo/inactivo previene modificaciones no autorizadas
 - **Registros Inmutables**: Los registros de creación de proyectos son permanentes en cadena
 
 ### Integridad de Datos
+
 - **Integración IPFS**: Almacenamiento de metadatos descentralizado previene censura
 - **Validación de Token**: Verificación de direcciones de contratos ERC-1155 válidos
 - **Seguimiento de Eventos**: Registro completo de auditoría para todas las acciones del proyecto
@@ -64,6 +68,7 @@ function create(string calldata cid, address token1155)
 ## 📊 Casos de Uso Actuales
 
 ### Registro de Proyecto Básico
+
 ```solidity
 // Crear nuevo proyecto con metadatos IPFS
 uint256 projectId = projectFactory.create(
@@ -75,6 +80,7 @@ uint256 projectId = projectFactory.create(
 ```
 
 ### Seguimiento de Proyectos Comunitarios
+
 ```solidity
 // Los miembros de la comunidad pueden ver todos los proyectos
 Project memory project = projectFactory.projects(projectId);
@@ -137,6 +143,7 @@ struct InvestorProtection {
 ## 🔄 Integración Futura Planificada
 
 ### Con CommunityToken
+
 ```solidity
 // Los proyectos generarán ingresos en tokens comunitarios
 function distributeProjectRevenue(
@@ -145,18 +152,19 @@ function distributeProjectRevenue(
 ) external {
     Project storage project = projects[projectId];
     require(project.active, "Proyecto inactivo");
-    
+
     // Distribuir ingresos entre creador, inversionistas y comunidad
     uint256 creatorShare = (revenue * 4000) / 10000;      // 40% creador
     uint256 investorShare = (revenue * 4500) / 10000;     // 45% inversionistas
     uint256 communityShare = (revenue * 1500) / 10000;    // 15% comunidad
-    
+
     // Integrar con RevenueRouter para distribución
     revenueRouter.distributeRevenue(revenue);
 }
 ```
 
 ### Con WorkerSBT
+
 ```solidity
 // Contribuyentes al proyecto ganan WorkerPoints
 function rewardProjectContribution(
@@ -176,6 +184,7 @@ function rewardProjectContribution(
 ```
 
 ### Con ValuableActionRegistry
+
 ```solidity
 // Diferentes tipos de contribuciones al proyecto
 function setupProjectContributionTypes() external {
@@ -189,14 +198,14 @@ function setupProjectContributionTypes() external {
         }),
         "Contribución de desarrollo de proyecto"
     );
-    
+
     // Gestión de proyecto
     valuableActionRegistry.proposeValuableAction(
         communityId,
         ValuableAction({
             membershipTokenReward: 300,
             communityTokenReward: 200,
-            // ... otros parámetros  
+            // ... otros parámetros
         }),
         "Gestión y coordinación de proyecto"
     );
@@ -206,6 +215,7 @@ function setupProjectContributionTypes() external {
 ## 📈 Métricas y Análisis Planificados
 
 ### Análisis de Rendimiento del Proyecto
+
 ```solidity
 // Métricas planificadas para seguimiento de proyectos
 function getProjectAnalytics(uint256 projectId) external view returns (
@@ -220,6 +230,7 @@ function getProjectAnalytics(uint256 projectId) external view returns (
 ```
 
 ### Análisis de Cartera de Inversionistas
+
 ```solidity
 // Seguimiento de inversiones de inversionistas a través de proyectos
 function getInvestorPortfolio(address investor) external view returns (
@@ -235,6 +246,7 @@ function getInvestorPortfolio(address investor) external view returns (
 ## 🎯 Casos de Uso de Ejemplo
 
 ### Proyecto de Desarrollo de Software
+
 ```solidity
 // Crear proyecto para nueva aplicación comunitaria
 uint256 projectId = projectFactory.create(
@@ -249,6 +261,7 @@ uint256 projectId = projectFactory.create(
 ```
 
 ### Proyecto de Contenido Educativo
+
 ```solidity
 // Crear proyecto para serie de cursos de programación
 uint256 projectId = projectFactory.create(
@@ -260,6 +273,7 @@ uint256 projectId = projectFactory.create(
 ```
 
 ### Proyecto de Investigación y Desarrollo
+
 ```solidity
 // Crear proyecto para investigación de protocolo blockchain
 uint256 projectId = projectFactory.create(
@@ -273,6 +287,7 @@ uint256 projectId = projectFactory.create(
 ## 🔍 Integración Frontend
 
 ### Getters Esenciales para UI
+
 ```solidity
 // Información básica del proyecto
 function getProject(uint256 projectId) external view returns (Project memory)
@@ -285,6 +300,7 @@ function getProjectMetadata(uint256 projectId) external view returns (string mem
 ```
 
 ### Eventos para Monitoreo
+
 ```solidity
 event ProjectCreated(uint256 indexed projectId, address indexed creator, string cid, address token1155);
 event ProjectUpdated(uint256 indexed projectId, string newCid);
@@ -294,24 +310,28 @@ event ProjectStatusChanged(uint256 indexed projectId, bool active);
 ## 📋 Hoja de Ruta de Implementación
 
 ### Fase 1 (Actual - ✅ Completada)
+
 - ✅ Registro básico de proyectos
 - ✅ Integración IPFS para metadatos
 - ✅ Asociación de tokens ERC-1155
 - ✅ Atribución de creadores y seguimiento
 
 ### Fase 2 (Planificada)
+
 - 🔄 Sistema de crowdfunding con hitos
 - 🔄 Validación y progreso de hitos
 - 🔄 Mecanismos básicos de protección de inversionistas
 - 🔄 Integración con CommunityToken para financiamiento
 
 ### Fase 3 (Futura)
+
 - 🔄 Análisis avanzado de rendimiento de proyectos
 - 🔄 Herramientas de gestión de cartera para inversionistas
 - 🔄 Integración con plataformas externas (GitHub, GitLab)
 - 🔄 Sistemas automatizados de validación de hitos
 
 ### Fase 4 (Avanzada)
+
 - 🔄 Mercados secundarios para tokens de proyecto
 - 🔄 Derivados financieros y seguros de proyecto
 - 🔄 IA para evaluación de riesgo de proyectos
@@ -320,12 +340,13 @@ event ProjectStatusChanged(uint256 indexed projectId, bool active);
 ## 📊 Estado de Implementación
 
 ### Funcionalidad Actual
+
 ```solidity
 // Implementación production-ready para registro básico
 function create(string calldata cid, address token1155) external returns (uint256 id) {
     require(bytes(cid).length > 0, "CID requerido");
     require(token1155 != address(0), "Token address requerida");
-    
+
     id = ++lastId;
     projects[id] = Project({
         creator: msg.sender,
@@ -333,12 +354,13 @@ function create(string calldata cid, address token1155) external returns (uint25
         token1155: token1155,
         active: true
     });
-    
+
     emit ProjectCreated(id, msg.sender, cid, token1155);
 }
 ```
 
 ### Limitaciones Actuales
+
 - **Sin Validación de Hitos**: Los proyectos no tienen seguimiento de progreso automatizado
 - **Sin Crowdfunding**: Los tokens ERC-1155 están asociados pero sin mecánicas de financiamiento
 - **Sin Protección de Inversionistas**: No hay escrow ni mecanismos de reembolso
@@ -347,11 +369,13 @@ function create(string calldata cid, address token1155) external returns (uint25
 ## 💡 Consideraciones de Diseño
 
 ### Escalabilidad
+
 - **Almacenamiento Eficiente**: Usar IPFS para datos grandes, solo referencias en cadena
 - **Gas Optimizado**: Estructura de datos mínima para reducir costos de transacción
 - **Indexación**: Eventos emitidos para indexación off-chain eficiente
 
 ### Interoperabilidad
+
 - **Estándares ERC**: Compatibilidad total con ERC-1155 para tokens de proyecto
 - **Integración Cross-Contract**: Diseñado para trabajar con todo el ecosistema Shift DeSoc
 - **Metadatos Flexibles**: Estructura IPFS permite evolución de esquemas de datos
@@ -360,4 +384,4 @@ function create(string calldata cid, address token1155) external returns (uint25
 
 ---
 
-*Esta documentación refleja el estado actual de producción con visión futura para crowdfunding descentralizado robusto y gestión de proyectos comunitarios dentro del ecosistema Shift DeSoc.*
+_Esta documentación refleja el estado actual de producción con visión futura para crowdfunding descentralizado robusto y gestión de proyectos comunitarios dentro del ecosistema Shift DeSoc._

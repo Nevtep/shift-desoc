@@ -5,15 +5,18 @@ This directory contains all project management, deployment, and development coor
 ## 📁 Directory Structure
 
 ### `/copilot-instructions.md`
+
 **Primary development guide** - Core architecture, implementation status, and coding standards for AI assistants and developers.
 
 ### `/project-management/`
+
 Long-term project coordination and architecture analysis:
 
 - **`PROJECT_STATUS.md`** - Complete project status report with production readiness assessment
 - **`ARCHITECTURE_GAP_ANALYSIS.md`** - Technical architecture analysis and MVP implementation planning
 
 ### `/deployment/`
+
 Network deployment guides and testing procedures:
 
 - **`BASE_SEPOLIA_DEPLOYMENT_GUIDE.md`** - Complete Base Sepolia testnet deployment configuration
@@ -44,4 +47,4 @@ Current focus: **Contract documentation review and alignment**
 
 ---
 
-*This structure ensures all project coordination materials are centralized in the `.github` folder while maintaining clear separation between different types of documentation.*
+_This structure ensures all project coordination materials are centralized in the `.github` folder while maintaining clear separation between different types of documentation._

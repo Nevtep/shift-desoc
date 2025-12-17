@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import "contracts/modules/RequestHub.sol";
 import "contracts/modules/CommunityRegistry.sol";
+import "contracts/modules/ParamController.sol";
 import "contracts/libs/Errors.sol";
 
 contract RequestHubTest is Test {
@@ -50,7 +51,8 @@ contract RequestHubTest is Test {
         vm.startPrank(admin);
         
         // Deploy contracts
-        communityRegistry = new CommunityRegistry(admin);
+        ParamController paramController = new ParamController(admin);
+        communityRegistry = new CommunityRegistry(admin, address(paramController));
         requestHub = new RequestHub(address(communityRegistry));
         
         // Create test community

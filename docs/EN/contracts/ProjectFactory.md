@@ -9,7 +9,7 @@ The ProjectFactory contract enables **decentralized project creation and crowdfu
 ### Project Management Structure
 
 ```solidity
-struct Project { 
+struct Project {
     address creator;             // Project initiator
     string cid;                 // IPFS content identifier
     address token1155;          // ERC-1155 crowdfunding token
@@ -27,23 +27,25 @@ uint256 public lastId;
 ### Project Creation
 
 ```solidity
-function create(string calldata cid, address token1155) 
+function create(string calldata cid, address token1155)
     external returns (uint256 id) {
-    
-    id = ++lastId; 
+
+    id = ++lastId;
     projects[id] = Project(msg.sender, cid, token1155, true);
-    
+
     emit ProjectCreated(id, msg.sender, cid, token1155);
 }
 ```
 
 **Current Functionality**:
+
 - ✅ Project registration with IPFS metadata
 - ✅ ERC-1155 token association for crowdfunding
 - ✅ Creator attribution and project tracking
 - ✅ Unique project ID generation
 
 **Missing Functionality** (Planned for Future Enhancement):
+
 - ❌ Milestone management and validation
 - ❌ Crowdfunding mechanics and investor protection
 - ❌ Progress tracking and reporting systems
@@ -52,11 +54,13 @@ function create(string calldata cid, address token1155)
 ## 🛡️ Security Features
 
 ### Access Control
+
 - **Creator Attribution**: Each project is permanently linked to its creator
 - **Project Status**: Active/inactive status prevents unauthorized modifications
 - **Immutable Records**: Project creation records are permanent on-chain
 
 ### Data Integrity
+
 - **IPFS Integration**: Decentralized metadata storage prevents censorship
 - **Event Logging**: Complete audit trail of project creation and updates
 - **Token Association**: Clear linking between projects and their funding mechanisms
@@ -71,7 +75,7 @@ function create(string calldata cid, address token1155)
   "description": "Installing solar panels for community energy independence",
   "category": "Infrastructure",
   "fundingGoal": "50000",
-  "timeline": "6 months", 
+  "timeline": "6 months",
   "milestones": [
     {
       "name": "Planning and Permits",
@@ -80,14 +84,14 @@ function create(string calldata cid, address token1155)
       "duration": "1 month"
     },
     {
-      "name": "Equipment Procurement", 
+      "name": "Equipment Procurement",
       "description": "Purchase solar panels and installation equipment",
       "funding": "30000",
       "duration": "2 months"
     },
     {
       "name": "Installation and Testing",
-      "description": "Install panels and test system functionality", 
+      "description": "Install panels and test system functionality",
       "funding": "10000",
       "duration": "3 months"
     }
@@ -116,7 +120,7 @@ interface IProjectToken {
 
 // Example: Milestone-based funding
 // Token ID 1: Funding for Milestone 1 (Planning)
-// Token ID 2: Funding for Milestone 2 (Equipment) 
+// Token ID 2: Funding for Milestone 2 (Equipment)
 // Token ID 3: Funding for Milestone 3 (Installation)
 ```
 
@@ -180,7 +184,7 @@ uint256 projectId = projectFactory.create(cid, token1155);
 // Community mobile app development
 string memory cid = "QmMobileAppProject...";
 address token1155 = deployCrowdfundingToken(
-    "Community App Crowdfunding", 
+    "Community App Crowdfunding",
     "APP",
     4  // 4 development phases
 );
@@ -246,16 +250,19 @@ struct FederatedProject {
 ## 💡 Innovation Opportunities
 
 ### Decentralized Venture Capital
+
 - Community-driven project evaluation and funding
 - Reputation-based project creator verification
 - Cross-community investment syndication
 
 ### Sustainable Development Focus
+
 - Carbon footprint tracking for funded projects
 - Environmental impact assessment requirements
 - Renewable energy and sustainability project prioritization
 
 ### Open Source Integration
+
 - Mandatory open source requirements for community-funded projects
 - IP sharing models for collaborative development
 - Community ownership of project outcomes
@@ -274,17 +281,20 @@ function validateMilestoneWork(uint256 projectId, uint256 milestoneId, uint256[]
 ## 📈 Economic Model
 
 ### Funding Flow
+
 1. **Community Investment**: Members fund projects with community tokens
-2. **Milestone Release**: Funds released upon milestone completion validation  
+2. **Milestone Release**: Funds released upon milestone completion validation
 3. **Revenue Distribution**: Project income shared with investors proportionally
 4. **Community Treasury**: Percentage of project success flows to treasury
 
 ### Risk Management
+
 - **Escrow System**: Funds held until milestone validation
 - **Community Oversight**: Governance can intervene in disputed projects
 - **Refund Mechanisms**: Investor protection for failed or abandoned projects
 
 ### Success Incentives
+
 - **Creator Rewards**: Project creators receive success bonuses
 - **Community Benefits**: Successful projects enhance community reputation
 - **Reinvestment Cycle**: Project profits fund future community initiatives

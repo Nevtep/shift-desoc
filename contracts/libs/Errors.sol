@@ -7,6 +7,7 @@ library Errors {
     // General errors
     error NotOwner(address caller, address owner);
     error NotAuthorized(address caller);
+    error UnauthorizedCaller(address caller);
     error ZeroAddress();
     error InvalidInput(string reason);
     

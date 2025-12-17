@@ -25,18 +25,18 @@ contract HousingManager {
         address[] amenities;         // Amenidades disponibles (tokens ERC1155)
         uint256[] availableDates;    // Disponibilidad del calendario
     }
-    
+
     struct Reservation {
         uint256 reservationId;       // ID único de reserva
         uint256 unitId;             // Unidad reservada
         address resident;           // Quien hizo la reserva
         uint256 checkIn;            // Timestamp de check-in
-        uint256 checkOut;           // Timestamp de check-out  
+        uint256 checkOut;           // Timestamp de check-out
         uint256 totalCost;          // Cantidad total de pago
         uint256 workerDiscount;     // Porcentaje de descuento aplicado
         ReservationStatus status;   // Estado actual de la reserva
     }
-    
+
     enum ReservationStatus {
         PENDING,
         CONFIRMED,
@@ -71,27 +71,28 @@ struct PriorityConfig {
 ```solidity
 contract HousingManager {
     error NotImplemented();
-    
+
     // Todas las funciones principales retornan error de no implementado
     function createReservation(uint256, uint256, uint256) external pure returns (uint256) {
         revert NotImplemented();
     }
-    
+
     function confirmReservation(uint256) external pure {
-        revert NotImplemented(); 
+        revert NotImplemented();
     }
-    
+
     function checkIn(uint256) external pure {
         revert NotImplemented();
     }
-    
+
     function checkOut(uint256) external pure {
         revert NotImplemented();
     }
 }
 ```
 
-**Funcionalidad Actual**: 
+**Funcionalidad Actual**:
+
 - ❌ Todas las funciones revierten con error `NotImplemented()`
 - ❌ No se soportan reservas de vivienda
 - ❌ Marcador de posición para implementación futura
@@ -99,16 +100,19 @@ contract HousingManager {
 ## 🛡️ Características de Seguridad Planificadas
 
 ### Control de Acceso de Propiedades
+
 - Autenticación basada en WorkerSBT para descuentos de miembros
 - Verificación de elegibilidad por antigüedad comunitaria
 - Permisos administrativos para gestores de propiedades
 
 ### Validación de Reservas
+
 - Verificación de disponibilidad en tiempo real
 - Prevención de doble reserva
 - Validación de fechas y ocupación
 
 ### Gestión de Pagos
+
 - Integración con CommunityToken para pagos
 - Procesamiento de reembolsos para cancelaciones
 - Seguimiento de ingresos de propiedades
@@ -116,6 +120,7 @@ contract HousingManager {
 ## 🏠 Casos de Uso Planificados
 
 ### Co-vivienda Comunitaria
+
 ```solidity
 // Configurar unidad de vivienda comunitaria
 HousingUnit memory colivingSpace = HousingUnit({
@@ -139,6 +144,7 @@ makeReservation({
 ```
 
 ### Espacios de Trabajo Compartidos
+
 ```solidity
 // Oficinas de co-trabajo para trabajadores remotos
 HousingUnit memory coworkingOffice = HousingUnit({
@@ -154,12 +160,13 @@ HousingUnit memory coworkingOffice = HousingUnit({
 ```
 
 ### Propiedades de Inversión
+
 ```solidity
 // Propiedades generadoras de ingresos para la comunidad
 HousingUnit memory rentalProperty = HousingUnit({
     unitId: 3,
     name: "Apartamento de Inversión Downtown",
-    location: "789 Business District, Ciudad", 
+    location: "789 Business District, Ciudad",
     basePricePerNight: 100e18,     // Precios de mercado para no miembros
     maxOccupancy: 4,
     active: true,
@@ -171,6 +178,7 @@ HousingUnit memory rentalProperty = HousingUnit({
 ## 💰 Modelo Económico Planificado
 
 ### Estructura de Precios Dinámicos
+
 ```solidity
 // Cálculo de precio basado en múltiples factores
 function calculatePrice(
@@ -179,40 +187,41 @@ function calculatePrice(
     uint256 checkOut,
     address resident
 ) external view returns (uint256 totalPrice) {
-    
+
     HousingUnit memory unit = housingUnits[unitId];
     uint256 nights = (checkOut - checkIn) / 1 days;
     uint256 basePrice = unit.basePricePerNight * nights;
-    
+
     // Aplicar descuento de WorkerSBT
     if (workerSBT.balanceOf(resident) > 0) {
         uint256 discount = (basePrice * workerSBTDiscount) / 10000;
         basePrice -= discount;
     }
-    
+
     // Ajuste de demanda estacional
     uint256 demandMultiplier = _calculateDemandMultiplier(unitId, checkIn);
     basePrice = (basePrice * demandMultiplier) / 10000;
-    
+
     // Descuento por antigüedad
     uint256 seniority = _getCommunitySeniority(resident);
     if (seniority > 365 days) {
         uint256 seniorityDiscount = (basePrice * 500) / 10000; // 5% descuento
         basePrice -= seniorityDiscount;
     }
-    
+
     return basePrice;
 }
 ```
 
 ### Distribución de Ingresos
+
 ```solidity
 // Los ingresos de vivienda se integran con RevenueRouter
 function distributeHousingRevenue(uint256 totalRevenue) external {
     // 40% para trabajadores (mantenimiento y gestión)
     // 35% para tesorería comunitaria
     // 25% para inversionistas de propiedades
-    
+
     revenueRouter.distributeRevenue(totalRevenue);
 }
 ```
@@ -220,6 +229,7 @@ function distributeHousingRevenue(uint256 totalRevenue) external {
 ## 🔄 Integración Futura Planificada
 
 ### Con WorkerSBT
+
 ```solidity
 // Descuentos y prioridad basados en contribuciones de trabajo
 function getWorkerBenefits(address worker) external view returns (
@@ -227,16 +237,17 @@ function getWorkerBenefits(address worker) external view returns (
     uint256 priorityLevel
 ) {
     uint256 workerPoints = workerSBT.getWorkerPoints(worker);
-    
+
     // Más WorkerPoints = mayores descuentos
     discountPercentage = Math.min(workerPoints / 100, 3000); // Máximo 30% descuento
-    
+
     // Nivel de prioridad para reservas disputadas
     priorityLevel = workerPoints / 500; // Cada 500 puntos = +1 nivel de prioridad
 }
 ```
 
 ### Con CommunityToken
+
 ```solidity
 // Pagos en tokens comunitarios respaldados por USDC
 function processPayment(
@@ -244,18 +255,19 @@ function processPayment(
     uint256 amount
 ) external {
     require(communityToken.balanceOf(msg.sender) >= amount, "Saldo insuficiente");
-    
+
     // Transferir tokens de pago
     communityToken.transferFrom(msg.sender, address(this), amount);
-    
+
     // Actualizar estado de reserva
     reservations[reservationId].status = ReservationStatus.CONFIRMED;
-    
+
     emit PaymentProcessed(reservationId, msg.sender, amount);
 }
 ```
 
 ### Con Marketplace
+
 ```solidity
 // Listar propiedades en marketplace para reserva externa
 function listOnMarketplace(
@@ -264,7 +276,7 @@ function listOnMarketplace(
     uint256 endDate,
     uint256 externalPrice
 ) external onlyPropertyManager(unitId) {
-    
+
     marketplace.createListing({
         propertyId: unitId,
         serviceType: "accommodation",
@@ -278,6 +290,7 @@ function listOnMarketplace(
 ## 📅 Sistema de Reservas Planificado
 
 ### Cola de Prioridad
+
 ```solidity
 // Gestionar reservas disputadas con sistema de prioridad justo
 struct PriorityQueue {
@@ -288,22 +301,23 @@ struct PriorityQueue {
 
 function addToWaitlist(uint256 unitId, uint256 checkIn, address resident) external {
     uint256 priorityScore = _calculatePriorityScore(resident);
-    
+
     // Insertar en posición correcta basada en prioridad
     _insertByPriority(unitId, checkIn, resident, priorityScore);
 }
 ```
 
 ### Cancelaciones y Reembolsos
+
 ```solidity
 // Política de cancelación con penalidades escalonadas
 function cancelReservation(uint256 reservationId) external {
     Reservation storage reservation = reservations[reservationId];
     require(reservation.resident == msg.sender, "No autorizado");
-    
+
     uint256 timeUntilCheckIn = reservation.checkIn - block.timestamp;
     uint256 refundPercentage;
-    
+
     if (timeUntilCheckIn > 7 days) {
         refundPercentage = 10000;      // 100% reembolso
     } else if (timeUntilCheckIn > 3 days) {
@@ -313,10 +327,10 @@ function cancelReservation(uint256 reservationId) external {
     } else {
         refundPercentage = 0;          // No reembolso
     }
-    
+
     uint256 refundAmount = (reservation.totalCost * refundPercentage) / 10000;
     communityToken.transfer(msg.sender, refundAmount);
-    
+
     reservation.status = ReservationStatus.CANCELLED;
 }
 ```
@@ -324,6 +338,7 @@ function cancelReservation(uint256 reservationId) external {
 ## 🔍 Métricas Planificadas
 
 ### Análisis de Utilización
+
 ```solidity
 function getUtilizationMetrics(uint256 unitId) external view returns (
     uint256 occupancyRate,          // % de noches reservadas
@@ -336,6 +351,7 @@ function getUtilizationMetrics(uint256 unitId) external view returns (
 ```
 
 ### Análisis de Miembros
+
 ```solidity
 function getMemberHousingAnalytics(address member) external view returns (
     uint256 totalNightsStayed,
@@ -350,17 +366,20 @@ function getMemberHousingAnalytics(address member) external view returns (
 ## 📋 Hoja de Ruta de Implementación
 
 ### Fase 1 (Actual)
+
 - ✅ Contrato stub creado
 - ✅ Interfaces básicas definidas
 - ⏳ Integración con otros contratos pendiente
 
 ### Fase 2 (Planificada)
+
 - 🔄 Sistema de reservas básico
 - 🔄 Integración con WorkerSBT para descuentos
 - 🔄 Procesamiento de pagos con CommunityToken
 - 🔄 Gestión básica de propiedades
 
 ### Fase 3 (Futura)
+
 - 🔄 Precios dinámicos y análisis de demanda
 - 🔄 Sistema de prioridad avanzado
 - 🔄 Integración con plataformas externas (Airbnb, etc.)
@@ -370,4 +389,4 @@ function getMemberHousingAnalytics(address member) external view returns (
 
 ---
 
-*Esta documentación describe la visión futura para la gestión de co-vivienda comunitaria y generación de ingresos de propiedades dentro del ecosistema Shift DeSoc.*
+_Esta documentación describe la visión futura para la gestión de co-vivienda comunitaria y generación de ingresos de propiedades dentro del ecosistema Shift DeSoc._

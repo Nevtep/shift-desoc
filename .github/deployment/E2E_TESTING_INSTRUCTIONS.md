@@ -1,6 +1,7 @@
 # 🚀 INSTRUCCIONES FINALES PARA E2E TESTING EN SEPOLIA
 
 ## Problema Actual
+
 - Foundry: Problemas con .env y Unicode characters
 - Hardhat: Conflictos de rutas y typechain
 
@@ -12,13 +13,14 @@ Fondea estas direcciones con **0.1 ETH cada una** en Sepolia:
 
 ```
 USER1: 0x61A31c7ff36bed6d97CA5A4dDc4153db87e63397
-USER2: 0x741Ff780D7a6aad57c0d2012FDAf3dE533E761A6  
+USER2: 0x741Ff780D7a6aad57c0d2012FDAf3dE533E761A6
 USER3: 0x6dC538F47af2fa737812A847001161b7C089e889
 USER4: 0x6b01E73447918A0964D2Bb50e9802970eCB4b2ef
 USER5: 0xB2e409CfBAFC05db3c46313BB18FA1897375DB7d
 ```
 
 **Faucets Sepolia:**
+
 - https://sepoliafaucet.com/
 - https://sepolia-faucet.pk910.de/
 - https://www.alchemy.com/faucets/ethereum-sepolia
@@ -39,7 +41,7 @@ TOKEN=$(cast create contracts/tokens/MembershipTokenERC20Votes.sol:MembershipTok
   --constructor-args "Shift Membership" "sMEM" \
   --private-key $PRIVATE_KEY --rpc-url $RPC)
 
-# 2. Deploy Timelock  
+# 2. Deploy Timelock
 TIMELOCK=$(cast create @openzeppelin/contracts/governance/TimelockController.sol:TimelockController \
   --constructor-args 3600 "[]" "[]" "0x0000000000000000000000000000000000000000" \
   --private-key $PRIVATE_KEY --rpc-url $RPC)
@@ -96,7 +98,7 @@ cast send $REGISTRY "registerCommunity(string,string,string,uint256)" \
 ### Próximo Paso Recomendado:
 
 1. **Fondear las 5 wallets** ← ESTO PRIMERO
-2. **Usar Remix para deploy y testing** 
+2. **Usar Remix para deploy y testing**
 3. **Una vez funcionando, automatizar con scripts**
 
 ¿Quieres que procedamos con el fondeo de wallets y luego Remix?
