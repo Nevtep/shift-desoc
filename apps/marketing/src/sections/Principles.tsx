@@ -3,7 +3,7 @@
 import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Card } from 'tamagui'
 import { Container } from '../components/Container'
-import { useTranslations } from '../lib/i18n/I18nContext'
+import { useTranslations } from '../providers/i18n/I18nContext'
 
 const CheckIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width={40} height={40}>

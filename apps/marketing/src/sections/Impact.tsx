@@ -3,7 +3,7 @@
 import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Card } from 'tamagui'
 import { Container } from '../components/Container'
-import { useTranslations } from '../lib/i18n/I18nContext'
+import { useTranslations } from '../providers/i18n/I18nContext'
 
 export default function Impact() {
   const t = useTranslations()

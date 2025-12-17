@@ -3,7 +3,7 @@
 import React from 'react'
 import { YStack, Paragraph } from 'tamagui'
 import { Container } from '../components/Container'
-import { useTranslations } from '../lib/i18n/I18nContext'
+import { useTranslations } from '../providers/i18n/I18nContext'
 
 export default function Footer() {
   const t = useTranslations()

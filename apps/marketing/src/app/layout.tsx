@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { TamaguiProvider } from "../lib/tamagui/TamaguiProvider";
-import { I18nProvider } from "../lib/i18n/I18nContext";
-import { getLanguage } from "../lib/i18n/server";
+import { TamaguiProvider } from "../providers/tamagui/TamaguiProvider";
+import { I18nProvider } from "../providers/i18n/I18nContext";
+import { getLanguage } from "../providers/i18n/server";
 import "./globals.css";
 
 const inter = Inter({
