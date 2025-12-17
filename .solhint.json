@@ -1,0 +1,23 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "func-visibility": ["error", {"ignoreConstructors": true}],
+    "max-line-length": ["error", 120],
+    "no-console": "off",
+    "no-empty-blocks": "error",
+    "payable-fallback": "error",
+    "reason-string": ["warn", {"maxLength": 64}],
+    "constructor-syntax": "error",
+    "quotes": ["error", "double"],
+    "func-param-name-mixedcase": "error",
+    "var-name-mixedcase": "error",
+    "const-name-snakecase": "error",
+    "modifier-name-mixedcase": "error",
+    "event-name-camelcase": "error",
+    "use-forbidden-name": "error",
+    "imports-on-top": "error",
+    "ordering": "error",
+    "no-duplicate-imports": "error",
+    "compiler-version": "off"
+  }
+}
