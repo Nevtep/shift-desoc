@@ -2,14 +2,16 @@
 
 _Building the organizational tools that unlock human cooperation: Where communities coordinate abundant resources, make wise collective decisions, and share the value they create together_
 
-## 🎯 **Production-Ready MVP (November 2025)**
+## 🎯 **Production-Ready MVP (December 2025)**
 
-**✅ LIVE DEPLOYMENT**: Complete ecosystem successfully deployed and verified on Base Sepolia with real community operations.
+**✅ LIVE DEPLOYMENT**: Complete ecosystem successfully deployed and verified on Base Sepolia with operational community.
 
-- **Real Communities Operating**: Community ID 3 deployed with full governance functionality
+- **All 22 Contracts Deployed**: Full system operational on Base Sepolia
+- **Community ID 1 Active**: Complete governance and verification infrastructure
 - **Ultra-Low Cost**: ~$0.19 per community deployment vs $9,600 on Ethereum
-- **API-Based Scaling**: Automated deployment system avoids blockchain size limits
-- **Mobile Ready**: Complete Next.js backend + Expo React Native integration
+- **Automated Address Management**: deployments/{network}.json system with auto-loading
+- **Base Mainnet Ready**: Gas optimized (0.05 gwei) for ~$10 production deployment
+- **Complete Documentation**: 21 contracts fully documented with technical architecture
 
 ## 🏗️ **What is Shift DeSoc?**
 
@@ -103,6 +105,11 @@ pnpm cov:gate                # Check coverage
 npm run deploy:base-sepolia   # Deploy to Base Sepolia testnet
 npm run deploy:base           # Deploy to Base mainnet
 npm run deploy:ethereum       # Deploy to Ethereum mainnet
+
+# 📝 Deployment automatically saves contract addresses to:
+#    deployments/{network}.json
+#    deployments/latest.json
+# Management scripts auto-load addresses from these files!
 
 # Format code
 pnpm fmt
@@ -200,6 +207,52 @@ pnpm fmt
 
 **Result**: Production-ready toolkit covering every scenario from development to community governance to system maintenance.
 
+## 📝 **Deployment Address Management**
+
+Shift DeSoc **automatically saves and loads contract addresses** - no manual configuration needed!
+
+### **Automatic Address Saving**
+
+When you deploy, addresses are automatically saved to:
+- `deployments/{network}.json` - Network-specific addresses (e.g., `base_sepolia.json`)
+- `deployments/latest.json` - Most recent deployment across all networks
+
+### **Automatic Address Loading**
+
+All management scripts automatically load addresses from deployment files:
+
+```bash
+# No manual configuration needed - addresses auto-loaded!
+npm run manage --network base_sepolia status
+npm run check:governance --network base_sepolia
+npm run submit:claim --network base_sepolia
+```
+
+### **Deployment File Format**
+
+```json
+{
+  "network": "base_sepolia",
+  "timestamp": "2025-12-08T00:00:00Z",
+  "deployer": "0x73af48d53f75827dB195189e6FeBaB726dF7D0e2",
+  "communityId": 1,
+  "addresses": {
+    "communityRegistry": "0x...",
+    "governor": "0x...",
+    "marketplace": "0x...",
+    // ... all 22 contract addresses
+  },
+  "configuration": {
+    "communityName": "Shift DeSoc Community",
+    "votingDelay": 7200,
+    "votingPeriod": 86400,
+    "revenueSplit": [60, 30, 10]
+  }
+}
+```
+
+📚 **See [`deployments/README.md`](deployments/README.md) for complete documentation**
+
 ### **System Management**
 
 Complete management interface for all system operations including governance, verifier elections, claims processing, and community administration.
@@ -276,9 +329,9 @@ pnpm vpt:manage list-verifiers --community-id 1 --network base_sepolia
 
 ## 🌐 **Network Support**
 
-- **✅ Base Sepolia** (testnet) - Live deployment with Community ID 3 operational
-- **🎯 Base Mainnet** (production) - Ready for mainnet deployment
-- **⚠️ Ethereum** (mainnet/testnet) - Supported but higher gas costs
+- **✅ Base Sepolia** (testnet) - Live deployment with Community ID 1 operational (22 contracts)
+- **🎯 Base Mainnet** (production) - Ready for mainnet deployment (~$10 per community)
+- **⚠️ Ethereum** (mainnet/testnet) - Supported but higher gas costs (~$9,600 per community)
 
 ## 📊 **Business Model**
 
@@ -291,15 +344,16 @@ Shift DeSoc enables **meta-governance for any organizational structure**:
 
 ## 🎉 **Current Status**
 
-**Phase 1-5 COMPLETED** - All core systems production-ready:
+**Phase 1-6 COMPLETED** - All core systems production-ready:
 
-- ✅ Community coordination infrastructure
-- ✅ Multi-choice governance engine
-- ✅ Work verification & merit system
-- ✅ Economic distribution & treasury management
-- ✅ Base Sepolia deployment & API integration
+- ✅ Community coordination infrastructure (RequestHub, DraftsManager, CommunityRegistry, ParamController)
+- ✅ Multi-choice governance engine (ShiftGovernor, CountingMultiChoice, Timelock, MembershipToken)
+- ✅ Work verification & merit system (ValuableActionRegistry, Claims, VPT system, ValuableActionSBT)
+- ✅ Economic distribution & treasury management (CommunityToken, RevenueRouter, CohortRegistry, TreasuryAdapter)
+- ✅ Community modules (Marketplace, ProjectFactory, HousingManager, CommerceDisputes)
+- ✅ Deployment infrastructure (API-based deployment, automated address management, Base mainnet optimization)
 
-**Current Focus**: Documentation alignment and production deployment preparation.
+**Current Focus**: Base mainnet deployment and first pilot communities.
 
 ---
 

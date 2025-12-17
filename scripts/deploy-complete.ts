@@ -17,6 +17,8 @@
 
 const hre = require("hardhat");
 const { ethers } = hre;
+const fs = require("fs");
+const path = require("path");
 
 interface DeploymentConfig {
   // Network Configuration
@@ -109,9 +111,41 @@ class ShiftDeSocDeployer {
   private contracts: { [name: string]: any } = {};
   private config: DeploymentConfig;
   private deployer: any;
+  private gasSettings: any;
 
   constructor(config: DeploymentConfig) {
     this.config = config;
+    // Network-specific gas settings for EIP-1559
+    // Base mainnet is more optimized and typically needs lower gas prices
+    const isMainnet = config.network === 'base' || config.network === 'ethereum';
+    
+    this.gasSettings = {
+      maxFeePerGas: ethers.parseUnits(isMainnet ? "0.05" : "2", "gwei"),
+      maxPriorityFeePerGas: ethers.parseUnits(isMainnet ? "0.01" : "1", "gwei"),
+    };
+  }
+
+  // Add small delay between transactions to avoid nonce conflicts
+  private async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // Wait for transaction confirmation with proper gas settings
+  private async waitForTx(tx: any, description: string): Promise<void> {
+    const receipt = await tx.wait();
+    await this.sleep(1000); // 1 second delay after each transaction
+    return receipt;
+  }
+
+  // Helper to deploy a contract with proper gas settings
+  private async deployContract(
+    factory: any,
+    ...args: any[]
+  ): Promise<any> {
+    const contract = await factory.deploy(...args, this.gasSettings);
+    await contract.waitForDeployment();
+    await this.sleep(2000); // Wait 2 seconds after each deployment
+    return contract;
   }
 
   async deploy(): Promise<void> {
@@ -136,21 +170,27 @@ class ShiftDeSocDeployer {
 
     // 1. Deploy Core Infrastructure
     await this.deployCoreInfrastructure();
+    await this.sleep(2000);
 
     // 2. Deploy Governance System
     await this.deployGovernanceSystem();
+    await this.sleep(2000);
 
     // 3. Deploy VPT System
     await this.deployVPTSystem();
+    await this.sleep(2000);
 
     // 4. Deploy Work Verification System
     await this.deployWorkVerificationSystem();
+    await this.sleep(2000);
 
     // 5. Deploy Economic Layer
     await this.deployEconomicLayer();
+    await this.sleep(2000);
 
     // 6. Deploy Community Modules
     await this.deployCommunityModules();
+    await this.sleep(2000);
 
     // 7. Configure System Integration
     await this.configureSystemIntegration();
@@ -163,30 +203,34 @@ class ShiftDeSocDeployer {
 
     console.log("\n✅ Shift DeSoc deployment completed successfully!");
     this.printDeploymentSummary();
+    await this.saveDeploymentAddresses();
   }
 
   private async deployCoreInfrastructure(): Promise<void> {
     console.log("\n📋 1. Deploying Core Infrastructure...");
 
-    // Deploy CommunityRegistry
+    // Deploy ParamController first (required by CommunityRegistry)
+    console.log("   ⚙️  Deploying ParamController...");
+    const ParamController = await ethers.getContractFactory("ParamController");
+    this.contracts.paramController = await this.deployContract(
+      ParamController,
+      this.deployer.address,
+    );
+    console.log(
+      `   ✅ ParamController: ${await this.contracts.paramController.getAddress()}`,
+    );
+
+    // Deploy CommunityRegistry (depends on ParamController)
     console.log("   📝 Deploying CommunityRegistry...");
     const CommunityRegistry =
       await ethers.getContractFactory("CommunityRegistry");
-    this.contracts.communityRegistry = await CommunityRegistry.deploy();
-    await this.contracts.communityRegistry.waitForDeployment();
+    this.contracts.communityRegistry = await this.deployContract(
+      CommunityRegistry,
+      this.deployer.address,
+      await this.contracts.paramController.getAddress(),
+    );
     console.log(
       `   ✅ CommunityRegistry: ${await this.contracts.communityRegistry.getAddress()}`,
-    );
-
-    // Deploy ParamController
-    console.log("   ⚙️  Deploying ParamController...");
-    const ParamController = await ethers.getContractFactory("ParamController");
-    this.contracts.paramController = await ParamController.deploy(
-      this.deployer.address,
-    );
-    await this.contracts.paramController.waitForDeployment();
-    console.log(
-      `   ✅ ParamController: ${await this.contracts.paramController.getAddress()}`,
     );
   }
 
@@ -198,11 +242,13 @@ class ShiftDeSocDeployer {
     const MembershipToken = await ethers.getContractFactory(
       "MembershipTokenERC20Votes",
     );
-    this.contracts.membershipToken = await MembershipToken.deploy(
+    this.contracts.membershipToken = await this.deployContract(
+      MembershipToken,
       "Shift Membership",
       "sMEM",
+      1, // Community ID 1 (will be bootstrapped later)
+      this.deployer.address, // Initial admin
     );
-    await this.contracts.membershipToken.waitForDeployment();
     console.log(
       `   ✅ MembershipToken: ${await this.contracts.membershipToken.getAddress()}`,
     );
@@ -211,13 +257,13 @@ class ShiftDeSocDeployer {
     console.log("   ⏰ Deploying TimelockController...");
     const TimelockController =
       await ethers.getContractFactory("TimelockController");
-    this.contracts.timelock = await TimelockController.deploy(
+    this.contracts.timelock = await this.deployContract(
+      TimelockController,
       this.config.executionDelay,
       [], // No initial proposers
       [], // No initial executors
-      ethers.ZeroAddress, // No admin (self-administered)
+      this.deployer.address, // Deployer as initial admin (will renounce later)
     );
-    await this.contracts.timelock.waitForDeployment();
     console.log(
       `   ✅ TimelockController: ${await this.contracts.timelock.getAddress()}`,
     );
@@ -225,11 +271,11 @@ class ShiftDeSocDeployer {
     // Deploy ShiftGovernor
     console.log("   🗳️  Deploying ShiftGovernor...");
     const ShiftGovernor = await ethers.getContractFactory("ShiftGovernor");
-    this.contracts.governor = await ShiftGovernor.deploy(
+    this.contracts.governor = await this.deployContract(
+      ShiftGovernor,
       await this.contracts.membershipToken.getAddress(),
       await this.contracts.timelock.getAddress(),
     );
-    await this.contracts.governor.waitForDeployment();
     console.log(
       `   ✅ ShiftGovernor: ${await this.contracts.governor.getAddress()}`,
     );
@@ -239,8 +285,10 @@ class ShiftDeSocDeployer {
     const CountingMultiChoice = await ethers.getContractFactory(
       "CountingMultiChoice",
     );
-    this.contracts.countingMultiChoice = await CountingMultiChoice.deploy();
-    await this.contracts.countingMultiChoice.waitForDeployment();
+    this.contracts.countingMultiChoice = await this.deployContract(
+      CountingMultiChoice,
+      await this.contracts.governor.getAddress(),
+    );
     console.log(
       `   ✅ CountingMultiChoice: ${await this.contracts.countingMultiChoice.getAddress()}`,
     );
@@ -257,10 +305,11 @@ class ShiftDeSocDeployer {
     const VerifierPowerToken1155 = await ethers.getContractFactory(
       "VerifierPowerToken1155",
     );
-    this.contracts.verifierPowerToken = await VerifierPowerToken1155.deploy(
-      await this.contracts.communityRegistry.getAddress(),
+    this.contracts.verifierPowerToken = await this.deployContract(
+      VerifierPowerToken1155,
+      await this.contracts.timelock.getAddress(),
+      "", // URI can be set later
     );
-    await this.contracts.verifierPowerToken.waitForDeployment();
     console.log(
       `   ✅ VerifierPowerToken1155: ${await this.contracts.verifierPowerToken.getAddress()}`,
     );
@@ -269,12 +318,11 @@ class ShiftDeSocDeployer {
     console.log("   🗳️  Deploying VerifierElection...");
     const VerifierElection =
       await ethers.getContractFactory("VerifierElection");
-    this.contracts.verifierElection = await VerifierElection.deploy(
+    this.contracts.verifierElection = await this.deployContract(
+      VerifierElection,
+      await this.contracts.timelock.getAddress(),
       await this.contracts.verifierPowerToken.getAddress(),
-      this.config.electionDuration,
-      3600, // 1 hour timelock delay for elections
     );
-    await this.contracts.verifierElection.waitForDeployment();
     console.log(
       `   ✅ VerifierElection: ${await this.contracts.verifierElection.getAddress()}`,
     );
@@ -282,23 +330,15 @@ class ShiftDeSocDeployer {
     // Deploy VerifierManager
     console.log("   👨‍💼 Deploying VerifierManager...");
     const VerifierManager = await ethers.getContractFactory("VerifierManager");
-    this.contracts.verifierManager = await VerifierManager.deploy(
-      await this.contracts.verifierPowerToken.getAddress(),
+    this.contracts.verifierManager = await this.deployContract(
+      VerifierManager,
       await this.contracts.verifierElection.getAddress(),
       await this.contracts.paramController.getAddress(),
+      await this.contracts.timelock.getAddress(), // governance
     );
-    await this.contracts.verifierManager.waitForDeployment();
     console.log(
       `   ✅ VerifierManager: ${await this.contracts.verifierManager.getAddress()}`,
     );
-
-    // Grant manager role to election contract
-    const managerRole = await this.contracts.verifierManager.MANAGER_ROLE();
-    await this.contracts.verifierManager.grantRole(
-      managerRole,
-      await this.contracts.verifierElection.getAddress(),
-    );
-    console.log("   🔑 Granted MANAGER_ROLE to VerifierElection");
   }
 
   private async deployWorkVerificationSystem(): Promise<void> {
@@ -309,10 +349,10 @@ class ShiftDeSocDeployer {
     const ValuableActionRegistry = await ethers.getContractFactory(
       "ValuableActionRegistry",
     );
-    this.contracts.valuableActionRegistry = await ValuableActionRegistry.deploy(
-      await this.contracts.communityRegistry.getAddress(),
+    this.contracts.valuableActionRegistry = await this.deployContract(
+      ValuableActionRegistry,
+      await this.contracts.timelock.getAddress(), // governance
     );
-    await this.contracts.valuableActionRegistry.waitForDeployment();
     console.log(
       `   ✅ ValuableActionRegistry: ${await this.contracts.valuableActionRegistry.getAddress()}`,
     );
@@ -321,10 +361,12 @@ class ShiftDeSocDeployer {
     console.log("   🏆 Deploying ValuableActionSBT...");
     const ValuableActionSBT =
       await ethers.getContractFactory("ValuableActionSBT");
-    this.contracts.valuableActionSBT = await ValuableActionSBT.deploy(
-      await this.contracts.communityRegistry.getAddress(),
+    this.contracts.valuableActionSBT = await this.deployContract(
+      ValuableActionSBT,
+      this.deployer.address, // initialOwner
+      this.deployer.address, // manager (will be Claims after deployment)
+      await this.contracts.timelock.getAddress(), // governance
     );
-    await this.contracts.valuableActionSBT.waitForDeployment();
     console.log(
       `   ✅ ValuableActionSBT: ${await this.contracts.valuableActionSBT.getAddress()}`,
     );
@@ -332,11 +374,15 @@ class ShiftDeSocDeployer {
     // Deploy Claims
     console.log("   📝 Deploying Claims...");
     const Claims = await ethers.getContractFactory("Claims");
-    this.contracts.claims = await Claims.deploy(
+    this.contracts.claims = await this.deployContract(
+      Claims,
+      await this.contracts.timelock.getAddress(), // governance
+      await this.contracts.valuableActionRegistry.getAddress(),
       await this.contracts.verifierManager.getAddress(),
-      await this.contracts.paramController.getAddress(),
+      await this.contracts.valuableActionSBT.getAddress(),
+      await this.contracts.membershipToken.getAddress(),
+      1, // communityId
     );
-    await this.contracts.claims.waitForDeployment();
     console.log(`   ✅ Claims: ${await this.contracts.claims.getAddress()}`);
   }
 
@@ -346,7 +392,8 @@ class ShiftDeSocDeployer {
     // Deploy CommunityToken
     console.log("   🪙 Deploying CommunityToken...");
     const CommunityToken = await ethers.getContractFactory("CommunityToken");
-    this.contracts.communityToken = await CommunityToken.deploy(
+    this.contracts.communityToken = await this.deployContract(
+      CommunityToken,
       this.config.backingAssets[0], // Primary backing asset (USDC)
       1, // Community ID (will be created in bootstrap step)
       "Shift Community Token", // Token name
@@ -355,7 +402,6 @@ class ShiftDeSocDeployer {
       ethers.parseEther("1000000"), // Max supply (1M tokens)
       await this.contracts.paramController.getAddress(), // ParamController for fees
     );
-    await this.contracts.communityToken.waitForDeployment();
     console.log(
       `   ✅ CommunityToken: ${await this.contracts.communityToken.getAddress()}`,
     );
@@ -363,11 +409,10 @@ class ShiftDeSocDeployer {
     // Deploy CohortRegistry
     console.log("   📋 Deploying CohortRegistry...");
     const CohortRegistry = await ethers.getContractFactory("CohortRegistry");
-    this.contracts.cohortRegistry = await CohortRegistry.deploy(
-      await this.contracts.paramController.getAddress(),
-      await this.contracts.valuableActionSBT.getAddress(),
+    this.contracts.cohortRegistry = await this.deployContract(
+      CohortRegistry,
+      await this.contracts.timelock.getAddress(),
     );
-    await this.contracts.cohortRegistry.waitForDeployment();
     console.log(
       `   ✅ CohortRegistry: ${await this.contracts.cohortRegistry.getAddress()}`,
     );
@@ -375,12 +420,12 @@ class ShiftDeSocDeployer {
     // Deploy RevenueRouter with cohort system
     console.log("   📊 Deploying RevenueRouter...");
     const RevenueRouter = await ethers.getContractFactory("RevenueRouter");
-    this.contracts.revenueRouter = await RevenueRouter.deploy(
+    this.contracts.revenueRouter = await this.deployContract(
+      RevenueRouter,
       await this.contracts.paramController.getAddress(),
       await this.contracts.cohortRegistry.getAddress(),
-      await this.contracts.communityToken.getAddress(),
+      this.deployer.address, // admin
     );
-    await this.contracts.revenueRouter.waitForDeployment();
     console.log(
       `   ✅ RevenueRouter: ${await this.contracts.revenueRouter.getAddress()}`,
     );
@@ -388,11 +433,7 @@ class ShiftDeSocDeployer {
     // Deploy TreasuryAdapter
     console.log("   🏦 Deploying TreasuryAdapter...");
     const TreasuryAdapter = await ethers.getContractFactory("TreasuryAdapter");
-    this.contracts.treasuryAdapter = await TreasuryAdapter.deploy(
-      await this.contracts.communityRegistry.getAddress(),
-      await this.contracts.paramController.getAddress(),
-    );
-    await this.contracts.treasuryAdapter.waitForDeployment();
+    this.contracts.treasuryAdapter = await this.deployContract(TreasuryAdapter);
     console.log(
       `   ✅ TreasuryAdapter: ${await this.contracts.treasuryAdapter.getAddress()}`,
     );
@@ -404,10 +445,10 @@ class ShiftDeSocDeployer {
     // Deploy RequestHub
     console.log("   💬 Deploying RequestHub...");
     const RequestHub = await ethers.getContractFactory("RequestHub");
-    this.contracts.requestHub = await RequestHub.deploy(
+    this.contracts.requestHub = await this.deployContract(
+      RequestHub,
       await this.contracts.communityRegistry.getAddress(),
     );
-    await this.contracts.requestHub.waitForDeployment();
     console.log(
       `   ✅ RequestHub: ${await this.contracts.requestHub.getAddress()}`,
     );
@@ -415,47 +456,56 @@ class ShiftDeSocDeployer {
     // Deploy DraftsManager
     console.log("   📝 Deploying DraftsManager...");
     const DraftsManager = await ethers.getContractFactory("DraftsManager");
-    this.contracts.draftsManager = await DraftsManager.deploy(
+    this.contracts.draftsManager = await this.deployContract(
+      DraftsManager,
       await this.contracts.communityRegistry.getAddress(),
-      await this.contracts.requestHub.getAddress(),
+      await this.contracts.governor.getAddress(), // governor, not requestHub
     );
-    await this.contracts.draftsManager.waitForDeployment();
     console.log(
       `   ✅ DraftsManager: ${await this.contracts.draftsManager.getAddress()}`,
     );
 
-    // Deploy HousingManager
-    console.log("   🏠 Deploying HousingManager...");
-    const HousingManager = await ethers.getContractFactory("HousingManager");
-    this.contracts.housingManager = await HousingManager.deploy(
-      await this.contracts.communityRegistry.getAddress(),
-      await this.contracts.communityToken.getAddress(),
+    // Deploy CommerceDisputes (needed by Marketplace)
+    console.log("   ⚖️  Deploying CommerceDisputes...");
+    const CommerceDisputes = await ethers.getContractFactory("CommerceDisputes");
+    this.contracts.commerceDisputes = await this.deployContract(
+      CommerceDisputes,
+      this.deployer.address,
     );
-    await this.contracts.housingManager.waitForDeployment();
     console.log(
-      `   ✅ HousingManager: ${await this.contracts.housingManager.getAddress()}`,
+      `   ✅ CommerceDisputes: ${await this.contracts.commerceDisputes.getAddress()}`,
     );
 
-    // Deploy Marketplace
+    // Deploy Marketplace (depends on CommerceDisputes and RevenueRouter)
     console.log("   🛍️  Deploying Marketplace...");
     const Marketplace = await ethers.getContractFactory("Marketplace");
-    this.contracts.marketplace = await Marketplace.deploy(
-      await this.contracts.communityRegistry.getAddress(),
-      await this.contracts.verifierManager.getAddress(),
+    this.contracts.marketplace = await this.deployContract(
+      Marketplace,
+      this.deployer.address,
+      await this.contracts.commerceDisputes.getAddress(),
+      await this.contracts.revenueRouter.getAddress(),
     );
-    await this.contracts.marketplace.waitForDeployment();
     console.log(
       `   ✅ Marketplace: ${await this.contracts.marketplace.getAddress()}`,
+    );
+
+    // Deploy HousingManager (depends on Marketplace)
+    console.log("   🏠 Deploying HousingManager...");
+    const HousingManager = await ethers.getContractFactory("HousingManager");
+    this.contracts.housingManager = await this.deployContract(
+      HousingManager,
+      this.deployer.address,
+      await this.contracts.marketplace.getAddress(),
+      this.config.backingAssets[0], // Primary backing asset (USDC)
+    );
+    console.log(
+      `   ✅ HousingManager: ${await this.contracts.housingManager.getAddress()}`,
     );
 
     // Deploy ProjectFactory
     console.log("   🏭 Deploying ProjectFactory...");
     const ProjectFactory = await ethers.getContractFactory("ProjectFactory");
-    this.contracts.projectFactory = await ProjectFactory.deploy(
-      await this.contracts.communityToken.getAddress(),
-      await this.contracts.verifierManager.getAddress(),
-    );
-    await this.contracts.projectFactory.waitForDeployment();
+    this.contracts.projectFactory = await this.deployContract(ProjectFactory);
     console.log(
       `   ✅ ProjectFactory: ${await this.contracts.projectFactory.getAddress()}`,
     );
@@ -471,12 +521,20 @@ class ShiftDeSocDeployer {
     const proposerRole = await this.contracts.timelock.PROPOSER_ROLE();
     const executorRole = await this.contracts.timelock.EXECUTOR_ROLE();
     const cancellerRole = await this.contracts.timelock.CANCELLER_ROLE();
+    const adminRole = await this.contracts.timelock.DEFAULT_ADMIN_ROLE();
 
-    await this.contracts.timelock.grantRole(proposerRole, governorAddress);
-    await this.contracts.timelock.grantRole(executorRole, governorAddress);
-    await this.contracts.timelock.grantRole(cancellerRole, governorAddress);
+    await this.contracts.timelock.grantRole(proposerRole, governorAddress, this.gasSettings);
+    await this.sleep(3000); // Wait 3 seconds between role grants
+    await this.contracts.timelock.grantRole(executorRole, governorAddress, this.gasSettings);
+    await this.sleep(3000);
+    await this.contracts.timelock.grantRole(cancellerRole, governorAddress, this.gasSettings);
+    await this.sleep(3000);
 
     console.log("   ✅ Granted timelock roles to governor");
+
+    // Renounce admin role - timelock is now fully controlled by governance
+    await this.contracts.timelock.renounceRole(adminRole, this.deployer.address, this.gasSettings);
+    console.log("   ✅ Deployer renounced timelock admin role");
   }
 
   private async configureSystemIntegration(): Promise<void> {
@@ -496,38 +554,90 @@ class ShiftDeSocDeployer {
       this.config.useVPTWeighting,
       this.config.maxWeightPerVerifier,
       this.config.cooldownAfterFraud,
+      this.gasSettings,
     );
+    await this.sleep(2000);
     console.log("   ✅ VPT parameters configured for community 1");
 
     // Configure revenue policy for initial community
+    // setRevenuePolicy(communityId, minWorkersBps, treasuryBps, investorsBps, spilloverTarget)
     await this.contracts.paramController.setRevenuePolicy(
       1, // Community ID
-      this.config.revenueSplit,
+      this.config.revenueSplit[0] * 100, // Workers BPS (60 * 100 = 6000)
+      this.config.revenueSplit[1] * 100, // Treasury BPS (30 * 100 = 3000)
+      this.config.revenueSplit[2] * 100, // Investors BPS (10 * 100 = 1000)
+      0, // Spillover target: 0 = workers, 1 = treasury
+      this.gasSettings,
     );
+    await this.sleep(2000);
     console.log("   ✅ Revenue policy configured for community 1");
+
+    // Grant GOVERNANCE_ROLE to deployer temporarily for configuration
+    const governanceRole = await this.contracts.valuableActionSBT.GOVERNANCE_ROLE();
+    await this.contracts.valuableActionSBT.grantRole(
+      governanceRole,
+      this.deployer.address,
+      this.gasSettings,
+    );
+    await this.sleep(2000);
+    console.log("   ✅ Granted temporary GOVERNANCE_ROLE to deployer");
 
     // Set CohortRegistry in ValuableActionSBT for Investment SBT minting
     await this.contracts.valuableActionSBT.setCohortRegistry(
       await this.contracts.cohortRegistry.getAddress(),
+      this.gasSettings,
     );
+    await this.sleep(2000);
     console.log("   ✅ CohortRegistry set in ValuableActionSBT");
+
+    // Revoke temporary GOVERNANCE_ROLE from deployer
+    await this.contracts.valuableActionSBT.revokeRole(
+      governanceRole,
+      this.deployer.address,
+      this.gasSettings,
+    );
+    await this.sleep(2000);
+    console.log("   ✅ Revoked GOVERNANCE_ROLE from deployer");
 
     // Grant necessary roles and permissions
     const minterRole = await this.contracts.membershipToken.MINTER_ROLE();
     await this.contracts.membershipToken.grantRole(
       minterRole,
       await this.contracts.claims.getAddress(),
+      this.gasSettings,
     );
+    await this.sleep(2000);
     console.log("   ✅ Granted MINTER_ROLE to Claims contract");
 
-    // Grant INVESTMENT_MANAGER_ROLE to admin for initial setup
-    const investmentManagerRole =
-      await this.contracts.cohortRegistry.INVESTMENT_MANAGER_ROLE();
-    await this.contracts.cohortRegistry.grantRole(
-      investmentManagerRole,
-      this.deployer.address,
+    // Configure commerce module integrations
+    console.log("   🛍️  Configuring commerce module integrations...");
+
+    // Authorize Marketplace to use CommerceDisputes
+    await this.contracts.commerceDisputes.setAuthorizedCaller(
+      await this.contracts.marketplace.getAddress(),
+      true,
+      this.gasSettings,
     );
-    console.log("   ✅ Granted INVESTMENT_MANAGER_ROLE to deployer");
+    await this.sleep(2000);
+    console.log("   ✅ Authorized Marketplace to open disputes");
+
+    // Set Marketplace as dispute receiver
+    await this.contracts.commerceDisputes.setDisputeReceiver(
+      await this.contracts.marketplace.getAddress(),
+      this.gasSettings,
+    );
+    await this.sleep(2000);
+    console.log("   ✅ Set Marketplace as dispute receiver");
+
+    // Grant DISTRIBUTOR_ROLE to Marketplace on RevenueRouter
+    const distributorRole = await this.contracts.revenueRouter.DISTRIBUTOR_ROLE();
+    await this.contracts.revenueRouter.grantRole(
+      distributorRole,
+      await this.contracts.marketplace.getAddress(),
+      this.gasSettings,
+    );
+    await this.sleep(2000);
+    console.log("   ✅ Granted DISTRIBUTOR_ROLE to Marketplace");
   }
 
   private async bootstrapInitialCommunity(): Promise<void> {
@@ -535,66 +645,90 @@ class ShiftDeSocDeployer {
 
     // Register the initial community
     console.log("   🏘️  Registering initial community...");
-    const communityParams = {
-      name: this.config.communityName,
-      description: this.config.communityDescription,
-      metadataURI: "", // Can be set later via governance
+    
+    // Step 1: Register the community with basic metadata
+    const tx = await this.contracts.communityRegistry.registerCommunity(
+      this.config.communityName,
+      this.config.communityDescription,
+      "", // metadataURI - can be set later via governance
+      0,  // parentCommunityId - 0 for root community
+      this.gasSettings,
+    );
+    await tx.wait();
+    await this.sleep(2000);
+    const communityId = 1; // First community gets ID 1
+    console.log(`   ✅ Initial community registered as ID ${communityId}`);
 
-      // Governance parameters
-      debateWindow: this.config.votingDelay,
-      voteWindow: this.config.votingPeriod,
-      executionDelay: this.config.executionDelay,
-
-      // Eligibility rules
-      minSeniority: 0, // No minimum seniority for new community
-      minSBTs: 0, // No minimum SBTs for new community
-      proposalThreshold: this.config.proposalThreshold,
-
-      // Economic parameters
-      revenueSplit: this.config.revenueSplit,
-      feeOnWithdraw: this.config.feeOnWithdraw,
-      backingAssets: this.config.backingAssets,
-
-      // Module addresses
+    // Step 2: Set module addresses for the community
+    console.log("   🔧 Configuring community modules...");
+    const moduleAddresses = {
       governor: await this.contracts.governor.getAddress(),
       timelock: await this.contracts.timelock.getAddress(),
       requestHub: await this.contracts.requestHub.getAddress(),
       draftsManager: await this.contracts.draftsManager.getAddress(),
       claimsManager: await this.contracts.claims.getAddress(),
-      valuableActionRegistry:
-        await this.contracts.valuableActionRegistry.getAddress(),
-      verifierPool: await this.contracts.verifierManager.getAddress(), // Using VPT Manager
+      valuableActionRegistry: await this.contracts.valuableActionRegistry.getAddress(),
+      verifierPowerToken: await this.contracts.verifierPowerToken.getAddress(),
+      verifierElection: await this.contracts.verifierElection.getAddress(),
+      verifierManager: await this.contracts.verifierManager.getAddress(),
       valuableActionSBT: await this.contracts.valuableActionSBT.getAddress(),
       treasuryAdapter: await this.contracts.treasuryAdapter.getAddress(),
+      communityToken: await this.contracts.communityToken.getAddress(),
+      paramController: await this.contracts.paramController.getAddress(),
     };
+    
+    await this.contracts.communityRegistry.setModuleAddresses(
+      communityId,
+      moduleAddresses,
+      this.gasSettings,
+    );
+    await this.sleep(2000);
+    console.log("   ✅ Module addresses configured");
 
-    await this.contracts.communityRegistry.registerCommunity(communityParams);
-    console.log("   ✅ Initial community registered as ID 1");
+    // Grant MINTER_ROLE to deployer temporarily for bootstrap minting
+    const minterRole = await this.contracts.membershipToken.MINTER_ROLE();
+    await this.contracts.membershipToken.grantRole(
+      minterRole,
+      this.deployer.address,
+      this.gasSettings,
+    );
+    await this.sleep(2000);
+    console.log("   ✅ Granted temporary MINTER_ROLE to deployer");
 
     // Mint initial governance tokens to founder
-    await this.contracts.membershipToken.mint(
+    // MembershipToken.mint: (to, amount, reason, overrides)
+    const mintMembershipTx = await this.contracts.membershipToken.mint(
       this.config.founderAddress,
       this.config.initialMembershipTokens,
+      "Bootstrap founder allocation", // reason
+      this.gasSettings, // overrides
     );
+    await mintMembershipTx.wait();
+    await this.sleep(2000);
     console.log(
       `   ✅ Minted ${this.config.initialMembershipTokens} governance tokens to founder`,
     );
 
-    // Mint initial VPT tokens to founder
-    await this.contracts.verifierPowerToken.mint(
-      this.config.founderAddress,
-      1, // Community ID 1
-      this.config.initialVPTTokens,
-      "0x", // No data
+    // Revoke MINTER_ROLE from deployer
+    await this.contracts.membershipToken.revokeRole(
+      minterRole,
+      this.deployer.address,
+      this.gasSettings,
     );
-    console.log(
-      `   ✅ Minted ${this.config.initialVPTTokens} VPT tokens to founder`,
-    );
+    await this.sleep(2000);
+    console.log("   ✅ Revoked MINTER_ROLE from deployer");
+
+    // Note: VPT tokens require timelock role to mint
+    // Initial verifier power should be granted through governance proposal
+    console.log("   ℹ️  VPT tokens should be minted via governance (requires TIMELOCK_ROLE)");
 
     // Delegate voting power to founder
-    await this.contracts.membershipToken
-      .connect(await ethers.getSigner(this.config.founderAddress))
-      .delegate(this.config.founderAddress);
+    const founderSigner = await ethers.getSigner(this.config.founderAddress);
+    const delegateTx = await this.contracts.membershipToken
+      .connect(founderSigner)
+      .delegate(this.config.founderAddress, this.gasSettings);
+    await delegateTx.wait();
+    await this.sleep(2000);
     console.log("   ✅ Founder delegated voting power to self");
   }
 
@@ -615,15 +749,91 @@ class ShiftDeSocDeployer {
     console.log(`   ✅ Founder VPT balance: ${founderVPTBalance}`);
 
     // Test community registration
-    const communityCount =
-      await this.contracts.communityRegistry.communityCount();
-    console.log(`   ✅ Communities registered: ${communityCount}`);
+    const nextCommunityId =
+      await this.contracts.communityRegistry.nextCommunityId();
+    console.log(`   ✅ Next community ID: ${nextCommunityId} (${Number(nextCommunityId) - 1} communities registered)`);
 
     // Test parameter configuration
     const vptParams = await this.contracts.paramController.getVerifierParams(1);
     console.log(`   ✅ VPT panel size for community 1: ${vptParams[0]}`);
 
     console.log("   🎉 All verification tests passed!");
+  }
+
+  private async saveDeploymentAddresses(): Promise<void> {
+    const network = this.config.network;
+    const deploymentData = {
+      network,
+      timestamp: new Date().toISOString(),
+      deployer: this.deployer.address,
+      communityId: 1,
+      addresses: {
+        // Core Infrastructure
+        communityRegistry: await this.contracts.communityRegistry.getAddress(),
+        paramController: await this.contracts.paramController.getAddress(),
+
+        // Governance System
+        membershipToken: await this.contracts.membershipToken.getAddress(),
+        timelock: await this.contracts.timelock.getAddress(),
+        governor: await this.contracts.governor.getAddress(),
+        countingMultiChoice: await this.contracts.countingMultiChoice.getAddress(),
+
+        // VPT System
+        verifierPowerToken: await this.contracts.verifierPowerToken.getAddress(),
+        verifierElection: await this.contracts.verifierElection.getAddress(),
+        verifierManager: await this.contracts.verifierManager.getAddress(),
+
+        // Work Verification
+        valuableActionRegistry: await this.contracts.valuableActionRegistry.getAddress(),
+        claims: await this.contracts.claims.getAddress(),
+        valuableActionSBT: await this.contracts.valuableActionSBT.getAddress(),
+
+        // Economic Layer
+        communityToken: await this.contracts.communityToken.getAddress(),
+        cohortRegistry: await this.contracts.cohortRegistry.getAddress(),
+        revenueRouter: await this.contracts.revenueRouter.getAddress(),
+        treasuryAdapter: await this.contracts.treasuryAdapter.getAddress(),
+
+        // Community Modules
+        requestHub: await this.contracts.requestHub.getAddress(),
+        draftsManager: await this.contracts.draftsManager.getAddress(),
+        commerceDisputes: await this.contracts.commerceDisputes.getAddress(),
+        marketplace: await this.contracts.marketplace.getAddress(),
+        housingManager: await this.contracts.housingManager.getAddress(),
+        projectFactory: await this.contracts.projectFactory.getAddress(),
+      },
+      configuration: {
+        communityName: this.config.communityName,
+        votingDelay: this.config.votingDelay,
+        votingPeriod: this.config.votingPeriod,
+        executionDelay: this.config.executionDelay,
+        revenueSplit: this.config.revenueSplit,
+      },
+    };
+
+    // Create deployments directory if it doesn't exist
+    const deploymentsDir = path.join(__dirname, "..", "deployments");
+    if (!fs.existsSync(deploymentsDir)) {
+      fs.mkdirSync(deploymentsDir, { recursive: true });
+    }
+
+    // Save network-specific deployment file
+    const deploymentPath = path.join(deploymentsDir, `${network}.json`);
+    fs.writeFileSync(
+      deploymentPath,
+      JSON.stringify(deploymentData, null, 2),
+      "utf8"
+    );
+    console.log(`\n💾 Deployment addresses saved to: ${deploymentPath}`);
+
+    // Also save to a "latest" file for easier access
+    const latestPath = path.join(deploymentsDir, "latest.json");
+    fs.writeFileSync(
+      latestPath,
+      JSON.stringify(deploymentData, null, 2),
+      "utf8"
+    );
+    console.log(`💾 Latest deployment saved to: ${latestPath}`);
   }
 
   private printDeploymentSummary(): void {

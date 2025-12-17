@@ -8,6 +8,8 @@
 
 const hre = require("hardhat");
 const { ethers } = hre;
+const fs = require("fs");
+const path = require("path");
 
 interface SystemAddresses {
   // Core Infrastructure
@@ -43,9 +45,51 @@ interface SystemAddresses {
   projectFactory: string;
 }
 
-// Load addresses from environment or deployment files
-const SYSTEM_ADDRESSES: { [network: string]: SystemAddresses } = {
-  base_sepolia: {
+// Load deployment addresses from JSON file
+function loadDeploymentAddresses(network: string): SystemAddresses | null {
+  const deploymentPath = path.join(__dirname, "..", "deployments", `${network}.json`);
+  
+  if (fs.existsSync(deploymentPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
+      console.log(`✅ Loaded deployment addresses from ${deploymentPath}`);
+      return data.addresses;
+    } catch (error) {
+      console.warn(`⚠️  Failed to load deployment file: ${error}`);
+    }
+  }
+  
+  // Try loading from latest.json as fallback
+  const latestPath = path.join(__dirname, "..", "deployments", "latest.json");
+  if (fs.existsSync(latestPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(latestPath, "utf8"));
+      if (data.network === network) {
+        console.log(`✅ Loaded deployment addresses from latest.json`);
+        return data.addresses;
+      }
+    } catch (error) {
+      console.warn(`⚠️  Failed to load latest deployment file: ${error}`);
+    }
+  }
+  
+  return null;
+}
+
+// Load addresses from deployment files or environment
+const SYSTEM_ADDRESSES: { [network: string]: SystemAddresses } = {};
+
+// Populate from deployment files if available
+["base_sepolia", "base", "ethereum_sepolia", "ethereum"].forEach(network => {
+  const addresses = loadDeploymentAddresses(network);
+  if (addresses) {
+    SYSTEM_ADDRESSES[network] = addresses;
+  }
+});
+
+// Fallback to environment variables for base_sepolia if not loaded from file
+if (!SYSTEM_ADDRESSES.base_sepolia) {
+  SYSTEM_ADDRESSES.base_sepolia = {
     // These would be populated from actual deployments
     // For now, they're placeholder - would be loaded from deployment output
     communityRegistry: process.env.COMMUNITY_REGISTRY_ADDRESS || "",
@@ -68,8 +112,8 @@ const SYSTEM_ADDRESSES: { [network: string]: SystemAddresses } = {
     housingManager: process.env.HOUSING_MANAGER_ADDRESS || "",
     marketplace: process.env.MARKETPLACE_ADDRESS || "",
     projectFactory: process.env.PROJECT_FACTORY_ADDRESS || "",
-  },
-};
+  };
+}
 
 class SystemManager {
   private contracts: { [name: string]: any } = {};
