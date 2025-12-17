@@ -5,11 +5,14 @@ async function main() {
 
   console.log("🚀 Deploying Shift DeSoc MVP for End-to-End Testing...");
   console.log("Deployer:", deployer.address);
-  console.log("Balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
+  console.log(
+    "Balance:",
+    ethers.formatEther(await ethers.provider.getBalance(deployer.address)),
+  );
 
   // Step 1: Deploy Core Governance Infrastructure
   console.log("\n=== CORE GOVERNANCE INFRASTRUCTURE ===");
-  
+
   // Deploy Membership Token
   console.log("\n📄 Deploying MembershipTokenERC20Votes...");
   const Token = await ethers.getContractFactory("MembershipTokenERC20Votes");
@@ -27,7 +30,10 @@ async function main() {
   // Deploy Governor
   console.log("\n🏛️ Deploying ShiftGovernor...");
   const Gov = await ethers.getContractFactory("ShiftGovernor");
-  const gov = await Gov.deploy(await token.getAddress(), await timelock.getAddress());
+  const gov = await Gov.deploy(
+    await token.getAddress(),
+    await timelock.getAddress(),
+  );
   await gov.waitForDeployment();
   console.log("✅ Governor deployed to:", await gov.getAddress());
 
@@ -60,7 +66,7 @@ async function main() {
   const Drafts = await ethers.getContractFactory("DraftsManager");
   const drafts = await Drafts.deploy(
     await registry.getAddress(),
-    await gov.getAddress() // DraftsManager needs governor address
+    await gov.getAddress(), // DraftsManager needs governor address
   );
   await drafts.waitForDeployment();
   console.log("✅ DraftsManager deployed to:", await drafts.getAddress());
@@ -73,7 +79,10 @@ async function main() {
   const ActionRegistry = await ethers.getContractFactory("ActionTypeRegistry");
   const actionRegistry = await ActionRegistry.deploy(await gov.getAddress()); // governance address
   await actionRegistry.waitForDeployment();
-  console.log("✅ ActionTypeRegistry deployed to:", await actionRegistry.getAddress());
+  console.log(
+    "✅ ActionTypeRegistry deployed to:",
+    await actionRegistry.getAddress(),
+  );
 
   // Step 4: Initialize Connections
   console.log("\n=== INITIALIZING CONNECTIONS ===");
@@ -84,13 +93,13 @@ async function main() {
 
   // Step 5: Setup Test Community
   console.log("\n=== SETTING UP TEST COMMUNITY ===");
-  
+
   console.log("\n🏠 Creating test community...");
   const createTx = await registry.registerCommunity(
-    "Test Community",                    // name
+    "Test Community", // name
     "Community for end-to-end testing", // description
-    "ipfs://test-metadata",             // metadataURI
-    0                                   // parentCommunityId (0 = root)
+    "ipfs://test-metadata", // metadataURI
+    0, // parentCommunityId (0 = root)
   );
   await createTx.wait();
   console.log("✅ Test community created with ID: 1");
@@ -98,15 +107,34 @@ async function main() {
   // Set module addresses for the community
   console.log("\n🔧 Setting module addresses...");
   const moduleUpdates = [
-    { key: ethers.keccak256(ethers.toUtf8Bytes("governor")), address: await gov.getAddress() },
-    { key: ethers.keccak256(ethers.toUtf8Bytes("timelock")), address: await timelock.getAddress() },
-    { key: ethers.keccak256(ethers.toUtf8Bytes("requestHub")), address: await requestHub.getAddress() },
-    { key: ethers.keccak256(ethers.toUtf8Bytes("draftsManager")), address: await drafts.getAddress() },
-    { key: ethers.keccak256(ethers.toUtf8Bytes("actionTypeRegistry")), address: await actionRegistry.getAddress() }
+    {
+      key: ethers.keccak256(ethers.toUtf8Bytes("governor")),
+      address: await gov.getAddress(),
+    },
+    {
+      key: ethers.keccak256(ethers.toUtf8Bytes("timelock")),
+      address: await timelock.getAddress(),
+    },
+    {
+      key: ethers.keccak256(ethers.toUtf8Bytes("requestHub")),
+      address: await requestHub.getAddress(),
+    },
+    {
+      key: ethers.keccak256(ethers.toUtf8Bytes("draftsManager")),
+      address: await drafts.getAddress(),
+    },
+    {
+      key: ethers.keccak256(ethers.toUtf8Bytes("actionTypeRegistry")),
+      address: await actionRegistry.getAddress(),
+    },
   ];
 
   for (const module of moduleUpdates) {
-    const setModuleTx = await registry.setModuleAddress(1, module.key, module.address);
+    const setModuleTx = await registry.setModuleAddress(
+      1,
+      module.key,
+      module.address,
+    );
     await setModuleTx.wait();
   }
   console.log("✅ Module addresses configured");
@@ -133,7 +161,9 @@ async function main() {
 
   console.log("\n📋 NEXT STEPS FOR END-TO-END TESTING:");
   console.log("=".repeat(50));
-  console.log("1. 🔗 Connect CountingMultiChoice to Governor via governance proposal");
+  console.log(
+    "1. 🔗 Connect CountingMultiChoice to Governor via governance proposal",
+  );
   console.log("2. 🪙 Mint tokens to test users (user1-user5)");
   console.log("3. 👥 Have users 2-5 join the community (get tokens)");
   console.log("4. 📝 User1 creates a request for ActionType funding");
@@ -150,11 +180,15 @@ async function main() {
   console.log("└── user5 (voter & discussant)");
 
   console.log("\n⚠️  IMPORTANT GOVERNANCE CONNECTION:");
-  console.log("After deployment, run a governance proposal to connect CountingMultiChoice:");
+  console.log(
+    "After deployment, run a governance proposal to connect CountingMultiChoice:",
+  );
   console.log(`await gov.propose(`);
   console.log(`  ["${await gov.getAddress()}"],`);
   console.log(`  [0],`);
-  console.log(`  [gov.interface.encodeFunctionData("setCountingMulti", ["${await multi.getAddress()}"])],`);
+  console.log(
+    `  [gov.interface.encodeFunctionData("setCountingMulti", ["${await multi.getAddress()}"])],`,
+  );
   console.log(`  "Connect MultiChoice Counting Module"`);
   console.log(`);`);
 }

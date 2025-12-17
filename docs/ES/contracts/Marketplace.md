@@ -28,7 +28,7 @@ contract Marketplace {
         bool active;                // Disponibilidad del producto
         uint256 createdAt;          // Timestamp de listado
     }
-    
+
     struct Purchase {
         uint256 purchaseId;         // Identificador único de compra
         uint256 skuId;             // Producto comprado
@@ -39,7 +39,7 @@ contract Marketplace {
         uint256 timestamp;         // Timestamp de compra
         PurchaseStatus status;     // Estado actual
     }
-    
+
     enum PurchaseStatus {
         PENDING,
         CONFIRMED,
@@ -80,30 +80,31 @@ contract Marketplace {
         uint256 price,
         string metadata
     );
-    
+
     event ProductPurchased(
         uint256 indexed purchaseId,
         uint256 indexed skuId,
         address indexed buyer,
         uint256 totalPaid
     );
-    
+
     error NotImplemented();
-    
+
     // Funciones principales revierten con error de no implementado
     function listProduct(
         address, uint256, uint256, uint256, string calldata, bool
     ) external pure returns (uint256) {
         revert NotImplemented();
     }
-    
+
     function purchaseProduct(uint256, uint256, address) external pure returns (uint256) {
         revert NotImplemented();
     }
 }
 ```
 
-**Funcionalidad Actual**: 
+**Funcionalidad Actual**:
+
 - ✅ Eventos básicos definidos para integración futura
 - ❌ Funciones principales revierten con `NotImplemented()`
 - ❌ No se soportan transacciones de marketplace
@@ -112,16 +113,19 @@ contract Marketplace {
 ## 🛡️ Características de Seguridad Planificadas
 
 ### Verificación de Productos
+
 - Validación de propiedad de tokens antes del listado
 - Verificación de metadatos de productos (anti-spam)
 - Moderación comunitaria para productos disputados
 
 ### Procesamiento de Pagos
+
 - Integración segura con CommunityToken y USDC
 - Protección de escrow para transacciones de alto valor
 - Gestión automática de reembolsos para disputas
 
 ### Control de Calidad
+
 - Sistema de reputación para vendedores
 - Revisiones y calificaciones de compradores
 - Moderación basada en WorkerSBT para resolver disputas
@@ -129,6 +133,7 @@ contract Marketplace {
 ## 🏪 Casos de Uso Planificados
 
 ### Marketplace de Servicios Digitales
+
 ```solidity
 // Desarrolladores vendiendo servicios de codificación
 Product memory devService = Product({
@@ -162,6 +167,7 @@ Product memory designAsset = Product({
 ```
 
 ### Marketplace de Productos Físicos
+
 ```solidity
 // Artesanos vendiendo productos hechos a mano
 Product memory handmadeGoods = Product({
@@ -180,6 +186,7 @@ Product memory handmadeGoods = Product({
 ```
 
 ### Marketplace de Recursos Educativos
+
 ```solidity
 // Educadores vendiendo cursos y materiales
 Product memory eduCourse = Product({
@@ -200,16 +207,17 @@ Product memory eduCourse = Product({
 ## 💰 Modelo Económico Planificado
 
 ### Estructura de Tarifas Escalonadas
+
 ```solidity
 // Tarifas basadas en volumen de ventas del vendedor
 function calculateTransactionFee(
     address seller,
     uint256 transactionAmount
 ) external view returns (uint256 feeAmount) {
-    
+
     uint256 sellerVolume = getSellerMonthlyVolume(seller);
     uint256 feeBps;
-    
+
     if (sellerVolume < 1000e18) {
         feeBps = 500;       // 5% para vendedores nuevos
     } else if (sellerVolume < 10000e18) {
@@ -217,34 +225,36 @@ function calculateTransactionFee(
     } else {
         feeBps = 150;       // 1.5% para vendedores de alto volumen
     }
-    
+
     feeAmount = (transactionAmount * feeBps) / 10000;
 }
 ```
 
 ### Distribución de Ingresos
+
 ```solidity
 // Ingresos del marketplace se integran con RevenueRouter
 function distributeMarketplaceRevenue(uint256 totalFees) external {
     // 30% para trabajadores (moderación y soporte)
     uint256 workersShare = (totalFees * 3000) / 10000;
-    
+
     // 50% para tesorería comunitaria
     uint256 treasuryShare = (totalFees * 5000) / 10000;
-    
+
     // 20% para inversionistas
     uint256 investorsShare = (totalFees * 2000) / 10000;
-    
+
     revenueRouter.distributeRevenue(totalFees);
 }
 ```
 
 ### Incentivos de Reputación
+
 ```solidity
 // Descuentos de tarifas basados en reputación de WorkerSBT
 function getSellerFeeDiscount(address seller) external view returns (uint256) {
     uint256 workerPoints = workerSBT.getWorkerPoints(seller);
-    
+
     // Hasta 50% de descuento en tarifas para contribuyentes activos
     uint256 discountBps = Math.min(workerPoints / 10, 5000);
     return discountBps;
@@ -254,6 +264,7 @@ function getSellerFeeDiscount(address seller) external view returns (uint256) {
 ## 🔄 Integración Futura Planificada
 
 ### Con WorkerSBT
+
 ```solidity
 // Moderación de marketplace basada en WorkerSBT
 function reportProduct(
@@ -261,14 +272,14 @@ function reportProduct(
     string calldata reason
 ) external {
     require(workerSBT.balanceOf(msg.sender) > 0, "Requiere WorkerSBT para reportar");
-    
+
     productReports[skuId].push(ProductReport({
         reporter: msg.sender,
         reason: reason,
         timestamp: block.timestamp,
         workerPoints: workerSBT.getWorkerPoints(msg.sender)
     }));
-    
+
     // Auto-suspender productos con múltiples reportes de trabajadores de alta reputación
     if (_shouldAutoSuspend(skuId)) {
         products[skuId].active = false;
@@ -278,6 +289,7 @@ function reportProduct(
 ```
 
 ### Con CommunityToken
+
 ```solidity
 // Pagos en tokens comunitarios respaldados por USDC
 function processCommunityTokenPayment(
@@ -285,24 +297,25 @@ function processCommunityTokenPayment(
     uint256 amount
 ) external {
     require(communityToken.balanceOf(msg.sender) >= amount, "Saldo insuficiente");
-    
+
     Purchase storage purchase = purchases[purchaseId];
     Product storage product = products[purchase.skuId];
-    
+
     // Transferir pago (menos tarifa) al vendedor
     uint256 fee = calculateTransactionFee(product.seller, amount);
     uint256 sellerAmount = amount - fee;
-    
+
     communityToken.transferFrom(msg.sender, product.seller, sellerAmount);
     communityToken.transferFrom(msg.sender, address(this), fee);
-    
+
     purchase.status = PurchaseStatus.CONFIRMED;
-    
+
     emit PaymentProcessed(purchaseId, amount, fee);
 }
 ```
 
 ### Con Claims Sistema
+
 ```solidity
 // Crear ValuableActions para ventas exitosas
 function rewardSuccessfulSales(address seller, uint256 saleAmount) external {
@@ -321,6 +334,7 @@ function rewardSuccessfulSales(address seller, uint256 saleAmount) external {
 ## 🔍 Sistema de Reputación Planificado
 
 ### Calificaciones de Vendedor
+
 ```solidity
 struct SellerRating {
     uint256 totalSales;
@@ -335,6 +349,7 @@ mapping(address => SellerRating) public sellerRatings;
 ```
 
 ### Sistema de Revisiones
+
 ```solidity
 struct ProductReview {
     address reviewer;
@@ -350,6 +365,7 @@ mapping(uint256 => ProductReview[]) public productReviews;
 ## 📊 Análisis y Métricas Planificadas
 
 ### Análisis de Marketplace
+
 ```solidity
 function getMarketplaceMetrics() external view returns (
     uint256 totalProducts,
@@ -363,6 +379,7 @@ function getMarketplaceMetrics() external view returns (
 ```
 
 ### Análisis de Vendedores
+
 ```solidity
 function getSellerAnalytics(address seller) external view returns (
     uint256 totalListings,
@@ -378,16 +395,17 @@ function getSellerAnalytics(address seller) external view returns (
 ## 🔧 Características Avanzadas Planificadas
 
 ### Sistema de Escrow Automático
+
 ```solidity
 // Escrow automático para transacciones de alto valor
 function createEscrowPurchase(
     uint256 skuId,
     uint256 quantity
 ) external payable returns (uint256 escrowId) {
-    
+
     uint256 totalAmount = calculateTotalPrice(skuId, quantity);
     require(msg.value >= totalAmount, "Pago insuficiente");
-    
+
     // Mantener fondos en escrow hasta confirmación de entrega
     escrowHoldings[escrowId] = EscrowHolding({
         buyer: msg.sender,
@@ -400,17 +418,18 @@ function createEscrowPurchase(
 ```
 
 ### Integración con Oráculos
+
 ```solidity
 // Precios dinámicos basados en oráculos externos para productos físicos
 function updateProductPricing(uint256 skuId) external {
     Product storage product = products[skuId];
-    
+
     // Obtener precio actualizado de commodities/materials
     uint256 marketPrice = priceOracle.getPrice(product.category);
-    
+
     // Ajustar precio del producto basado en condiciones del mercado
     product.price = (product.baseCost * marketPrice) / baseMarketPrice;
-    
+
     emit ProductPriceUpdated(skuId, product.price);
 }
 ```
@@ -418,17 +437,20 @@ function updateProductPricing(uint256 skuId) external {
 ## 📋 Hoja de Ruta de Implementación
 
 ### Fase 1 (Actual)
+
 - ✅ Contrato stub con eventos básicos
 - ✅ Interfaces de marketplace definidas
 - ⏳ Integración con tokens comunitarios pendiente
 
 ### Fase 2 (Planificada)
+
 - 🔄 Sistema básico de listado y compra
 - 🔄 Integración con CommunityToken para pagos
 - 🔄 Sistema de tarifas y distribución de ingresos
 - 🔄 Moderación básica con WorkerSBT
 
 ### Fase 3 (Futura)
+
 - 🔄 Sistema avanzado de reputación y revisiones
 - 🔄 Escrow automático y resolución de disputas
 - 🔄 Integración con plataformas externas (Shopify, etc.)
@@ -438,4 +460,4 @@ function updateProductPricing(uint256 skuId) external {
 
 ---
 
-*Esta documentación describe la visión futura para un marketplace descentralizado que genere ingresos comunitarios mientras facilite el comercio de bienes y servicios dentro del ecosistema Shift DeSoc.*
+_Esta documentación describe la visión futura para un marketplace descentralizado que genere ingresos comunitarios mientras facilite el comercio de bienes y servicios dentro del ecosistema Shift DeSoc._

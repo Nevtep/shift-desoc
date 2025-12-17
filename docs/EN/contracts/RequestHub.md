@@ -5,8 +5,9 @@
 RequestHub is the **decentralized discussion entry point** for community coordination in the Shift DeSoc ecosystem. It serves as an on-chain forum where community members post needs, collaborate on solutions, and escalate discussions into actionable governance proposals. This contract implements the critical "Community Coordination Layer" that bridges informal discussion with formal governance processes.
 
 **Key Functions:**
+
 - Community discussion forum with hierarchical commenting
-- Request lifecycle management (OPEN_DEBATE → FROZEN → ARCHIVED)  
+- Request lifecycle management (OPEN_DEBATE → FROZEN → ARCHIVED)
 - Moderation system with role-based access control
 - Rate limiting and spam prevention mechanisms
 - Bounty system for incentivizing work
@@ -46,6 +47,7 @@ struct Comment {
 ### State Management
 
 **Request Storage:**
+
 ```solidity
 mapping(uint256 => Request) public requests;              // All requests by ID
 mapping(uint256 => uint256[]) public communityRequests;   // Community → request IDs
@@ -53,6 +55,7 @@ uint256 public nextRequestId = 1;                         // Auto-incrementing I
 ```
 
 **Comment Storage:**
+
 ```solidity
 mapping(uint256 => Comment) public comments;              // All comments by ID
 mapping(uint256 => uint256[]) public requestComments;     // Request → comment IDs
@@ -60,6 +63,7 @@ uint256 public nextCommentId = 1;                         // Auto-incrementing I
 ```
 
 **Rate Limiting Storage:**
+
 ```solidity
 mapping(uint256 => mapping(address => uint256)) public userRequestCount;  // Community → user → count
 mapping(uint256 => mapping(address => uint256)) public userLastPostTime;  // Community → user → timestamp
@@ -70,6 +74,7 @@ mapping(uint256 => mapping(address => uint256)) public userLastPostTime;  // Com
 ### Request Management
 
 #### `createRequest(communityId, title, cid, tags) → requestId`
+
 Creates new community discussion with validation and rate limiting:
 
 ```solidity
@@ -81,11 +86,11 @@ function createRequest(
 ) external returns (uint256 requestId) {
     _requireValidCommunity(communityId);           // Verify community exists
     _requireNotRateLimited(communityId, msg.sender); // Anti-spam protection
-    
+
     // Input validation
     if (bytes(title).length == 0) revert Errors.InvalidInput("Title cannot be empty");
     if (bytes(cid).length == 0) revert Errors.InvalidInput("Content CID cannot be empty");
-    
+
     // Create request with initial OPEN_DEBATE status
     requestId = nextRequestId++;
     Request storage request = requests[requestId];
@@ -97,7 +102,7 @@ function createRequest(
     request.createdAt = uint64(block.timestamp);
     request.lastActivity = uint64(block.timestamp);
     request.tags = tags;
-    
+
     // Update community index and rate limiting
     communityRequests[communityId].push(requestId);
     userRequestCount[communityId][msg.sender]++;
@@ -108,6 +113,7 @@ function createRequest(
 ### Comment System
 
 #### `postComment(requestId, parentCommentId, cid) → commentId`
+
 Supports threaded discussions with validation:
 
 ```solidity
@@ -121,9 +127,9 @@ function postComment(
     if (request.status == Status.FROZEN || request.status == Status.ARCHIVED) {
         revert Errors.InvalidInput("Request is not open for comments");
     }
-    
+
     _requireNotRateLimited(request.communityId, msg.sender);
-    
+
     // Validate parent comment hierarchy
     if (parentCommentId != 0) {
         Comment storage parentComment = comments[parentCommentId];
@@ -131,7 +137,7 @@ function postComment(
             revert Errors.InvalidInput("Parent comment not in this request");
         }
     }
-    
+
     // Create comment and update activity tracking
     commentId = nextCommentId++;
     Comment storage comment = comments[commentId];
@@ -140,7 +146,7 @@ function postComment(
     comment.cid = cid;
     comment.parentCommentId = parentCommentId;
     comment.createdAt = uint64(block.timestamp);
-    
+
     // Update request metadata and indexes
     requestComments[requestId].push(commentId);
     request.lastActivity = uint64(block.timestamp);
@@ -152,6 +158,7 @@ function postComment(
 ### Moderation System
 
 #### Role-Based Moderation
+
 ```solidity
 function _requireModerator(uint256 communityId, address user) internal view {
     if (!communityRegistry.hasRole(communityId, user, communityRegistry.MODERATOR_ROLE()) &&
@@ -163,6 +170,7 @@ function _requireModerator(uint256 communityId, address user) internal view {
 ```
 
 **Moderation Powers:**
+
 - `setRequestStatus(requestId, newStatus)` - Change request status (FROZEN to stop new comments)
 - `moderateComment(commentId, hide)` - Hide/unhide individual comments
 - All decisions appealable through governance process
@@ -170,13 +178,14 @@ function _requireModerator(uint256 communityId, address user) internal view {
 ### Rate Limiting System
 
 #### Anti-Spam Protection
+
 ```solidity
 function _requireNotRateLimited(uint256 communityId, address user) internal view {
     uint256 lastPost = userLastPostTime[communityId][user];
-    
+
     // Skip rate limiting for first post (lastPost == 0)
     if (lastPost == 0) return;
-    
+
     // Daily limit: max 10 posts per day
     uint256 dayStart = (block.timestamp / 1 days) * 1 days;
     if (lastPost >= dayStart) {
@@ -184,7 +193,7 @@ function _requireNotRateLimited(uint256 communityId, address user) internal view
             revert Errors.InvalidInput("Rate limit exceeded");
         }
     }
-    
+
     // Minimum time between posts: 1 minute
     if (block.timestamp - lastPost < 60) {
         revert Errors.InvalidInput("Post too soon after previous post");
@@ -195,17 +204,20 @@ function _requireNotRateLimited(uint256 communityId, address user) internal view
 ## 🛡️ Security Features
 
 ### Access Control Integration
+
 - **Community Validation:** All operations validate community membership via `CommunityRegistry`
 - **Role-Based Moderation:** Moderator and admin roles defined by community governance
 - **Creator Privileges**: Request authors have special permissions for ValuableAction linking
 
 ### Rate Limiting & Spam Prevention
+
 - **Time-based throttling:** 60-second minimum between posts
 - **Daily limits:** Maximum 10 posts per user per community per day
 - **First-post exception:** New users not penalized for lack of history
 - **Community-scoped:** Rate limits applied per community, not globally
 
 ### Input Validation
+
 ```solidity
 // Content validation
 if (bytes(title).length == 0) revert Errors.InvalidInput("Title cannot be empty");
@@ -228,6 +240,7 @@ try communityRegistry.getCommunity(communityId) returns (CommunityRegistry.Commu
 ```
 
 ### Moderation Safeguards
+
 - **Status Protection:** Frozen/archived requests prevent new comments
 - **Governance Appeals:** All moderation decisions can be overruled by community governance
 - **Audit Trail:** All status changes and comment moderation logged via events
@@ -235,6 +248,7 @@ try communityRegistry.getCommunity(communityId) returns (CommunityRegistry.Commu
 ## 🔗 Integration Points
 
 ### CommunityRegistry Integration
+
 ```solidity
 // Community validation and metadata
 CommunityRegistry public immutable communityRegistry;
@@ -249,39 +263,42 @@ function _requireModerator(uint256 communityId, address user) internal view {
 ```
 
 ### ValuableAction Integration (Work Verification)
+
 ```solidity
 // Link requests to work verification system
 function linkValuableAction(uint256 requestId, uint256 valuableActionId) external {
     Request storage request = requests[requestId];
     if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
-    
+
     // Only request author or community admin can link ValuableActions
     if (msg.sender != request.author) {
         _requireCommunityAdmin(request.communityId, msg.sender);
     }
-    
+
     request.linkedValuableAction = valuableActionId;
     emit ValuableActionLinking(requestId, valuableActionId, msg.sender);
 }
 ```
 
 ### Bounty System Integration
+
 ```solidity
 // Add financial incentives to requests
 function addBounty(uint256 requestId, uint256 amount) external {
     Request storage request = requests[requestId];
     if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
     if (amount == 0) revert Errors.InvalidInput("Bounty amount must be positive");
-    
+
     // TODO: Transfer tokens from sender to this contract
     // For now, just update the bounty amount
     request.bountyAmount += amount;
-    
+
     emit BountyAdded(requestId, amount, msg.sender);
 }
 ```
 
 ### Event System for Off-chain Integration
+
 ```solidity
 // Core events for indexing and notifications
 event RequestCreated(uint256 indexed requestId, uint256 indexed communityId, address indexed author, string title, string cid, string[] tags);
@@ -294,17 +311,20 @@ event ValuableActionLinking(uint256 indexed requestId, uint256 indexed valuableA
 ## 📊 Economic Model
 
 ### Bounty System
+
 - **Direct Incentives:** Community members can add bounties to requests to incentivize solutions
 - **Token Agnostic:** Current implementation tracks amounts; token transfers to be implemented
 - **Cumulative Bounties:** Multiple contributors can add to the same request's bounty pool
 - **Governance Integration**: Bounty distribution linked to work verification through ValuableActions
 
-### Rate Limiting Economics  
+### Rate Limiting Economics
+
 - **Free First Posts:** No barriers for new community members
 - **Quality Over Quantity:** Daily limits encourage thoughtful contributions
 - **Community Scoped:** Active participation in multiple communities allowed
 
 ### Integration with Broader Token Economy
+
 ```solidity
 // Future integration with CommunityToken for bounty payments
 // Current placeholder shows architecture for token integration
@@ -318,12 +338,14 @@ function addBounty(uint256 requestId, uint256 amount) external {
 ## 🎛️ Configuration Examples
 
 ### Deployment Configuration
+
 ```solidity
 // Deploy with CommunityRegistry integration
 RequestHub requestHub = new RequestHub(address(communityRegistry));
 ```
 
 ### Rate Limiting Parameters
+
 ```solidity
 // Current hardcoded limits (future: governance configurable)
 uint256 constant DAILY_POST_LIMIT = 10;           // Max posts per day per user per community
@@ -332,6 +354,7 @@ uint256 constant RATE_LIMIT_WINDOW = 1 days;      // 24-hour rolling window
 ```
 
 ### Moderation Workflow
+
 ```solidity
 // 1. Grant moderator role via CommunityRegistry
 communityRegistry.grantCommunityRole(communityId, moderatorAddress, MODERATOR_ROLE);
@@ -347,6 +370,7 @@ requestHub.moderateComment(inappropriateCommentId, true);     // Hide comment
 ## 🚀 Advanced Features
 
 ### Tag-Based Discovery
+
 ```solidity
 // Efficient tag-based filtering for content discovery
 function getRequestsByTag(uint256 communityId, string calldata tag) external view returns (uint256[] memory) {
@@ -357,6 +381,7 @@ function getRequestsByTag(uint256 communityId, string calldata tag) external vie
 ```
 
 ### Activity Tracking
+
 ```solidity
 // Request activity metrics for community health analysis
 struct Request {
@@ -368,6 +393,7 @@ struct Request {
 ```
 
 ### Hierarchical Comment Threading
+
 ```solidity
 // Support for nested comment discussions
 struct Comment {
@@ -379,11 +405,13 @@ struct Comment {
 ### Future Enhancements
 
 #### Governance Integration
+
 - **Draft Escalation:** Integration with DraftsManager for proposal development
 - **Consensus Signaling:** Community sentiment polling before formal votes
 - **Automatic Escalation:** Time-based or engagement-based proposal triggers
 
 #### Enhanced Moderation
+
 ```solidity
 // Future moderation enhancements
 struct ModerationAction {
@@ -398,6 +426,7 @@ struct ModerationAction {
 ```
 
 #### Economic Enhancements
+
 ```solidity
 // Future bounty system improvements
 struct BountyDistribution {
@@ -411,6 +440,7 @@ struct BountyDistribution {
 ```
 
 #### Cross-Community Features
+
 ```solidity
 // Future cross-community request sharing
 function shareRequest(uint256 requestId, uint256 targetCommunityId) external;
@@ -422,19 +452,22 @@ function shareRequest(uint256 requestId, uint256 targetCommunityId) external;
 ## 📈 Usage Patterns
 
 ### Community Discussion Lifecycle
+
 1. **Request Creation:** Community member identifies need/opportunity
-2. **Discussion Phase:** Open debate and solution development  
+2. **Discussion Phase:** Open debate and solution development
 3. **Escalation:** High-engagement requests become formal proposals
 4. **Work Assignment**: Requests linked to ValuableActions for verification
 5. **Resolution:** Bounty distribution and request archival
 
 ### Moderation Workflows
+
 1. **Proactive Moderation:** Moderators freeze problematic requests
 2. **Reactive Moderation:** Comment-level content management
 3. **Community Appeals:** Governance review of moderation decisions
 4. **Policy Evolution:** Community-driven moderation guideline updates
 
 ### Integration Workflows
+
 1. **Request → Claims**: Link requests to work verification via ValuableActions
 2. **Discussion → Proposals:** RequestHub feeds into DraftsManager for formal governance
 3. **Bounties → Payment:** Integration with CommunityToken for incentive distribution

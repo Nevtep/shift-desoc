@@ -1,51 +1,55 @@
-import { ethers } from "hardhat";
+/**
+ * Hardhat Deploy Script - Delegates to Complete Deployment System
+ *
+ * This script serves as the entry point for Hardhat-based deployments
+ * and delegates to the comprehensive deployment system.
+ */
+
+const {
+  ShiftDeSocDeployer,
+  DEFAULT_CONFIG,
+  NETWORK_CONFIGS,
+} = require("../deploy-complete");
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const networkName = process.env.HARDHAT_NETWORK || "hardhat";
+  console.log(`\n🌐 Hardhat deployment to network: ${networkName}`);
 
-  console.log("🚀 Deploying Shift DeSoc contracts...");
-  console.log("Deployer:", deployer.address);
-  console.log("Balance:", ethers.formatEther(await ethers.provider.getBalance(deployer.address)));
+  // Build configuration using the same system as deploy-complete.ts
+  let config = { ...DEFAULT_CONFIG };
+  config.network = networkName;
 
-  // Deploy Membership Token
-  console.log("\n📄 Deploying MembershipTokenERC20Votes...");
-  const Token = await ethers.getContractFactory("MembershipTokenERC20Votes");
-  const token = await Token.deploy("Shift Membership", "sMEM");
-  await token.waitForDeployment();
-  console.log("✅ Token deployed to:", await token.getAddress());
+  // Apply network-specific overrides
+  const networkOverrides = NETWORK_CONFIGS[networkName];
+  if (networkOverrides) {
+    Object.assign(config, networkOverrides);
+  }
 
-  // Deploy Timelock (3600 seconds = 1 hour delay)
-  console.log("\n⏰ Deploying TimelockController...");
-  const Timelock = await ethers.getContractFactory("TimelockController");
-  const timelock = await Timelock.deploy(3600, [], [], ethers.ZeroAddress);
-  await timelock.waitForDeployment();
-  console.log("✅ Timelock deployed to:", await timelock.getAddress());
+  // Apply environment overrides
+  if (process.env.COMMUNITY_NAME) {
+    config.communityName = process.env.COMMUNITY_NAME;
+  }
+  if (process.env.FOUNDER_ADDRESS) {
+    config.founderAddress = process.env.FOUNDER_ADDRESS;
+  }
 
-  // Deploy Governor
-  console.log("\n🏛️ Deploying ShiftGovernor...");
-  const Gov = await ethers.getContractFactory("ShiftGovernor");
-  const gov = await Gov.deploy(await token.getAddress(), await timelock.getAddress());
-  await gov.waitForDeployment();
-  console.log("✅ Governor deployed to:", await gov.getAddress());
+  console.log(`Deploying: ${config.communityName} on ${config.network}`);
 
-  // Deploy CountingMultiChoice
-  console.log("\n🗳️ Deploying CountingMultiChoice...");
-  const Multi = await ethers.getContractFactory("CountingMultiChoice");
-  const multi = await Multi.deploy();
-  await multi.waitForDeployment();
-  console.log("✅ CountingMultiChoice deployed to:", await multi.getAddress());
+  // Deploy using the complete system
+  const deployer = new ShiftDeSocDeployer(config);
+  await deployer.deploy();
 
-  console.log("\n🎯 Deployment Summary:");
-  console.log("=====================================");
-  console.log("Deployer:", deployer.address);
-  console.log("Token:", await token.getAddress());
-  console.log("Timelock:", await timelock.getAddress());
-  console.log("Governor:", await gov.getAddress());
-  console.log("CountingMulti:", await multi.getAddress());
-  console.log("\n⚠️  Note: CountingMultiChoice must be connected via governance proposal");
-  console.log("\n🌐 Multi-Community Architecture:");
-  console.log("This deployment creates contracts for ONE community.");
-  console.log("For multiple communities, run this script multiple times or");
-  console.log("consider implementing a CommunityFactory pattern for scaled deployment.");
+  console.log(
+    `\n🎉 Hardhat deployment to ${networkName} completed successfully!`,
+  );
+  console.log("Use 'npm run status' to check system status");
+  console.log("Use 'npm run manage --help' for management commands");
 }
-main().catch((e) => { console.error(e); process.exit(1); });
+
+// Run deployment
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("❌ Deployment failed:", error);
+    process.exit(1);
+  });

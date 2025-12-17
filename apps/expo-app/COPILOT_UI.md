@@ -1,10 +1,10 @@
 You are my senior React Native + Expo engineer. Build the Shift dApp UI (mobile-first, cross-mobile + RN Web). Use file naming:
 
-Visual components: *.component.tsx
+Visual components: \*.component.tsx
 
-Business logic (containers): *.container.tsx
+Business logic (containers): \*.container.tsx
 
-Data layer (hooks/adapters): *.datasource.tsx
+Data layer (hooks/adapters): \*.datasource.tsx
 
 Sources: Read Figma via MCP servers; adhere to design tokens and spacing; use Tailwind NativeWind if available or utility styles consistently.
 
@@ -32,7 +32,7 @@ Profile: SBTs, WorkerPoints, antigüedad, elegibilidad; delegación de voto.
 
 Treasury: ingresos/egresos, split configurable por governance; redenciones de CommunityToken.
 
-Data layer (*.datasource.tsx):
+Data layer (\*.datasource.tsx):
 
 ethers + Wagmi/WalletConnect; network: Base; read/write contracts.
 

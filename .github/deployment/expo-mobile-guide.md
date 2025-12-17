@@ -34,9 +34,9 @@ Expo React Native App
 
 ```typescript
 // src/hooks/useCommunityCreation.ts
-import { useState, useCallback } from 'react';
-import { Alert } from 'react-native';
-import { apiClient } from '../services/api';
+import { useState, useCallback } from "react";
+import { Alert } from "react-native";
+import { apiClient } from "../services/api";
 
 interface CommunityParams {
   name: string;
@@ -66,29 +66,30 @@ export function useCommunityCreation() {
       // Convert hours to seconds for API
       const apiParams = {
         ...params,
-        governanceParams: params.governanceParams ? {
-          debateWindow: (params.governanceParams.debateHours || 24) * 3600,
-          voteWindow: (params.governanceParams.voteHours || 72) * 3600,
-          executionDelay: (params.governanceParams.delayHours || 48) * 3600,
-          proposalThreshold: params.governanceParams.proposalThreshold || "100"
-        } : undefined
+        governanceParams: params.governanceParams
+          ? {
+              debateWindow: (params.governanceParams.debateHours || 24) * 3600,
+              voteWindow: (params.governanceParams.voteHours || 72) * 3600,
+              executionDelay: (params.governanceParams.delayHours || 48) * 3600,
+              proposalThreshold:
+                params.governanceParams.proposalThreshold || "100",
+            }
+          : undefined,
       };
 
       const result = await apiClient.createCommunity(apiParams);
-      
+
       setDeploymentId(result.communityId.toString());
       return result;
-
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create community';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to create community";
       setError(errorMessage);
-      
-      Alert.alert(
-        'Creation Failed',
-        errorMessage,
-        [{ text: 'OK', onPress: () => setError(null) }]
-      );
-      
+
+      Alert.alert("Creation Failed", errorMessage, [
+        { text: "OK", onPress: () => setError(null) },
+      ]);
+
       throw err;
     } finally {
       setLoading(false);
@@ -104,7 +105,7 @@ export function useCommunityCreation() {
     loading,
     error,
     deploymentId,
-    resetError
+    resetError,
   };
 }
 ```
@@ -193,7 +194,7 @@ export function CreateCommunityScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <DeploymentProgress 
+        <DeploymentProgress
           communityName={formData.name}
           onComplete={(result) => {
             navigation.navigate('CommunitySuccess', result);
@@ -212,7 +213,7 @@ export function CreateCommunityScreen() {
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>Create Your Community</Text>
           <Text style={styles.subtitle}>
-            Deploy a decentralized autonomous organization with governance, 
+            Deploy a decentralized autonomous organization with governance,
             work verification, and token economy
           </Text>
 
@@ -339,7 +340,7 @@ export function CommunityForm({ formData, onUpdate, onSubmit, loading, disabled 
       {/* Basic Information */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Basic Information</Text>
-        
+
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Community Name *</Text>
           <TextInput
@@ -372,7 +373,7 @@ export function CommunityForm({ formData, onUpdate, onSubmit, loading, disabled 
       {/* Governance Parameters */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Governance Settings</Text>
-        
+
         <View style={styles.pickerContainer}>
           <Text style={styles.label}>Debate Period</Text>
           <Picker
@@ -584,7 +585,7 @@ export function DeploymentProgress({ communityName, onComplete }: Props) {
     const runDeployment = async () => {
       for (let i = 0; i < deploymentSteps.length; i++) {
         setCurrentStep(i);
-        
+
         // Animate progress bar
         Animated.timing(progress, {
           toValue: (i + 1) / deploymentSteps.length,
@@ -1106,7 +1107,7 @@ const styles = StyleSheet.create({
 
 ```typescript
 // src/services/api.ts
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
 class ApiClient {
   private baseUrl: string;
@@ -1117,16 +1118,16 @@ class ApiClient {
 
   async createCommunity(params: any) {
     const response = await fetch(`${this.baseUrl}/api/communities/create`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(params),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to create community');
+      throw new Error(error.error || "Failed to create community");
     }
 
     const result = await response.json();
@@ -1134,10 +1135,12 @@ class ApiClient {
   }
 
   async getCommunityStatus(communityId: string) {
-    const response = await fetch(`${this.baseUrl}/api/communities/status/${communityId}`);
-    
+    const response = await fetch(
+      `${this.baseUrl}/api/communities/status/${communityId}`,
+    );
+
     if (!response.ok) {
-      throw new Error('Failed to get community status');
+      throw new Error("Failed to get community status");
     }
 
     const result = await response.json();
@@ -1145,10 +1148,12 @@ class ApiClient {
   }
 
   async getUserCommunities(address: string) {
-    const response = await fetch(`${this.baseUrl}/api/communities/user/${address}`);
-    
+    const response = await fetch(
+      `${this.baseUrl}/api/communities/user/${address}`,
+    );
+
     if (!response.ok) {
-      throw new Error('Failed to get user communities');
+      throw new Error("Failed to get user communities");
     }
 
     const result = await response.json();
@@ -1162,18 +1167,21 @@ export const apiClient = new ApiClient(API_BASE_URL);
 ## 🎯 Key Features Implemented
 
 ### ✅ Complete Mobile Experience
+
 - **Intuitive Form**: Step-by-step community creation with validation
 - **Real-time Progress**: Visual deployment tracking with estimated time
 - **Success Confirmation**: Contract addresses, explorer links, next steps
 - **Error Handling**: Graceful error messages and recovery options
 
 ### ✅ Smart Defaults & Validation
+
 - **Governance Templates**: Pre-configured timing options for different community types
 - **Input Sanitization**: Character limits, format validation, security measures
 - **Cost Transparency**: Clear gas cost estimates upfront
 - **Wallet Integration**: Seamless connection and address validation
 
 ### ✅ Production Ready Features
+
 - **Network Support**: Base Sepolia (testnet) and Base Mainnet (production)
 - **Offline Handling**: Graceful degradation when network unavailable
 - **State Management**: Proper loading states and error recovery

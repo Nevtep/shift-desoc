@@ -2,7 +2,7 @@
 
 ## 🎯 Purpose & Role
 
-The TreasuryAdapter contract is designed to serve as the **treasury management interface** for Shift DeSoc communities, providing a secure bridge between community governance and external treasury management systems like Gnosis Safe or Zodiac modules. 
+The TreasuryAdapter contract is designed to serve as the **treasury management interface** for Shift DeSoc communities, providing a secure bridge between community governance and external treasury management systems like Gnosis Safe or Zodiac modules.
 
 **⚠️ CURRENT STATUS: STUB IMPLEMENTATION**
 
@@ -23,7 +23,7 @@ contract TreasuryAdapter {
         uint256 nonce;           // Operation nonce
         bool executed;           // Execution status
     }
-    
+
     struct TreasuryConfig {
         address safeAddress;      // Gnosis Safe address
         uint256 threshold;        // Required signatures
@@ -47,8 +47,8 @@ The TreasuryAdapter will integrate with:
 ```solidity
 contract TreasuryAdapter {
     error NotConfigured();
-    
-    function execute(address, uint256, bytes calldata, uint8) 
+
+    function execute(address, uint256, bytes calldata, uint8)
         external pure returns (bool) {
         // Fase 2: Safe/Zodiac integration
         revert NotConfigured();
@@ -56,7 +56,8 @@ contract TreasuryAdapter {
 }
 ```
 
-**Current Functionality**: 
+**Current Functionality**:
+
 - ❌ All functions revert with `NotConfigured()` error
 - ❌ No treasury operations supported
 - ❌ Placeholder for future implementation
@@ -64,16 +65,19 @@ contract TreasuryAdapter {
 ## 🛡️ Planned Security Features
 
 ### Multi-Signature Security
+
 - Integration with Gnosis Safe for multi-signature treasury control
 - Configurable signature thresholds per community
 - Time-locked high-value transactions
 
 ### Governance Integration
+
 - Treasury operations authorized through governance proposals
 - Spending limits enforced automatically
 - Audit trail for all treasury activities
 
 ### Emergency Controls
+
 - Emergency pause functionality for treasury operations
 - Recovery procedures for compromised keys
 - Community override mechanisms for emergency situations
@@ -119,16 +123,16 @@ interface IGnosisSafe {
 ### 1. Governance-Authorized Treasury Spending
 
 ```
-Governance Proposal → Community Vote → Proposal Passes → 
-TreasuryAdapter → Gnosis Safe → Multi-Sig Approval → 
+Governance Proposal → Community Vote → Proposal Passes →
+TreasuryAdapter → Gnosis Safe → Multi-Sig Approval →
 Transaction Execution → Audit Log
 ```
 
 ### 2. Recurring Treasury Operations
 
 ```
-Community Setup → Treasury Budget Approval → 
-Automated Payments → Monthly Reviews → 
+Community Setup → Treasury Budget Approval →
+Automated Payments → Monthly Reviews →
 Parameter Adjustments via Governance
 ```
 
@@ -176,16 +180,19 @@ The TreasuryAdapter implementation depends on:
 ## 💡 Technical Considerations
 
 ### Gas Optimization
+
 - Batch treasury operations for efficiency
 - Optimized signature verification
 - Minimal proxy patterns for Safe deployment
 
 ### Upgrade Path
+
 - Proxy pattern for future enhancements
 - Backward compatibility with existing communities
 - Migration tools for treasury configuration
 
 ### Monitoring & Analytics
+
 - Treasury health monitoring
 - Spending pattern analysis
 - Risk assessment automation
@@ -195,6 +202,7 @@ The TreasuryAdapter implementation depends on:
 **Note**: The TreasuryAdapter is intentionally implemented as a stub to clearly indicate its Phase 2 status. Communities can still operate fully using alternative treasury management approaches while this integration is developed.
 
 For immediate treasury needs, communities can:
+
 1. Use standard Gnosis Safe directly for multi-sig operations
 2. Implement simple governance-authorized transfers via Governor
 3. Utilize manual treasury management processes with community oversight

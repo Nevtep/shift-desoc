@@ -11,7 +11,7 @@ The ParamController contract serves as the **dynamic configuration management sy
 ```solidity
 struct GovernanceParams {
     uint256 debateWindow;        // Time for proposal discussion (seconds)
-    uint256 voteWindow;          // Time for voting period (seconds)  
+    uint256 voteWindow;          // Time for voting period (seconds)
     uint256 executionDelay;      // Timelock delay before execution (seconds)
     uint256 proposalThreshold;   // Tokens needed to create proposals
     uint256 quorumRequired;      // Minimum participation for valid votes
@@ -25,7 +25,7 @@ struct EligibilityParams {
 }
 
 struct EconomicParams {
-    uint256[3] revenueSplit;     // [workers%, treasury%, investors%] 
+    uint256[3] revenueSplit;     // [workers%, treasury%, investors%]
     uint256 feeOnWithdraw;       // Exit fee percentage (basis points)
     uint256 inflationRate;       // Token inflation rate (basis points)
     uint256 burnRate;            // Token burn rate per period (basis points)
@@ -36,7 +36,7 @@ struct EconomicParams {
 
 ```solidity
 mapping(uint256 => GovernanceParams) public communityGovernance;
-mapping(uint256 => EligibilityParams) public communityEligibility;  
+mapping(uint256 => EligibilityParams) public communityEligibility;
 mapping(uint256 => EconomicParams) public communityEconomics;
 
 struct ParameterUpdate {
@@ -66,10 +66,10 @@ function proposeParameterUpdate(
 ) external returns (uint256 updateId) {
     // Validate proposer has sufficient governance power
     require(_hasProposalAuthority(msg.sender, communityId), "Insufficient authority");
-    
+
     bytes32 paramKey = keccak256(abi.encodePacked(parameterName));
     updateId = ++lastUpdateId;
-    
+
     pendingUpdates[updateId] = ParameterUpdate({
         communityId: communityId,
         parameterKey: paramKey,
@@ -78,7 +78,7 @@ function proposeParameterUpdate(
         proposer: msg.sender,
         executed: false
     });
-    
+
     emit ParameterUpdateProposed(updateId, communityId, parameterName, newValue, delaySeconds);
 }
 ```
@@ -88,20 +88,20 @@ function proposeParameterUpdate(
 ```solidity
 function executeParameterUpdate(uint256 updateId) external {
     ParameterUpdate storage update = pendingUpdates[updateId];
-    
+
     require(!update.executed, "Already executed");
     require(block.timestamp >= update.effectiveTime, "Still in timelock");
     require(update.effectiveTime != 0, "Invalid update");
-    
+
     // Apply the parameter change
     _applyParameterChange(
         update.communityId,
-        update.parameterKey, 
+        update.parameterKey,
         update.newValue
     );
-    
+
     update.executed = true;
-    
+
     emit ParameterUpdateExecuted(updateId, update.communityId, update.newValue);
 }
 ```
@@ -109,7 +109,7 @@ function executeParameterUpdate(uint256 updateId) external {
 ### Real-time Parameter Queries
 
 ```solidity
-function getGovernanceParams(uint256 communityId) 
+function getGovernanceParams(uint256 communityId)
     external view returns (GovernanceParams memory) {
     return communityGovernance[communityId];
 }
@@ -122,29 +122,29 @@ function getVoteWindow(uint256 communityId) external view returns (uint256) {
     return communityGovernance[communityId].voteWindow;
 }
 
-function checkEligibility(address user, uint256 communityId) 
+function checkEligibility(address user, uint256 communityId)
     external view returns (bool eligible, string memory reason) {
-    
+
     EligibilityParams memory params = communityEligibility[communityId];
-    
+
     // Check seniority
     uint256 userAge = block.timestamp - _getUserRegistrationTime(user);
     if (userAge < params.minSeniority) {
         return (false, "Insufficient account seniority");
     }
-    
+
     // Check SBT count
     uint256 sbtCount = IWorkerSBT(workerSBT).balanceOf(user);
     if (sbtCount < params.minSBTs) {
         return (false, "Insufficient WorkerSBT count");
     }
-    
+
     // Check token balance
     uint256 tokenBalance = IMembershipToken(membershipToken).balanceOf(user);
     if (tokenBalance < params.minTokenBalance) {
         return (false, "Insufficient MembershipToken balance");
     }
-    
+
     return (true, "Eligible");
 }
 ```
@@ -164,21 +164,21 @@ modifier validParameterRange(string calldata paramName, uint256 value) {
     _;
 }
 
-function _validateParameterRange(string calldata paramName, uint256 value) 
+function _validateParameterRange(string calldata paramName, uint256 value)
     private pure returns (bool) {
-    
+
     bytes32 paramHash = keccak256(abi.encodePacked(paramName));
-    
+
     if (paramHash == keccak256("debateWindow")) {
         return value >= 3600 && value <= 604800; // 1 hour to 1 week
     } else if (paramHash == keccak256("voteWindow")) {
-        return value >= 3600 && value <= 604800; // 1 hour to 1 week  
+        return value >= 3600 && value <= 604800; // 1 hour to 1 week
     } else if (paramHash == keccak256("proposalThreshold")) {
         return value <= 1000000e18; // Max 1M tokens
     } else if (paramHash == keccak256("revenueSplit")) {
         return value <= 10000; // Max 100% in basis points
     }
-    
+
     return false;
 }
 ```
@@ -186,18 +186,18 @@ function _validateParameterRange(string calldata paramName, uint256 value)
 ### Emergency Parameter Controls
 
 ```solidity
-function emergencyParameterReset(uint256 communityId) 
+function emergencyParameterReset(uint256 communityId)
     external onlyRole(EMERGENCY_ROLE) {
-    
+
     // Reset to safe default values
     communityGovernance[communityId] = GovernanceParams({
         debateWindow: 86400,        // 24 hours
         voteWindow: 259200,         // 72 hours
-        executionDelay: 172800,     // 48 hours  
+        executionDelay: 172800,     // 48 hours
         proposalThreshold: 100e18,  // 100 tokens
         quorumRequired: 1000        // 10% (basis points)
     });
-    
+
     emit EmergencyParameterReset(communityId);
 }
 ```
@@ -210,7 +210,7 @@ function emergencyParameterReset(uint256 communityId)
 // ShiftGovernor queries ParamController for current settings
 interface IParamController {
     function getDebateWindow(uint256 communityId) external view returns (uint256);
-    function getVoteWindow(uint256 communityId) external view returns (uint256);  
+    function getVoteWindow(uint256 communityId) external view returns (uint256);
     function getExecutionDelay(uint256 communityId) external view returns (uint256);
     function getProposalThreshold(uint256 communityId) external view returns (uint256);
 }
@@ -228,7 +228,7 @@ function _getVotingPeriod() internal view override returns (uint256) {
 function submitClaim(uint256 actionId, string calldata evidenceCID) external {
     (bool eligible, string memory reason) = paramController.checkEligibility(msg.sender, communityId);
     require(eligible, reason);
-    
+
     // Proceed with claim processing...
 }
 ```
@@ -239,11 +239,11 @@ function submitClaim(uint256 actionId, string calldata evidenceCID) external {
 // Revenue distribution uses dynamic split parameters
 function distributeRevenue(uint256 totalRevenue) external {
     uint256[3] memory splits = paramController.getRevenueSplit(communityId);
-    
+
     uint256 workersShare = (totalRevenue * splits[0]) / 10000;
     uint256 treasuryShare = (totalRevenue * splits[1]) / 10000;
     uint256 investorsShare = (totalRevenue * splits[2]) / 10000;
-    
+
     // Distribute according to current parameters...
 }
 ```
@@ -259,7 +259,7 @@ Initial Launch:
 └── Higher investor revenue share
 
 Community Maturity:
-├── Reduced debate periods (more efficient)  
+├── Reduced debate periods (more efficient)
 ├── Lower participation barriers (more inclusive)
 └── Increased treasury/worker revenue share
 
@@ -284,13 +284,13 @@ Seasonal Adjustments:
 
 ```
 Revenue Distribution Evolution:
-├── Startup: [30% workers, 20% treasury, 50% investors]  
+├── Startup: [30% workers, 20% treasury, 50% investors]
 ├── Growth: [40% workers, 30% treasury, 30% investors]
 └── Mature: [60% workers, 40% treasury, 0% investors]
 
 Fee Structure Adaptation:
 ├── Bear Market: Lower exit fees, encourage retention
-├── Bull Market: Higher exit fees, capitalize on speculation  
+├── Bull Market: Higher exit fees, capitalize on speculation
 └── Stable: Balanced fees, sustainable operations
 ```
 
@@ -312,11 +312,11 @@ communityGovernance[communityId] = GovernanceParams({
 
 ```solidity
 communityGovernance[communityId] = GovernanceParams({
-    debateWindow: 43200,         // 12 hours debate  
+    debateWindow: 43200,         // 12 hours debate
     voteWindow: 172800,          // 48 hours voting
     executionDelay: 86400,       // 24 hours timelock
     proposalThreshold: 100e18,   // 100 tokens to propose
-    quorumRequired: 1000         // 10% participation required  
+    quorumRequired: 1000         // 10% participation required
 });
 ```
 
@@ -338,7 +338,7 @@ communityEligibility[communityId] = EligibilityParams({
 ```solidity
 struct ParameterSchedule {
     uint256 startTime;
-    uint256 endTime;  
+    uint256 endTime;
     uint256 startValue;
     uint256 endValue;
     bool active;
@@ -361,12 +361,12 @@ function scheduleParameterTransition(
 ```solidity
 enum CommunityType {
     STARTUP,      // Flexible, fast governance
-    ESTABLISHED,  // Balanced governance  
+    ESTABLISHED,  // Balanced governance
     CONSERVATIVE, // Slow, deliberate governance
     EXPERIMENTAL  // Cutting-edge parameters
 }
 
-function applyParameterTemplate(uint256 communityId, CommunityType template) 
+function applyParameterTemplate(uint256 communityId, CommunityType template)
     external onlyGovernance {
     // Apply pre-configured parameter sets
 }

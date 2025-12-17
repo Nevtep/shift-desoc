@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 
 async function checkGasCosts() {
   console.log("🔍 Analyzing gas costs for community creation...");
-  
+
   // Tx hashes from the successful deployment
   const txHashes = [
     "0x7aa285316364083addab2df10edb913f16296854cc2d12b29655077bf11ec4a7",
@@ -19,7 +19,7 @@ async function checkGasCosts() {
     "0xd28e04d4d57625897f1640fea5607d3a1388f62caafe6f41a8efb95a72c8923c",
     "0xee46071aeab285b5ddf6144fef9480ca9570ef75444c2f3c0b2bafce86659f09",
     "0xd1dedddf70e3e9eaae940173108fd66f3e89d2ec88d1fb2169338824c18503c5",
-    "0x455a1981f5324f4dfc9d9b4e70bc15172c7fd70a564d0c298a58803cc4ce3cfc"
+    "0x455a1981f5324f4dfc9d9b4e70bc15172c7fd70a564d0c298a58803cc4ce3cfc",
   ];
 
   let totalGasUsed = 0n;
@@ -27,29 +27,32 @@ async function checkGasCosts() {
   const details = [];
 
   console.log("📊 Processing transactions...");
-  
-  for (let i = 0; i < Math.min(txHashes.length, 10); i++) { // Check first 10 tx for speed
+
+  for (let i = 0; i < Math.min(txHashes.length, 10); i++) {
+    // Check first 10 tx for speed
     const txHash = txHashes[i];
     try {
       const receipt = await ethers.provider.getTransactionReceipt(txHash);
       const tx = await ethers.provider.getTransaction(txHash);
-      
+
       if (receipt && tx) {
         const gasUsed = receipt.gasUsed;
         const gasPrice = tx.gasPrice || 0n;
         const cost = gasUsed * gasPrice;
-        
+
         totalGasUsed += gasUsed;
         totalCostWei += cost;
-        
+
         details.push({
           tx: i + 1,
           gasUsed: gasUsed.toString(),
           gasPrice: ethers.formatUnits(gasPrice, "gwei"),
-          costEth: ethers.formatUnits(cost, "ether")
+          costEth: ethers.formatUnits(cost, "ether"),
         });
-        
-        console.log(`TX ${i + 1}: ${gasUsed.toString()} gas @ ${ethers.formatUnits(gasPrice, "gwei")} gwei = ${ethers.formatUnits(cost, "ether")} ETH`);
+
+        console.log(
+          `TX ${i + 1}: ${gasUsed.toString()} gas @ ${ethers.formatUnits(gasPrice, "gwei")} gwei = ${ethers.formatUnits(cost, "ether")} ETH`,
+        );
       }
     } catch (error) {
       console.log(`❌ Error checking TX ${i + 1}: ${error}`);
@@ -58,21 +61,27 @@ async function checkGasCosts() {
 
   // Get current ETH price estimate (Base Sepolia uses ETH for gas)
   const totalCostEth = ethers.formatUnits(totalCostWei, "ether");
-  
+
   console.log("\n📋 SUMMARY:");
   console.log(`Total Gas Used: ${totalGasUsed.toString()} gas`);
   console.log(`Total Cost: ${totalCostEth} ETH`);
   console.log(`Number of transactions: ${details.length}`);
-  console.log(`Average gas per TX: ${totalGasUsed / BigInt(details.length)} gas`);
-  
+  console.log(
+    `Average gas per TX: ${totalGasUsed / BigInt(details.length)} gas`,
+  );
+
   // Estimate USD cost (rough estimate: 1 ETH = $3000)
   const estimatedUSD = parseFloat(totalCostEth) * 3000;
-  console.log(`Estimated USD cost: ~$${estimatedUSD.toFixed(4)} (assuming ETH = $3000)`);
+  console.log(
+    `Estimated USD cost: ~$${estimatedUSD.toFixed(4)} (assuming ETH = $3000)`,
+  );
 
   console.log("\n💡 Cost Analysis:");
   console.log("- This was a REAL deployment on Base Sepolia testnet");
   console.log("- Gas costs are representative of mainnet deployment");
-  console.log("- Base network typically has lower gas costs than Ethereum mainnet");
+  console.log(
+    "- Base network typically has lower gas costs than Ethereum mainnet",
+  );
   console.log("- Community creation involves ~28 transactions total");
 }
 
