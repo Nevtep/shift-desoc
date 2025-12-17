@@ -22,6 +22,18 @@ Documentación completa en español incluyendo:
 
 ---
 
+## 🎯 **Project Status** | **Estado del Proyecto**
+
+**✅ PRODUCTION-READY MVP COMPLETED** (November 2025)
+- Real community deployments operating on Base Sepolia
+- Complete API-based deployment system (~$0.19 per community)
+- 11 contracts fully documented and verified
+- Mobile integration framework complete
+
+**For latest status**: Check [Project Management Hub](../.github/project-management/)
+
+---
+
 ## 🚀 Quick Links | Enlaces Rápidos
 
 ### For Investors | Para Inversores
