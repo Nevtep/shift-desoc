@@ -13,7 +13,7 @@ import Future from '../sections/Future'
 import GettingStarted from '../sections/GettingStarted'
 import CTA from '../sections/CTA'
 import Footer from '../sections/Footer'
-import type { Language } from '../lib/i18n'
+import type { Language } from '../providers/i18n'
 
 interface LandingPageProps {
   onLanguageChange?: (language: Language) => Promise<void> | void

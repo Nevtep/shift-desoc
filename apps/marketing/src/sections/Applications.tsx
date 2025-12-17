@@ -3,7 +3,7 @@
 import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Card } from 'tamagui'
 import { Container } from '../components/Container'
-import { useTranslations } from '../lib/i18n/I18nContext'
+import { useTranslations } from '../providers/i18n/I18nContext'
 
 const PlaceholderImage = () => (
   <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto' }}>

@@ -1,7 +1,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import type { Language } from '../lib/i18n'
+import type { Language } from '../providers/i18n'
 
 const COOKIE_NAME = 'shift-language'
 const ONE_YEAR = 60 * 60 * 24 * 365

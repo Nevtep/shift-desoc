@@ -4,8 +4,8 @@ import React, { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { XStack, Select, Adapt, Sheet } from 'tamagui'
 import { setLanguageAction } from '../actions/set-language'
-import { useLanguage, useTranslations } from '../lib/i18n/I18nContext'
-import type { Language } from '../lib/i18n'
+import { useLanguage, useTranslations } from '../providers/i18n/I18nContext'
+import type { Language } from '../providers/i18n'
 
 interface LanguageSelectorProps {
   onLanguageChange?: (language: Language) => Promise<void> | void
