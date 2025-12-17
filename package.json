@@ -33,6 +33,7 @@
     "setup:finalize-community": "npx hardhat run scripts/hardhat/final-community-setup.ts --network",
     "setup:fix-issues": "npx hardhat run scripts/hardhat/fix-community-issues.ts --network",
     "validate-deployment": "npx hardhat run scripts/hardhat/validate-deployment.ts --network",
+    "verify:addresses": "node scripts/verify-deployment-addresses.js",
     "test:e2e": "npx hardhat run scripts/hardhat/test-e2e-scenario.ts --network",
     "gas-costs": "npx hardhat run scripts/hardhat/check-gas-costs.ts --network",
     "check:balance": "npx hardhat run scripts/check-balance.ts --network",

@@ -6,19 +6,27 @@
 
 Core flow: `requests → drafts → proposals → timelock execution` with ValuableAction-based merit verification and token rewards.
 
-## 🎯 **Current Status: PRODUCTION-READY MVP (November 2025)**
+## 🎯 **Current Status: PRODUCTION-READY MVP (December 2025)**
 
-**✅ PRODUCTION DEPLOYED**: Complete ecosystem successfully deployed and verified on Base Sepolia with real community operations.
+**✅ PRODUCTION DEPLOYED**: Complete ecosystem successfully deployed and verified on Base Sepolia with operational community.
 
 **Key Achievements:**
 
-- **API-Based Community Creation**: Scalable deployment system avoiding blockchain size limits (~$0.19 per community vs $9,600 on Ethereum)
-- **Real Deployments Verified**: Community ID 3 successfully operating on Base Sepolia with full functionality
-- **Complete Documentation**: 11 contracts fully documented with technical architecture and business value
-- **100% Test Success Rate**: Production-ready code quality with comprehensive test coverage
-- **Mobile Integration Ready**: Complete Next.js backend and Expo React Native framework
+- **Complete Contract Suite**: All 22 contracts deployed and verified on Base Sepolia
+- **API-Based Community Creation**: Scalable deployment system with JSON address management (~$0.19 per community vs $9,600 on Ethereum)
+- **Real Deployments Verified**: Community ID 1 successfully operating on Base Sepolia with full configuration
+- **Comprehensive Documentation**: 21 contracts fully documented with technical architecture and business value
+- **Automated Address Management**: Deployment addresses auto-saved to deployments/{network}.json files
+- **Production-Ready Infrastructure**: Complete deployment scripts, verification tools, and Base mainnet optimization (0.05 gwei gas)
 
-**Target Networks:** Base (primary), Ethereum (secondary), with Base Sepolia for testing
+**Target Networks:** Base (primary - optimized), Ethereum (secondary), with Base Sepolia for testing
+
+**Deployed Contract Suite (22 contracts):**
+- **Core Infrastructure**: CommunityRegistry, ParamController
+- **Governance System**: ShiftGovernor, TimelockController (OpenZeppelin), CountingMultiChoice, MembershipTokenERC20Votes
+- **Work Verification**: VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionRegistry, Claims, ValuableActionSBT
+- **Economic Layer**: CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter
+- **Community Modules**: RequestHub, DraftsManager, CommerceDisputes, Marketplace, HousingManager, ProjectFactory
 
 ## Architecture Overview
 
@@ -100,11 +108,12 @@ pnpm -C packages/hardhat hardhat run scripts/deploy.ts --network base_sepolia
 
 ### Current Deployment Status
 
-- **Base Sepolia**: ✅ Community ID 3 deployed with 28 successful transactions
+- **Base Sepolia**: ✅ Community ID 1 deployed with 22 contracts successfully configured
 - **Contract Verification**: ✅ All contracts verified on BaseScan
-- **Cost Analysis**: ✅ ~$0.19 USD per community deployment confirmed
+- **Cost Analysis**: ✅ ~$0.19 USD per community deployment confirmed (testnet)
 - **API Integration**: ✅ Next.js backend deployment system operational
-- **Mobile Framework**: ✅ Expo React Native integration guides complete
+- **Address Management**: ✅ Automated JSON-based address saving/loading system
+- **Base Mainnet Ready**: ✅ Gas optimized (0.05 gwei) for ~$10 production deployment
 
 ## Community Coordination & Discussion Architecture (CRITICAL LAYER)
 
@@ -652,19 +661,37 @@ Before considering implementation complete, verify:
 
 #### **Phase 5: Deployment & Testing ✅ COMPLETE**
 
-1. ✅ **API deployment scripts**: Complete Next.js backend system
+1. ✅ **API deployment scripts**: Complete Next.js backend system with automated address management
 2. ✅ **On-chain testing**: Real deployments on Base Sepolia verified
-3. ✅ **Test coverage**: Comprehensive test suite with CI/CD
-4. ✅ **Base Sepolia deployment**: Community ID 3 operational with 28 transactions
+3. ✅ **Test coverage**: Comprehensive test suite with CI/CD (≥86% coverage enforced)
+4. ✅ **Base Sepolia deployment**: Community ID 1 operational with all 22 contracts configured
+5. ✅ **Automated address management**: deployments/{network}.json system with auto-loading
+6. ✅ **Base mainnet optimization**: Gas settings optimized (0.05 gwei for ~$10 deployment cost)
+7. ✅ **Comprehensive documentation**: 21 contracts fully documented in /docs/EN/contracts/
 
-### 🚀 CURRENT PHASE: Production Operations & Enhancement
+#### **Phase 6: Community Modules ✅ COMPLETE**
 
-**Next Steps:**
+1. ✅ **Marketplace**: Service marketplace with quality verification and dispute integration
+2. ✅ **ProjectFactory**: ERC-1155 crowdfunding with milestone validation
+3. ✅ **HousingManager**: Co-housing reservations with investor staking and worker discounts
+4. ✅ **CommerceDisputes**: Dedicated dispute resolution for commercial transactions
+5. ✅ **CohortRegistry**: Investment cohort management with Target ROI tracking
 
-1. **ShiftGovernor Documentation Review**: Ensure alignment with implementation
-2. **Advanced Features**: Multi-stakeholder governance enhancements
-3. **Cross-Community Features**: Reputation portability and federation
-4. **Production Deployment**: Base mainnet launch preparation
+### 🚀 CURRENT PHASE: Production Launch & Ecosystem Growth
+
+**Immediate Next Steps:**
+
+1. **Base Mainnet Deployment**: Production launch with optimized gas settings
+2. **Community Onboarding**: First 5-10 pilot communities
+3. **Frontend Polish**: User experience optimization for non-technical users
+4. **Mobile App Launch**: React Native app with production API integration
+
+**Q1 2026 Roadmap:**
+
+1. **Cross-Community Features**: Reputation portability and federation mechanisms
+2. **Advanced Governance**: Multi-stakeholder voting enhancements
+3. **Economic Optimization**: Dynamic revenue distribution based on performance metrics
+4. **Verifier Democracy**: Enhanced VPT election system with term limits and accountability
 
 ## Quick Start Commands
 
@@ -673,13 +700,54 @@ Before considering implementation complete, verify:
 pnpm install
 pnpm build                    # Compile both toolchains
 pnpm forge:test              # Run Foundry tests
-pnpm cov:gate                # Check coverage
+pnpm cov:gate                # Check coverage (≥86% enforced)
 
-# Deploy to testnet
-pnpm -C packages/hardhat hardhat run scripts/deploy.ts --network base_sepolia
+# Deploy complete system to testnet
+pnpm -C packages/hardhat hardhat run scripts/deploy-complete.ts --network base_sepolia
+
+# Verify deployment addresses
+pnpm verify:addresses
+
+# Manage deployed system
+pnpm manage:system --network base_sepolia
 
 # Format code
 pnpm fmt
 ```
+
+## Deployment Infrastructure
+
+### API-Based Community Creation
+
+Shift uses an **API-based deployment system** avoiding blockchain size limits:
+
+```typescript
+// Backend deploys complete 22-contract suite
+POST /api/communities/deploy
+{
+  "communityName": "New Community",
+  "founderAddress": "0x...",
+  "network": "base_sepolia"
+}
+
+// Addresses auto-saved to deployments/{network}.json
+```
+
+### Automated Address Management
+
+```bash
+# Deployment automatically saves addresses
+deployments/base_sepolia.json      # Network-specific
+deployments/latest.json            # Most recent
+
+# Scripts auto-load from JSON (no manual configuration needed)
+pnpm manage:system --network base_sepolia
+```
+
+**Benefits:**
+- **Cost**: ~$0.19 on Base Sepolia, ~$10 on Base mainnet
+- **No Size Limits**: Independent deployments avoid contract size constraints
+- **Automatic Config**: Addresses saved/loaded automatically
+- **Network Flexible**: Works across Base, Ethereum, and testnets
 
 Focus on building robust, well-tested contracts that form the foundation of decentralized community governance and work verification.

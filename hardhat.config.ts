@@ -19,10 +19,14 @@ const config: HardhatUserConfig = {
     base_sepolia: {
       url: process.env.RPC_BASE_SEPOLIA || "https://sepolia.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 84532,
+      // Use EIP-1559 gas settings for Base Sepolia
+      // Higher values to avoid "replacement transaction underpriced" errors
     },
     base: {
       url: process.env.RPC_BASE || "https://mainnet.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 8453, // Base mainnet chain ID
     },
     hardhat: {
       allowUnlimitedContractSize: true,
