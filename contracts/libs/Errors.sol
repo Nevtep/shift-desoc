@@ -24,7 +24,8 @@ library Errors {
     error ExcessiveWeightAllocation(uint256 total);
     
     // Claims verification errors
-    error InvalidActionType(uint256 actionTypeId);
+    error InvalidValuableAction(uint256 valuableActionId);
+    error InvalidActionType(uint256 actionTypeId); // Legacy support
     error ClaimNotFound(uint256 claimId);
     error ClaimAlreadyVerified(uint256 claimId);
     error InsufficientVerifiers(uint256 available, uint256 required);
@@ -34,4 +35,12 @@ library Errors {
     error InsufficientBalance(address account, uint256 required, uint256 actual);
     error TransferFailed(address from, address to, uint256 amount);
     error InvalidTokenAmount(uint256 amount);
+    
+    // WorkerSBT errors
+    error Soulbound();
+    error TokenNotExists(uint256 tokenId);
+    error WorkerAlreadyHasToken(address worker);
+    error InsufficientWorkerPoints(address worker, uint256 required, uint256 actual);
+    error InvalidWorkerPointsAmount(uint256 amount);
+    error WorkerPointsDecayTooHigh(uint256 decay, uint256 maxDecay);
 }

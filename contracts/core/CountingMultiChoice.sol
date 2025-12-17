@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ICountingMultiChoice} from "contracts/core/interfaces/ICountingMultiChoice.sol";
+import {ICountingMultiChoice} from 
+    "contracts/core/interfaces/ICountingMultiChoice.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
 /// @title CountingMultiChoice
