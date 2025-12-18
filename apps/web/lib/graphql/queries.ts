@@ -170,6 +170,44 @@ export type DraftQueryResult = {
   } | null;
 };
 
+export const DraftsQuery = /* GraphQL */ `
+  query Drafts($communityId: ID, $status: [DraftStatus!], $first: Int = 20, $after: String) {
+    drafts(communityId: $communityId, status: $status, first: $first, after: $after) {
+      nodes {
+        id
+        requestId
+        status
+        latestVersionCid
+        escalatedProposalId
+        updatedAt
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+`;
+
+export type DraftNode = {
+  id: string;
+  requestId: string;
+  status: string;
+  latestVersionCid?: string | null;
+  escalatedProposalId?: string | null;
+  updatedAt: string;
+};
+
+export type DraftsQueryResult = {
+  drafts: {
+    nodes: DraftNode[];
+    pageInfo: {
+      endCursor?: string | null;
+      hasNextPage: boolean;
+    };
+  };
+};
+
 export const ProposalQuery = /* GraphQL */ `
   query Proposal($id: ID!) {
     proposal(id: $id) {
@@ -210,6 +248,46 @@ export type ProposalQueryResult = {
       castAt: string;
     }>;
   } | null;
+};
+
+export const ProposalsQuery = /* GraphQL */ `
+  query Proposals($communityId: ID, $state: [ProposalState!], $first: Int = 20, $after: String) {
+    proposals(communityId: $communityId, state: $state, first: $first, after: $after) {
+      nodes {
+        id
+        communityId
+        proposer
+        state
+        createdAt
+        queuedAt
+        executedAt
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+`;
+
+export type ProposalNode = {
+  id: string;
+  communityId: string;
+  proposer: string;
+  state: string;
+  createdAt: string;
+  queuedAt?: string | null;
+  executedAt?: string | null;
+};
+
+export type ProposalsQueryResult = {
+  proposals: {
+    nodes: ProposalNode[];
+    pageInfo: {
+      endCursor?: string | null;
+      hasNextPage: boolean;
+    };
+  };
 };
 
 export const ClaimsQuery = /* GraphQL */ `
