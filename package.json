@@ -2,7 +2,8 @@
   "name": "shift",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "fmt": "prettier -w 'contracts/**/*.sol' 'scripts/**/*.{ts,js}' 'test/**/*.{ts,js,sol}' '*.{ts,json}'",
