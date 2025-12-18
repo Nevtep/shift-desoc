@@ -1,3 +1,3 @@
-export function placeholderContracts() {
-  throw new Error("@shift/contracts is not yet implemented. Import real loaders once scaffolding completes.");
-}
+export type { Deployment, AddressBook, DeploymentLoadOptions } from "./types";
+export { loadDeployment, loadAddressBook } from "./loadDeployment";
+export { CHAIN_ID_TO_NETWORK } from "./networks";
