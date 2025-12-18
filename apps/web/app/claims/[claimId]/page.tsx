@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ClaimDetail } from "../../../components/claims/claim-detail";
 
 export const metadata = {
   title: "Claim Detail | Shift"
@@ -17,26 +17,11 @@ export default function ClaimDetailPage({ params }: PageProps) {
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Claim</p>
         <h1 className="text-3xl font-semibold">Claim {params.claimId}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Claim evidence manifests, juror ballots, and final resolution will render after indexer wiring.
+          Claim evidence manifests, juror ballots, and resolution status sync from the indexer and IPFS edge
+          proxy.
         </p>
       </header>
-      <section className="space-y-4">
-        <div className="rounded-lg border border-border p-4 shadow-sm">
-          <h2 className="text-lg font-medium">Verification Panel</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Juror assignments and decision timestamps will display here using indexed events.
-          </p>
-        </div>
-        <div className="rounded-lg border border-border p-4 shadow-sm">
-          <h2 className="text-lg font-medium">Evidence</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sanitized markdown from the IPFS edge proxy will appear in this section.
-          </p>
-          <Link className="mt-3 inline-flex text-sm underline" href={`/governance/proposals?claimId=${params.claimId}`}>
-            View associated governance
-          </Link>
-        </div>
-      </section>
+      <ClaimDetail claimId={params.claimId} />
     </main>
   );
 }

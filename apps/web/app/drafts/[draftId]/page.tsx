@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { DraftDetail } from "../../../components/drafts/draft-detail";
 
 export const metadata = {
   title: "Draft Detail | Shift"
@@ -17,31 +17,11 @@ export default function DraftDetailPage({ params }: PageProps) {
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Draft</p>
         <h1 className="text-3xl font-semibold">Draft {params.draftId}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Version history, review activity, and escalation status will render here with the indexed data
-          and IPFS-backed markdown.
+          Version history, review activity, and escalation status sync from the indexer alongside
+          sanitized IPFS markdown.
         </p>
       </header>
-      <section className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-border p-4 shadow-sm">
-          <h2 className="text-lg font-medium">Latest Version</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sanitized draft content from IPFS will display after the edge proxy wiring is complete.
-          </p>
-        </div>
-        <div className="rounded-lg border border-border p-4 shadow-sm">
-          <h2 className="text-lg font-medium">Actions</h2>
-          <ul className="mt-2 space-y-2 text-sm">
-            <li>
-              <Link className="underline" href={`/governance/proposals?sourceDraft=${params.draftId}`}>
-                View escalated proposal
-              </Link>
-            </li>
-            <li>
-              <span className="text-muted-foreground">Submit review (coming soon)</span>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <DraftDetail draftId={params.draftId} />
     </main>
   );
 }
