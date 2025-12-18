@@ -19,7 +19,7 @@ cache/
 # Foundry
 **/cache/
 **/out/
-lib/
+./lib/
 foundry.lock
 lcov.info
 
