@@ -1,81 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkGfm from "remark-gfm";
-import remarkRehype from "remark-rehype";
-import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import rehypeStringify from "rehype-stringify";
-import { z } from "zod";
-
 import { getEnv } from "@shift/shared";
+
+import {
+  type Document,
+  DocumentSchema
+} from "../../../../lib/ipfs/schemas";
+import { renderMarkdownToHtml } from "../../../../lib/ipfs/markdown";
 
 export const runtime = "edge";
 
 const CID_PATTERN = /^[a-zA-Z0-9]+$/;
 const MAX_DOCUMENT_CHAR_LENGTH = 1_000_000;
-
-const AttachmentSchema = z.object({
-  cid: z.string().min(1),
-  type: z.enum(["image", "file", "link"]).default("image"),
-  label: z.string().optional(),
-  description: z.string().optional()
-});
-
-const BaseDocumentSchema = z.object({
-  type: z.enum(["request", "draftVersion", "claimEvidence"]),
-  version: z.string().min(1)
-});
-
-const RequestDocumentSchema = BaseDocumentSchema.extend({
-  type: z.literal("request"),
-  title: z.string().min(1),
-  summary: z.string().optional(),
-  bodyMarkdown: z.string().min(1),
-  tags: z.array(z.string()).default([]),
-  attachments: z.array(AttachmentSchema).optional()
-});
-
-const DraftVersionDocumentSchema = BaseDocumentSchema.extend({
-  type: z.literal("draftVersion"),
-  draftId: z.string().min(1),
-  author: z.string().min(1),
-  bodyMarkdown: z.string().min(1),
-  changelog: z.array(z.string()).default([]),
-  actionBundlePreview: z.object({
-    targets: z.array(z.string()),
-    values: z.array(z.string()),
-    signatures: z.array(z.string())
-  })
-});
-
-const EvidenceItemSchema = z.object({
-  cid: z.string().min(1),
-  type: z.enum(["file", "image", "link", "text"]).default("file"),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  timestamp: z.string().optional(),
-  geo: z
-    .object({
-      lat: z.number(),
-      lng: z.number()
-    })
-    .optional()
-});
-
-const ClaimEvidenceDocumentSchema = BaseDocumentSchema.extend({
-  type: z.literal("claimEvidence"),
-  claimId: z.string().min(1),
-  submittedAt: z.string(),
-  evidence: z.array(EvidenceItemSchema)
-});
-
-const DocumentSchema = z.discriminatedUnion("type", [
-  RequestDocumentSchema,
-  DraftVersionDocumentSchema,
-  ClaimEvidenceDocumentSchema
-]);
-
-type Document = z.infer<typeof DocumentSchema>;
 
 type RouteParams = {
   params: {
@@ -171,16 +106,8 @@ async function buildHtmlPayload(document: Document) {
   }
 
   const markdown = document.bodyMarkdown;
-  const file = await unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .use(remarkRehype)
-    .use(rehypeSanitize, defaultSchema)
-    .use(rehypeStringify)
-    .process(markdown);
-
   return {
-    body: String(file)
+    body: await renderMarkdownToHtml(markdown)
   };
 }
 
