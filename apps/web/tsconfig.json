@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "moduleResolution": "Node",
+    "module": "ESNext",
+    "target": "ES2020",
+    "baseUrl": ".",
+    "paths": {
+      "@shift/ui/*": ["../../packages/ui/src/*"],
+      "@shift/shared/*": ["../../packages/shared/src/*"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
+}
