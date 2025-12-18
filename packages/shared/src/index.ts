@@ -1,3 +1,4 @@
-export function placeholderShared() {
-  throw new Error("@shift/shared utilities not yet implemented.");
-}
+export { getEnv } from "./env";
+export type { ShiftEnv } from "./env";
+export { createShiftConfig } from "./wagmi";
+export { uploadJsonToPinata, fetchJsonFromIpfs } from "./ipfs";

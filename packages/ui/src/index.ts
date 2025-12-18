@@ -1,3 +1,1 @@
-export function placeholderUi() {
-  throw new Error("@shift/ui components not yet implemented.");
-}
+export { tailwindPreset } from "./tailwind-preset";
