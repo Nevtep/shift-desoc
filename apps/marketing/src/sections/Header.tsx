@@ -33,8 +33,10 @@ export default function Header() {
           priority
           style={{
             objectFit: 'contain',
+            width: 'auto',
             height: 'auto',
             maxHeight: '60px',
+            maxWidth: '200px',
           }}
         />
       </XStack>
