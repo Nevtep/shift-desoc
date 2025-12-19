@@ -2,9 +2,9 @@
 
 import React, { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { XStack, Select, Adapt, Sheet } from 'tamagui'
+import { Paragraph, XStack } from 'tamagui'
 import { setLanguageAction } from '../actions/set-language'
-import { useLanguage, useTranslations } from '../providers/i18n/I18nContext'
+import { useLanguage } from '../providers/i18n/I18nContext'
 import type { Language } from '../providers/i18n'
 
 interface LanguageSelectorProps {
@@ -13,7 +13,6 @@ interface LanguageSelectorProps {
 
 export default function LanguageSelector({ onLanguageChange }: LanguageSelectorProps) {
   const [currentLanguage, setLanguage] = useLanguage()
-  const t = useTranslations()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -38,61 +37,34 @@ export default function LanguageSelector({ onLanguageChange }: LanguageSelectorP
   }
 
   return (
-    <XStack
-      top="$4"
-      right="$4"
-      zIndex={1000}
-      style={{ position: 'fixed' }}
-    >
-      <Select
-        value={currentLanguage}
-        onValueChange={handleValueChange}
-        size="$3"
-      >
-        <Select.Trigger
-          width={140}
-          borderWidth={2}
-          borderColor="$textDark"
-          backgroundColor="$white"
-          borderRadius="$2"
-          paddingHorizontal="$3"
-          paddingVertical="$2"
-          cursor="pointer"
-          disabled={isPending}
-          opacity={isPending ? 0.6 : 1}
-          hoverStyle={{
-            backgroundColor: '$background',
-            scale: 1.05,
-          }}
-          focusStyle={{
-            borderColor: '$primary',
-          }}
-        >
-          <Select.Value placeholder={t.langSelector} />
-        </Select.Trigger>
-        <Adapt when="sm" platform="touch">
-          <Sheet modal dismissOnSnapToBottom>
-            <Sheet.Frame>
-              <Sheet.ScrollView>
-                <Adapt.Contents />
-              </Sheet.ScrollView>
-            </Sheet.Frame>
-            <Sheet.Overlay />
-          </Sheet>
-        </Adapt>
-        <Select.Content zIndex={200000}>
-          <Select.ScrollUpButton />
-          <Select.Viewport>
-            <Select.Item index={0} value="es">
-              <Select.ItemText>Español</Select.ItemText>
-            </Select.Item>
-            <Select.Item index={1} value="en">
-              <Select.ItemText>English</Select.ItemText>
-            </Select.Item>
-          </Select.Viewport>
-          <Select.ScrollDownButton />
-        </Select.Content>
-      </Select>
+    <XStack gap="$3" alignItems="center">
+      {[
+        { code: 'es', label: 'Esp', flag: '🇪🇸' },
+        { code: 'en', label: 'Eng', flag: '🇺🇸' },
+      ].map((lang) => {
+        const isActive = currentLanguage === lang.code
+
+        return (
+          <XStack
+            key={lang.code}
+            role="button"
+            aria-label={lang.code === 'es' ? 'Cambiar a Español' : 'Switch to English'}
+            onPress={() => handleValueChange(lang.code)}
+            cursor="pointer"
+            opacity={isActive ? 1 : 0.55}
+            hoverStyle={{
+              opacity: 0.9,
+              scale: 1.05,
+            }}
+            pressStyle={{
+              scale: 0.97,
+            }}
+            disabled={isPending}
+          >
+            <Paragraph fontSize={22}>{lang.flag}</Paragraph>
+          </XStack>
+        )
+      })}
     </XStack>
   )
 }

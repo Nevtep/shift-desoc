@@ -84,6 +84,7 @@ export default function Features() {
 
   return (
     <YStack
+      id="solutions"
       backgroundColor="$background"
       paddingVertical="$10"
       paddingHorizontal="$4"

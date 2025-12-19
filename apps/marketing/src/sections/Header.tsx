@@ -1,10 +1,56 @@
 'use client'
 
-import React from 'react'
-import { XStack } from 'tamagui'
+import React, { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import Image from 'next/image'
+import { Button, Paragraph, XStack, YStack } from 'tamagui'
+import { Container } from '../components/Container'
+import { useTranslations } from '../providers/i18n/I18nContext'
+import LanguageSelector from './LanguageSelector'
 
 export default function Header() {
+  const t = useTranslations()
+  const [activeSection, setActiveSection] = useState('#home')
+
+  const navItems = useMemo(
+    () => [
+      { href: '#home', label: t.navHome },
+      { href: '#about', label: t.navAbout },
+      { href: '#solutions', label: t.navSolutions },
+      { href: '#whitepaper', label: t.navWhitepaper },
+      { href: '#contact', label: t.navContact },
+    ],
+    [t.navAbout, t.navContact, t.navHome, t.navSolutions, t.navWhitepaper]
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(`#${entry.target.id}`)
+          }
+        })
+      },
+      {
+        rootMargin: '-50% 0px -40% 0px',
+        threshold: [0.25, 0.5, 0.75],
+      }
+    )
+
+    navItems.forEach((item) => {
+      const id = item.href.replace('#', '')
+      const section = document.getElementById(id)
+      if (section) {
+        observer.observe(section)
+      }
+    })
+
+    return () => observer.disconnect()
+  }, [navItems])
+
   return (
     <header
       style={{
@@ -13,33 +59,81 @@ export default function Header() {
         left: 0,
         right: 0,
         zIndex: 999,
-        backgroundColor: 'transparent',
+        backgroundColor: '#f6f0e1',
       }}
     >
-      <XStack
-        paddingHorizontal="$4"
+      <YStack
+        backgroundColor="#f6f0e1"
         paddingVertical="$3"
-        backgroundColor="$background"
-        borderBottomWidth={1}
-        borderBottomColor="$greyLight"
-        alignItems="center"
-        justifyContent="flex-start"
       >
-        <Image
-          src="/imagotipo-h.svg"
-          alt="Shift Logo"
-          width={200}
-          height={100}
-          priority
-          style={{
-            objectFit: 'contain',
-            width: 'auto',
-            height: 'auto',
-            maxHeight: '60px',
-            maxWidth: '200px',
-          }}
-        />
-      </XStack>
+        <Container maxWidth={1250} width="100%">
+          <XStack alignItems="center" justifyContent="space-between" gap="$6">
+            <Link href="#home" aria-label="Shift home" style={{ textDecoration: 'none' }}>
+              <Image
+                src="/imagotipo-h.svg"
+                alt="Shift Logo"
+                width={352}
+                height={125}
+                priority
+                style={{
+                  objectFit: 'contain',
+                  width: 'auto',
+                  height: 'auto',
+                  maxHeight: '115px',
+                  maxWidth: '352px',
+                }}
+              />
+            </Link>
+
+            <XStack gap="$5" alignItems="center" flex={1} justifyContent="flex-end">
+              <XStack gap="$5" alignItems="center">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-label={item.label}
+                    style={{ textDecoration: 'none' }}
+                  >
+                    {/* sin subrayado; solo marca la sección activa */}
+                    <Paragraph
+                      fontSize={18}
+                      color="#6C8158"
+                      fontWeight="700"
+                      borderBottomColor={activeSection === item.href ? '#DD8848' : 'transparent'}
+                      borderBottomWidth={activeSection === item.href ? 2 : 0}
+                      paddingBottom={5}
+                      textDecorationLine="none"
+                    >
+                      {item.label}
+                    </Paragraph>
+                  </Link>
+                ))}
+              </XStack>
+
+              <XStack gap="$2" alignItems="center">
+                <Button
+                  size="$4"
+                  borderRadius="$3"
+                  paddingHorizontal="$4"
+                  backgroundColor="#DD8848"
+                  color="$white"
+                  fontSize="$5"
+                  fontWeight="700"
+                  borderWidth={0}
+                  hoverStyle={{ backgroundColor: '#c4733c' }}
+                  style={{
+                    backgroundImage: 'linear-gradient(135deg, #E09B3F 0%, #DD8649 100%)',
+                  }}
+                >
+                  {t.navGetStarted}
+                </Button>
+
+                <LanguageSelector />
+              </XStack>
+            </XStack>
+          </XStack>
+        </Container>
+      </YStack>
     </header>
   )
 }
