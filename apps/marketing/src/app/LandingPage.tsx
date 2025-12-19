@@ -1,6 +1,7 @@
 'use client'
 
 import { YStack } from 'tamagui'
+import Header from '../sections/Header'
 import LanguageSelector from '../sections/LanguageSelector'
 import Hero from '../sections/Hero'
 import Vision from '../sections/Vision'
@@ -22,6 +23,7 @@ interface LandingPageProps {
 export default function LandingPage({ onLanguageChange }: LandingPageProps = {}) {
   return (
     <YStack backgroundColor="$background" minHeight="100vh">
+      <Header />
       <LanguageSelector onLanguageChange={onLanguageChange} />
       <Hero />
       <Vision />

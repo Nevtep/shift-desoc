@@ -11,7 +11,8 @@ export default function Hero() {
   return (
     <YStack
       backgroundColor="$backgroundLight"
-      paddingVertical="$10"
+      paddingTop="$16"
+      paddingBottom="$10"
       paddingHorizontal="$4"
       alignItems="center"
     >
