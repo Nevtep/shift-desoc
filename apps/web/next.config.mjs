@@ -1,8 +1,8 @@
 const nextConfig = {
   reactStrictMode: true,
+  typedRoutes: true,
   experimental: {
-    typedRoutes: true,
-    serverActions: true
+    serverActions: {}
   }
 };
 

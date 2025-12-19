@@ -5,11 +5,12 @@ export const metadata = {
 };
 
 type PageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default function ProposalsPage({ searchParams }: PageProps) {
-  const communityIdParam = searchParams?.communityId;
+export default async function ProposalsPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const communityIdParam = resolvedSearchParams?.communityId;
   const communityId = Array.isArray(communityIdParam) ? communityIdParam[0] : communityIdParam;
 
   return (

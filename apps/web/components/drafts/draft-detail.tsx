@@ -3,22 +3,40 @@
 import Link from "next/link";
 import { useMemo } from "react";
 
-import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
+import { useApiQuery } from "../../hooks/useApiQuery";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
-import {
-  DraftQuery,
-  type DraftQueryResult
-} from "../../lib/graphql/queries";
+import type { DraftNode } from "./draft-list";
+
+type DraftVersionNode = {
+  id: string;
+  cid: string;
+  contributor: string;
+  createdAt: string;
+};
+
+type DraftReviewNode = {
+  id: string;
+  reviewer: string;
+  stance: string;
+  commentCid?: string | null;
+  createdAt: string;
+};
+
+type DraftDetailResponse = {
+  draft: (DraftNode & {
+    versions: DraftVersionNode[];
+    reviews: DraftReviewNode[];
+  }) | null;
+};
 
 export type DraftDetailProps = {
   draftId: string;
 };
 
 export function DraftDetail({ draftId }: DraftDetailProps) {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<DraftQueryResult>(
+  const { data, isLoading, isError, refetch } = useApiQuery<DraftDetailResponse>(
     ["draft", draftId],
-    DraftQuery,
-    { id: draftId }
+    `/drafts/${draftId}`
   );
 
   const draft = data?.draft ?? null;

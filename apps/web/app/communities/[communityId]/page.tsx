@@ -5,19 +5,20 @@ export const metadata = {
 };
 
 type PageParams = {
-  params: {
+  params: Promise<{
     communityId: string;
-  };
+  }>;
 };
 
-export default function CommunityDetailPage({ params }: PageParams) {
+export default async function CommunityDetailPage({ params }: PageParams) {
+  const { communityId } = await params;
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-12">
       <header className="space-y-3">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
           Community
         </p>
-        <h1 className="text-3xl font-semibold">Community {params.communityId}</h1>
+        <h1 className="text-3xl font-semibold">Community {communityId}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Detailed overview, governance configuration, and live metrics will appear here once
           indexing is complete.
@@ -31,27 +32,27 @@ export default function CommunityDetailPage({ params }: PageParams) {
           </p>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
-              <Link className="underline" href={`/requests?communityId=${params.communityId}`}>
+              <Link className="underline" href={`/requests?communityId=${communityId}`}>
                 Requests
               </Link>
             </li>
             <li>
-              <Link className="underline" href={`/drafts?communityId=${params.communityId}`}>
+              <Link className="underline" href={`/drafts?communityId=${communityId}`}>
                 Drafts
               </Link>
             </li>
             <li>
-              <Link className="underline" href={`/governance/proposals?communityId=${params.communityId}`}>
+              <Link className="underline" href={`/governance/proposals?communityId=${communityId}`}>
                 Proposals
               </Link>
             </li>
             <li>
-              <Link className="underline" href={`/claims?communityId=${params.communityId}`}>
+              <Link className="underline" href={`/claims?communityId=${communityId}`}>
                 Claims
               </Link>
             </li>
             <li>
-              <Link className="underline" href={`/marketplace?communityId=${params.communityId}`}>
+              <Link className="underline" href={`/marketplace?communityId=${communityId}`}>
                 Marketplace
               </Link>
             </li>

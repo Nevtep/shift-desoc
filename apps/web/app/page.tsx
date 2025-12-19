@@ -15,9 +15,14 @@ export default function HomePage() {
         <Link className="underline" href="/communities">
           View communities
         </Link>
-        <Link className="underline" href="/docs">
+        <a
+          className="underline"
+          href="https://github.com/Shift-Labs/shift/tree/main/docs"
+          target="_blank"
+          rel="noreferrer"
+        >
           Documentation
-        </Link>
+        </a>
       </div>
     </main>
   );

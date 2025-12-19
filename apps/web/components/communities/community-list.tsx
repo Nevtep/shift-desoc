@@ -2,20 +2,22 @@
 
 import { useMemo } from "react";
 
-import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
-import {
-  CommunitiesQuery,
-  type CommunitiesQueryResult
-} from "../../lib/graphql/queries";
+import { useApiQuery } from "../../hooks/useApiQuery";
+
+type Community = {
+  id: number;
+  chainId: number;
+  name: string;
+  metadataUri?: string | null;
+};
 
 export function CommunityList() {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<CommunitiesQueryResult>(
-    ["communities", { first: 20 }],
-    CommunitiesQuery,
-    { first: 20 }
+  const { data, isLoading, isError, refetch } = useApiQuery<{ items: Community[] }>(
+    ["communities", { limit: 20 }],
+    "/communities?limit=20"
   );
 
-  const communities = useMemo(() => data?.communities.nodes ?? [], [data]);
+  const communities = useMemo(() => data?.items ?? [], [data]);
 
   if (isLoading) {
     return (
