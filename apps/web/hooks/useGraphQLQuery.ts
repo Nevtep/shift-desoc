@@ -17,7 +17,7 @@ export function useGraphQLQuery<TData, TVariables extends Variables | undefined 
 
   return useQuery<TData>({
     queryKey,
-    queryFn: async () => client.request<TData, TVariables>(document, variables),
+    queryFn: async () => client.request<TData>(document, variables as Variables | undefined),
     ...options
   });
 }

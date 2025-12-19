@@ -15,7 +15,7 @@ export type ProposalDetailProps = {
 };
 
 export function ProposalDetail({ proposalId }: ProposalDetailProps) {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalQueryResult>(
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalQueryResult, { id: string }>(
     ["proposal", proposalId],
     ProposalQuery,
     { id: proposalId }

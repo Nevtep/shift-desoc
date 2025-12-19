@@ -4,12 +4,16 @@ import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { useMemo } from "react";
 
-import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
-import {
-  DraftsQuery,
-  type DraftNode,
-  type DraftsQueryResult
-} from "../../lib/graphql/queries";
+import { useApiQuery } from "../../hooks/useApiQuery";
+
+export type DraftNode = {
+  id: number;
+  requestId: number;
+  status: string;
+  latestVersionCid?: string | null;
+  escalatedProposalId?: string | null;
+  updatedAt: string;
+};
 
 export type DraftListProps = {
   communityId?: string;
@@ -17,13 +21,16 @@ export type DraftListProps = {
 
 export function DraftList({ communityId }: DraftListProps) {
   const variables = communityId ? { communityId } : undefined;
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<DraftsQueryResult>(
+  const params = new URLSearchParams();
+  params.set("limit", "20");
+  if (communityId) params.set("communityId", communityId);
+
+  const { data, isLoading, isError, refetch } = useApiQuery<{ items: DraftNode[] }>(
     ["drafts", variables],
-    DraftsQuery,
-    variables
+    `/drafts?${params.toString()}`
   );
 
-  const drafts = useMemo(() => data?.drafts.nodes ?? [], [data]);
+  const drafts = useMemo(() => data?.items ?? [], [data]);
 
   if (isLoading) return <StatusMessage message="Loading drafts…" />;
   if (isError)

@@ -14,8 +14,10 @@ import {
 } from "react";
 import type { Config as WagmiConfigType } from "wagmi";
 import { WagmiConfig } from "wagmi";
+import { createShiftConfig, getEnv } from "@shift/shared";
 
 const GraphQLClientContext = createContext<GraphQLClient | null>(null);
+const ApiBaseUrlContext = createContext<string | null>(null);
 
 export function useGraphQLClient() {
   const client = useContext(GraphQLClientContext);
@@ -25,25 +27,34 @@ export function useGraphQLClient() {
   return client;
 }
 
+export function useApiBaseUrl() {
+  const baseUrl = useContext(ApiBaseUrlContext);
+  if (!baseUrl) {
+    throw new Error("useApiBaseUrl must be used within <ShiftProviders>");
+  }
+  return baseUrl;
+}
+
 export type ShiftProvidersProps = PropsWithChildren<{
-  wagmiConfig: WagmiConfigType;
   graphqlUrl: string;
+  apiBaseUrl: string;
 }>;
 
 export function ShiftProviders({
-  wagmiConfig,
   graphqlUrl,
+  apiBaseUrl,
   children
 }: ShiftProvidersProps) {
   const [queryClient] = useState(() => new QueryClient());
 
   const graphClient = useMemo(() => new GraphQLClient(graphqlUrl), [graphqlUrl]);
+  const wagmiConfig: WagmiConfigType = useMemo(() => createShiftConfig({ env: getEnv() }), []);
 
   return (
     <WagmiConfig config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <GraphQLClientContext.Provider value={graphClient}>
-          {children}
+          <ApiBaseUrlContext.Provider value={apiBaseUrl}>{children}</ApiBaseUrlContext.Provider>
         </GraphQLClientContext.Provider>
       </QueryClientProvider>
     </WagmiConfig>

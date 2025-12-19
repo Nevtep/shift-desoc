@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import { tailwindPreset } from "@shift/ui/tailwind-preset";
+import { tailwindPreset } from "../../packages/ui/src/tailwind-preset";
 
 const config: Config = {
   presets: [tailwindPreset],

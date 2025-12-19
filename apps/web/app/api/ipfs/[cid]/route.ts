@@ -12,13 +12,8 @@ export const runtime = "edge";
 const CID_PATTERN = /^[a-zA-Z0-9]+$/;
 const MAX_DOCUMENT_CHAR_LENGTH = 1_000_000;
 
-type RouteParams = {
-  params: {
-    cid: string;
-  };
-};
-
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, context: any) {
+  const { params } = context as { params: { cid: string } };
   const { cid } = params;
 
   if (!CID_PATTERN.test(cid)) {
@@ -43,8 +38,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
   }
 
   const response = await fetch(url, {
-    headers,
-    cache: "force-cache"
+    headers
   });
 
   if (!response.ok) {

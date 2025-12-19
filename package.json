@@ -71,5 +71,10 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.1.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "follow-redirects@1.15.11": "patches/follow-redirects@1.15.11.patch"
+    }
   }
 }

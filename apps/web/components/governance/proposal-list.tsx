@@ -17,7 +17,7 @@ export type ProposalListProps = {
 
 export function ProposalList({ communityId }: ProposalListProps) {
   const variables = communityId ? { communityId } : undefined;
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalsQueryResult>(
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalsQueryResult, { communityId?: string }>(
     ["proposals", variables],
     ProposalsQuery,
     variables

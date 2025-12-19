@@ -2,12 +2,17 @@
 
 import { useMemo } from "react";
 
-import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
-import {
-  RequestsQuery,
-  type RequestsQueryResult,
-  type RequestNode
-} from "../../lib/graphql/queries";
+import { useApiQuery } from "../../hooks/useApiQuery";
+
+export type RequestNode = {
+  id: number;
+  communityId: number;
+  author: string;
+  status: string;
+  cid: string;
+  tags: string[];
+  createdAt: string;
+};
 
 export type RequestListProps = {
   communityId?: string;
@@ -16,13 +21,16 @@ export type RequestListProps = {
 export function RequestList({ communityId }: RequestListProps) {
   const variables = communityId ? { communityId } : undefined;
 
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<RequestsQueryResult>(
+  const params = new URLSearchParams();
+  params.set("limit", "20");
+  if (communityId) params.set("communityId", communityId);
+
+  const { data, isLoading, isError, refetch } = useApiQuery<{ items: RequestNode[] }>(
     ["requests", variables],
-    RequestsQuery,
-    variables
+    `/requests?${params.toString()}`
   );
 
-  const requests = useMemo(() => data?.requests.nodes ?? [], [data]);
+  const requests = useMemo(() => data?.items ?? [], [data]);
 
   if (isLoading) {
     return <StatusMessage message="Loading requests…" />;

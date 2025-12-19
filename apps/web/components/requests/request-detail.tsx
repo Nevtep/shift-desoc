@@ -3,22 +3,40 @@
 import Link from "next/link";
 import { useMemo } from "react";
 
-import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
+import { useApiQuery } from "../../hooks/useApiQuery";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
-import {
-  RequestQuery,
-  type RequestQueryResult
-} from "../../lib/graphql/queries";
+import type { DraftNode } from "../drafts/draft-list";
+
+type CommentNode = {
+  id: number;
+  author: string;
+  cid: string;
+  createdAt: string;
+  parentId?: number | null;
+};
+
+type RequestDetailResponse = {
+  request: {
+    id: number;
+    communityId: number;
+    author: string;
+    status: string;
+    cid: string;
+    tags: string[];
+    createdAt: string;
+    comments: CommentNode[];
+    drafts: DraftNode[];
+  };
+};
 
 export type RequestDetailProps = {
   requestId: string;
 };
 
 export function RequestDetail({ requestId }: RequestDetailProps) {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<RequestQueryResult>(
+  const { data, isLoading, isError, refetch } = useApiQuery<RequestDetailResponse>(
     ["request", requestId],
-    RequestQuery,
-    { id: requestId }
+    `/requests/${requestId}`
   );
 
   const request = data?.request ?? null;

@@ -15,7 +15,7 @@ export type ClaimDetailProps = {
 };
 
 export function ClaimDetail({ claimId }: ClaimDetailProps) {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<ClaimQueryResult>(
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<ClaimQueryResult, { id: string }>(
     ["claim", claimId],
     ClaimQuery,
     { id: claimId }
@@ -137,9 +137,11 @@ type ManifestEvidence = {
 };
 
 function EvidenceManifest({ manifest }: { manifest: IpfsDocumentResponse }) {
-  const evidence = Array.isArray(manifest.data?.evidence)
-    ? (manifest.data.evidence as ManifestEvidence[])
-    : [];
+  if (manifest.data.type !== "claimEvidence") {
+    return <p className="text-sm text-muted-foreground">Manifest is not a claim evidence document.</p>;
+  }
+
+  const evidence = manifest.data.evidence ?? [];
 
   if (!evidence.length) {
     return <p className="text-sm text-muted-foreground">Manifest contains no evidence entries.</p>;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 
 export const metadata = {
   title: "Governance | Shift"
@@ -27,7 +28,7 @@ export default function GovernancePage() {
         </Link>
         <Link
           className="rounded-lg border border-border p-4 shadow-sm transition hover:border-primary"
-          href="/governance/activity"
+          href={"/governance/activity" as Route}
         >
           <div className="space-y-2">
             <h2 className="text-lg font-medium">Activity (coming soon)</h2>

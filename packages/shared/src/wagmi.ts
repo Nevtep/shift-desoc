@@ -3,13 +3,15 @@ import { base, baseSepolia } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
 import { walletConnect } from "wagmi/connectors";
 
+import type { Config as WagmiConfig } from "wagmi";
+
 import type { ShiftEnv } from "./env";
 
 export type CreateShiftConfigOptions = {
   env?: ShiftEnv;
 };
 
-export function createShiftConfig({ env }: CreateShiftConfigOptions = {}) {
+export function createShiftConfig({ env }: CreateShiftConfigOptions = {}): WagmiConfig {
   const projectId =
     env?.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
     env?.WALLETCONNECT_PROJECT_ID ??
@@ -20,12 +22,25 @@ export function createShiftConfig({ env }: CreateShiftConfigOptions = {}) {
 
   const transports = chains.reduce<Record<number, ReturnType<typeof http>>>(
     (map, chain) => {
+      const defaultRpc = chain.rpcUrls?.default?.http?.[0];
+      const publicRpc = (chain.rpcUrls as { public?: { http?: readonly string[] } }).public?.http?.[0];
+
       if (chain.id === base.id) {
-        const url = env?.RPC_BASE ?? process.env.RPC_BASE;
-        map[chain.id] = http(url ?? chain.rpcUrls.public.http[0]);
+        const url = env?.RPC_BASE ?? process.env.RPC_BASE ?? publicRpc ?? defaultRpc;
+        if (!url) {
+          throw new Error("RPC URL missing for Base chain");
+        }
+        map[chain.id] = http(url);
       } else if (chain.id === baseSepolia.id) {
-        const url = env?.RPC_BASE_SEPOLIA ?? process.env.RPC_BASE_SEPOLIA;
-        map[chain.id] = http(url ?? chain.rpcUrls.public.http[0]);
+        const url =
+          env?.RPC_BASE_SEPOLIA ??
+          process.env.RPC_BASE_SEPOLIA ??
+          publicRpc ??
+          defaultRpc;
+        if (!url) {
+          throw new Error("RPC URL missing for Base Sepolia chain");
+        }
+        map[chain.id] = http(url);
       }
       return map;
     },
