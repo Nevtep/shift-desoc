@@ -81,22 +81,15 @@ const appConfig = createTamagui({
   },
   fonts: {
     ...defaultConfig.fonts,
+    heading: {
+      ...defaultConfig.fonts.heading,
+      family:
+        'var(--font-epilogue), "Epilogue", var(--font-inter), "Inter", "Helvetica Neue", Arial, sans-serif',
+    },
     body: {
-      family: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      size: {
-        1: 12,
-        2: 14,
-        3: 16,
-        4: 18,
-        5: 20,
-        6: 24,
-        7: 28,
-        8: 32,
-        9: 36,
-        10: 40,
-        11: 48,
-        12: 56,
-      },
+      ...defaultConfig.fonts.body,
+      family:
+        'var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     },
   },
 })
