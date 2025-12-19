@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { and, desc, eq } from "@ponder/core";
+import { and, desc, eq, graphql } from "@ponder/core";
 import {
   claims,
   comments,
@@ -19,6 +19,9 @@ import type { Address } from "viem";
 import { ponder } from "@/generated";
 
 // --- API ROUTES (Hono via Ponder) -------------------------------------------------
+
+// Expose GraphQL endpoint for the web app and tooling.
+ponder.use("/graphql", graphql());
 
 ponder.get("/api/health", (c) => c.json({ ok: true }));
 

@@ -1,23 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 
-import { useApiQuery } from "../../hooks/useApiQuery";
-
-type Community = {
-  id: number;
-  chainId: number;
-  name: string;
-  metadataUri?: string | null;
-};
+import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
+import { CommunitiesQuery, type CommunitiesQueryResult } from "../../lib/graphql/queries";
 
 export function CommunityList() {
-  const { data, isLoading, isError, refetch } = useApiQuery<{ items: Community[] }>(
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<CommunitiesQueryResult, { limit?: number }>(
     ["communities", { limit: 20 }],
-    "/communities?limit=20"
+    CommunitiesQuery,
+    { limit: 20 }
   );
 
-  const communities = useMemo(() => data?.items ?? [], [data]);
+  const communities = useMemo(() => data?.communities.nodes ?? [], [data]);
 
   if (isLoading) {
     return (
@@ -49,16 +45,22 @@ export function CommunityList() {
           key={community.id}
           className="rounded-lg border border-border p-4 shadow-sm transition hover:border-primary"
         >
-          <div className="flex flex-col gap-1">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              Chain {community.chainId}
-            </span>
-            <span className="text-lg font-semibold">{community.name}</span>
-            {community.metadataUri ? (
-              <span className="truncate text-xs text-muted-foreground">
-                {community.metadataUri}
-              </span>
-            ) : null}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+              <span>Chain {community.chainId}</span>
+              <span>ID {community.id}</span>
+            </div>
+            <div className="space-y-1">
+              <span className="text-lg font-semibold">{community.name}</span>
+              {community.metadataUri ? (
+                <span className="block truncate text-xs text-muted-foreground">
+                  {community.metadataUri}
+                </span>
+              ) : null}
+            </div>
+            <Link className="text-sm underline" href={`/communities/${community.id}`}>
+              View community
+            </Link>
           </div>
         </li>
       ))}

@@ -1,11 +1,12 @@
 export const CommunitiesQuery = /* GraphQL */ `
-  query Communities($first: Int = 20, $after: String) {
-    communities(first: $first, after: $after) {
-      nodes {
+  query Communities($limit: Int = 20, $after: String) {
+    communities: communitiess(orderBy: "createdAt", orderDirection: "desc", after: $after, limit: $limit) {
+      nodes: items {
         id
         chainId
         name
         metadataUri
+        createdAt
       }
       pageInfo {
         endCursor
@@ -20,6 +21,7 @@ export type CommunityNode = {
   chainId: number;
   name: string;
   metadataUri?: string | null;
+  createdAt: string;
 };
 
 export type CommunitiesQueryResult = {
@@ -33,9 +35,15 @@ export type CommunitiesQueryResult = {
 };
 
 export const RequestsQuery = /* GraphQL */ `
-  query Requests($communityId: ID, $status: [RequestStatus!], $first: Int = 20, $after: String) {
-    requests(communityId: $communityId, status: $status, first: $first, after: $after) {
-      nodes {
+  query Requests($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
+    requests: requestss(
+      where: { communityId: $communityId, status_in: $status }
+      orderBy: "createdAt"
+      orderDirection: "desc"
+      after: $after
+      limit: $limit
+    ) {
+      nodes: items {
         id
         communityId
         author
@@ -73,8 +81,8 @@ export type RequestsQueryResult = {
 };
 
 export const RequestQuery = /* GraphQL */ `
-  query Request($id: ID!) {
-    request(id: $id) {
+  query Request($id: Int!) {
+    request: requests(id: $id) {
       id
       communityId
       author
@@ -82,18 +90,6 @@ export const RequestQuery = /* GraphQL */ `
       cid
       tags
       createdAt
-      comments {
-        id
-        author
-        cid
-        createdAt
-        parentId
-      }
-      drafts {
-        id
-        status
-        latestVersionCid
-      }
     }
   }
 `;
@@ -107,42 +103,19 @@ export type RequestQueryResult = {
     cid: string;
     tags: string[];
     createdAt: string;
-    comments: Array<{
-      id: string;
-      author: string;
-      cid: string;
-      createdAt: string;
-      parentId?: string | null;
-    }>;
-    drafts: Array<{
-      id: string;
-      status: string;
-      latestVersionCid?: string | null;
-    }>;
   } | null;
 };
 
 export const DraftQuery = /* GraphQL */ `
-  query Draft($id: ID!) {
-    draft(id: $id) {
+  query Draft($id: Int!) {
+    draft: drafts(id: $id) {
       id
       requestId
       status
       latestVersionCid
       escalatedProposalId
-      versions {
-        id
-        cid
-        contributor
-        createdAt
-      }
-      reviews {
-        id
-        reviewer
-        stance
-        commentCid
-        createdAt
-      }
+      updatedAt
+      createdAt
     }
   }
 `;
@@ -154,26 +127,21 @@ export type DraftQueryResult = {
     status: string;
     latestVersionCid?: string | null;
     escalatedProposalId?: string | null;
-    versions: Array<{
-      id: string;
-      cid: string;
-      contributor: string;
-      createdAt: string;
-    }>;
-    reviews: Array<{
-      id: string;
-      reviewer: string;
-      stance: string;
-      commentCid?: string | null;
-      createdAt: string;
-    }>;
+    updatedAt: string;
+    createdAt: string;
   } | null;
 };
 
 export const DraftsQuery = /* GraphQL */ `
-  query Drafts($communityId: ID, $status: [DraftStatus!], $first: Int = 20, $after: String) {
-    drafts(communityId: $communityId, status: $status, first: $first, after: $after) {
-      nodes {
+  query Drafts($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
+    drafts: draftss(
+      where: { communityId: $communityId, status_in: $status }
+      orderBy: "updatedAt"
+      orderDirection: "desc"
+      after: $after
+      limit: $limit
+    ) {
+      nodes: items {
         id
         requestId
         status
@@ -209,8 +177,8 @@ export type DraftsQueryResult = {
 };
 
 export const ProposalQuery = /* GraphQL */ `
-  query Proposal($id: ID!) {
-    proposal(id: $id) {
+  query Proposal($id: String!) {
+    proposal: proposals(id: $id) {
       id
       communityId
       proposer
@@ -220,12 +188,6 @@ export const ProposalQuery = /* GraphQL */ `
       queuedAt
       executedAt
       multiChoiceOptions
-      votes {
-        voter
-        weight
-        optionIndex
-        castAt
-      }
     }
   }
 `;
@@ -233,7 +195,7 @@ export const ProposalQuery = /* GraphQL */ `
 export type ProposalQueryResult = {
   proposal: {
     id: string;
-    communityId: string;
+    communityId: number;
     proposer: string;
     descriptionCid?: string | null;
     state: string;
@@ -241,19 +203,19 @@ export type ProposalQueryResult = {
     queuedAt?: string | null;
     executedAt?: string | null;
     multiChoiceOptions?: string[] | null;
-    votes: Array<{
-      voter: string;
-      weight: string;
-      optionIndex?: number | null;
-      castAt: string;
-    }>;
   } | null;
 };
 
 export const ProposalsQuery = /* GraphQL */ `
-  query Proposals($communityId: ID, $state: [ProposalState!], $first: Int = 20, $after: String) {
-    proposals(communityId: $communityId, state: $state, first: $first, after: $after) {
-      nodes {
+  query Proposals($communityId: Int, $state: [String!], $limit: Int = 20, $after: String) {
+    proposals: proposalss(
+      where: { communityId: $communityId, state_in: $state }
+      orderBy: "createdAt"
+      orderDirection: "desc"
+      after: $after
+      limit: $limit
+    ) {
+      nodes: items {
         id
         communityId
         proposer
@@ -272,7 +234,7 @@ export const ProposalsQuery = /* GraphQL */ `
 
 export type ProposalNode = {
   id: string;
-  communityId: string;
+  communityId: number;
   proposer: string;
   state: string;
   createdAt: string;
@@ -291,10 +253,17 @@ export type ProposalsQueryResult = {
 };
 
 export const ClaimsQuery = /* GraphQL */ `
-  query Claims($communityId: ID, $status: [ClaimStatus!], $first: Int = 20, $after: String) {
-    claims(communityId: $communityId, status: $status, first: $first, after: $after) {
-      nodes {
+  query Claims($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
+    claims: claimss(
+      where: { communityId: $communityId, status_in: $status }
+      orderBy: "submittedAt"
+      orderDirection: "desc"
+      after: $after
+      limit: $limit
+    ) {
+      nodes: items {
         id
+        communityId
         valuableActionId
         claimant
         status
@@ -311,6 +280,7 @@ export const ClaimsQuery = /* GraphQL */ `
 `;
 
 export type ClaimNode = {
+  communityId: number;
   id: string;
   valuableActionId: string;
   claimant: string;
@@ -331,27 +301,23 @@ export type ClaimsQueryResult = {
 };
 
 export const ClaimQuery = /* GraphQL */ `
-  query Claim($id: ID!) {
-    claim(id: $id) {
+  query Claim($id: Int!) {
+    claim: claims(id: $id) {
       id
+      communityId
       valuableActionId
       claimant
       status
       evidenceManifestCid
       submittedAt
       resolvedAt
-      jurorAssignments {
-        juror
-        weight
-        decision
-        decidedAt
-      }
     }
   }
 `;
 
 export type ClaimQueryResult = {
   claim: {
+    communityId: number;
     id: string;
     valuableActionId: string;
     claimant: string;
@@ -359,11 +325,5 @@ export type ClaimQueryResult = {
     evidenceManifestCid?: string | null;
     submittedAt: string;
     resolvedAt?: string | null;
-    jurorAssignments: Array<{
-      juror: string;
-      weight: string;
-      decision?: string | null;
-      decidedAt?: string | null;
-    }>;
   } | null;
 };

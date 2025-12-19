@@ -12,12 +12,14 @@ import {
 } from "../../lib/graphql/queries";
 
 export type ProposalListProps = {
-  communityId?: string;
+  communityId?: string | number;
 };
 
 export function ProposalList({ communityId }: ProposalListProps) {
-  const variables = communityId ? { communityId } : undefined;
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalsQueryResult, { communityId?: string }>(
+  const communityIdNumber = typeof communityId === "string" ? Number(communityId) : communityId;
+  const variables = Number.isFinite(communityIdNumber) ? { communityId: Number(communityIdNumber) } : undefined;
+
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalsQueryResult, { communityId?: number }>(
     ["proposals", variables],
     ProposalsQuery,
     variables
