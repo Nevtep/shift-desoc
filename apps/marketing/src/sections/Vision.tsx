@@ -10,6 +10,7 @@ export default function Vision() {
 
   return (
     <YStack
+      id="about"
       backgroundColor="$background"
       paddingVertical="$10"
       paddingHorizontal="$4"

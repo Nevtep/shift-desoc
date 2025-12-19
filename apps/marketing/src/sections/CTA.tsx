@@ -10,6 +10,7 @@ export default function CTA() {
 
   return (
     <YStack
+      id="contact"
       backgroundColor="$backgroundLight"
       paddingVertical="$10"
       paddingHorizontal="$4"

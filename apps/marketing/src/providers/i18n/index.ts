@@ -4,11 +4,19 @@ export type Language = 'en' | 'es'
 
 export const translations = {
     en: {
+        // Navigation
+        navHome: "Home",
+        navAbout: "About",
+        navSolutions: "Solutions",
+        navWhitepaper: "Whitepaper",
+        navContact: "Contact",
+        navGetStarted: "Get Started",
+
         // Hero Section
-        heroTitle: "What if communities could coordinate as well as corporations, but stay truly democratic?",
-        heroSubtitle: "Shift DeSoc is the missing infrastructure for human cooperation",
-        heroDescription: "Technology that helps people organize, make decisions together, and share the value they create fairly.",
-        heroStatement: "Instead of competing for scarce jobs and resources, communities using Shift can coordinate abundant resources, recognize everyone's contributions, and build prosperity together.",
+        heroTitle: "Unlocking human cooperation",
+        heroSubtitle: "Governance tech that empowers communities to thrive together",
+        heroDescription: "Coordinate resources, reward verified contributions, and decide together with tools designed for democratic scale.",
+        heroStatement: "Shift turns communities into high-trust networks where effort is visible, value circulates locally, and every voice stays heard.",
         
         // Vision Section
         visionTitle: "The Vision: From Competition to Cooperation",
@@ -126,11 +134,19 @@ export const translations = {
         langSelector: "Language"
     },
     es: {
+        // Navigation
+        navHome: "Inicio",
+        navAbout: "Nosotros",
+        navSolutions: "Soluciones",
+        navWhitepaper: "Whitepaper",
+        navContact: "Contacto",
+        navGetStarted: "Comenzar",
+
         // Hero Section
-        heroTitle: "¿Qué pasaría si las comunidades pudieran coordinarse tan bien como las corporaciones, pero manteniéndose verdaderamente democráticas?",
-        heroSubtitle: "Shift DeSoc es la infraestructura que faltaba para la cooperación humana",
-        heroDescription: "Tecnología que ayuda a las personas a organizarse, tomar decisiones juntas y compartir de manera justa el valor que crean.",
-        heroStatement: "En lugar de competir por trabajos y recursos escasos, las comunidades que usan Shift pueden coordinar recursos abundantes, reconocer las contribuciones de todos y construir prosperidad juntas.",
+        heroTitle: "Desbloqueamos la cooperación humana",
+        heroSubtitle: "Tecnología de gobernanza que empodera a las comunidades para prosperar juntas",
+        heroDescription: "Coordina recursos, recompensa contribuciones verificadas y decide en conjunto con herramientas diseñadas para la escala democrática.",
+        heroStatement: "Shift convierte a las comunidades en redes de alta confianza donde el esfuerzo se ve, el valor se queda y todas las voces cuentan.",
         
         // Vision Section
         visionTitle: "La Visión: De la Competencia a la Cooperación",
