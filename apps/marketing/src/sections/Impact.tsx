@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { YStack, XStack, Heading, Paragraph, Card } from 'tamagui'
+import { YStack, XStack, Heading, Paragraph, Card, Text } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 
@@ -78,8 +78,13 @@ export default function Impact() {
                   
                   <YStack gap="$3">
                     {section.items.map((item, itemIndex) => (
-                      <Paragraph key={itemIndex} fontSize="$2" color="$textMedium" lineHeight="$4">
-                        ✅ <Paragraph fontWeight="600" display="inline">{item}</Paragraph>
+                      <Paragraph
+                        key={itemIndex}
+                        fontSize="$2"
+                        color="$textMedium"
+                        lineHeight="$4"
+                      >
+                        ✅ <Text fontWeight="600" display="inline">{item}</Text>
                       </Paragraph>
                     ))}
                   </YStack>
