@@ -129,13 +129,6 @@ function MetadataItem({ label, value }: { label: string; value?: string | null }
   );
 }
 
-type ManifestEvidence = {
-  cid?: string;
-  title?: string;
-  description?: string;
-  type?: string;
-};
-
 function EvidenceManifest({ manifest }: { manifest: IpfsDocumentResponse }) {
   if (manifest.data.type !== "claimEvidence") {
     return <p className="text-sm text-muted-foreground">Manifest is not a claim evidence document.</p>;

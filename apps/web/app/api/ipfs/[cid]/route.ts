@@ -12,8 +12,10 @@ export const runtime = "edge";
 const CID_PATTERN = /^[a-zA-Z0-9]+$/;
 const MAX_DOCUMENT_CHAR_LENGTH = 1_000_000;
 
-export async function GET(_request: NextRequest, context: any) {
-  const { params } = context as { params: { cid: string } };
+type RouteContext = { params: { cid: string } };
+
+export async function GET(_request: NextRequest, context: RouteContext) {
+  const { params } = context;
   const { cid } = params;
 
   if (!CID_PATTERN.test(cid)) {

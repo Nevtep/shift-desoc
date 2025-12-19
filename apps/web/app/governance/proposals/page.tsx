@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { ProposalList } from "../../../components/governance/proposal-list";
 
 export const metadata = {
@@ -44,9 +46,9 @@ function CommunityFilter({ currentCommunityId }: { currentCommunityId?: string }
         <button className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground" type="submit">
           Apply
         </button>
-        <a className="text-xs underline" href="/governance/proposals">
+        <Link className="text-xs underline" href="/governance/proposals">
           Clear
-        </a>
+        </Link>
       </form>
     </div>
   );

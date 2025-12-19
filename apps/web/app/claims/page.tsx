@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { ClaimList } from "../../components/claims/claim-list";
 
 export const metadata = {
@@ -43,9 +45,9 @@ function CommunityFilter({ currentCommunityId }: { currentCommunityId?: string }
         <button className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground" type="submit">
           Apply
         </button>
-        <a className="text-xs underline" href="/claims">
+        <Link className="text-xs underline" href="/claims">
           Clear
-        </a>
+        </Link>
       </form>
     </div>
   );
