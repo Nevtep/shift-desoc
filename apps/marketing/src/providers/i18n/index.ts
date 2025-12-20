@@ -142,12 +142,18 @@ export const translations = {
         
         // Getting Started Section
         gettingStartedTitle: "Getting Started",
-        gettingStarted1Title: "For Communities Ready to Experiment:",
-        gettingStarted1Description: "Start with simple coordination: use Shift's tools to track contributions, make group decisions, and distribute any shared resources or income transparently.",
-        gettingStarted2Title: "For Individuals Who Want to Contribute:",
-        gettingStarted2Description: "Join existing communities using Shift, build verified reputation through quality contributions, and help improve the tools that enable democratic cooperation.",
-        gettingStarted3Title: "For Organizations Seeking Change:",
-        gettingStarted3Description: "Explore how Shift's governance and verification tools can make your existing organization more democratic, transparent, and fair.",
+        gettingStarted1Title: "Work With Us",
+        gettingStarted1Description: "Turn your work into reputation and opportunities. Contribute as a builder, creator, operator, or reviewer. Your contributions can be logged with evidence, validated by the community, and become credentials that follow you across communities.",
+        gettingStarted1PrimaryCta: "See opportunities",
+        gettingStarted1SecondaryCta: "Join the team",
+        gettingStarted2Title: "Organize Your Community",
+        gettingStarted2Description: "Launch a community with clear rules and automated execution. Set up discussion -> drafts -> proposals -> execution with governed parameters, pluggable modules, and timelock security. Perfect for cooperatives, collectives, protocols, local communities, and organizations that want fair, traceable decisions.",
+        gettingStarted2PrimaryCta: "Create community",
+        gettingStarted2SecondaryCta: "Schedule a demo",
+        gettingStarted3Title: "Contribute to Shift",
+        gettingStarted3Description: "Boost communities and projects with aligned incentives. Support with capital, partnerships, or resources to accelerate real impact: community economies, trackable returns, and programmable distribution. All with governance-defined rules and on-chain monitoring.",
+        gettingStarted3PrimaryCta: "Ways to contribute",
+        gettingStarted3SecondaryCta: "Talk to the team",
         
         // CTA Section
         ctaTitle: "Join the Cooperation Revolution",
@@ -304,12 +310,18 @@ export const translations = {
         
         // Getting Started Section
         gettingStartedTitle: "Comenzar",
-        gettingStarted1Title: "Para Comunidades Listas para Experimentar:",
-        gettingStarted1Description: "Comienza con coordinación simple: usa las herramientas de Shift para rastrear contribuciones, tomar decisiones grupales y repartir cualquier recurso compartido o ingreso de forma transparente.",
-        gettingStarted2Title: "Para Individuos que Quieren Contribuir:",
-        gettingStarted2Description: "Únete a comunidades existentes que usan Shift, construye reputación verificada a través de contribuciones de calidad y ayuda a mejorar las herramientas que permiten la cooperación democrática.",
-        gettingStarted3Title: "Para Organizaciones que Buscan Cambio:",
-        gettingStarted3Description: "Explora cómo las herramientas de gobernanza y verificación de Shift pueden hacer que tu organización sea más democrática, transparente y justa.",
+        gettingStarted1Title: "Trabaja con nosotros",
+        gettingStarted1Description: "Convierte tu trabajo en reputación y oportunidades. Aporta como builder, creador/a, operador/a o verificador/a. Tus contribuciones pueden registrarse con evidencia, validarse por la comunidad y convertirse en credenciales que te acompañan entre comunidades.",
+        gettingStarted1PrimaryCta: "Ver oportunidades",
+        gettingStarted1SecondaryCta: "Sumarte al equipo",
+        gettingStarted2Title: "Organiza tu comunidad",
+        gettingStarted2Description: "Lanza una comunidad con reglas claras y ejecución automática. Configura discusión -> borradores -> propuestas -> ejecución, con parámetros gobernados, módulos integrables y seguridad por timelock. Ideal para cooperativas, colectivos, protocolos, comunidades locales y organizaciones que quieren decisiones más justas y trazables.",
+        gettingStarted2PrimaryCta: "Crear comunidad",
+        gettingStarted2SecondaryCta: "Agendar una demo",
+        gettingStarted3Title: "Aporta a Shift",
+        gettingStarted3Description: "Impulsa comunidades y proyectos con incentivos alineados. Apoya con capital, alianzas o recursos para acelerar impacto real: economías comunitarias, retornos con trazabilidad y distribución programable. Todo con reglas definidas por gobernanza y seguimiento on-chain.",
+        gettingStarted3PrimaryCta: "Formas de aporte",
+        gettingStarted3SecondaryCta: "Hablar con el equipo",
         
         // CTA Section
         ctaTitle: "Únete a la Revolución de la Cooperación",
