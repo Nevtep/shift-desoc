@@ -88,18 +88,35 @@ export default function Features() {
       backgroundColor="$background"
       paddingVertical="$10"
       paddingHorizontal="$4"
+      style={{
+        backgroundImage: 'url(/solution-texture.png)',
+        backgroundSize: 'cover',
+        backgroundRepeat: 'repeat',
+        backgroundPosition: 'center',
+      }}
     >
       <Container maxWidth={1250} width="100%">
-        <YStack gap="$6">
-          <Heading
-            fontSize="$9"
-            fontWeight="700"
-            color="$textDark"
-            textAlign="center"
-          >
-            {t.featuresTitle}
-          </Heading>
-          
+        <YStack gap="$6" alignItems="center">
+          <YStack gap="$3" alignItems="center">
+            <Heading
+              fontSize="$10"
+              fontWeight="700"
+              color="$primary"
+              textAlign="center"
+            >
+              {t.navSolutions}
+            </Heading>
+            <Paragraph
+              fontSize="$8"
+              fontWeight="700"
+              color="$secondary"
+              textAlign="center"
+              maxWidth={900}
+            >
+              {t.featuresTitle}
+            </Paragraph>
+          </YStack>
+
           <XStack
             flexWrap="wrap"
             gap="$4"
@@ -111,7 +128,7 @@ export default function Features() {
                 flex={1}
                 minWidth={300}
                 maxWidth={380}
-                backgroundColor="$white"
+                backgroundColor="rgba(108, 129, 88, 0.5)"
                 padding="$5"
                 borderRadius="$3"
                 elevation="$1"
@@ -135,13 +152,13 @@ export default function Features() {
                     {feature.icon}
                   </YStack>
                   
-                  <Heading fontSize="$5" fontWeight="600" color="$textDark" textAlign="center">
+                  <Heading fontSize="$5" fontWeight="700" color="$white" textAlign="center">
                     {feature.title}
                   </Heading>
                   
                   <Paragraph
                     fontSize="$2"
-                    color="$textMedium"
+                    color="rgba(255, 255, 255, 0.9)"
                     textAlign="center"
                     lineHeight="$4"
                   >
