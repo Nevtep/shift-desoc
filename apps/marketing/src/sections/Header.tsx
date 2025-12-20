@@ -10,6 +10,7 @@ import LanguageSelector from './LanguageSelector'
 
 export default function Header() {
   const t = useTranslations()
+  const [scrolled, setScrolled] = useState(false)
   const [activeSection, setActiveSection] = useState('#home')
 
   const navItems = useMemo(
@@ -51,6 +52,18 @@ export default function Header() {
     return () => observer.disconnect()
   }, [navItems])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const onScroll = () => {
+      setScrolled(window.scrollY > 8)
+    }
+
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   return (
     <header
       style={{
@@ -64,7 +77,11 @@ export default function Header() {
     >
       <YStack
         backgroundColor="#f6f0e1"
-        paddingVertical="$3"
+        paddingVertical="$2"
+        style={{
+          boxShadow: scrolled ? '0 4px 10px rgba(0,0,0,0.05)' : 'none',
+          transition: 'box-shadow 180ms ease',
+        }}
       >
         <Container maxWidth={1250} width="100%">
           <XStack alignItems="center" justifyContent="space-between" gap="$6">
@@ -108,6 +125,8 @@ export default function Header() {
                     </Paragraph>
                   </Link>
                 ))}
+
+                <LanguageSelector />
               </XStack>
 
               <XStack gap="$2" alignItems="center">
@@ -127,8 +146,6 @@ export default function Header() {
                 >
                   {t.navGetStarted}
                 </Button>
-
-                <LanguageSelector />
               </XStack>
             </XStack>
           </XStack>
