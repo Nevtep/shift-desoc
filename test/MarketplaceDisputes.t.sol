@@ -2,9 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {Marketplace} from "../../../contracts/modules/Marketplace.sol";
-import {CommerceDisputes} from "../../../contracts/modules/CommerceDisputes.sol";
-import {HousingManager} from "../../../contracts/modules/HousingManager.sol";
+import {Marketplace} from "contracts/modules/Marketplace.sol";
+import {CommerceDisputes} from "contracts/modules/CommerceDisputes.sol";
+import {HousingManager} from "contracts/modules/HousingManager.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
 /**

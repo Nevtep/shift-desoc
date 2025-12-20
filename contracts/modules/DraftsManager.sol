@@ -188,6 +188,17 @@ contract DraftsManager {
         _;
     }
 
+    function _validateAndHashActions(ActionBundle calldata actions) internal pure returns (bytes32) {
+        if (
+            actions.targets.length != actions.values.length ||
+            actions.targets.length != actions.calldatas.length
+        ) {
+            revert Errors.InvalidInput("Actions length mismatch");
+        }
+
+        return keccak256(abi.encode(actions.targets, actions.values, actions.calldatas));
+    }
+
     /* ======== CONSTRUCTOR ======== */
 
     constructor(address _communityRegistry, address _governor) {
@@ -218,6 +229,8 @@ contract DraftsManager {
             revert Errors.InvalidInput("Version CID cannot be empty");
         }
 
+        bytes32 actionsHash = _validateAndHashActions(actions);
+
         // TODO: Validate community exists via CommunityRegistry
         // TODO: Validate request exists if requestId > 0
 
@@ -229,6 +242,7 @@ contract DraftsManager {
         draft.requestId = requestId;
         draft.author = msg.sender;
         draft.actions = actions;
+        draft.actions.actionsHash = actionsHash;
         draft.status = DraftStatus.DRAFTING;
         draft.createdAt = uint64(block.timestamp);
         
@@ -242,7 +256,7 @@ contract DraftsManager {
         }
         authorDrafts[msg.sender].push(draftId);
 
-        emit DraftCreated(draftId, communityId, requestId, msg.sender, actions.actionsHash, versionCID);
+        emit DraftCreated(draftId, communityId, requestId, msg.sender, actionsHash, versionCID);
     }
 
     /**
