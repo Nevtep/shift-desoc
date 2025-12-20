@@ -28,8 +28,6 @@ artifacts/
 **/artifacts/
 typechain-types/
 **/typechain-types/
-deployments/
-**/deployments/
 
 # Coverage reports
 coverage/
