@@ -2,7 +2,8 @@
   "name": "shift",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "fmt": "prettier -w 'contracts/**/*.sol' 'scripts/**/*.{ts,js}' 'test/**/*.{ts,js,sol}' '*.{ts,json}'",
@@ -17,7 +18,7 @@
     "deploy:ethereum-sepolia": "npx hardhat run scripts/deploy-complete.ts --network ethereum_sepolia",
     "deploy:ethereum": "npx hardhat run scripts/deploy-complete.ts --network ethereum",
     "forge:test": "forge test -vvv",
-    "forge:build": "forge build",
+    "forge:build": "forge build && node scripts/copy-ponder-abis.js",
     "forge:cov": "forge coverage --report lcov",
     "cov:gate": "bash ./scripts/check-coverage.sh",
     "build": "npm run forge:build && npm run hh:compile",
@@ -70,5 +71,10 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.1.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "follow-redirects@1.15.11": "patches/follow-redirects@1.15.11.patch"
+    }
   }
 }

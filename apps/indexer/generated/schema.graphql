@@ -1,0 +1,856 @@
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON
+
+scalar BigInt
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type Meta {
+  status: JSON
+}
+
+type Query {
+  communities(id: Int!): communities
+  communitiess(where: communitiesFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): communitiesPage!
+  requests(id: Int!): requests
+  requestss(where: requestsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): requestsPage!
+  comments(id: Int!): comments
+  commentss(where: commentsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): commentsPage!
+  drafts(id: Int!): drafts
+  draftss(where: draftsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): draftsPage!
+  draftVersions(id: String!): draftVersions
+  draftVersionss(where: draftVersionsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): draftVersionsPage!
+  draftReviews(id: String!): draftReviews
+  draftReviewss(where: draftReviewsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): draftReviewsPage!
+  proposals(id: String!): proposals
+  proposalss(where: proposalsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): proposalsPage!
+  proposalVotes(id: String!): proposalVotes
+  proposalVotess(where: proposalVotesFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): proposalVotesPage!
+  claims(id: Int!): claims
+  claimss(where: claimsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): claimsPage!
+  jurorAssignments(id: String!): jurorAssignments
+  jurorAssignmentss(where: jurorAssignmentsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): jurorAssignmentsPage!
+  _meta: Meta
+}
+
+type communities {
+  id: Int!
+  chainId: Int!
+  name: String!
+  metadataUri: String
+  createdAt: String!
+}
+
+type communitiesPage {
+  items: [communities!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input communitiesFilter {
+  AND: [communitiesFilter]
+  OR: [communitiesFilter]
+  id: Int
+  id_not: Int
+  id_in: [Int]
+  id_not_in: [Int]
+  id_gt: Int
+  id_lt: Int
+  id_gte: Int
+  id_lte: Int
+  chainId: Int
+  chainId_not: Int
+  chainId_in: [Int]
+  chainId_not_in: [Int]
+  chainId_gt: Int
+  chainId_lt: Int
+  chainId_gte: Int
+  chainId_lte: Int
+  name: String
+  name_not: String
+  name_in: [String]
+  name_not_in: [String]
+  name_contains: String
+  name_not_contains: String
+  name_starts_with: String
+  name_ends_with: String
+  name_not_starts_with: String
+  name_not_ends_with: String
+  metadataUri: String
+  metadataUri_not: String
+  metadataUri_in: [String]
+  metadataUri_not_in: [String]
+  metadataUri_contains: String
+  metadataUri_not_contains: String
+  metadataUri_starts_with: String
+  metadataUri_ends_with: String
+  metadataUri_not_starts_with: String
+  metadataUri_not_ends_with: String
+  createdAt: String
+  createdAt_not: String
+  createdAt_in: [String]
+  createdAt_not_in: [String]
+  createdAt_contains: String
+  createdAt_not_contains: String
+  createdAt_starts_with: String
+  createdAt_ends_with: String
+  createdAt_not_starts_with: String
+  createdAt_not_ends_with: String
+}
+
+type requests {
+  id: Int!
+  communityId: Int!
+  author: String!
+  status: String!
+  cid: String!
+  tags: JSON!
+  createdAt: String!
+}
+
+type requestsPage {
+  items: [requests!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input requestsFilter {
+  AND: [requestsFilter]
+  OR: [requestsFilter]
+  id: Int
+  id_not: Int
+  id_in: [Int]
+  id_not_in: [Int]
+  id_gt: Int
+  id_lt: Int
+  id_gte: Int
+  id_lte: Int
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  author: String
+  author_not: String
+  author_in: [String]
+  author_not_in: [String]
+  author_contains: String
+  author_not_contains: String
+  author_starts_with: String
+  author_ends_with: String
+  author_not_starts_with: String
+  author_not_ends_with: String
+  status: String
+  status_not: String
+  status_in: [String]
+  status_not_in: [String]
+  status_contains: String
+  status_not_contains: String
+  status_starts_with: String
+  status_ends_with: String
+  status_not_starts_with: String
+  status_not_ends_with: String
+  cid: String
+  cid_not: String
+  cid_in: [String]
+  cid_not_in: [String]
+  cid_contains: String
+  cid_not_contains: String
+  cid_starts_with: String
+  cid_ends_with: String
+  cid_not_starts_with: String
+  cid_not_ends_with: String
+  createdAt: String
+  createdAt_not: String
+  createdAt_in: [String]
+  createdAt_not_in: [String]
+  createdAt_contains: String
+  createdAt_not_contains: String
+  createdAt_starts_with: String
+  createdAt_ends_with: String
+  createdAt_not_starts_with: String
+  createdAt_not_ends_with: String
+}
+
+type comments {
+  id: Int!
+  requestId: Int!
+  author: String!
+  cid: String!
+  parentId: Int
+  createdAt: String!
+}
+
+type commentsPage {
+  items: [comments!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input commentsFilter {
+  AND: [commentsFilter]
+  OR: [commentsFilter]
+  id: Int
+  id_not: Int
+  id_in: [Int]
+  id_not_in: [Int]
+  id_gt: Int
+  id_lt: Int
+  id_gte: Int
+  id_lte: Int
+  requestId: Int
+  requestId_not: Int
+  requestId_in: [Int]
+  requestId_not_in: [Int]
+  requestId_gt: Int
+  requestId_lt: Int
+  requestId_gte: Int
+  requestId_lte: Int
+  author: String
+  author_not: String
+  author_in: [String]
+  author_not_in: [String]
+  author_contains: String
+  author_not_contains: String
+  author_starts_with: String
+  author_ends_with: String
+  author_not_starts_with: String
+  author_not_ends_with: String
+  cid: String
+  cid_not: String
+  cid_in: [String]
+  cid_not_in: [String]
+  cid_contains: String
+  cid_not_contains: String
+  cid_starts_with: String
+  cid_ends_with: String
+  cid_not_starts_with: String
+  cid_not_ends_with: String
+  parentId: Int
+  parentId_not: Int
+  parentId_in: [Int]
+  parentId_not_in: [Int]
+  parentId_gt: Int
+  parentId_lt: Int
+  parentId_gte: Int
+  parentId_lte: Int
+  createdAt: String
+  createdAt_not: String
+  createdAt_in: [String]
+  createdAt_not_in: [String]
+  createdAt_contains: String
+  createdAt_not_contains: String
+  createdAt_starts_with: String
+  createdAt_ends_with: String
+  createdAt_not_starts_with: String
+  createdAt_not_ends_with: String
+}
+
+type drafts {
+  id: Int!
+  communityId: Int!
+  requestId: Int!
+  status: String!
+  latestVersionCid: String
+  escalatedProposalId: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+type draftsPage {
+  items: [drafts!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input draftsFilter {
+  AND: [draftsFilter]
+  OR: [draftsFilter]
+  id: Int
+  id_not: Int
+  id_in: [Int]
+  id_not_in: [Int]
+  id_gt: Int
+  id_lt: Int
+  id_gte: Int
+  id_lte: Int
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  requestId: Int
+  requestId_not: Int
+  requestId_in: [Int]
+  requestId_not_in: [Int]
+  requestId_gt: Int
+  requestId_lt: Int
+  requestId_gte: Int
+  requestId_lte: Int
+  status: String
+  status_not: String
+  status_in: [String]
+  status_not_in: [String]
+  status_contains: String
+  status_not_contains: String
+  status_starts_with: String
+  status_ends_with: String
+  status_not_starts_with: String
+  status_not_ends_with: String
+  latestVersionCid: String
+  latestVersionCid_not: String
+  latestVersionCid_in: [String]
+  latestVersionCid_not_in: [String]
+  latestVersionCid_contains: String
+  latestVersionCid_not_contains: String
+  latestVersionCid_starts_with: String
+  latestVersionCid_ends_with: String
+  latestVersionCid_not_starts_with: String
+  latestVersionCid_not_ends_with: String
+  escalatedProposalId: String
+  escalatedProposalId_not: String
+  escalatedProposalId_in: [String]
+  escalatedProposalId_not_in: [String]
+  escalatedProposalId_contains: String
+  escalatedProposalId_not_contains: String
+  escalatedProposalId_starts_with: String
+  escalatedProposalId_ends_with: String
+  escalatedProposalId_not_starts_with: String
+  escalatedProposalId_not_ends_with: String
+  createdAt: String
+  createdAt_not: String
+  createdAt_in: [String]
+  createdAt_not_in: [String]
+  createdAt_contains: String
+  createdAt_not_contains: String
+  createdAt_starts_with: String
+  createdAt_ends_with: String
+  createdAt_not_starts_with: String
+  createdAt_not_ends_with: String
+  updatedAt: String
+  updatedAt_not: String
+  updatedAt_in: [String]
+  updatedAt_not_in: [String]
+  updatedAt_contains: String
+  updatedAt_not_contains: String
+  updatedAt_starts_with: String
+  updatedAt_ends_with: String
+  updatedAt_not_starts_with: String
+  updatedAt_not_ends_with: String
+}
+
+type draftVersions {
+  id: String!
+  draftId: Int!
+  versionNumber: Int!
+  cid: String!
+  contributor: String!
+  createdAt: String!
+}
+
+type draftVersionsPage {
+  items: [draftVersions!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input draftVersionsFilter {
+  AND: [draftVersionsFilter]
+  OR: [draftVersionsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  draftId: Int
+  draftId_not: Int
+  draftId_in: [Int]
+  draftId_not_in: [Int]
+  draftId_gt: Int
+  draftId_lt: Int
+  draftId_gte: Int
+  draftId_lte: Int
+  versionNumber: Int
+  versionNumber_not: Int
+  versionNumber_in: [Int]
+  versionNumber_not_in: [Int]
+  versionNumber_gt: Int
+  versionNumber_lt: Int
+  versionNumber_gte: Int
+  versionNumber_lte: Int
+  cid: String
+  cid_not: String
+  cid_in: [String]
+  cid_not_in: [String]
+  cid_contains: String
+  cid_not_contains: String
+  cid_starts_with: String
+  cid_ends_with: String
+  cid_not_starts_with: String
+  cid_not_ends_with: String
+  contributor: String
+  contributor_not: String
+  contributor_in: [String]
+  contributor_not_in: [String]
+  contributor_contains: String
+  contributor_not_contains: String
+  contributor_starts_with: String
+  contributor_ends_with: String
+  contributor_not_starts_with: String
+  contributor_not_ends_with: String
+  createdAt: String
+  createdAt_not: String
+  createdAt_in: [String]
+  createdAt_not_in: [String]
+  createdAt_contains: String
+  createdAt_not_contains: String
+  createdAt_starts_with: String
+  createdAt_ends_with: String
+  createdAt_not_starts_with: String
+  createdAt_not_ends_with: String
+}
+
+type draftReviews {
+  id: String!
+  draftId: Int!
+  reviewer: String!
+  stance: String!
+  commentCid: String
+  createdAt: String!
+}
+
+type draftReviewsPage {
+  items: [draftReviews!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input draftReviewsFilter {
+  AND: [draftReviewsFilter]
+  OR: [draftReviewsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  draftId: Int
+  draftId_not: Int
+  draftId_in: [Int]
+  draftId_not_in: [Int]
+  draftId_gt: Int
+  draftId_lt: Int
+  draftId_gte: Int
+  draftId_lte: Int
+  reviewer: String
+  reviewer_not: String
+  reviewer_in: [String]
+  reviewer_not_in: [String]
+  reviewer_contains: String
+  reviewer_not_contains: String
+  reviewer_starts_with: String
+  reviewer_ends_with: String
+  reviewer_not_starts_with: String
+  reviewer_not_ends_with: String
+  stance: String
+  stance_not: String
+  stance_in: [String]
+  stance_not_in: [String]
+  stance_contains: String
+  stance_not_contains: String
+  stance_starts_with: String
+  stance_ends_with: String
+  stance_not_starts_with: String
+  stance_not_ends_with: String
+  commentCid: String
+  commentCid_not: String
+  commentCid_in: [String]
+  commentCid_not_in: [String]
+  commentCid_contains: String
+  commentCid_not_contains: String
+  commentCid_starts_with: String
+  commentCid_ends_with: String
+  commentCid_not_starts_with: String
+  commentCid_not_ends_with: String
+  createdAt: String
+  createdAt_not: String
+  createdAt_in: [String]
+  createdAt_not_in: [String]
+  createdAt_contains: String
+  createdAt_not_contains: String
+  createdAt_starts_with: String
+  createdAt_ends_with: String
+  createdAt_not_starts_with: String
+  createdAt_not_ends_with: String
+}
+
+type proposals {
+  id: String!
+  communityId: Int!
+  proposer: String!
+  descriptionCid: String
+  state: String!
+  createdAt: String!
+  queuedAt: String
+  executedAt: String
+  multiChoiceOptions: JSON
+}
+
+type proposalsPage {
+  items: [proposals!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input proposalsFilter {
+  AND: [proposalsFilter]
+  OR: [proposalsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  proposer: String
+  proposer_not: String
+  proposer_in: [String]
+  proposer_not_in: [String]
+  proposer_contains: String
+  proposer_not_contains: String
+  proposer_starts_with: String
+  proposer_ends_with: String
+  proposer_not_starts_with: String
+  proposer_not_ends_with: String
+  descriptionCid: String
+  descriptionCid_not: String
+  descriptionCid_in: [String]
+  descriptionCid_not_in: [String]
+  descriptionCid_contains: String
+  descriptionCid_not_contains: String
+  descriptionCid_starts_with: String
+  descriptionCid_ends_with: String
+  descriptionCid_not_starts_with: String
+  descriptionCid_not_ends_with: String
+  state: String
+  state_not: String
+  state_in: [String]
+  state_not_in: [String]
+  state_contains: String
+  state_not_contains: String
+  state_starts_with: String
+  state_ends_with: String
+  state_not_starts_with: String
+  state_not_ends_with: String
+  createdAt: String
+  createdAt_not: String
+  createdAt_in: [String]
+  createdAt_not_in: [String]
+  createdAt_contains: String
+  createdAt_not_contains: String
+  createdAt_starts_with: String
+  createdAt_ends_with: String
+  createdAt_not_starts_with: String
+  createdAt_not_ends_with: String
+  queuedAt: String
+  queuedAt_not: String
+  queuedAt_in: [String]
+  queuedAt_not_in: [String]
+  queuedAt_contains: String
+  queuedAt_not_contains: String
+  queuedAt_starts_with: String
+  queuedAt_ends_with: String
+  queuedAt_not_starts_with: String
+  queuedAt_not_ends_with: String
+  executedAt: String
+  executedAt_not: String
+  executedAt_in: [String]
+  executedAt_not_in: [String]
+  executedAt_contains: String
+  executedAt_not_contains: String
+  executedAt_starts_with: String
+  executedAt_ends_with: String
+  executedAt_not_starts_with: String
+  executedAt_not_ends_with: String
+}
+
+type proposalVotes {
+  id: String!
+  proposalId: String!
+  voter: String!
+  weight: BigInt!
+  optionIndex: Int
+  castAt: String!
+}
+
+type proposalVotesPage {
+  items: [proposalVotes!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input proposalVotesFilter {
+  AND: [proposalVotesFilter]
+  OR: [proposalVotesFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  proposalId: String
+  proposalId_not: String
+  proposalId_in: [String]
+  proposalId_not_in: [String]
+  proposalId_contains: String
+  proposalId_not_contains: String
+  proposalId_starts_with: String
+  proposalId_ends_with: String
+  proposalId_not_starts_with: String
+  proposalId_not_ends_with: String
+  voter: String
+  voter_not: String
+  voter_in: [String]
+  voter_not_in: [String]
+  voter_contains: String
+  voter_not_contains: String
+  voter_starts_with: String
+  voter_ends_with: String
+  voter_not_starts_with: String
+  voter_not_ends_with: String
+  weight: BigInt
+  weight_not: BigInt
+  weight_in: [BigInt]
+  weight_not_in: [BigInt]
+  weight_gt: BigInt
+  weight_lt: BigInt
+  weight_gte: BigInt
+  weight_lte: BigInt
+  optionIndex: Int
+  optionIndex_not: Int
+  optionIndex_in: [Int]
+  optionIndex_not_in: [Int]
+  optionIndex_gt: Int
+  optionIndex_lt: Int
+  optionIndex_gte: Int
+  optionIndex_lte: Int
+  castAt: String
+  castAt_not: String
+  castAt_in: [String]
+  castAt_not_in: [String]
+  castAt_contains: String
+  castAt_not_contains: String
+  castAt_starts_with: String
+  castAt_ends_with: String
+  castAt_not_starts_with: String
+  castAt_not_ends_with: String
+}
+
+type claims {
+  id: Int!
+  communityId: Int!
+  valuableActionId: Int!
+  claimant: String!
+  status: String!
+  evidenceManifestCid: String
+  submittedAt: String!
+  resolvedAt: String
+}
+
+type claimsPage {
+  items: [claims!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input claimsFilter {
+  AND: [claimsFilter]
+  OR: [claimsFilter]
+  id: Int
+  id_not: Int
+  id_in: [Int]
+  id_not_in: [Int]
+  id_gt: Int
+  id_lt: Int
+  id_gte: Int
+  id_lte: Int
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  valuableActionId: Int
+  valuableActionId_not: Int
+  valuableActionId_in: [Int]
+  valuableActionId_not_in: [Int]
+  valuableActionId_gt: Int
+  valuableActionId_lt: Int
+  valuableActionId_gte: Int
+  valuableActionId_lte: Int
+  claimant: String
+  claimant_not: String
+  claimant_in: [String]
+  claimant_not_in: [String]
+  claimant_contains: String
+  claimant_not_contains: String
+  claimant_starts_with: String
+  claimant_ends_with: String
+  claimant_not_starts_with: String
+  claimant_not_ends_with: String
+  status: String
+  status_not: String
+  status_in: [String]
+  status_not_in: [String]
+  status_contains: String
+  status_not_contains: String
+  status_starts_with: String
+  status_ends_with: String
+  status_not_starts_with: String
+  status_not_ends_with: String
+  evidenceManifestCid: String
+  evidenceManifestCid_not: String
+  evidenceManifestCid_in: [String]
+  evidenceManifestCid_not_in: [String]
+  evidenceManifestCid_contains: String
+  evidenceManifestCid_not_contains: String
+  evidenceManifestCid_starts_with: String
+  evidenceManifestCid_ends_with: String
+  evidenceManifestCid_not_starts_with: String
+  evidenceManifestCid_not_ends_with: String
+  submittedAt: String
+  submittedAt_not: String
+  submittedAt_in: [String]
+  submittedAt_not_in: [String]
+  submittedAt_contains: String
+  submittedAt_not_contains: String
+  submittedAt_starts_with: String
+  submittedAt_ends_with: String
+  submittedAt_not_starts_with: String
+  submittedAt_not_ends_with: String
+  resolvedAt: String
+  resolvedAt_not: String
+  resolvedAt_in: [String]
+  resolvedAt_not_in: [String]
+  resolvedAt_contains: String
+  resolvedAt_not_contains: String
+  resolvedAt_starts_with: String
+  resolvedAt_ends_with: String
+  resolvedAt_not_starts_with: String
+  resolvedAt_not_ends_with: String
+}
+
+type jurorAssignments {
+  id: String!
+  claimId: Int!
+  juror: String!
+  weight: BigInt
+  decision: String
+  decidedAt: String
+}
+
+type jurorAssignmentsPage {
+  items: [jurorAssignments!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input jurorAssignmentsFilter {
+  AND: [jurorAssignmentsFilter]
+  OR: [jurorAssignmentsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  claimId: Int
+  claimId_not: Int
+  claimId_in: [Int]
+  claimId_not_in: [Int]
+  claimId_gt: Int
+  claimId_lt: Int
+  claimId_gte: Int
+  claimId_lte: Int
+  juror: String
+  juror_not: String
+  juror_in: [String]
+  juror_not_in: [String]
+  juror_contains: String
+  juror_not_contains: String
+  juror_starts_with: String
+  juror_ends_with: String
+  juror_not_starts_with: String
+  juror_not_ends_with: String
+  weight: BigInt
+  weight_not: BigInt
+  weight_in: [BigInt]
+  weight_not_in: [BigInt]
+  weight_gt: BigInt
+  weight_lt: BigInt
+  weight_gte: BigInt
+  weight_lte: BigInt
+  decision: String
+  decision_not: String
+  decision_in: [String]
+  decision_not_in: [String]
+  decision_contains: String
+  decision_not_contains: String
+  decision_starts_with: String
+  decision_ends_with: String
+  decision_not_starts_with: String
+  decision_not_ends_with: String
+  decidedAt: String
+  decidedAt_not: String
+  decidedAt_in: [String]
+  decidedAt_not_in: [String]
+  decidedAt_contains: String
+  decidedAt_not_contains: String
+  decidedAt_starts_with: String
+  decidedAt_ends_with: String
+  decidedAt_not_starts_with: String
+  decidedAt_not_ends_with: String
+}

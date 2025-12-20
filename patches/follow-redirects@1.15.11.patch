@@ -1,0 +1,18 @@
+diff --git a/debug.js b/debug.js
+new file mode 100644
+index 0000000..e69de29
+--- /dev/null
++++ b/debug.js
+@@ -0,0 +1,12 @@
++// Stub debug helper to satisfy optional debug dependency
++let debug;
++try {
++	debug = require("debug");
++} catch (err) {
++	// Fallback no-op logger when debug is not installed
++	debug = function () {
++		return function () {};
++	};
++}
++
++module.exports = debug;

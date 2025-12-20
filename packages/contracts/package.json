@@ -1,0 +1,25 @@
+{
+  "name": "@shift/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format esm",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "viem": "^2.9.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.5.0",
+    "rimraf": "^5.0.0"
+  }
+}
