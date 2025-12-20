@@ -14,6 +14,17 @@ export const translations = {
         navContact: "Contact",
         navGetStarted: "Get Started",
 
+        // Whitepaper Section
+        whitepaperTitle: "Whitepaper",
+        whitepaperDescription: "Explore the full vision, governance mechanics, and roadmap behind Shift.",
+        whitepaperCTA: "Read the whitepaper",
+        whitepaperNote: "We’ll open the version for your language in a new tab.",
+        whitepaperWhyTitle: "Why Blockchain?",
+        whitepaperWhySubtitle: "Because we need a neutral base for cooperation.",
+        whitepaperWhyP1: "Centralized platforms control the rules: they can change conditions, censor, limit access, or capture the value created by the community.",
+        whitepaperWhyP2: "Blockchain enables something different: a shared, tamper-resistant ledger maintained by a network, with no single entity able to shut it down or rewrite it.",
+        whitepaperWhyP3: "At Shift we use blockchain as public infrastructure so communities can build on stable rules, with continuity, and without relying on an intermediary.",
+
         // Hero Section
         heroTitle: "Unlocking human cooperation",
         heroTitleLine1: "Unlocking human",
@@ -193,6 +204,17 @@ export const translations = {
         navWhitepaper: "Whitepaper",
         navContact: "Contacto",
         navGetStarted: "Comenzar",
+
+        // Whitepaper Section
+        whitepaperTitle: "Whitepaper",
+        whitepaperDescription: "Explora la visión completa, la gobernanza y la hoja de ruta de Shift.",
+        whitepaperCTA: "Leer el whitepaper",
+        whitepaperNote: "Abriremos la versión en tu idioma en una nueva pestaña.",
+        whitepaperWhyTitle: "¿Por qué Blockchain?",
+        whitepaperWhySubtitle: "Porque necesitamos una base neutral para la cooperación.",
+        whitepaperWhyP1: "Las plataformas centralizadas controlan las reglas: pueden cambiar condiciones, censurar, limitar acceso o capturar el valor creado por la comunidad.",
+        whitepaperWhyP2: "Blockchain permite algo distinto: un registro compartido y resistente a cambios, mantenido por una red, sin una entidad única con poder de apagarlo o reescribirlo.",
+        whitepaperWhyP3: "En Shift usamos blockchain como infraestructura pública para que las comunidades puedan construir sobre reglas estables, con continuidad y sin depender de un intermediario.",
 
         // Hero Section
         heroTitle: "Desbloqueamos la cooperación humana",
