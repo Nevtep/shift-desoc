@@ -3,15 +3,15 @@ import { config as defaultConfig } from '@tamagui/config/v3'
 
 // Colores basados en la imagen
 const shiftColors = {
-  bgBeige: '#F5F5E8',
+  bgBeige: '#F6F0E1',
   bgLight: '#FAFAF5',
   textDark: '#2C2C2C',
   textMedium: '#4A4A4A',
-  green: '#4CAF50',
-  greenDark: '#388E3C',
-  orange: '#FF9800',
-  orangeDark: '#F57C00',
-  blue: '#2196F3',
+  green: '#6C8158',
+  greenDark: '#566645',
+  orange: '#DD8848',
+  orangeDark: '#c4733c',
+  blue: '#B23B3B',
   greyLight: '#E0E0D0',
   greyMedium: '#8B8B7A',
   white: '#FFFFFF',
@@ -81,22 +81,15 @@ const appConfig = createTamagui({
   },
   fonts: {
     ...defaultConfig.fonts,
+    heading: {
+      ...defaultConfig.fonts.heading,
+      family:
+        'var(--font-epilogue), "Epilogue", var(--font-inter), "Inter", "Helvetica Neue", Arial, sans-serif',
+    },
     body: {
-      family: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      size: {
-        1: 12,
-        2: 14,
-        3: 16,
-        4: 18,
-        5: 20,
-        6: 24,
-        7: 28,
-        8: 32,
-        9: 36,
-        10: 40,
-        11: 48,
-        12: 56,
-      },
+      ...defaultConfig.fonts.body,
+      family:
+        'var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     },
   },
 })
