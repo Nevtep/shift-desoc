@@ -35,8 +35,6 @@ export default function Principles() {
       backgroundColor="#ede3cf"
       paddingVertical={0}
       paddingHorizontal={0}
-      marginTop={40}
-      marginBottom={40}
       width="100%"
     >
       <Container maxWidth={1250} width="100%" paddingHorizontal={0}>

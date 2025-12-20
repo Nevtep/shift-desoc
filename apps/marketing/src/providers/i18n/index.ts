@@ -249,7 +249,7 @@ export const translations = {
         feature6Bullet3: "Responsabilidad y confianza: el proceso reduce fraude y premia el trabajo bien hecho.",
         
         // Applications Section
-        applicationsTitle: "Usos",
+        applicationsTitle: "Casos de uso",
         applicationsSubtitle: "Casos prácticos donde Shift reduce la fricción y hace visibles las decisiones y los aportes.",
         application1Title: "Comunidad de vecinos (edificio / urbanización)",
         application1Coordination: "Qué coordinan: mantenimiento, gastos comunes, mejoras del edificio.",

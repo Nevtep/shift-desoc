@@ -32,33 +32,33 @@ export default function Vision() {
       id="about"
       backgroundColor="$background"
       paddingVertical={0}
-      marginTop={60}
-      marginBottom={60}
       paddingHorizontal={0}
       width="100%"
+      position="relative"
+      overflow="hidden"
+      style={{
+        backgroundImage: 'url("/nosotros_bg.webp")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
     >
+      <YStack
+        position="absolute"
+        top={0}
+        left={0}
+        right={0}
+        height="30%"
+        pointerEvents="none"
+        backgroundImage="linear-gradient(180deg, rgba(246, 240, 225, 0.9) 0%, rgba(246, 240, 225, 0) 100%)"
+      />
       <Container maxWidth={1250} width="100%" paddingHorizontal={0}>
         <YStack
           width="100%"
           padding="$6"
           position="relative"
           overflow="hidden"
-          style={{
-            backgroundImage: 'url("/nosotros_bg.webp")',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
         >
-          <YStack
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            height="30%"
-            pointerEvents="none"
-            backgroundImage="linear-gradient(180deg, rgba(246, 240, 225, 0.9) 0%, rgba(246, 240, 225, 0) 100%)"
-          />
           <YStack gap="$5" alignItems="center" padding={60} position="relative" zIndex={1}>
             <Heading
               fontSize="$11"

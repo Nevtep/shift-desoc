@@ -20,7 +20,8 @@ export default function Whitepaper() {
     <YStack
       id="whitepaper"
       backgroundColor="$white"
-      paddingVertical="$10"
+      paddingTop={80}
+      paddingBottom={80}
       paddingHorizontal="$4"
       borderTopWidth={1}
       borderBottomWidth={1}
@@ -31,6 +32,8 @@ export default function Whitepaper() {
           backgroundColor="#ffffff"
           borderRadius="$4"
           padding="$8"
+          paddingTop={20}
+          paddingBottom={20}
           gap="$5"
           alignItems="center"
           justifyContent="center"
