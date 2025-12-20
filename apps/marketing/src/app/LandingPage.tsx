@@ -8,8 +8,6 @@ import Principles from '../sections/Principles'
 import Features from '../sections/Features'
 import Applications from '../sections/Applications'
 import Whitepaper from '../sections/Whitepaper'
-import Impact from '../sections/Impact'
-import Future from '../sections/Future'
 import GettingStarted from '../sections/GettingStarted'
 import CTA from '../sections/CTA'
 import Footer from '../sections/Footer'
@@ -29,8 +27,6 @@ export default function LandingPage({ onLanguageChange }: LandingPageProps = {})
       <Features />
       <Applications />
       <Whitepaper />
-      <Impact />
-      <Future />
       <GettingStarted />
       <CTA />
       <Footer />

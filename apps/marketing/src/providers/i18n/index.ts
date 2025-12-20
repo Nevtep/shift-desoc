@@ -16,14 +16,14 @@ export const translations = {
 
         // Whitepaper Section
         whitepaperTitle: "Whitepaper",
-        whitepaperDescription: "Explore the full vision, governance mechanics, and roadmap behind Shift.",
+        whitepaperDescription: "Learn how Shift is designed to put people first: dignity, care, and fair cooperation as the foundation for every decision.",
         whitepaperCTA: "Read the whitepaper",
         whitepaperNote: "We’ll open the version for your language in a new tab.",
-        whitepaperWhyTitle: "Why Blockchain?",
-        whitepaperWhySubtitle: "Because we need a neutral base for cooperation.",
-        whitepaperWhyP1: "Centralized platforms control the rules: they can change conditions, censor, limit access, or capture the value created by the community.",
-        whitepaperWhyP2: "Blockchain enables something different: a shared, tamper-resistant ledger maintained by a network, with no single entity able to shut it down or rewrite it.",
-        whitepaperWhyP3: "At Shift we use blockchain as public infrastructure so communities can build on stable rules, with continuity, and without relying on an intermediary.",
+        whitepaperWhyTitle: "Why this matters to people",
+        whitepaperWhySubtitle: "Because better coordination means safer, fairer lives.",
+        whitepaperWhyP1: "Behind every community there are people balancing time, care, and trust. They need tools that respect their effort and make collaboration simpler.",
+        whitepaperWhyP2: "A shared, transparent framework lets communities decide together, reward contributions with dignity, and keep value where it belongs: with their people.",
+        whitepaperWhyP3: "The whitepaper explains how we design Shift so coordination feels human: less friction, more clarity, and decisions that protect the community’s well-being.",
 
         // Hero Section
         heroTitle: "Unlocking human cooperation",
@@ -140,35 +140,6 @@ export const translations = {
         futureStatement2: "Cooperation over competition",
         futureWhyDescription: "Permanent, tamper-proof records that no single entity controls. Your reputation and achievements are yours forever, stored on a network maintained by the community itself.",
         
-        // Impact Section
-        impactTitle: "The Impact: What This Enables",
-        impactIndividualsTitle: "For Individuals:",
-        impactIndividuals1: "Build lasting reputation that no platform can take away",
-        impactIndividuals2: "Get fairly compensated for the value you actually create",
-        impactIndividuals3: "Have real voice in decisions that affect your work and community",
-        impactIndividuals4: "Access opportunities across a global network of cooperative communities",
-        impactCommunitiesTitle: "For Communities:",
-        impactCommunities1: "Coordinate resources efficiently without central authority",
-        impactCommunities2: "Make better decisions through nuanced, democratic processes",
-        impactCommunities3: "Attract quality contributors through reputation-based networking",
-        impactCommunities4: "Build sustainable economics where value stays in the community",
-        impactSocietyTitle: "For Society:",
-        impactSociety1: "Reduce inequality by connecting contribution to rewards",
-        impactSociety2: "Increase innovation by empowering people to work on what matters",
-        impactSociety3: "Strengthen democracy through practical experience in self-governance",
-        impactSociety4: "Create abundance through efficient cooperation instead of wasteful competition",
-        
-        // Future Section
-        futureSectionTitle: "The Future We're Building",
-        futureIntro: "Imagine networks of communities that:",
-        future1: "Meet all basic human needs through cooperation",
-        future2: "Reward creativity and care work as much as traditional \"productive\" labor",
-        future3: "Make decisions democratically with sophisticated tools that actually work",
-        future4: "Create abundance through intelligent coordination rather than artificial scarcity",
-        future5: "Allow people to contribute based on passion and skill rather than survival necessity",
-        futureStatement: "This isn't utopian thinking - it's practical engineering applied to human coordination.",
-        futureDescription: "When communities can efficiently verify contributions, coordinate resources, and make collective decisions, the artificial constraints that force competition become obsolete.",
-        
         // Getting Started Section
         gettingStartedTitle: "Getting Started",
         gettingStarted1Title: "For Communities Ready to Experiment:",
@@ -207,14 +178,14 @@ export const translations = {
 
         // Whitepaper Section
         whitepaperTitle: "Whitepaper",
-        whitepaperDescription: "Explora la visión completa, la gobernanza y la hoja de ruta de Shift.",
+        whitepaperDescription: "Conoce cómo Shift se diseña para poner a las personas al centro: dignidad, cuidado y cooperación justa como base de cada decisión.",
         whitepaperCTA: "Leer el whitepaper",
         whitepaperNote: "Abriremos la versión en tu idioma en una nueva pestaña.",
-        whitepaperWhyTitle: "¿Por qué Blockchain?",
-        whitepaperWhySubtitle: "Porque necesitamos una base neutral para la cooperación.",
-        whitepaperWhyP1: "Las plataformas centralizadas controlan las reglas: pueden cambiar condiciones, censurar, limitar acceso o capturar el valor creado por la comunidad.",
-        whitepaperWhyP2: "Blockchain permite algo distinto: un registro compartido y resistente a cambios, mantenido por una red, sin una entidad única con poder de apagarlo o reescribirlo.",
-        whitepaperWhyP3: "En Shift usamos blockchain como infraestructura pública para que las comunidades puedan construir sobre reglas estables, con continuidad y sin depender de un intermediario.",
+        whitepaperWhyTitle: "Por qué esto importa a las personas",
+        whitepaperWhySubtitle: "Porque coordinar mejor hace las vidas más seguras y justas.",
+        whitepaperWhyP1: "Detrás de cada comunidad hay personas equilibrando tiempo, cuidado y confianza. Necesitan herramientas que respeten su esfuerzo y hagan más simple colaborar.",
+        whitepaperWhyP2: "Un marco compartido y transparente permite decidir en conjunto, reconocer aportes con dignidad y mantener el valor donde debe estar: en su gente.",
+        whitepaperWhyP3: "El whitepaper cuenta cómo diseñamos Shift para que la coordinación se sienta humana: menos fricción, más claridad y decisiones que cuidan el bienestar de la comunidad.",
 
         // Hero Section
         heroTitle: "Desbloqueamos la cooperación humana",
@@ -330,35 +301,6 @@ export const translations = {
         futureStatement1: "Abundancia sobre escasez",
         futureStatement2: "Cooperación sobre competencia",
         futureWhyDescription: "Registros permanentes e inalterables que ninguna entidad única controla. Tu reputación y logros son tuyos para siempre, guardados en una red mantenida por la propia comunidad.",
-        
-        // Impact Section
-        impactTitle: "El Impacto: Lo que Esto Habilita",
-        impactIndividualsTitle: "Para Individuos:",
-        impactIndividuals1: "Construye reputación duradera que ninguna plataforma puede quitarte",
-        impactIndividuals2: "Obtén pago justo por el valor que realmente creas",
-        impactIndividuals3: "Ten voz real en decisiones que afectan tu trabajo y comunidad",
-        impactIndividuals4: "Accede a oportunidades a través de una red global de comunidades cooperativas",
-        impactCommunitiesTitle: "Para Comunidades:",
-        impactCommunities1: "Coordina recursos de forma eficiente sin autoridad central",
-        impactCommunities2: "Toma mejores decisiones a través de procesos democráticos más completos",
-        impactCommunities3: "Atrae contribuyentes de calidad a través de redes basadas en reputación",
-        impactCommunities4: "Construye economía sostenible donde el valor se queda en la comunidad",
-        impactSocietyTitle: "Para la Sociedad:",
-        impactSociety1: "Reduce la desigualdad conectando contribución con recompensas",
-        impactSociety2: "Aumenta la innovación dando poder a las personas para trabajar en lo que importa",
-        impactSociety3: "Fortalece la democracia a través de experiencia práctica en autogobierno",
-        impactSociety4: "Crea abundancia a través de cooperación eficiente en lugar de competencia que desperdicia recursos",
-        
-        // Future Section
-        futureSectionTitle: "El Futuro que Estamos Construyendo",
-        futureIntro: "Imagina redes de comunidades que:",
-        future1: "Cubren todas las necesidades humanas básicas a través de la cooperación",
-        future2: "Recompensan la creatividad y el trabajo de cuidado tanto como el trabajo \"productivo\" tradicional",
-        future3: "Toman decisiones democráticamente con herramientas sofisticadas que realmente funcionan",
-        future4: "Crean abundancia a través de coordinación inteligente en lugar de escasez artificial",
-        future5: "Permiten a las personas contribuir basándose en pasión y habilidad en lugar de necesidad de supervivencia",
-        futureStatement: "Esto no es pensamiento utópico - es ingeniería práctica aplicada a la coordinación humana.",
-        futureDescription: "Cuando las comunidades pueden verificar contribuciones de forma eficiente, coordinar recursos y tomar decisiones colectivas, las restricciones artificiales que fuerzan la competencia se vuelven obsoletas.",
         
         // Getting Started Section
         gettingStartedTitle: "Comenzar",
