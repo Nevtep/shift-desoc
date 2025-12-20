@@ -6,7 +6,7 @@ import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 import { secondaryGradientButton, secondaryOutlineButton } from '../components/buttonStyles'
 
-const HERO_BACKGROUNDS = ['/hero-backgound.png', '/hero-backgound2.png', '/hero-backgound3.png']
+const HERO_BACKGROUNDS = ['/hero-backgound.webp', '/hero-backgound2.webp', '/hero-backgound3.webp']
 
 export default function Hero() {
   const t = useTranslations()

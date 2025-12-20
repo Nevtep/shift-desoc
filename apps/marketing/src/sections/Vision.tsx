@@ -44,7 +44,7 @@ export default function Vision() {
           position="relative"
           overflow="hidden"
           style={{
-            backgroundImage: 'url("/nosotros_bg.png")',
+            backgroundImage: 'url("/nosotros_bg.webp")',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',

@@ -22,10 +22,11 @@ export default function Header() {
       { href: '#about', label: t.navAbout },
       { href: '#principles', label: t.navPrinciples },
       { href: '#solutions', label: t.navSolutions },
+      { href: '#applications', label: t.navApplications },
       { href: '#whitepaper', label: t.navWhitepaper },
       { href: '#contact', label: t.navContact },
     ],
-    [t.navAbout, t.navContact, t.navHome, t.navPrinciples, t.navSolutions, t.navWhitepaper]
+    [t.navAbout, t.navApplications, t.navContact, t.navHome, t.navPrinciples, t.navSolutions, t.navWhitepaper]
   )
 
   const handleNavClick = (href: string, event: React.MouseEvent<HTMLAnchorElement>) => {

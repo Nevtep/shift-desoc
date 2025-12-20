@@ -53,37 +53,37 @@ export default function Features() {
     {
       icon: <ValueSystemIcon />,
       title: t.feature1Title,
-      image: '/solutions-value.png',
+      image: '/solutions-value.webp',
       description: [t.feature1Bullet1, t.feature1Bullet2, t.feature1Bullet3],
     },
     {
       icon: <GovernanceIcon />,
       title: t.feature2Title,
-      image: '/solutions-governance.png',
+      image: '/solutions-governance.webp',
       description: [t.feature2Bullet1, t.feature2Bullet2, t.feature2Bullet3],
     },
     {
       icon: <MarketplaceIcon />,
       title: t.feature3Title,
-      image: '/solutions-market.png',
+      image: '/solutions-market.webp',
       description: [t.feature3Bullet1, t.feature3Bullet2, t.feature3Bullet3],
     },
     {
       icon: <TreasuryIcon />,
       title: t.feature4Title,
-      image: '/solutions-treasury.png',
+      image: '/solutions-treasury.webp',
       description: [t.feature4Bullet1, t.feature4Bullet2, t.feature4Bullet3],
     },
     {
       icon: <ReputationIcon />,
       title: t.feature5Title,
-      image: '/solutions-reputation.png',
+      image: '/solutions-reputation.webp',
       description: [t.feature5Bullet1, t.feature5Bullet2, t.feature5Bullet3],
     },
     {
       icon: <VerifiedIcon />,
       title: t.feature6Title,
-      image: '/solutions-peerreview.png',
+      image: '/solutions-peerreview.webp',
       description: [t.feature6Bullet1, t.feature6Bullet2, t.feature6Bullet3],
     },
   ]
