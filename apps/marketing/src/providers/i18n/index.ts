@@ -21,7 +21,8 @@ export const translations = {
         heroStatement: "Shift turns communities into high-trust networks where effort is visible, value circulates locally, and every voice stays heard.",
         
         // Vision Section
-        visionTitle: "The Vision: From Competition to Cooperation",
+        visionTitle: "The Vision",
+        visionSubtitle: "From Competition to Cooperation",
         problemTitle: "Today's Problem:",
         problem1: "Your work disappears when platforms change",
         problem2: "Complex decisions get forced into simple yes/no votes",
@@ -153,7 +154,8 @@ export const translations = {
         heroStatement: "Shift convierte a las comunidades en redes de alta confianza donde el esfuerzo se ve, el valor se queda y todas las voces cuentan.",
         
         // Vision Section
-        visionTitle: "La Visión: De la Competencia a la Cooperación",
+        visionTitle: "La Visión",
+        visionSubtitle: "De la Competencia a la Cooperación",
         problemTitle: "El Problema de Hoy:",
         problem1: "Tu trabajo se pierde cuando las plataformas cambian",
         problem2: "Decisiones complejas se reducen a votos simples de sí o no",
