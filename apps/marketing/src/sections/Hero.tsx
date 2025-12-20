@@ -13,21 +13,24 @@ export default function Hero() {
     <YStack
       id="home"
       backgroundColor="$backgroundLight"
+      width="100%"
       paddingTop={160}
-      paddingBottom={140}
+      paddingBottom={50}
       paddingHorizontal="$4"
       alignItems="stretch"
       style={{
         backgroundImage:
-          'linear-gradient(135deg, rgba(246, 240, 225, 0.92), rgba(246, 240, 225, 0.86)), url("/hero-backgound2.png")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        borderBottom: '1px solid rgba(224, 224, 208, 0.7)',
+          'linear-gradient(135deg, #F6F0E1 0%, #F6F0E1 45%, rgba(246, 240, 225, 0) 75%), url("/hero-backgound2.png")',
+        backgroundSize: 'cover, cover',
+        backgroundPosition: 'left top, left bottom',
+        backgroundRepeat: 'no-repeat, no-repeat',
+        maxWidth: 1250,
+        marginLeft: 'auto',
+        marginRight: 'auto',
       }}
     >
       <Container maxWidth={1250} width="100%">
-        <YStack alignItems="flex-start" gap="$4" maxWidth={760}>
+        <YStack alignItems="flex-start" gap="$4" maxWidth="60%" width="100%">
           <Heading
             size="$12"
             fontSize="$12"
