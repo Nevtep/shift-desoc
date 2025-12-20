@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { RequestList } from "../../components/requests/request-list";
+import { RequestCreateForm } from "../../components/requests/request-create-form";
 
 export const metadata = {
   title: "Requests | Shift"
@@ -26,6 +27,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
           below to browse scoped to a specific community.
         </p>
       </header>
+      <RequestCreateForm />
       <section className="space-y-4">
         <CommunityFilter currentCommunityId={communityId} />
         <RequestList communityId={communityId} />

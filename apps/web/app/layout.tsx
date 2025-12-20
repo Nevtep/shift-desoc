@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getEnv } from "@shift/shared";
 
 import { ShiftProviders } from "./providers";
+import { WalletConnect } from "../components/wallet/wallet-connect";
 
 export const metadata: Metadata = {
   title: "Shift DeSoc",
@@ -37,20 +38,23 @@ export default function RootLayout({
                 <div className="flex items-center gap-3 font-semibold">
                   <span>Shift DeSoc</span>
                 </div>
-                <nav className="flex flex-wrap items-center gap-4 text-muted-foreground">
-                  <Link className="hover:text-foreground" href="/communities">
-                    Communities
-                  </Link>
-                  <Link className="hover:text-foreground" href="/requests">
-                    Path A: Requests
-                  </Link>
-                  <Link className="hover:text-foreground" href="/claims">
-                    Path B: Claims
-                  </Link>
-                  <Link className="hover:text-foreground" href="/marketplace">
-                    Path C: Marketplace
-                  </Link>
-                </nav>
+                <div className="flex flex-wrap items-center gap-4">
+                  <nav className="flex flex-wrap items-center gap-4 text-muted-foreground">
+                    <Link className="hover:text-foreground" href="/communities">
+                      Communities
+                    </Link>
+                    <Link className="hover:text-foreground" href="/requests">
+                      Path A: Requests
+                    </Link>
+                    <Link className="hover:text-foreground" href="/claims">
+                      Path B: Claims
+                    </Link>
+                    <Link className="hover:text-foreground" href="/marketplace">
+                      Path C: Marketplace
+                    </Link>
+                  </nav>
+                  <WalletConnect />
+                </div>
               </div>
             </header>
             <main className="flex-1">{children}</main>
