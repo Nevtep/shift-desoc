@@ -106,7 +106,7 @@ export default function Features() {
         <YStack gap="$6" alignItems="center" paddingTop={20} paddingBottom={20}>
           <YStack gap="$3" alignItems="center">
             <Heading
-              fontSize="$10"
+              fontSize="$11"
               fontWeight="700"
               color="$primary"
               textAlign="center"

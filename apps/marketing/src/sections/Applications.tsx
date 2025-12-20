@@ -135,7 +135,7 @@ export default function Applications() {
         >
           <YStack gap="$3" alignItems="center" position="relative" zIndex={1} paddingVertical={30}>
             <Heading
-              fontSize="$10"
+              fontSize="$11"
               fontWeight="700"
               color="$primary"
               textAlign="center"

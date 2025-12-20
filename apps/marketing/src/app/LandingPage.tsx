@@ -9,7 +9,7 @@ import Features from '../sections/Features'
 import Applications from '../sections/Applications'
 import Whitepaper from '../sections/Whitepaper'
 import GettingStarted from '../sections/GettingStarted'
-import CTA from '../sections/CTA'
+import Contact from '../sections/CTA'
 import Footer from '../sections/Footer'
 import type { Language } from '../providers/i18n'
 
@@ -28,7 +28,7 @@ export default function LandingPage({ onLanguageChange }: LandingPageProps = {})
       <Applications />
       <Whitepaper />
       <GettingStarted />
-      <CTA />
+      <Contact />
       <Footer />
     </YStack>
   )

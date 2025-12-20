@@ -1,144 +1,92 @@
 'use client'
 
 import React from 'react'
-import { YStack, XStack, Heading, Paragraph, Button } from 'tamagui'
+import { YStack, XStack, Heading, Paragraph, Image, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 
-export default function CTA() {
+const socialNetworks = [
+  { name: 'X', image: '/social1-x.webp' },
+  { name: 'Instagram', image: '/social2-instagram.webp' },
+  { name: 'LinkedIn', image: '/social3-linkedin.webp' },
+  { name: 'GitHub', image: '/social4-github.webp', href: 'https://github.com/Nevtep/shift-desoc' },
+]
+
+export default function Contact() {
   const t = useTranslations()
 
   return (
     <YStack
       id="contact"
       backgroundColor="$backgroundLight"
-      paddingVertical="$10"
+      paddingVertical="$13"
       paddingHorizontal="$4"
       alignItems="center"
+      minHeight={720}
+      style={{
+        backgroundImage: 'url("/contact-bg.webp")',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center bottom',
+      }}
     >
       <Container maxWidth={1250} width="100%">
-        <YStack gap="$6" alignItems="center">
+        <YStack gap="$6" alignItems="center" justifyContent="center" height="100%">
           <Heading
-            fontSize="$9"
-            fontWeight="700"
-            color="$textDark"
+            fontSize="$11"
+            fontWeight="800"
+            color="$primary"
             textAlign="center"
           >
-            {t.ctaTitle}
+            {t.contactTitle}
           </Heading>
-          
+
           <Paragraph
-            fontSize="$6"
-            fontWeight="600"
-            color="$textDark"
+            fontSize="$7"
+            fontWeight="700"
+            color="$secondary"
             textAlign="center"
-            maxWidth={900}
+            maxWidth={860}
           >
-            {t.ctaStatement}
+            {t.contactSubtitle}
           </Paragraph>
-          
-          <Paragraph
-            fontSize="$4"
-            color="$textMedium"
-            textAlign="center"
-            maxWidth={800}
-          >
-            {t.ctaDescription}
-          </Paragraph>
-          
-          <Paragraph
-            fontSize="$3"
-            color="$textMedium"
-            textAlign="center"
-            fontStyle="italic"
-            maxWidth={700}
-          >
-            {t.ctaQuestion}
-          </Paragraph>
-          
-          <XStack
-            flexWrap="wrap"
-            gap="$4"
-            justifyContent="center"
-            marginTop="$4"
-          >
-            <Button
-              size="$4"
-              backgroundColor="$primary"
-              color="$white"
-              borderRadius="$2"
-              paddingHorizontal="$6"
-              paddingVertical="$4"
-              fontWeight="600"
-              hoverStyle={{
-                backgroundColor: '$primaryDark',
-                scale: 1.05,
-                y: -2,
-              }}
-              pressStyle={{
-                scale: 0.95,
-              }}
-            >
-              {t.btnLearnMore}
-            </Button>
-            
-            <Button
-              size="$4"
-              backgroundColor="$secondary"
-              color="$white"
-              borderRadius="$2"
-              paddingHorizontal="$6"
-              paddingVertical="$4"
-              fontWeight="600"
-              hoverStyle={{
-                backgroundColor: '$secondaryDark',
-                scale: 1.05,
-                y: -2,
-              }}
-              pressStyle={{
-                scale: 0.95,
-              }}
-            >
-              {t.btnJoinCommunity}
-            </Button>
-            
-            <Button
-              size="$4"
-              backgroundColor="transparent"
-              borderWidth={2}
-              borderColor="$textDark"
-              borderRadius="$2"
-              paddingHorizontal="$6"
-              paddingVertical="$4"
-              fontWeight="600"
-              textProps={{
-                color: '$textDark',
-                hoverStyle: {
-                  color: '$white',
-                },
-              }}
-              hoverStyle={{
-                backgroundColor: '$textDark',
-                scale: 1.05,
-                y: -2,
-              }}
-              pressStyle={{
-                scale: 0.95,
-              }}
-            >
-              {t.btnStartBuilding}
-            </Button>
+
+          <XStack flexWrap="wrap" gap="$6" justifyContent="center" width="100%" marginTop="$4">
+            {socialNetworks.map((social) => {
+              const content = (
+                <YStack
+                  key={social.name}
+                  alignItems="center"
+                  gap="$3"
+                  hoverStyle={{
+                    scale: 1.05,
+                    y: -4,
+                  }}
+                >
+                  <Image
+                    source={{ uri: social.image }}
+                    width={175}
+                    height={175}
+                    resizeMode="contain"
+                    alt={social.name}
+                  />
+                </YStack>
+              )
+
+              return social.href ? (
+                <Anchor
+                  key={social.name}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  textDecorationLine="none"
+                >
+                  {content}
+                </Anchor>
+              ) : (
+                content
+              )
+            })}
           </XStack>
-          
-          <Paragraph
-            fontSize="$4"
-            color="$textMedium"
-            textAlign="center"
-            fontStyle="italic"
-            marginTop="$6"
-          >
-            {t.ctaTagline} 🌟
-          </Paragraph>
         </YStack>
       </Container>
     </YStack>

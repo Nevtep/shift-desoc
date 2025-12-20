@@ -155,6 +155,10 @@ export const translations = {
         gettingStarted3PrimaryCta: "Ways to contribute",
         gettingStarted3SecondaryCta: "Talk to the team",
         
+        // Contact Section
+        contactTitle: "Contact",
+        contactSubtitle: "Follow us on social—links coming very soon while we finalize our channels.",
+        
         // CTA Section
         ctaTitle: "Join the Cooperation Revolution",
         ctaStatement: "Shift DeSoc proves that a better world isn't just possible - it's inevitable once we have the right tools to build it.",
@@ -322,6 +326,10 @@ export const translations = {
         gettingStarted3Description: "Impulsa comunidades y proyectos con incentivos alineados. Apoya con capital, alianzas o recursos para acelerar impacto real: economías comunitarias, retornos con trazabilidad y distribución programable. Todo con reglas definidas por gobernanza y seguimiento on-chain.",
         gettingStarted3PrimaryCta: "Formas de aporte",
         gettingStarted3SecondaryCta: "Hablar con el equipo",
+        
+        // Contact Section
+        contactTitle: "Contacto",
+        contactSubtitle: "Síguenos en redes. Muy pronto compartiremos los enlaces mientras preparamos los canales.",
         
         // CTA Section
         ctaTitle: "Únete a la Revolución de la Cooperación",
