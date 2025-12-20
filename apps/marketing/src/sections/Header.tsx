@@ -27,42 +27,27 @@ export default function Header() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(`#${entry.target.id}`)
-          }
-        })
-      },
-      {
-        rootMargin: '-50% 0px -40% 0px',
-        threshold: [0.25, 0.5, 0.75],
-      }
-    )
-
-    navItems.forEach((item) => {
-      const id = item.href.replace('#', '')
-      const section = document.getElementById(id)
-      if (section) {
-        observer.observe(section)
-      }
-    })
-
-    return () => observer.disconnect()
-  }, [navItems])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
+    const HEADER_OFFSET = 140
     const onScroll = () => {
       setScrolled(window.scrollY > 8)
+
+      let current = '#home'
+      navItems.forEach((item) => {
+        const id = item.href.slice(1)
+        const section = document.getElementById(id)
+        if (!section) return
+
+        if (window.scrollY + HEADER_OFFSET >= section.offsetTop) {
+          current = item.href
+        }
+      })
+      setActiveSection(current)
     }
 
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  }, [navItems])
 
   return (
     <header
@@ -109,6 +94,7 @@ export default function Header() {
                     key={item.href}
                     href={item.href}
                     aria-label={item.label}
+                    onClick={() => setActiveSection(item.href)}
                     style={{ textDecoration: 'none' }}
                   >
                     {/* sin subrayado; solo marca la sección activa */}
