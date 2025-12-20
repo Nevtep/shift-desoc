@@ -14,6 +14,7 @@ export default function GettingStarted() {
       description: t.gettingStarted1Description,
       primaryCta: t.gettingStarted1PrimaryCta,
       secondaryCta: t.gettingStarted1SecondaryCta,
+      secondaryHref: 'https://github.com/Nevtep/shift-desoc',
       gradient: 'linear-gradient(135deg, #DD8848 0%, #6C8158 100%)',
     },
     {
@@ -21,6 +22,7 @@ export default function GettingStarted() {
       description: t.gettingStarted2Description,
       primaryCta: t.gettingStarted2PrimaryCta,
       secondaryCta: t.gettingStarted2SecondaryCta,
+      secondaryHref: 'https://calendly.com/shiftdesoc/30min',
       gradient: 'linear-gradient(135deg, #566645 0%, #B23B3B 100%)',
     },
     {
@@ -28,6 +30,7 @@ export default function GettingStarted() {
       description: t.gettingStarted3Description,
       primaryCta: t.gettingStarted3PrimaryCta,
       secondaryCta: t.gettingStarted3SecondaryCta,
+      secondaryHref: 'https://calendly.com/shiftdesoc/30min',
       gradient: 'linear-gradient(135deg, #c4733c 0%, #566645 100%)',
     },
   ]
@@ -129,9 +132,11 @@ export default function GettingStarted() {
                     </Anchor>
                     */}
                     <Anchor
-                      href="#contact"
+                    href={card.secondaryHref}
                       {...ctaButtonStyle}
                       backgroundColor="rgba(255, 255, 255, 0.1)"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     >
                       {card.secondaryCta}
                     </Anchor>
