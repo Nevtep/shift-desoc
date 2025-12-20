@@ -9,6 +9,10 @@ import {
   ClaimQuery,
   type ClaimQueryResult
 } from "../../lib/graphql/queries";
+import { useAccount, useChainId, useWriteContract } from "wagmi";
+import { getContractConfig } from "../../lib/contracts";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export type ClaimDetailProps = {
   claimId: string;
@@ -29,7 +33,7 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
   );
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading claim…</p>;
+    return <p className="text-sm text-muted-foreground">Loading claim...</p>;
   }
 
   if (isError || !claim) {
@@ -74,7 +78,7 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Evidence</h2>
         {isManifestLoading ? (
-          <p className="text-sm text-muted-foreground">Loading manifest…</p>
+          <p className="text-sm text-muted-foreground">Loading manifest...</p>
         ) : isManifestError ? (
           <p className="text-sm text-destructive">Failed to load evidence manifest.</p>
         ) : manifest ? (
@@ -82,6 +86,10 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
         ) : (
           <p className="text-sm text-muted-foreground">No evidence manifest uploaded.</p>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <VerifyClaimForm claimId={claim.id} />
       </section>
 
       <section className="space-y-3">
@@ -116,6 +124,86 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
         )}
       </section>
     </div>
+  );
+}
+
+function VerifyClaimForm({ claimId }: { claimId: string }) {
+  const router = useRouter();
+  const chainId = useChainId();
+  const { status } = useAccount();
+  const { writeContractAsync, isPending, error } = useWriteContract();
+  const [decision, setDecision] = useState<"approve" | "reject">("approve");
+  const [success, setSuccess] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const isConnected = status === "connected";
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSuccess(null);
+    try {
+      const { address, abi } = getContractConfig("claims", chainId);
+      await writeContractAsync({
+        address,
+        abi,
+        functionName: "verify",
+        args: [BigInt(claimId), decision === "approve"]
+      });
+      setSuccess("Verification submitted.");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      setActionError(formatClaimTxError(err));
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-border p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold">Verify Claim</h3>
+          <p className="text-sm text-muted-foreground">Only assigned jurors can verify on-chain.</p>
+        </div>
+        <span className="text-xs text-muted-foreground">Claim {claimId}</span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3 text-sm">
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="decision"
+            value="approve"
+            checked={decision === "approve"}
+            onChange={() => setDecision("approve")}
+          />
+          <span>Approve</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="decision"
+            value="reject"
+            checked={decision === "reject"}
+            onChange={() => setDecision("reject")}
+          />
+          <span>Reject</span>
+        </label>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={!isConnected || isPending}
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+        >
+          {isPending ? "Submitting..." : "Submit verification"}
+        </button>
+        {!isConnected ? <span className="text-xs text-destructive">Connect a wallet to verify.</span> : null}
+        {error ? <span className="text-xs text-destructive">{error.message ?? "Transaction failed"}</span> : null}
+        {success ? <span className="text-xs text-emerald-600">{success}</span> : null}
+        {actionError ? <span className="text-xs text-destructive">{actionError}</span> : null}
+      </div>
+    </form>
   );
 }
 
@@ -156,4 +244,17 @@ function EvidenceManifest({ manifest }: { manifest: IpfsDocumentResponse }) {
       ))}
     </ul>
   );
+}
+
+function formatClaimTxError(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  const lower = message.toLowerCase();
+
+  if (lower.includes("not selected") || lower.includes("not juror") || lower.includes("notauthorized")) {
+    return "You are not an assigned juror for this claim.";
+  }
+  if (lower.includes("already verified") || lower.includes("decision recorded")) {
+    return "You have already submitted a decision for this claim.";
+  }
+  return message.replace(/execution reverted: ?/i, "");
 }

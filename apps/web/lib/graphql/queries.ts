@@ -183,6 +183,10 @@ export const ProposalQuery = /* GraphQL */ `
       communityId
       proposer
       descriptionCid
+      descriptionHash
+      targets
+      values
+      calldatas
       state
       createdAt
       queuedAt
@@ -204,6 +208,10 @@ export type ProposalQueryResult = {
     communityId: number;
     proposer: string;
     descriptionCid?: string | null;
+    descriptionHash?: string | null;
+    targets?: string[] | null;
+    values?: string[] | null;
+    calldatas?: string[] | null;
     state: string;
     createdAt: string;
     queuedAt?: string | null;

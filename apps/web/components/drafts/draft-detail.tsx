@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useAccount, useChainId, useWriteContract } from "wagmi";
+import { useRouter } from "next/navigation";
 
 import { useApiQuery } from "../../hooks/useApiQuery";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
+import { getContractConfig } from "../../lib/contracts";
 import type { DraftNode } from "./draft-list";
 
 type DraftVersionNode = {
@@ -99,6 +102,14 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
       </section>
 
       <section className="space-y-3">
+        <DraftEscalateForm
+          draftId={draftId}
+          status={draft.status}
+          hasProposal={Boolean(draft.escalatedProposalId)}
+        />
+      </section>
+
+      <section className="space-y-3">
         <h2 className="text-lg font-medium">Latest Version</h2>
         {isLatestLoading ? (
           <p className="text-sm text-muted-foreground">Loading latest version…</p>
@@ -151,6 +162,156 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
         )}
       </section>
     </div>
+  );
+}
+
+function DraftEscalateForm({
+  draftId,
+  status,
+  hasProposal
+}: {
+  draftId: string;
+  status: string;
+  hasProposal: boolean;
+}) {
+  const router = useRouter();
+  const chainId = useChainId();
+  const { status: accountStatus, address } = useAccount();
+  const { writeContractAsync, isPending, error } = useWriteContract();
+
+  const [descriptionCid, setDescriptionCid] = useState("");
+  const [descriptionMarkdown, setDescriptionMarkdown] = useState("");
+  const [isMultiChoice, setIsMultiChoice] = useState(false);
+  const [numOptions, setNumOptions] = useState(2);
+  const [isUploading, setIsUploading] = useState(false);
+  const [formMessage, setFormMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const isConnected = accountStatus === "connected";
+  const disabled = !isConnected || isPending || isUploading || hasProposal;
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+    setFormMessage(null);
+
+    if (!descriptionCid && !descriptionMarkdown.trim()) {
+      setFormError("Provide a description markdown body or an existing CID.");
+      return;
+    }
+
+    let cidToUse = descriptionCid;
+    try {
+      if (!cidToUse) {
+        setIsUploading(true);
+        const res = await fetch("/api/ipfs/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payload: {
+              type: "proposalDescription",
+              body: descriptionMarkdown,
+              createdBy: address,
+              createdAt: new Date().toISOString()
+            }
+          })
+        });
+        const json = (await res.json()) as { cid?: string; error?: string };
+        if (!res.ok || !json.cid) {
+          throw new Error(json.error ?? "Failed to upload description");
+        }
+        cidToUse = json.cid;
+      }
+
+      const { address: contractAddress, abi } = getContractConfig("draftsManager", chainId);
+
+      await writeContractAsync({
+        address: contractAddress,
+        abi,
+        functionName: "escalateToProposal",
+        args: [BigInt(draftId), isMultiChoice, Number(numOptions), cidToUse]
+      });
+
+      setFormMessage("Escalation sent. Proposal will appear after the indexer updates.");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      setFormError(formatDraftTxError(err));
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-border p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1">
+          <h3 className="text-base font-semibold">Escalate to Proposal</h3>
+          <p className="text-sm text-muted-foreground">
+            Contract requires FINALIZED status; only authors/contributors may escalate.
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground">Draft {draftId}</span>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="text-xs text-muted-foreground sm:col-span-2">
+          Current status: {status}
+        </div>
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="text-muted-foreground">Description CID (optional)</span>
+          <input
+            value={descriptionCid}
+            onChange={(e) => setDescriptionCid(e.target.value)}
+            className="rounded border border-border bg-background px-3 py-2"
+            placeholder="Use existing CID or leave blank to upload markdown"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="text-muted-foreground">Description markdown</span>
+          <textarea
+            value={descriptionMarkdown}
+            onChange={(e) => setDescriptionMarkdown(e.target.value)}
+            className="min-h-[120px] rounded border border-border bg-background px-3 py-2"
+            placeholder="Markdown will be pinned to IPFS if no CID is provided"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={isMultiChoice}
+            onChange={(e) => setIsMultiChoice(e.target.checked)}
+          />
+          <span className="text-muted-foreground">Multi-choice proposal</span>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted-foreground">Number of options</span>
+          <input
+            type="number"
+            min={2}
+            value={numOptions}
+            onChange={(e) => setNumOptions(Number(e.target.value) || 2)}
+            className="rounded border border-border bg-background px-3 py-2"
+            disabled={!isMultiChoice}
+          />
+        </label>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={disabled}
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+        >
+          {isPending || isUploading ? "Submitting..." : "Escalate"}
+        </button>
+        {!isConnected ? <span className="text-xs text-destructive">Connect a wallet to escalate.</span> : null}
+        {hasProposal ? <span className="text-xs text-muted-foreground">Proposal already escalated.</span> : null}
+        {error ? <span className="text-xs text-destructive">{error.message ?? "Transaction failed"}</span> : null}
+        {formMessage ? <span className="text-xs text-emerald-600">{formMessage}</span> : null}
+        {formError ? <span className="text-xs text-destructive">{formError}</span> : null}
+      </div>
+    </form>
   );
 }
 
@@ -221,4 +382,20 @@ function CommentContent({ cid }: { cid?: string }) {
       dangerouslySetInnerHTML={{ __html: data.html.body }}
     />
   );
+}
+
+function formatDraftTxError(err: unknown) {
+  const message = err instanceof Error ? err.message : String(err);
+  const lower = message.toLowerCase();
+
+  if (lower.includes("not authorized") || lower.includes("notauthorized")) {
+    return "Only draft authors or contributors can escalate.";
+  }
+  if (lower.includes("invalidstatus") || lower.includes("finalized")) {
+    return "Draft must be FINALIZED before escalation.";
+  }
+  if (lower.includes("review period")) {
+    return "Review period not met yet.";
+  }
+  return message.replace(/execution reverted: ?/i, "");
 }
