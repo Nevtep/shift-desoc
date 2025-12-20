@@ -8,6 +8,8 @@ import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 import LanguageSelector from './LanguageSelector'
 
+const HEADER_HEIGHT = 120
+
 export default function Header() {
   const t = useTranslations()
   const [scrolled, setScrolled] = useState(false)
@@ -23,6 +25,19 @@ export default function Header() {
     ],
     [t.navAbout, t.navContact, t.navHome, t.navSolutions, t.navWhitepaper]
   )
+
+  const handleNavClick = (href: string, event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    const id = href.slice(1)
+    const target = document.getElementById(id)
+
+    if (target) {
+      const top = target.getBoundingClientRect().top + window.scrollY - HEADER_HEIGHT
+      window.scrollTo({ top, behavior: 'smooth' })
+      window.history.replaceState(null, '', href)
+      setActiveSection(href)
+    }
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -94,7 +109,7 @@ export default function Header() {
                     key={item.href}
                     href={item.href}
                     aria-label={item.label}
-                    onClick={() => setActiveSection(item.href)}
+                    onClick={(event) => handleNavClick(item.href, event)}
                     style={{ textDecoration: 'none' }}
                   >
                     {/* sin subrayado; solo marca la sección activa */}
