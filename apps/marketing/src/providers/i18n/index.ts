@@ -157,7 +157,7 @@ export const translations = {
         
         // Contact Section
         contactTitle: "Contact",
-        contactSubtitle: "Follow us on social—links coming very soon while we finalize our channels.",
+        contactSubtitle: "Follow us on social—find all our channels below.",
         
         // CTA Section
         ctaTitle: "Join the Cooperation Revolution",
@@ -329,7 +329,7 @@ export const translations = {
         
         // Contact Section
         contactTitle: "Contacto",
-        contactSubtitle: "Síguenos en redes. Muy pronto compartiremos los enlaces mientras preparamos los canales.",
+        contactSubtitle: "Síguenos en redes: todos los enlaces están disponibles abajo.",
         
         // CTA Section
         ctaTitle: "Únete a la Revolución de la Cooperación",
