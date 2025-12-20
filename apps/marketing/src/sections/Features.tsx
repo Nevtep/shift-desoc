@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { YStack, XStack, Heading, Paragraph, Card } from 'tamagui'
+import { YStack, XStack, Heading, Paragraph, Card, Image } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 
@@ -53,52 +53,77 @@ export default function Features() {
     {
       icon: <ValueSystemIcon />,
       title: t.feature1Title,
-      description: t.feature1Description,
+      image: '/solutions-value.webp',
+      description: [t.feature1Bullet1, t.feature1Bullet2, t.feature1Bullet3],
     },
     {
       icon: <GovernanceIcon />,
       title: t.feature2Title,
-      description: t.feature2Description,
+      image: '/solutions-governance.webp',
+      description: [t.feature2Bullet1, t.feature2Bullet2, t.feature2Bullet3],
     },
     {
       icon: <MarketplaceIcon />,
       title: t.feature3Title,
-      description: t.feature3Description,
+      image: '/solutions-market.webp',
+      description: [t.feature3Bullet1, t.feature3Bullet2, t.feature3Bullet3],
     },
     {
       icon: <TreasuryIcon />,
       title: t.feature4Title,
-      description: t.feature4Description,
+      image: '/solutions-treasury.webp',
+      description: [t.feature4Bullet1, t.feature4Bullet2, t.feature4Bullet3],
     },
     {
       icon: <ReputationIcon />,
       title: t.feature5Title,
-      description: t.feature5Description,
+      image: '/solutions-reputation.webp',
+      description: [t.feature5Bullet1, t.feature5Bullet2, t.feature5Bullet3],
     },
     {
       icon: <VerifiedIcon />,
       title: t.feature6Title,
-      description: t.feature6Description,
+      image: '/solutions-peerreview.webp',
+      description: [t.feature6Bullet1, t.feature6Bullet2, t.feature6Bullet3],
     },
   ]
 
+  const BulletIcon = () => (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="6" cy="6" r="5" fill="#6C8158" />
+    </svg>
+  )
+
   return (
     <YStack
+      id="solutions"
       backgroundColor="$background"
-      paddingVertical="$10"
+      paddingTop={80}
+      paddingBottom={80}
       paddingHorizontal="$4"
     >
       <Container maxWidth={1250} width="100%">
-        <YStack gap="$6">
-          <Heading
-            fontSize="$9"
-            fontWeight="700"
-            color="$textDark"
-            textAlign="center"
-          >
-            {t.featuresTitle}
-          </Heading>
-          
+        <YStack gap="$6" alignItems="center" paddingTop={20} paddingBottom={20}>
+          <YStack gap="$3" alignItems="center">
+            <Heading
+              fontSize="$11"
+              fontWeight="700"
+              color="$primary"
+              textAlign="center"
+            >
+              {t.navSolutions}
+            </Heading>
+            <Paragraph
+              fontSize="$8"
+              fontWeight="700"
+              color="$secondary"
+              textAlign="center"
+              maxWidth={900}
+            >
+              {t.featuresTitle}
+            </Paragraph>
+          </YStack>
+
           <XStack
             flexWrap="wrap"
             gap="$4"
@@ -110,42 +135,67 @@ export default function Features() {
                 flex={1}
                 minWidth={300}
                 maxWidth={380}
-                backgroundColor="$white"
-                padding="$5"
-                borderRadius="$3"
-                elevation="$1"
+                backgroundColor="rgba(246, 240, 225, 0.88)"
+                padding="$6"
+                borderRadius="$4"
+                elevation="$2"
                 alignItems="center"
                 hoverStyle={{
-                  elevation: '$2',
-                  scale: 1.05,
-                  y: -5,
+                  elevation: '$3',
+                  scale: 1.03,
+                  y: -4,
                 }}
+                borderWidth={1}
+                borderColor="rgba(86, 102, 69, 0.15)"
               >
-                <YStack gap="$4" alignItems="center">
+                <YStack gap="$4" alignItems="center" width="100%">
                   <YStack
-                    width={70}
-                    height={70}
-                    borderRadius="$2"
-                    backgroundColor="$secondary"
+                    width={120}
+                    height={120}
+                    borderRadius={80}
+                    overflow="hidden"
+                    backgroundColor="rgba(0,0,0,0.04)"
                     alignItems="center"
                     justifyContent="center"
                     marginBottom="$3"
                   >
-                    {feature.icon}
+                    <Image
+                      source={{ uri: feature.image }}
+                      width={120}
+                      height={120}
+                      resizeMode="cover"
+                      alt={feature.title}
+                    />
                   </YStack>
-                  
-                  <Heading fontSize="$5" fontWeight="600" color="$textDark" textAlign="center">
+
+                  <Heading fontSize="$6" fontWeight="700" color="$secondary" textAlign="center">
                     {feature.title}
                   </Heading>
                   
-                  <Paragraph
-                    fontSize="$2"
-                    color="$textMedium"
-                    textAlign="center"
-                    lineHeight="$4"
-                  >
-                    {feature.description}
-                  </Paragraph>
+                  <YStack gap="$2" width="100%">
+                    {feature.description.map((line, lineIndex) => (
+                      <XStack
+                        key={lineIndex}
+                        gap="$2"
+                        alignItems="flex-start"
+                        justifyContent="center"
+                      >
+                        <YStack marginTop={4}>
+                          <BulletIcon />
+                        </YStack>
+                        <Paragraph
+                          fontSize="$3"
+                          color="$textMedium"
+                          textAlign="left"
+                          lineHeight="$4"
+                          flex={1}
+                          style={{ whiteSpace: 'pre-line' }}
+                        >
+                          {line}
+                        </Paragraph>
+                      </XStack>
+                    ))}
+                  </YStack>
                 </YStack>
               </Card>
             ))}

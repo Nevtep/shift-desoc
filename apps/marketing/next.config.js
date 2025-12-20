@@ -1,3 +1,5 @@
+const path = require('path')
+
 const tamaguiPackages = [
   'tamagui',
   '@tamagui/animations-css',
@@ -16,7 +18,7 @@ const nextConfig = {
     optimizePackageImports: ['tamagui'],
   },
   turbopack: {
-    root: __dirname,
+    root: path.join(__dirname, '..', '..'),
     resolveAlias: {
       'react-native$': 'react-native-web',
     },
