@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ponder dev",
     "start": "ponder start",
-    "build": "ponder build"
+    "build": "ponder codegen"
   },
   "dependencies": {
     "@ponder/core": "^0.7.17",
