@@ -7,7 +7,7 @@ import Vision from '../sections/Vision'
 import Principles from '../sections/Principles'
 import Features from '../sections/Features'
 import Applications from '../sections/Applications'
-import WhyBlockchain from '../sections/WhyBlockchain'
+import Whitepaper from '../sections/Whitepaper'
 import Impact from '../sections/Impact'
 import Future from '../sections/Future'
 import GettingStarted from '../sections/GettingStarted'
@@ -28,7 +28,7 @@ export default function LandingPage({ onLanguageChange }: LandingPageProps = {})
       <Principles />
       <Features />
       <Applications />
-      <WhyBlockchain />
+      <Whitepaper />
       <Impact />
       <Future />
       <GettingStarted />
