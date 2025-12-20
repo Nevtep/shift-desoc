@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getEnv } from "@shift/shared";
 
 import {
@@ -12,11 +12,16 @@ export const runtime = "edge";
 const CID_PATTERN = /^[a-zA-Z0-9]+$/;
 const MAX_DOCUMENT_CHAR_LENGTH = 1_000_000;
 
-type RouteContext = { params: { cid: string } };
+export async function GET(request: Request) {
+  const pathname = new URL(request.url).pathname;
+  const cid = pathname.split("/").pop();
 
-export async function GET(_request: NextRequest, context: RouteContext) {
-  const { params } = context;
-  const { cid } = params;
+  if (!cid) {
+    return NextResponse.json(
+      { error: "Missing CID" },
+      { status: 400, headers: buildBaseHeaders("unknown") }
+    );
+  }
 
   if (!CID_PATTERN.test(cid)) {
     return NextResponse.json(

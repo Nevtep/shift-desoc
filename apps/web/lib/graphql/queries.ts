@@ -188,6 +188,12 @@ export const ProposalQuery = /* GraphQL */ `
       queuedAt
       executedAt
       multiChoiceOptions
+      votes {
+        voter
+        weight
+        optionIndex
+        castAt
+      }
     }
   }
 `;
@@ -203,6 +209,12 @@ export type ProposalQueryResult = {
     queuedAt?: string | null;
     executedAt?: string | null;
     multiChoiceOptions?: string[] | null;
+    votes?: {
+      voter: string;
+      weight: string;
+      optionIndex?: number | null;
+      castAt: string;
+    }[];
   } | null;
 };
 
@@ -311,6 +323,12 @@ export const ClaimQuery = /* GraphQL */ `
       evidenceManifestCid
       submittedAt
       resolvedAt
+      jurorAssignments {
+        juror
+        weight
+        decision
+        decidedAt
+      }
     }
   }
 `;
@@ -325,5 +343,11 @@ export type ClaimQueryResult = {
     evidenceManifestCid?: string | null;
     submittedAt: string;
     resolvedAt?: string | null;
+    jurorAssignments?: {
+      juror: string;
+      weight: string;
+      decision?: string | null;
+      decidedAt?: string | null;
+    }[];
   } | null;
 };
