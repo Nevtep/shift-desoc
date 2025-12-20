@@ -37,3 +37,4 @@ export const secondaryOutlineButton: Partial<AnchorProps> = {
   borderColor: '$secondary',
   hoverStyle: { borderColor: '$secondaryDark', color: '$secondaryDark' },
 }
+
