@@ -86,7 +86,7 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Juror Panel</h2>
-        {claim.jurorAssignments.length ? (
+        {(claim.jurorAssignments ?? []).length ? (
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -97,7 +97,7 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
               </tr>
             </thead>
             <tbody>
-              {claim.jurorAssignments.map((assignment) => (
+              {(claim.jurorAssignments ?? []).map((assignment) => (
                 <tr key={`${assignment.juror}-${assignment.decision ?? "pending"}`} className="border-t border-border">
                   <td className="py-2 align-top font-medium">{assignment.juror}</td>
                   <td className="py-2 align-top text-muted-foreground">{assignment.weight}</td>

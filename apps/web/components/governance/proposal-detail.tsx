@@ -52,7 +52,7 @@ export function ProposalDetail({ proposalId }: ProposalDetailProps) {
         <div className="rounded-lg border border-border p-4 shadow-sm">
           <h2 className="text-lg font-medium">Metadata</h2>
           <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
-            <MetadataItem label="Community" value={proposal.communityId} />
+            <MetadataItem label="Community" value={String(proposal.communityId)} />
             <MetadataItem label="Proposer" value={proposal.proposer} />
             <MetadataItem label="State" value={proposal.state} />
             <MetadataItem
