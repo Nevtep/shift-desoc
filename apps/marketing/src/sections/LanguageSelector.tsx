@@ -36,35 +36,32 @@ export default function LanguageSelector({ onLanguageChange }: LanguageSelectorP
     })
   }
 
-  return (
-    <XStack gap="$3" alignItems="center">
-      {[
-        { code: 'es', label: 'Esp', flag: '🇪🇸' },
-        { code: 'en', label: 'Eng', flag: '🇺🇸' },
-      ].map((lang) => {
-        const isActive = currentLanguage === lang.code
+  const cycleLanguage = () => {
+    const nextLanguage = currentLanguage === 'es' ? 'en' : 'es'
+    handleValueChange(nextLanguage)
+  }
 
-        return (
-          <XStack
-            key={lang.code}
-            role="button"
-            aria-label={lang.code === 'es' ? 'Cambiar a Español' : 'Switch to English'}
-            onPress={() => handleValueChange(lang.code)}
-            cursor="pointer"
-            opacity={isActive ? 1 : 0.55}
-            hoverStyle={{
-              opacity: 0.9,
-              scale: 1.05,
-            }}
-            pressStyle={{
-              scale: 0.97,
-            }}
-            disabled={isPending}
-          >
-            <Paragraph fontSize={22}>{lang.flag}</Paragraph>
-          </XStack>
-        )
-      })}
+  return (
+    <XStack
+      role="button"
+      aria-label="Cambiar idioma"
+      alignItems="center"
+      gap="$2"
+      cursor={isPending ? 'default' : 'pointer'}
+      opacity={isPending ? 0.65 : 0.9}
+      onPress={isPending ? undefined : cycleLanguage}
+      hoverStyle={{
+        opacity: 1,
+        scale: 1.03,
+      }}
+      pressStyle={{
+        scale: 0.98,
+      }}
+    >
+      <Paragraph fontSize={20}>🌐</Paragraph>
+      <Paragraph fontSize={14} fontWeight="700" color="#6C8158">
+        Idioma
+      </Paragraph>
     </XStack>
   )
 }
