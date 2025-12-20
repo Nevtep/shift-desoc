@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { YStack, Heading, Paragraph, XStack, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
@@ -8,29 +8,74 @@ import { secondaryGradientButton, secondaryOutlineButton } from '../components/b
 
 export default function Hero() {
   const t = useTranslations()
+  const heroBackgrounds = useMemo(
+    () => ['/hero-backgound.png', '/hero-backgound2.png', '/hero-backgound3.png'],
+    [],
+  )
+  const [currentBg, setCurrentBg] = useState(() =>
+    Math.floor(Math.random() * heroBackgrounds.length),
+  )
+
+  useEffect(() => {
+    if (heroBackgrounds.length <= 1) return undefined
+    const intervalMs = 8000
+    const id = setInterval(() => {
+      setCurrentBg((prev) => (prev + 1) % heroBackgrounds.length)
+    }, intervalMs)
+    return () => clearInterval(id)
+  }, [heroBackgrounds.length])
+
+  const getBackgroundStyle = (src: string) => ({
+    backgroundImage:
+      'linear-gradient(135deg, #F6F0E1 0%, #F6F0E1 45%, rgba(246, 240, 225, 0) 75%), url("'
+      + src
+      + '")',
+    backgroundSize: 'cover, cover',
+    backgroundPosition: 'left top, left bottom',
+    backgroundRepeat: 'no-repeat, no-repeat',
+  })
 
   return (
     <YStack
       id="home"
       backgroundColor="$backgroundLight"
       width="100%"
-      paddingTop={160}
+      paddingTop={190}
       paddingBottom={50}
       paddingHorizontal="$4"
       alignItems="stretch"
+      position="relative"
+      overflow="hidden"
       style={{
-        backgroundImage:
-          'linear-gradient(135deg, #F6F0E1 0%, #F6F0E1 45%, rgba(246, 240, 225, 0) 75%), url("/hero-backgound2.png")',
-        backgroundSize: 'cover, cover',
-        backgroundPosition: 'left top, left bottom',
-        backgroundRepeat: 'no-repeat, no-repeat',
         maxWidth: 1250,
         marginLeft: 'auto',
         marginRight: 'auto',
       }}
     >
+      <YStack position="absolute" inset={0} pointerEvents="none">
+        {heroBackgrounds.map((src, index) => (
+          <YStack
+            key={src}
+            position="absolute"
+            inset={0}
+            style={{
+              ...getBackgroundStyle(src),
+              opacity: index === currentBg ? 1 : 0,
+              transition: 'opacity 1.2s ease-in-out',
+            }}
+          />
+        ))}
+      </YStack>
+
       <Container maxWidth={1250} width="100%">
-        <YStack alignItems="flex-start" gap="$4" maxWidth="60%" width="100%">
+        <YStack
+          alignItems="flex-start"
+          gap="$4"
+          maxWidth="60%"
+          width="100%"
+          position="relative"
+          zIndex={1}
+        >
           <YStack gap={0} alignItems="flex-start">
             <Heading
               size="$12"
