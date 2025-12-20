@@ -1,10 +1,10 @@
 'use client'
 
 import React from 'react'
-import Link from 'next/link'
-import { YStack, Heading, Paragraph, Button, XStack } from 'tamagui'
+import { YStack, Heading, Paragraph, XStack, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
+import { secondaryGradientButton, secondaryOutlineButton } from '../components/buttonStyles'
 
 export default function Hero() {
   const t = useTranslations()
@@ -60,32 +60,19 @@ export default function Hero() {
           </Paragraph>
 
           <XStack gap="$3" alignItems="center" marginTop="$2">
-            <Button
-              asChild
-              size="$5"
-              borderRadius="$3"
-              backgroundColor="$secondary"
-              color="$white"
-              paddingHorizontal="$5"
-              hoverStyle={{ backgroundColor: '$secondaryDark' }}
+            <Anchor
+              href="#contact"
+              {...secondaryGradientButton}
             >
-              <Link href="#contact">{t.navGetStarted}</Link>
-            </Button>
+              {t.navGetStarted}
+            </Anchor>
 
-            <Button
-              asChild
-              size="$5"
-              borderRadius="$3"
-              backgroundColor="transparent"
-              color="$color"
-              borderWidth={2}
-              borderColor="$secondary"
-              paddingHorizontal="$5"
-              hoverStyle={{ borderColor: '$secondaryDark' }}
-              textProps={{ color: '$color', hoverStyle: { color: '$secondaryDark' } }}
+            <Anchor
+              href="#solutions"
+              {...secondaryOutlineButton}
             >
-              <Link href="#solutions">{t.btnLearnMore}</Link>
-            </Button>
+              {t.btnLearnMore}
+            </Anchor>
           </XStack>
 
           <Paragraph
