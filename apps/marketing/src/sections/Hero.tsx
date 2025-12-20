@@ -1,75 +1,146 @@
 'use client'
 
-import React from 'react'
-import { YStack, XStack, Heading, Paragraph } from 'tamagui'
+import React, { useEffect, useState } from 'react'
+import { YStack, Heading, Paragraph, XStack, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
+import { secondaryGradientButton, secondaryOutlineButton } from '../components/buttonStyles'
+
+const HERO_BACKGROUNDS = ['/hero-backgound.webp', '/hero-backgound2.webp', '/hero-backgound3.webp']
 
 export default function Hero() {
   const t = useTranslations()
+  const heroBackgrounds = HERO_BACKGROUNDS
+  const [currentBg, setCurrentBg] = useState(0)
+
+  useEffect(() => {
+    if (heroBackgrounds.length <= 1) return undefined
+    // Evita desajustes de hidratación: primera renderización igual en servidor/cliente (index 0),
+    // luego se elige un fondo al azar y se inicia el ciclo.
+    const initialRandom = Math.floor(Math.random() * heroBackgrounds.length)
+    setCurrentBg(initialRandom)
+
+    const intervalMs = 8000
+    const id = setInterval(
+      () => setCurrentBg((prev) => (prev + 1) % heroBackgrounds.length),
+      intervalMs,
+    )
+    return () => clearInterval(id)
+  }, [heroBackgrounds.length])
+
+  const getBackgroundStyle = (src: string) => ({
+    backgroundImage:
+      'linear-gradient(135deg, #F6F0E1 0%, #F6F0E1 45%, rgba(246, 240, 225, 0) 75%), url("'
+      + src
+      + '")',
+    backgroundSize: 'cover, cover',
+    backgroundPosition: 'left top, left bottom',
+    backgroundRepeat: 'no-repeat, no-repeat',
+  })
 
   return (
     <YStack
+      id="home"
       backgroundColor="$backgroundLight"
-      paddingVertical="$10"
+      width="100%"
+      paddingTop={240}
+      paddingBottom={100}
       paddingHorizontal="$4"
-      alignItems="center"
+      alignItems="stretch"
+      position="relative"
+      overflow="hidden"
+      style={{
+        maxWidth: 1250,
+        marginLeft: 'auto',
+        marginRight: 'auto',
+      }}
     >
+      <YStack position="absolute" inset={0} pointerEvents="none">
+        {heroBackgrounds.map((src, index) => (
+          <YStack
+            key={src}
+            position="absolute"
+            inset={0}
+            style={{
+              ...getBackgroundStyle(src),
+              opacity: index === currentBg ? 1 : 0,
+              transition: 'opacity 1.2s ease-in-out',
+            }}
+          />
+        ))}
+      </YStack>
+
       <Container maxWidth={1250} width="100%">
-        <YStack alignItems="center" gap="$4">
-          <Heading
-            fontSize="$10"
-            fontWeight="700"
-            color="$color"
-            textAlign="center"
-            maxWidth={900}
-            lineHeight="$10"
-          >
-            {t.heroTitle}
-          </Heading>
-          
+        <YStack
+          alignItems="flex-start"
+          gap="$4"
+          maxWidth="60%"
+          width="100%"
+          position="relative"
+          zIndex={1}
+        >
+          <YStack gap={0} alignItems="flex-start">
+            <Heading
+              size="$12"
+              fontSize="$12"
+              fontWeight="700"
+              fontFamily="$heading"
+              color="#6C8158"
+              textAlign="left"
+              lineHeight={64}
+              display="block"
+            >
+              {t.heroTitleLine1}
+            </Heading>
+            <Heading
+              size="$12"
+              fontSize="$12"
+              fontWeight="700"
+              fontFamily="$heading"
+              color="#DD8848"
+              textAlign="left"
+              lineHeight={64}
+              display="block"
+            >
+              {t.heroTitleLine2}
+            </Heading>
+          </YStack>
+
           <Paragraph
-            fontSize="$7"
-            fontWeight="600"
-            color="$colorHover"
-            textAlign="center"
+            fontSize="$8"
+            fontWeight="400"
+            color="#6C8158"
+            textAlign="left"
           >
             {t.heroSubtitle}
           </Paragraph>
-          
+
           <Paragraph
-            fontSize="$4"
-            color="$colorHover"
-            textAlign="center"
-            maxWidth={800}
+            fontSize="$5"
+            color="$color"
+            textAlign="left"
+            maxWidth={820}
+            lineHeight={28}
           >
             {t.heroDescription}
           </Paragraph>
-          
-          <Paragraph
-            fontSize="$3"
-            color="$colorHover"
-            textAlign="center"
-            maxWidth={800}
-            fontStyle="italic"
-          >
-            {t.heroStatement}
-          </Paragraph>
-          
-          <XStack
-            marginTop="$6"
-            maxWidth={600}
-            width="100%"
-            backgroundColor="$greyLight"
-            borderRadius="$2"
-            padding="$4"
-          >
-            <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto' }}>
-              <rect width="200" height="120" fill="#E0E0D0" rx="4"/>
-              <path d="M50 80 L80 50 L120 60 L150 40 L170 70" stroke="#8B8B7A" strokeWidth="2" fill="none"/>
-              <circle cx="170" cy="30" r="15" fill="#FFD54F"/>
-            </svg>
+
+          <XStack gap="$3" alignItems="center" marginTop="$2">
+            <Anchor
+              href="#getting-started"
+              {...secondaryGradientButton}
+            >
+              {t.navGetStarted}
+            </Anchor>
+
+            <Anchor
+              href="#about"
+              {...secondaryOutlineButton}
+            >
+              {t.btnLearnMore}
+            </Anchor>
           </XStack>
+
         </YStack>
       </Container>
     </YStack>

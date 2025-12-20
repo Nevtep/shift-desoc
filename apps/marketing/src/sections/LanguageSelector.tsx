@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useTransition } from 'react'
+import React, { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { XStack, Select, Adapt, Sheet } from 'tamagui'
+import { Globe2 } from 'lucide-react'
+import { Paragraph, XStack, YStack, styled } from 'tamagui'
 import { setLanguageAction } from '../actions/set-language'
-import { useLanguage, useTranslations } from '../providers/i18n/I18nContext'
+import { useLanguage } from '../providers/i18n/I18nContext'
 import type { Language } from '../providers/i18n'
 
 interface LanguageSelectorProps {
@@ -13,9 +14,10 @@ interface LanguageSelectorProps {
 
 export default function LanguageSelector({ onLanguageChange }: LanguageSelectorProps) {
   const [currentLanguage, setLanguage] = useLanguage()
-  const t = useTranslations()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [isOpen, setIsOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   const handleValueChange = (value: string) => {
     const nextLanguage = (value === 'en' ? 'en' : 'es') as Language
@@ -37,62 +39,115 @@ export default function LanguageSelector({ onLanguageChange }: LanguageSelectorP
     })
   }
 
+  const toggleMenu = () => {
+    if (isPending) return
+    setIsOpen((prev) => !prev)
+  }
+
+  const handleClickOutside = (event: MouseEvent) => {
+    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      setIsOpen(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isOpen])
+
+  const languages: { value: Language; label: string }[] = [
+    { value: 'es', label: 'Español' },
+    { value: 'en', label: 'English' },
+  ]
+
   return (
-    <XStack
-      top="$4"
-      right="$4"
-      zIndex={1000}
-      style={{ position: 'fixed' }}
-    >
-      <Select
-        value={currentLanguage}
-        onValueChange={handleValueChange}
-        size="$3"
+    <MenuWrapper ref={menuRef}>
+      <XStack
+        role="button"
+        aria-label="Cambiar idioma"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        alignItems="center"
+        gap="$2"
+        cursor={isPending ? 'default' : 'pointer'}
+        opacity={isPending ? 0.65 : 0.9}
+        onPress={toggleMenu}
+        hoverStyle={{
+          opacity: 1,
+          scale: 1.05,
+        }}
+        pressStyle={{
+          scale: 0.97,
+        }}
       >
-        <Select.Trigger
-          width={140}
-          borderWidth={2}
-          borderColor="$textDark"
-          backgroundColor="$white"
-          borderRadius="$2"
-          paddingHorizontal="$3"
-          paddingVertical="$2"
-          cursor="pointer"
-          disabled={isPending}
-          opacity={isPending ? 0.6 : 1}
-          hoverStyle={{
-            backgroundColor: '$background',
-            scale: 1.05,
-          }}
-          focusStyle={{
-            borderColor: '$primary',
-          }}
+        <Globe2 size={22} color="#6C8158" strokeWidth={2.4} />
+        <Paragraph fontSize={14} fontWeight="700" color="#6C8158">
+          {currentLanguage.toUpperCase()}
+        </Paragraph>
+      </XStack>
+
+      {isOpen ? (
+        <Dropdown
+          role="menu"
+          aria-label="Seleccionar idioma"
+          elevation="$2"
+          shadowColor="#0000001a"
         >
-          <Select.Value placeholder={t.langSelector} />
-        </Select.Trigger>
-        <Adapt when="sm" platform="touch">
-          <Sheet modal dismissOnSnapToBottom>
-            <Sheet.Frame>
-              <Sheet.ScrollView>
-                <Adapt.Contents />
-              </Sheet.ScrollView>
-            </Sheet.Frame>
-            <Sheet.Overlay />
-          </Sheet>
-        </Adapt>
-        <Select.Content zIndex={200000}>
-          <Select.ScrollUpButton />
-          <Select.Viewport>
-            <Select.Item index={0} value="es">
-              <Select.ItemText>Español</Select.ItemText>
-            </Select.Item>
-            <Select.Item index={1} value="en">
-              <Select.ItemText>English</Select.ItemText>
-            </Select.Item>
-          </Select.Viewport>
-          <Select.ScrollDownButton />
-        </Select.Content>
-      </Select>
-    </XStack>
+          {languages.map((lang) => (
+            <DropdownItem
+              key={lang.value}
+              role="menuitem"
+              onPress={() => {
+                setIsOpen(false)
+                handleValueChange(lang.value)
+              }}
+              backgroundColor={currentLanguage === lang.value ? '#F0F4EC' : 'white'}
+            >
+              <Paragraph
+                fontSize={14}
+                fontWeight={currentLanguage === lang.value ? '800' : '600'}
+                color="#6C8158"
+              >
+                {lang.label}
+              </Paragraph>
+            </DropdownItem>
+          ))}
+        </Dropdown>
+      ) : null}
+    </MenuWrapper>
   )
 }
+
+const MenuWrapper = styled(YStack, {
+  position: 'relative',
+})
+
+const Dropdown = styled(YStack, {
+  position: 'absolute',
+  top: '105%',
+  right: 0,
+  backgroundColor: 'white',
+  borderRadius: '$3',
+  paddingVertical: '$2',
+  paddingHorizontal: '$3',
+  gap: '$2',
+  minWidth: 130,
+  borderWidth: 1,
+  borderColor: '#e5e7eb',
+  zIndex: 20,
+})
+
+const DropdownItem = styled(XStack, {
+  alignItems: 'center',
+  paddingVertical: '$1.5',
+  paddingHorizontal: '$2',
+  borderRadius: '$2',
+  cursor: 'pointer',
+  hoverStyle: {
+    backgroundColor: '#F8FAF5',
+  },
+  pressStyle: {
+    scale: 0.99,
+  },
+})
