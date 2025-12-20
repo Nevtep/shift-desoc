@@ -31,22 +31,37 @@ export default function Hero() {
     >
       <Container maxWidth={1250} width="100%">
         <YStack alignItems="flex-start" gap="$4" maxWidth="60%" width="100%">
-          <Heading
-            size="$12"
-            fontSize="$12"
-            fontWeight="700"
-            fontFamily="$heading"
-            color="$color"
-            textAlign="left"
-            lineHeight={64}
-          >
-            {t.heroTitle}
-          </Heading>
+          <YStack gap={0} alignItems="flex-start">
+            <Heading
+              size="$12"
+              fontSize="$12"
+              fontWeight="700"
+              fontFamily="$heading"
+              color="#6C8158"
+              textAlign="left"
+              lineHeight={64}
+              display="block"
+            >
+              {t.heroTitleLine1}
+            </Heading>
+            <Heading
+              size="$12"
+              fontSize="$12"
+              fontWeight="700"
+              fontFamily="$heading"
+              color="#DD8848"
+              textAlign="left"
+              lineHeight={64}
+              display="block"
+            >
+              {t.heroTitleLine2}
+            </Heading>
+          </YStack>
 
           <Paragraph
-            fontSize="$7"
-            fontWeight="700"
-            color="$secondaryDark"
+            fontSize="$8"
+            fontWeight="400"
+            color="#6C8158"
             textAlign="left"
           >
             {t.heroSubtitle}
@@ -78,15 +93,6 @@ export default function Hero() {
             </Anchor>
           </XStack>
 
-          <Paragraph
-            fontSize="$3"
-            color="$colorHover"
-            textAlign="left"
-            maxWidth={800}
-            fontStyle="italic"
-          >
-            {t.heroStatement}
-          </Paragraph>
         </YStack>
       </Container>
     </YStack>

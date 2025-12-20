@@ -14,6 +14,8 @@ export const translations = {
 
         // Hero Section
         heroTitle: "Unlocking human cooperation",
+        heroTitleLine1: "Unlocking human",
+        heroTitleLine2: "cooperation",
         heroSubtitle: "Governance tech that empowers communities to thrive together",
         heroDescription: "Coordinate resources, reward verified contributions, and decide together with tools designed for democratic scale.",
         heroStatement: "Shift turns communities into high-trust networks where effort is visible, value circulates locally, and every voice stays heard.",
@@ -144,7 +146,9 @@ export const translations = {
 
         // Hero Section
         heroTitle: "Desbloqueamos la cooperación humana",
-        heroSubtitle: "Tecnología de gobernanza que empodera a las comunidades para prosperar juntas",
+        heroTitleLine1: "Desbloqueamos la",
+        heroTitleLine2: "cooperación humana",
+        heroSubtitle: "Tecnología de gobernanza que empodera a las comunidades",
         heroDescription: "Coordina recursos, recompensa contribuciones verificadas y decide en conjunto con herramientas diseñadas para la escala democrática.",
         heroStatement: "Shift convierte a las comunidades en redes de alta confianza donde el esfuerzo se ve, el valor se queda y todas las voces cuentan.",
         
