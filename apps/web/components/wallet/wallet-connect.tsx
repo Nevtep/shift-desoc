@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useAccount,
   useChainId,
@@ -19,6 +19,9 @@ function formatAddress(address?: string | null) {
 }
 
 export function WalletConnect() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const { address, status: accountStatus } = useAccount();
   const isConnected = accountStatus === "connected";
 
@@ -39,6 +42,11 @@ export function WalletConnect() {
     [switchableChains]
   );
   const showChainWarning = activeChain ? !preferredChainIds.has(activeChain.id) : false;
+
+  // Avoid rendering connector lists during SSR to prevent hydration mismatches.
+  if (!mounted) {
+    return <div className="h-8" aria-hidden />;
+  }
 
   if (!isConnected) {
     return (
