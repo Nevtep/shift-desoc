@@ -243,6 +243,34 @@ contract DraftsManagerTest is Test {
         assertEq(authorDrafts.length, 1);
         assertEq(authorDrafts[0], draftId);
     }
+
+    function testCreateDraftRecomputesActionsHash() public {
+        DraftsManager.ActionBundle memory tampered = testActions;
+        tampered.actionsHash = bytes32(uint256(123));
+
+        vm.prank(user1);
+        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, tampered, VERSION_CID);
+
+        (,,,, DraftsManager.ActionBundle memory actions,,,,,,) = draftsManager.getDraft(draftId);
+        assertEq(actions.actionsHash, testActions.actionsHash);
+    }
+
+    function testCreateDraftMismatchedActionsReverts() public {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](2);
+
+        DraftsManager.ActionBundle memory badActions = DraftsManager.ActionBundle({
+            targets: targets,
+            values: values,
+            calldatas: calldatas,
+            actionsHash: bytes32(0)
+        });
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Actions length mismatch"));
+        draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, badActions, VERSION_CID);
+    }
     
     function testCreateDraftWithoutRequest() public {
         vm.prank(user1);
