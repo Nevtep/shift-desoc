@@ -3,10 +3,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Button, Paragraph, XStack, YStack } from 'tamagui'
+import { Paragraph, XStack, YStack, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 import LanguageSelector from './LanguageSelector'
+import { secondaryGradientButton } from '../components/buttonStyles'
 
 const HEADER_HEIGHT = 120
 
@@ -131,22 +132,14 @@ export default function Header() {
               </XStack>
 
               <XStack gap="$2" alignItems="center">
-                <Button
-                  size="$4"
-                  borderRadius="$3"
+                <Anchor
+                  href="#contact"
+                  {...secondaryGradientButton}
                   paddingHorizontal="$4"
-                  backgroundColor="#DD8848"
-                  color="$white"
                   fontSize="$5"
-                  fontWeight="700"
-                  borderWidth={0}
-                  hoverStyle={{ backgroundColor: '#c4733c' }}
-                  style={{
-                    backgroundImage: 'linear-gradient(135deg, #E09B3F 0%, #DD8649 100%)',
-                  }}
                 >
                   {t.navGetStarted}
-                </Button>
+                </Anchor>
               </XStack>
             </XStack>
           </XStack>
