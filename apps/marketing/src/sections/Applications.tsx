@@ -111,10 +111,9 @@ export default function Applications() {
   return (
     <YStack
       id="applications"
-      paddingVertical={0}
+      paddingTop={80}
+      paddingBottom={80}
       paddingHorizontal={0}
-      marginTop={40}
-      marginBottom={40}
       width="100%"
       style={{
         backgroundImage: 'url(/uses-bg.webp)',
@@ -131,6 +130,8 @@ export default function Applications() {
           overflow="hidden"
           minHeight={720}
           justifyContent="center"
+          paddingTop={20}
+          paddingBottom={20}
         >
           <YStack gap="$3" alignItems="center" position="relative" zIndex={1} paddingVertical={30}>
             <Heading

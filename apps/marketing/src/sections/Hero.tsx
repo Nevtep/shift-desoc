@@ -43,8 +43,8 @@ export default function Hero() {
       id="home"
       backgroundColor="$backgroundLight"
       width="100%"
-      paddingTop={190}
-      paddingBottom={50}
+      paddingTop={240}
+      paddingBottom={100}
       paddingHorizontal="$4"
       alignItems="stretch"
       position="relative"

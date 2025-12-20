@@ -98,11 +98,12 @@ export default function Features() {
     <YStack
       id="solutions"
       backgroundColor="$background"
-      paddingVertical="$10"
+      paddingTop={80}
+      paddingBottom={80}
       paddingHorizontal="$4"
     >
       <Container maxWidth={1250} width="100%">
-        <YStack gap="$6" alignItems="center">
+        <YStack gap="$6" alignItems="center" paddingTop={20} paddingBottom={20}>
           <YStack gap="$3" alignItems="center">
             <Heading
               fontSize="$10"
