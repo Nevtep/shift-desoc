@@ -1,27 +1,30 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { YStack, Heading, Paragraph, XStack, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 import { secondaryGradientButton, secondaryOutlineButton } from '../components/buttonStyles'
 
+const HERO_BACKGROUNDS = ['/hero-backgound.png', '/hero-backgound2.png', '/hero-backgound3.png']
+
 export default function Hero() {
   const t = useTranslations()
-  const heroBackgrounds = useMemo(
-    () => ['/hero-backgound.png', '/hero-backgound2.png', '/hero-backgound3.png'],
-    [],
-  )
-  const [currentBg, setCurrentBg] = useState(() =>
-    Math.floor(Math.random() * heroBackgrounds.length),
-  )
+  const heroBackgrounds = HERO_BACKGROUNDS
+  const [currentBg, setCurrentBg] = useState(0)
 
   useEffect(() => {
     if (heroBackgrounds.length <= 1) return undefined
+    // Evita desajustes de hidratación: primera renderización igual en servidor/cliente (index 0),
+    // luego se elige un fondo al azar y se inicia el ciclo.
+    const initialRandom = Math.floor(Math.random() * heroBackgrounds.length)
+    setCurrentBg(initialRandom)
+
     const intervalMs = 8000
-    const id = setInterval(() => {
-      setCurrentBg((prev) => (prev + 1) % heroBackgrounds.length)
-    }, intervalMs)
+    const id = setInterval(
+      () => setCurrentBg((prev) => (prev + 1) % heroBackgrounds.length),
+      intervalMs,
+    )
     return () => clearInterval(id)
   }, [heroBackgrounds.length])
 
