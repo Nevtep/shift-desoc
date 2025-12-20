@@ -120,12 +120,7 @@ export default function Vision() {
                     style={{ listStyleType: 'none' }}
                     marginTop="$2"
                   >
-                    {[
-                      'Tu esfuerzo no se queda contigo: lo que construyes en una plataforma se pierde cuando cambias, te banean o la app desaparece.',
-                      'Decisiones importantes se vuelven superficiales: votar “sí/no” no refleja matices, prioridades ni alternativas reales.',
-                      'La recompensa va a quien tiene capital, no a quien aporta valor: los creadores sostienen el sistema, pero el beneficio se concentra arriba.',
-                      'Coordinar a muchas personas es un caos: sin reglas claras, la comunidad se frena, se fragmenta o depende de pocos líderes.',
-                    ].map((textItem, index) => {
+                    {[t.problem1, t.problem2, t.problem3, t.problem4].map((textItem, index) => {
                       const words = textItem.split(' ')
                       const boldPart = words.slice(0, 2).join(' ')
                       const restPart = words.slice(2).join(' ')
@@ -181,12 +176,7 @@ export default function Vision() {
                     style={{ listStyleType: 'none' }}
                     marginTop="$2"
                   >
-                    {[
-                      'Tus contribuciones quedan registradas para siempre: un historial verificable que te acompaña entre proyectos y comunidades.',
-                      'Votación con opciones reales: elige entre varias propuestas y expresa prioridades, no solo “a favor/en contra”.',
-                      'Reparto justo del valor creado: las recompensas se distribuyen según aportes verificables, con reglas transparentes.',
-                      'Coordinación que escala sin perder democracia: herramientas para pasar de un grupo pequeño a una red grande sin burocracia ni control central.',
-                    ].map((textItem, index) => {
+                    {[t.solution1, t.solution2, t.solution3, t.solution4].map((textItem, index) => {
                       const words = textItem.split(' ')
                       const boldPart = words.slice(0, 2).join(' ')
                       const restPart = words.slice(2).join(' ')

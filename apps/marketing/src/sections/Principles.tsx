@@ -58,7 +58,7 @@ export default function Principles() {
               color="$primary"
               textAlign="center"
             >
-              Principios
+              {t.navPrinciples}
             </Heading>
             <Paragraph
               fontSize="$8"
