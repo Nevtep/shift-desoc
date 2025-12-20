@@ -52,7 +52,7 @@ const startBlock = process.env.PONDER_START_BLOCK
   ? Number.parseInt(process.env.PONDER_START_BLOCK, 10)
   : deployment.startBlock;
 
-const abiPath = (file: string) => path.join(__dirname, "../../out", file);
+const abiPath = (file: string) => path.join(__dirname, "abis", file);
 const loadAbi = (file: string) => JSON.parse(fs.readFileSync(abiPath(file), "utf8")).abi;
 
 export default createConfig({
@@ -74,49 +74,49 @@ export default createConfig({
     CommunityRegistry: {
       network,
       address: deployment.addresses?.communityRegistry ?? "",
-      abi: loadAbi("CommunityRegistry.sol/CommunityRegistry.json"),
+      abi: loadAbi("CommunityRegistry.json"),
       startBlock
     },
     RequestHub: {
       network,
       address: deployment.addresses?.requestHub ?? "",
-      abi: loadAbi("RequestHub.sol/RequestHub.json"),
+      abi: loadAbi("RequestHub.json"),
       startBlock
     },
     DraftsManager: {
       network,
       address: deployment.addresses?.draftsManager ?? "",
-      abi: loadAbi("DraftsManager.sol/DraftsManager.json"),
+      abi: loadAbi("DraftsManager.json"),
       startBlock
     },
     ShiftGovernor: {
       network,
       address: deployment.addresses?.governor ?? "",
-      abi: loadAbi("ShiftGovernor.sol/ShiftGovernor.json"),
+      abi: loadAbi("ShiftGovernor.json"),
       startBlock
     },
     CountingMultiChoice: {
       network,
       address: deployment.addresses?.countingMultiChoice ?? "",
-      abi: loadAbi("CountingMultiChoice.sol/CountingMultiChoice.json"),
+      abi: loadAbi("CountingMultiChoice.json"),
       startBlock
     },
     Claims: {
       network,
       address: deployment.addresses?.claims ?? "",
-      abi: loadAbi("Claims.sol/Claims.json"),
+      abi: loadAbi("Claims.json"),
       startBlock
     },
     VerifierManager: {
       network,
       address: deployment.addresses?.verifierManager ?? "",
-      abi: loadAbi("VerifierManager.sol/VerifierManager.json"),
+      abi: loadAbi("VerifierManager.json"),
       startBlock
     },
     ValuableActionRegistry: {
       network,
       address: deployment.addresses?.valuableActionRegistry ?? "",
-      abi: loadAbi("ValuableActionRegistry.sol/ValuableActionRegistry.json"),
+      abi: loadAbi("ValuableActionRegistry.json"),
       startBlock
     }
   }
