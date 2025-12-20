@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ClaimList } from "../../components/claims/claim-list";
+import { ClaimSubmitForm } from "../../components/claims/claim-submit-form";
 
 export const metadata = {
   title: "Claims | Shift"
@@ -23,6 +24,7 @@ export default async function ClaimsPage({ searchParams }: PageProps) {
           Track valuable actions from submission through juror verification and resolution.
         </p>
       </header>
+      <ClaimSubmitForm />
       <section className="space-y-4">
         <CommunityFilter currentCommunityId={communityId ?? undefined} />
         <ClaimList communityId={communityId ?? undefined} />

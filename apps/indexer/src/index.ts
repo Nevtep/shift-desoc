@@ -15,7 +15,7 @@ import {
   requests,
 } from "../ponder.schema";
 
-import type { Address } from "viem";
+import { keccak256, toBytes, type Address } from "viem";
 import { ponder } from "@/generated";
 
 // --- API ROUTES (Hono via Ponder) -------------------------------------------------
@@ -403,6 +403,10 @@ ponder.on("DraftsManager:ProposalEscalated", async ({ event, context }) => {
       communityId: defaultCommunityId,
       proposer: event.transaction.from,
       descriptionCid: null,
+      descriptionHash: null,
+      targets: [],
+      values: [],
+      calldatas: [],
       state: "Active",
       createdAt,
       queuedAt: null,
@@ -434,6 +438,7 @@ ponder.on("DraftsManager:ProposalOutcomeUpdated", async ({ event, context }) => 
 ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
   const createdAt = toDate(event.block.timestamp);
   const description = event.args.description;
+  const descriptionHash = keccak256(toBytes(description));
 
   await context.db
     .insert(proposals)
@@ -442,6 +447,10 @@ ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
       communityId: defaultCommunityId,
       proposer: event.args.proposer,
       descriptionCid: description,
+      descriptionHash,
+      targets: event.args.targets,
+      values: event.args.values.map((val) => val.toString()),
+      calldatas: event.args.calldatas,
       state: "Active",
       createdAt,
       queuedAt: null,
@@ -450,12 +459,22 @@ ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
     })
     .onConflictDoUpdate({
       target: proposals.id,
-      set: { proposer: event.args.proposer, descriptionCid: description, state: "Active", createdAt },
+      set: {
+        proposer: event.args.proposer,
+        descriptionCid: description,
+        descriptionHash,
+        targets: event.args.targets,
+        values: event.args.values.map((val) => val.toString()),
+        calldatas: event.args.calldatas,
+        state: "Active",
+        createdAt,
+      },
     });
 });
 
 ponder.on("ShiftGovernor:MultiChoiceProposalCreated", async ({ event, context }) => {
   const createdAt = toDate(event.block.timestamp);
+  const descriptionHash = keccak256(toBytes(event.args.description));
   const options = Array.from({ length: Number(event.args.numOptions) }, (_, i) => i);
 
   await context.db
@@ -465,6 +484,10 @@ ponder.on("ShiftGovernor:MultiChoiceProposalCreated", async ({ event, context })
       communityId: defaultCommunityId,
       proposer: event.args.proposer,
       descriptionCid: event.args.description,
+      descriptionHash,
+      targets: event.args.targets,
+      values: event.args.values.map((val) => val.toString()),
+      calldatas: event.args.calldatas,
       state: "Active",
       createdAt,
       queuedAt: null,
@@ -473,7 +496,16 @@ ponder.on("ShiftGovernor:MultiChoiceProposalCreated", async ({ event, context })
     })
     .onConflictDoUpdate({
       target: proposals.id,
-      set: { proposer: event.args.proposer, descriptionCid: event.args.description, state: "Active", multiChoiceOptions: options },
+      set: {
+        proposer: event.args.proposer,
+        descriptionCid: event.args.description,
+        descriptionHash,
+        targets: event.args.targets,
+        values: event.args.values.map((val) => val.toString()),
+        calldatas: event.args.calldatas,
+        state: "Active",
+        multiChoiceOptions: options,
+      },
     });
 });
 

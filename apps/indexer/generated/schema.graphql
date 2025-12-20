@@ -511,6 +511,10 @@ type proposals {
   communityId: Int!
   proposer: String!
   descriptionCid: String
+  descriptionHash: String
+  targets: JSON!
+  values: JSON!
+  calldatas: JSON!
   state: String!
   createdAt: String!
   queuedAt: String
@@ -565,6 +569,16 @@ input proposalsFilter {
   descriptionCid_ends_with: String
   descriptionCid_not_starts_with: String
   descriptionCid_not_ends_with: String
+  descriptionHash: String
+  descriptionHash_not: String
+  descriptionHash_in: [String]
+  descriptionHash_not_in: [String]
+  descriptionHash_contains: String
+  descriptionHash_not_contains: String
+  descriptionHash_starts_with: String
+  descriptionHash_ends_with: String
+  descriptionHash_not_starts_with: String
+  descriptionHash_not_ends_with: String
   state: String
   state_not: String
   state_in: [String]
