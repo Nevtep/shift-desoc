@@ -37,7 +37,7 @@ const siteKeywords = [
   "dao",
   "web3",
 ];
-const ogImage = "/hero-backgound.png";
+const ogImage = "/hero-backgound.webp";
 
 export const metadata: Metadata = {
   metadataBase,

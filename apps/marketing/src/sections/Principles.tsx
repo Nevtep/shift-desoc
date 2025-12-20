@@ -10,19 +10,19 @@ export default function Principles() {
 
   const principles = [
     {
-      image: '/principles-contribulle.png',
+      image: '/principles-contribulle.webp',
       title: t.principle1Title,
       subtitle: t.principle1Subtitle,
       description: t.principle1Description,
     },
     {
-      image: '/principles-manos.png',
+      image: '/principles-manos.webp',
       title: t.principle2Title,
       subtitle: t.principle2Subtitle,
       description: t.principle2Description,
     },
     {
-      image: '/principles-valor.png',
+      image: '/principles-valor.webp',
       title: t.principle3Title,
       subtitle: t.principle3Subtitle,
       description: t.principle3Description,
