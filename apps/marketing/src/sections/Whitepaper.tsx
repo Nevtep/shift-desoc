@@ -44,7 +44,7 @@ export default function Whitepaper() {
           }}
         >
           <Heading
-            fontSize="$10"
+            fontSize="$11"
             fontWeight="800"
             color="#0f0f0f"
             textAlign="center"

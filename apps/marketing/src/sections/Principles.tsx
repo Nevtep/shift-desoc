@@ -51,7 +51,7 @@ export default function Principles() {
         >
           <YStack gap="$3" alignItems="center" position="relative" zIndex={1} paddingVertical={40}>
             <Heading
-              fontSize="$10"
+              fontSize="$11"
               fontWeight="700"
               color="$primary"
               textAlign="center"

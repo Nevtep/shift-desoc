@@ -69,7 +69,7 @@ export default function GettingStarted() {
           <Heading
             fontSize="$11"
             fontWeight="700"
-            color="$textDark"
+            color="$primary"
             textAlign="center"
           >
             {t.gettingStartedTitle}
