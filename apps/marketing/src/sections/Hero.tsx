@@ -127,7 +127,7 @@ export default function Hero() {
 
           <XStack gap="$3" alignItems="center" marginTop="$2">
             <Anchor
-              href="#contact"
+              href="#getting-started"
               {...secondaryGradientButton}
             >
               {t.navGetStarted}

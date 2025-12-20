@@ -32,7 +32,7 @@ export default function Whitepaper() {
           backgroundColor="#ffffff"
           borderRadius="$4"
           padding="$8"
-          paddingTop={20}
+          paddingTop={40}
           paddingBottom={20}
           gap="$5"
           alignItems="center"

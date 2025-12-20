@@ -135,7 +135,7 @@ export default function Header() {
 
               <XStack gap="$2" alignItems="center">
                 <Anchor
-                  href="#contact"
+                  href="#getting-started"
                   {...secondaryGradientButton}
                   paddingHorizontal="$4"
                   fontSize="$5"
