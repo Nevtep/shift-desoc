@@ -10,6 +10,7 @@ export default function WhyBlockchain() {
 
   return (
     <YStack
+      id="whitepaper"
       backgroundColor="$background"
       paddingVertical="$10"
       paddingHorizontal="$4"
