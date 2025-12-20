@@ -13,9 +13,9 @@ const CheckCircleIcon = ({ color = '#6C8158' }: { color?: string }) => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <circle cx="12" cy="12" r="12" fill={color} />
+    <rect x="2.5" y="2.5" width="19" height="19" rx="4" fill={color} />
     <path
-      d="M16.5 9L10.75 14.75L7.5 11.5"
+      d="M17 9.5L11 15.5L8 12.5"
       stroke="#FFFFFF"
       strokeWidth="2"
       strokeLinecap="round"
