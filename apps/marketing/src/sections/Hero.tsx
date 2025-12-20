@@ -134,7 +134,7 @@ export default function Hero() {
             </Anchor>
 
             <Anchor
-              href="#solutions"
+              href="#about"
               {...secondaryOutlineButton}
             >
               {t.btnLearnMore}
