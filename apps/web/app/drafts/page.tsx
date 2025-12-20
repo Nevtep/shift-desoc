@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DraftList } from "../../components/drafts/draft-list";
+import { DraftCreateForm } from "../../components/drafts/draft-create-form";
 
 export const metadata = {
   title: "Drafts | Shift"
@@ -24,6 +25,7 @@ export default async function DraftsPage({ searchParams }: PageProps) {
           results.
         </p>
       </header>
+      <DraftCreateForm />
       <section className="space-y-4">
         <CommunityFilter currentCommunityId={communityId} />
         <DraftList communityId={communityId ?? undefined} />
