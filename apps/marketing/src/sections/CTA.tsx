@@ -6,9 +6,9 @@ import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 
 const socialNetworks = [
-  { name: 'X', image: '/social1-x.webp' },
-  { name: 'Instagram', image: '/social2-instagram.webp' },
-  { name: 'LinkedIn', image: '/social3-linkedin.webp' },
+  { name: 'X', image: '/social1-x.webp', href: 'https://x.com/ShiftDeSoc' },
+  { name: 'Instagram', image: '/social2-instagram.webp', href: 'https://www.instagram.com/shiftdesoc/' },
+  { name: 'LinkedIn', image: '/social3-linkedin.webp', href: 'https://www.linkedin.com/in/shiftdesoc/' },
   { name: 'GitHub', image: '/social4-github.webp', href: 'https://github.com/Nevtep/shift-desoc' },
 ]
 
