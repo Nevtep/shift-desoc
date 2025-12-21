@@ -118,7 +118,10 @@ function RequestListItem({ request, communityName }: { request: RequestNode; com
           </span>
         </div>
         <p className="text-sm font-medium">{title || `Request #${request.id}`}</p>
-        <p className="text-sm text-muted-foreground">Author: {request.author}</p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-foreground">{shortAddress(request.author)}</span>
+          <span>Author</span>
+        </div>
         <div className="flex flex-wrap gap-2">
           {request.tags?.length
             ? request.tags.map((tag) => (
@@ -161,6 +164,11 @@ function formatDate(value?: string | number | null) {
   }
 
   return "Unknown";
+}
+
+function shortAddress(addr?: string) {
+  if (!addr || addr.length < 10) return addr ?? "";
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 function isIpfsDocumentResponse(value: unknown): value is {

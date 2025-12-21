@@ -109,6 +109,18 @@ contract RequestHub {
         Status indexed newStatus,
         address indexed moderator
     );
+
+    /// @notice Emitted when a comment is moderated
+    /// @param requestId Parent request
+    /// @param commentId Comment being moderated
+    /// @param moderator Address performing moderation
+    /// @param hidden Whether the comment is now hidden
+    event CommentModerated(
+        uint256 indexed requestId,
+        uint256 indexed commentId,
+        address indexed moderator,
+        bool hidden
+    );
     
     /// @notice Emitted when a bounty is added to a request
     event BountyAdded(
@@ -256,6 +268,8 @@ contract RequestHub {
         _requireModerator(request.communityId, msg.sender);
         
         comment.isModerated = hide;
+
+        emit CommentModerated(comment.requestId, commentId, msg.sender, hide);
     }
     
     /*//////////////////////////////////////////////////////////////

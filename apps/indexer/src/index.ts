@@ -266,6 +266,7 @@ ponder.on("RequestHub:CommentPosted", async ({ event, context }) => {
       cid: event.args.cid,
       parentId: Number(event.args.parentCommentId) === 0 ? null : Number(event.args.parentCommentId),
       createdAt: toDate(event.block.timestamp),
+      isModerated: false,
     })
     .onConflictDoNothing();
 });
@@ -275,6 +276,12 @@ ponder.on("RequestHub:RequestStatusChanged", async ({ event, context }) => {
   await context.db
     .update(requests, { id: Number(event.args.requestId) })
     .set({ status: requestStatuses[statusIndex] ?? requestStatuses[0] });
+});
+
+ponder.on("RequestHub:CommentModerated", async ({ event, context }) => {
+  await context.db
+    .update(comments, { id: Number(event.args.commentId) })
+    .set({ isModerated: event.args.hidden });
 });
 
 ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {

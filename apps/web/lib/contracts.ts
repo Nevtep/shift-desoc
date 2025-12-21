@@ -6,6 +6,7 @@ import requestHubArtifact from "../abis/RequestHub.json" assert { type: "json" }
 import draftsManagerArtifact from "../abis/DraftsManager.json" assert { type: "json" };
 import claimsArtifact from "../abis/Claims.json" assert { type: "json" };
 import governorArtifact from "../abis/ShiftGovernor.json" assert { type: "json" };
+import valuableActionRegistryArtifact from "../abis/ValuableActionRegistry.json" assert { type: "json" };
 import baseSepoliaDeployment from "../../../deployments/base_sepolia.json" assert { type: "json" };
 
 type DeploymentJson = typeof baseSepoliaDeployment;
@@ -25,6 +26,7 @@ const communityRegistryAbi = communityRegistryArtifact.abi as Abi;
 const claimsAbi = claimsArtifact.abi as Abi;
 const governorAbi = governorArtifact.abi as Abi;
 const draftsManagerAbi = draftsManagerArtifact.abi as Abi;
+const valuableActionRegistryAbi = valuableActionRegistryArtifact.abi as Abi;
 
 export const CONTRACTS = {
   requestHub: {
@@ -46,6 +48,10 @@ export const CONTRACTS = {
   communityRegistry: {
     key: "communityRegistry" as ContractKey,
     abi: communityRegistryAbi
+  },
+  valuableActionRegistry: {
+    key: "valuableActionRegistry" as ContractKey,
+    abi: valuableActionRegistryAbi
   }
 };
 
