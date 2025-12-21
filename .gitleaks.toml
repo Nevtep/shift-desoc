@@ -3,7 +3,7 @@ title = "Shift gitleaks config"
 [[rules]]
 id = "hex-private-key"
 description = "64-char hex private key patterns"
-regex = '''(?i)\b(private[_-]?key|pk|secret)\b[^\n]{0,50}\b([a-f0-9]{64})\b'''
+regex = '''(?i)\b(private[_-]?key|pk|secret)\b[^\n]{0,50}\b([A-Fa-f0-9]{64})\b'''
 secretGroup = 2
 
 [allowlist]
