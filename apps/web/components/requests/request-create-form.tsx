@@ -96,11 +96,12 @@ export function RequestCreateForm() {
       let anticipatedRequestId: bigint | null = null;
       if (requestType === "execution" && publicClient) {
         try {
-          anticipatedRequestId = await publicClient.readContract({
+          const nextId = await publicClient.readContract({
             address: contractAddress,
             abi,
             functionName: "nextRequestId"
           });
+          anticipatedRequestId = typeof nextId === "bigint" ? nextId : BigInt(nextId as number);
         } catch (readErr) {
           console.error(readErr);
         }

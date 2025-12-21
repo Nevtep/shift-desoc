@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { GraphQLClient } from "graphql-request";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, ReactElement } from "react";
 
 import { ShiftProviders } from "../../app/providers";
 import { apiBaseUrl as defaultApiBaseUrl, graphqlUrl as defaultGraphqlUrl } from "./mocks/handlers";
@@ -13,7 +13,7 @@ export type RenderOptions = {
   queryClient?: QueryClient;
 };
 
-export function renderWithProviders(ui: React.ReactElement, options: RenderOptions = {}) {
+export function renderWithProviders(ui: ReactElement, options: RenderOptions = {}): ReturnType<typeof render> {
   const graphqlUrl = options.graphqlUrl ?? defaultGraphqlUrl;
   const apiBaseUrl = options.apiBaseUrl ?? defaultApiBaseUrl;
   const queryClient = options.queryClient ?? new QueryClient({
