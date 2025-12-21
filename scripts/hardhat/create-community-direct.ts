@@ -121,7 +121,7 @@ async function main() {
     "ValuableActionRegistry",
   );
   const valuableActionRegistry =
-    await ValuableActionRegistry.deploy(governorAddress);
+    await ValuableActionRegistry.deploy(timelockAddress, addresses.communityRegistry);
   await valuableActionRegistry.waitForDeployment();
   const valuableActionRegistryAddress =
     await valuableActionRegistry.getAddress();

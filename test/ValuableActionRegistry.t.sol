@@ -6,8 +6,37 @@ import {ValuableActionRegistry} from "contracts/modules/ValuableActionRegistry.s
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
+contract CommunityRegistryMock {
+    struct ModuleAddresses {
+        address governor;
+        address timelock;
+        address requestHub;
+        address draftsManager;
+        address claimsManager;
+        address valuableActionRegistry;
+        address verifierPowerToken;
+        address verifierElection;
+        address verifierManager;
+        address valuableActionSBT;
+        address treasuryAdapter;
+        address communityToken;
+        address paramController;
+    }
+
+    mapping(uint256 => ModuleAddresses) internal modulesByCommunity;
+
+    function setModuleAddresses(uint256 communityId, ModuleAddresses calldata modules) external {
+        modulesByCommunity[communityId] = modules;
+    }
+
+    function getCommunityModules(uint256 communityId) external view returns (ModuleAddresses memory) {
+        return modulesByCommunity[communityId];
+    }
+}
+
 contract ValuableActionRegistryTest is Test {
     ValuableActionRegistry registry;
+    CommunityRegistryMock communityRegistry;
     
     address governance = makeAddr("governance");
     address moderator = makeAddr("moderator");
@@ -21,7 +50,27 @@ contract ValuableActionRegistryTest is Test {
     Types.ValuableAction sampleAction;
     
     function setUp() public {
-        registry = new ValuableActionRegistry(governance);
+        communityRegistry = new CommunityRegistryMock();
+        registry = new ValuableActionRegistry(governance, address(communityRegistry));
+
+        communityRegistry.setModuleAddresses(
+            COMMUNITY_ID,
+            CommunityRegistryMock.ModuleAddresses({
+                governor: address(0xBEEF),
+                timelock: governance,
+                requestHub: address(0),
+                draftsManager: address(0),
+                claimsManager: address(0),
+                valuableActionRegistry: address(registry),
+                verifierPowerToken: address(0),
+                verifierElection: address(0),
+                verifierManager: address(0),
+                valuableActionSBT: address(0),
+                treasuryAdapter: address(0),
+                communityToken: address(0),
+                paramController: address(0)
+            })
+        );
         
         // Setup sample valuable action
         sampleAction = Types.ValuableAction({
@@ -39,13 +88,11 @@ contract ValuableActionRegistryTest is Test {
             evidenceTypes: 1,
             proposalThreshold: 1000,
             proposer: user,
-            requiresGovernanceApproval: false,
             evidenceSpecCID: "QmTestEvidenceSpec",
             titleTemplate: "Test Action: {{description}}",
             automationRules: new bytes32[](0),
             activationDelay: 0,
-            deprecationWarning: 30 days,
-            founderVerified: false
+            deprecationWarning: 30 days
         });
         
         // Setup moderators and founders
@@ -64,7 +111,10 @@ contract ValuableActionRegistryTest is Test {
     
     function testConstructorZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new ValuableActionRegistry(address(0));
+        new ValuableActionRegistry(address(0), address(communityRegistry));
+
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new ValuableActionRegistry(governance, address(0));
     }
     
     function testSetModerator() public {
@@ -132,82 +182,38 @@ contract ValuableActionRegistryTest is Test {
     }
     
     function testProposeValuableActionDirect() public {
-        vm.startPrank(user);
+        vm.startPrank(governance);
         
         vm.expectEmit(true, false, false, true);
-        emit ValuableActionRegistry.ValuableActionCreated(1, sampleAction, user);
+        emit ValuableActionRegistry.ValuableActionCreated(1, sampleAction, governance);
         
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            "ipfs://description"
+            1
         );
         
         assertEq(actionId, 1);
         assertEq(registry.lastId(), 1);
-        assertTrue(registry.isValuableActionActive(actionId));
+        assertFalse(registry.isValuableActionActive(actionId));
         
         vm.stopPrank();
     }
     
-    function testProposeValuableActionGovernanceRequired() public {
-        sampleAction.requiresGovernanceApproval = true;
-        
-        vm.startPrank(user);
-        
-        uint256 actionId = registry.proposeValuableAction(
-            COMMUNITY_ID,
-            sampleAction,
-            "ipfs://description"
-        );
-        
-        assertEq(actionId, 1);
-        assertFalse(registry.isValuableActionActive(actionId)); // Not active yet
-        assertTrue(registry.pendingValuableActions(actionId) != 0); // Has proposal ID
-        
-        vm.stopPrank();
-    }
-    
-    function testProposeValuableActionFounderVerified() public {
-        sampleAction.founderVerified = true;
-        
-        vm.startPrank(founder1);
-        
-        uint256 actionId = registry.proposeValuableAction(
-            COMMUNITY_ID,
-            sampleAction,
-            "ipfs://description"
-        );
-        
-        assertEq(actionId, 1);
-        assertTrue(registry.isValuableActionActive(actionId)); // Active immediately
-        
-        vm.stopPrank();
-    }
-    
-    function testProposeValuableActionFounderUnauthorized() public {
-        sampleAction.founderVerified = true;
-        
-        vm.startPrank(user); // Not a founder
-        
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
-        registry.proposeValuableAction(
-            COMMUNITY_ID,
-            sampleAction,
-            "ipfs://description"
-        );
-        
+    function testProposeValuableActionFailsWhenProposalIdUsed() public {
+        vm.startPrank(governance);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "ProposalId already used"));
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     
     function testActivateFromGovernance() public {
-        sampleAction.requiresGovernanceApproval = true;
-        
-        vm.startPrank(user);
+        vm.startPrank(governance);
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            "ipfs://description"
+            1
         );
         vm.stopPrank();
         
@@ -227,13 +233,11 @@ contract ValuableActionRegistryTest is Test {
     }
     
     function testActivateFromGovernanceInvalidProposal() public {
-        sampleAction.requiresGovernanceApproval = true;
-        
-        vm.startPrank(user);
+        vm.startPrank(governance);
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            "ipfs://description"
+            1
         );
         vm.stopPrank();
         
@@ -245,12 +249,13 @@ contract ValuableActionRegistryTest is Test {
     
     function testUpdateValuableAction() public {
         // Create action first
-        vm.startPrank(user);
+        vm.startPrank(governance);
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            "ipfs://description"
+            1
         );
+        registry.activateFromGovernance(actionId, 1);
         vm.stopPrank();
         
         // Update as moderator
@@ -270,26 +275,29 @@ contract ValuableActionRegistryTest is Test {
     }
     
     function testUpdateValuableActionUnauthorized() public {
-        vm.startPrank(user);
+        vm.startPrank(governance);
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            "ipfs://description"
+            1
         );
-        
+        registry.activateFromGovernance(actionId, 1);
+        vm.stopPrank();
+
+        vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
         registry.update(actionId, sampleAction);
-        
         vm.stopPrank();
     }
     
     function testDeactivateValuableAction() public {
-        vm.startPrank(user);
+        vm.startPrank(governance);
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            "ipfs://description"
+            1
         );
+        registry.activateFromGovernance(actionId, 1);
         vm.stopPrank();
         
         vm.startPrank(moderator);
@@ -306,10 +314,13 @@ contract ValuableActionRegistryTest is Test {
     
     function testGetActiveValuableActions() public {
         // Create multiple actions
-        vm.startPrank(user);
-        uint256 action1 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc1");
-        uint256 action2 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc2");
-        uint256 action3 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc3");
+        vm.startPrank(governance);
+        uint256 action1 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        uint256 action2 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 2);
+        uint256 action3 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 3);
+        registry.activateFromGovernance(action1, 1);
+        registry.activateFromGovernance(action2, 2);
+        registry.activateFromGovernance(action3, 3);
         vm.stopPrank();
         
         // Deactivate one
@@ -334,27 +345,27 @@ contract ValuableActionRegistryTest is Test {
     function testValidationMembershipTokenRewardZero() public {
         sampleAction.membershipTokenReward = 0;
         
-        vm.startPrank(user);
+        vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "MembershipToken reward cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc");
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     
     function testValidationJurorsMinZero() public {
         sampleAction.jurorsMin = 0;
         
-        vm.startPrank(user);
+        vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Minimum jurors cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc");
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     
     function testValidationPanelSizeZero() public {
         sampleAction.panelSize = 0;
         
-        vm.startPrank(user);
+        vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Panel size cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc");
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     
@@ -362,45 +373,52 @@ contract ValuableActionRegistryTest is Test {
         sampleAction.jurorsMin = 5;
         sampleAction.panelSize = 3;
         
-        vm.startPrank(user);
+        vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Minimum jurors cannot exceed panel size"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc");
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     
     function testValidationVerifyWindowZero() public {
         sampleAction.verifyWindow = 0;
         
-        vm.startPrank(user);
+        vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Verify window cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc");
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     
     function testValidationSlashRateExceeds100Percent() public {
         sampleAction.slashVerifierBps = 10001; // > 10000 (100%)
         
-        vm.startPrank(user);
+        vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Slash rate cannot exceed 100%"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc");
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     
     function testValidationEmptyEvidenceSpecCID() public {
         sampleAction.evidenceSpecCID = "";
         
-        vm.startPrank(user);
+        vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Evidence spec CID cannot be empty"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc");
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     
     function testValidationCooldownPeriodZero() public {
         sampleAction.cooldownPeriod = 0;
         
-        vm.startPrank(user);
+        vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cooldown period cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, "desc");
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        vm.stopPrank();
+    }
+
+    function testProposeValuableActionUnauthorized() public {
+        vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
         vm.stopPrank();
     }
     

@@ -61,6 +61,8 @@ async function main() {
     console.log("\n🎯 CREATING VALUABLEACTION VIA GOVERNANCE:");
 
     // Prepare the governance proposal to create a ValuableAction
+    const governanceProposalId = BigInt(Math.floor(Date.now() / 1000)); // Unique governance reference for replay protection
+
     const createActionCalldata =
       valuableActionRegistry.interface.encodeFunctionData(
         "proposeValuableAction",
@@ -81,15 +83,13 @@ async function main() {
             evidenceTypes: 1, // Basic evidence type
             proposalThreshold: ethers.parseUnits("100", 18), // 100 tokens to propose
             proposer: await deployer.getAddress(), // Proposer address
-            requiresGovernanceApproval: false, // Immediate activation
             evidenceSpecCID: "QmTestEvidenceSpec123...", // Evidence spec CID
             titleTemplate: "Complete Development Task", // Title template
             automationRules: [], // No automation rules
             activationDelay: 0, // No delay
             deprecationWarning: 2592000, // 30 days warning
-            founderVerified: false, // Not founder verified
           },
-          "QmTestValuableActionDescription...", // IPFS description
+          governanceProposalId,
         ],
       );
 

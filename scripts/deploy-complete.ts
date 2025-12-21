@@ -351,7 +351,8 @@ class ShiftDeSocDeployer {
     );
     this.contracts.valuableActionRegistry = await this.deployContract(
       ValuableActionRegistry,
-      await this.contracts.timelock.getAddress(), // governance
+      await this.contracts.timelock.getAddress(), // governance (timelock)
+      await this.contracts.communityRegistry.getAddress(), // community registry for module validation
     );
     console.log(
       `   ✅ ValuableActionRegistry: ${await this.contracts.valuableActionRegistry.getAddress()}`,

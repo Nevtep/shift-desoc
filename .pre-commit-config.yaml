@@ -3,8 +3,9 @@ repos:
     rev: v8.18.4
     hooks:
       - id: gitleaks
+        entry: gitleaks detect --source .
+        pass_filenames: false
         args:
-          - detect
           - --verbose
           - --redact
           - --config

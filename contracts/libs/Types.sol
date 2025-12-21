@@ -25,7 +25,6 @@ library Types {
         // Governance Requirements
         uint256 proposalThreshold;     // Governance tokens needed to propose new Valuable Actions
         address proposer;              // Who proposed this Valuable Action
-        bool requiresGovernanceApproval; // Whether this action needs community vote to activate
         
         // Metadata & Automation
         string evidenceSpecCID;        // IPFS: detailed evidence requirements
@@ -35,7 +34,6 @@ library Types {
         // Time-Based Parameters
         uint64 activationDelay;        // Governance approval → active period
         uint64 deprecationWarning;     // Time before auto-deactivation
-        bool founderVerified;          // Special status for community bootstrapping
     }
     
     // Legacy support - will be removed after migration

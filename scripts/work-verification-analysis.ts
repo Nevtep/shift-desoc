@@ -164,41 +164,32 @@ async function main() {
       console.log("   ✅ Have permissions to create actions");
 
       // Try to create a simple action
-      const actionParams = {
-        membershipTokenReward: 50,
-        communityTokenReward: 25,
-        investorSBTReward: 0,
-        jurorsMin: 2,
-        panelSize: 3,
-        verifyWindow: 7 * 24 * 3600, // 7 days
-        cooldownPeriod: 24 * 3600, // 1 day
-        maxConcurrent: 1,
-        verifierRewardWeight: 10,
-        slashVerifierBps: 500, // 5%
-        revocable: true,
-        evidenceTypes: 1,
-        proposer: deployerAddress,
-        requiresGovernanceApproval: false, // Try without governance first
-        activationDelay: 0,
-        deprecationWarning: 0,
-        founderVerified: isFounder,
-      };
+        const actionParams = {
+            membershipTokenReward: 50,
+            communityTokenReward: 25,
+            investorSBTReward: 0,
+            jurorsMin: 2,
+            panelSize: 3,
+            verifyWindow: 7 * 24 * 3600, // 7 days
+            cooldownPeriod: 24 * 3600, // 1 day
+            maxConcurrent: 1,
+            verifierRewardWeight: 10,
+            slashVerifierBps: 500, // 5%
+            revocable: true,
+            evidenceTypes: 1,
+            proposer: deployerAddress,
+            activationDelay: 0,
+            deprecationWarning: 0,
+          };
 
       console.log("   🚀 Attempting to propose action...");
 
-      const tx = await valuableActionRegistry.proposeValuableAction(
-        COMMUNITY_ID,
-        actionParams,
-        "ipfs://QmTestWorkVerificationAction",
+      console.log(
+        "   ℹ️ Skipping direct propose: ValuableActionRegistry now requires execution via community timelock",
       );
-
-      const receipt = await tx.wait();
-      console.log("   ✅ Action proposed successfully!");
-      console.log("   TX:", receipt.hash);
-
-      // Check the new action
-      const newLastId = await valuableActionRegistry.lastId();
-      console.log("   New last ID:", newLastId.toString());
+      console.log(
+        "   Please include proposeValuableAction + activateFromGovernance in a Governor proposal for community",
+      );
     } else {
       console.log(
         "   ⚠️ No permissions to create actions (not moderator/founder)",

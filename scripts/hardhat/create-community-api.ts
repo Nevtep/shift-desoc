@@ -174,7 +174,7 @@ export async function createCommunityForUI(
     "ValuableActionRegistry",
   );
   const valuableActionRegistry =
-    await ValuableActionRegistry.deploy(governorAddress);
+    await ValuableActionRegistry.deploy(timelockAddress, DEPLOYED_ADDRESSES.communityRegistry);
   await valuableActionRegistry.waitForDeployment();
   const valuableActionRegistryAddress =
     await valuableActionRegistry.getAddress();

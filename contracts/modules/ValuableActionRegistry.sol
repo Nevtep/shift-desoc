@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Types} from "../libs/Types.sol";
 import {Errors} from "../libs/Errors.sol";
+import {CommunityRegistry} from "./CommunityRegistry.sol";
 
 /// @title ValuableActionRegistry
 /// @notice Registry for configurable valuable actions with verification parameters
@@ -28,6 +29,9 @@ contract ValuableActionRegistry {
     
     /// @notice Mapping from valuable action ID to configuration
     mapping(uint256 => Types.ValuableAction) public valuableActionsById;
+
+    /// @notice Mapping from valuable action ID to communityId
+    mapping(uint256 => uint256) public communityByActionId;
     
     /// @notice Mapping from address to moderator status
     mapping(address => bool) public isModerator;
@@ -35,11 +39,17 @@ contract ValuableActionRegistry {
     /// @notice Mapping to track active/inactive valuable actions
     mapping(uint256 => bool) public isActive;
     
-    /// @notice Mapping to track pending valuable actions awaiting governance approval
+    /// @notice Mapping to track pending valuable actions awaiting governance activation
     mapping(uint256 => uint256) public pendingValuableActions; // valuableActionId => proposalId
+
+    /// @notice Track governance proposalIds already used to prevent reuse
+    mapping(uint256 => bool) public proposalIdUsed;
     
     /// @notice Address that can manage moderators (typically governance)
     address public governance;
+
+    /// @notice CommunityRegistry for resolving per-community module addresses
+    CommunityRegistry public immutable communityRegistry;
     
     /// @notice System for founder verification (bootstrap security)
     mapping(address => mapping(uint256 => bool)) public founderWhitelist;  // founder => communityId => verified
@@ -59,9 +69,12 @@ contract ValuableActionRegistry {
 
     /// @notice Initialize the registry
     /// @param _governance Address that can manage moderators
-    constructor(address _governance) {
+    /// @param _communityRegistry CommunityRegistry contract address
+    constructor(address _governance, address _communityRegistry) {
         if (_governance == address(0)) revert Errors.ZeroAddress();
+        if (_communityRegistry == address(0)) revert Errors.ZeroAddress();
         governance = _governance;
+        communityRegistry = CommunityRegistry(_communityRegistry);
         
         // Make governance the initial moderator
         isModerator[_governance] = true;
@@ -90,38 +103,36 @@ contract ValuableActionRegistry {
         }
     }
 
-    /// @notice Propose a new valuable action
+    /// @notice Propose a new valuable action (must be executed via governance/Timelock)
     /// @param communityId Community ID this action belongs to
     /// @param params Valuable action configuration
-    /// @param ipfsDescription IPFS hash with detailed description
+    /// @param governanceProposalId The Governor proposalId that is executing this call
     /// @return valuableActionId The ID of the created valuable action
     function proposeValuableAction(
         uint256 communityId,
         Types.ValuableAction calldata params,
-        string calldata ipfsDescription
+        uint256 governanceProposalId
     ) external payable returns (uint256 valuableActionId) {
+        CommunityRegistry.ModuleAddresses memory modules = communityRegistry.getCommunityModules(communityId);
+        if (modules.timelock == address(0) || modules.governor == address(0)) {
+            revert Errors.InvalidInput("Community not configured");
+        }
+        if (modules.valuableActionRegistry != address(this)) {
+            revert Errors.InvalidInput("Registry mismatch");
+        }
+        if (msg.sender != modules.timelock) revert Errors.NotAuthorized(msg.sender);
+
+        if (governanceProposalId == 0) revert Errors.InvalidInput("Missing governance proposalId");
+        if (proposalIdUsed[governanceProposalId]) revert Errors.InvalidInput("ProposalId already used");
+
         _validateValuableAction(params);
         
         valuableActionId = ++lastId;
         valuableActionsById[valuableActionId] = params;
-        
-        // Case 1: Founder verification for community bootstrap
-        if (params.founderVerified) {
-            if (!founderWhitelist[msg.sender][communityId]) {
-                revert Errors.NotAuthorized(msg.sender);
-            }
-            // Founders can create ValuableActions that bypass normal governance delays
-            _activateValuableAction(valuableActionId, params);
-        } else {
-            // Case 2: Normal governance approval required
-            if (params.requiresGovernanceApproval) {
-                uint256 proposalId = _createGovernanceProposal(valuableActionId, params, ipfsDescription);
-                pendingValuableActions[valuableActionId] = proposalId;
-            } else {
-                // Case 3: Direct activation for simple actions
-                _activateValuableAction(valuableActionId, params);
-            }
-        }
+        communityByActionId[valuableActionId] = communityId;
+
+        pendingValuableActions[valuableActionId] = governanceProposalId;
+        proposalIdUsed[governanceProposalId] = true;
         
         emit ValuableActionCreated(valuableActionId, params, msg.sender);
     }
@@ -129,11 +140,15 @@ contract ValuableActionRegistry {
     /// @notice Activate valuable action after governance approval
     /// @param valuableActionId ID of the valuable action
     /// @param approvedProposalId ID of the approved governance proposal
-    function activateFromGovernance(uint256 valuableActionId, uint256 approvedProposalId) external onlyGovernance {
+    function activateFromGovernance(uint256 valuableActionId, uint256 approvedProposalId) external {
         if (!_exists(valuableActionId)) revert Errors.InvalidValuableAction(valuableActionId);
+        if (approvedProposalId == 0) revert Errors.InvalidInput("Missing proposalId");
         if (pendingValuableActions[valuableActionId] != approvedProposalId) {
             revert Errors.InvalidInput("Proposal ID mismatch");
         }
+        uint256 communityId = communityByActionId[valuableActionId];
+        CommunityRegistry.ModuleAddresses memory modules = communityRegistry.getCommunityModules(communityId);
+        if (msg.sender != modules.timelock) revert Errors.NotAuthorized(msg.sender);
         
         isActive[valuableActionId] = true;
         
@@ -213,28 +228,6 @@ contract ValuableActionRegistry {
     function updateGovernance(address newGovernance) external onlyGovernance {
         if (newGovernance == address(0)) revert Errors.ZeroAddress();
         governance = newGovernance;
-    }
-
-    /// @dev Activate a valuable action immediately
-    /// @param valuableActionId ID of the valuable action
-    function _activateValuableAction(uint256 valuableActionId, Types.ValuableAction memory /* params */) internal {
-        isActive[valuableActionId] = true;
-        emit ValuableActionActivated(valuableActionId, 0); // No proposal ID for direct activation
-    }
-
-    /// @dev Create governance proposal for valuable action approval
-    /// @param valuableActionId ID of the valuable action  
-    /// @param description IPFS description
-    /// @return proposalId Created proposal ID
-    function _createGovernanceProposal(
-        uint256 valuableActionId, 
-        Types.ValuableAction memory /* params */,
-        string calldata description
-    ) internal view returns (uint256 proposalId) {
-        // This would integrate with the actual governance system
-        // For now, return a placeholder proposal ID
-        // TODO: Implement actual governance proposal creation
-        proposalId = uint256(keccak256(abi.encodePacked(valuableActionId, description, block.timestamp)));
     }
 
     /// @dev Validate valuable action configuration

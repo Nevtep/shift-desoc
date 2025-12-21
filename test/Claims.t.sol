@@ -12,6 +12,34 @@ import {MembershipTokenERC20Votes} from "../contracts/tokens/MembershipTokenERC2
 import {Types} from "../contracts/libs/Types.sol";
 import {Errors} from "../contracts/libs/Errors.sol";
 
+contract CommunityRegistryMock {
+    struct ModuleAddresses {
+        address governor;
+        address timelock;
+        address requestHub;
+        address draftsManager;
+        address claimsManager;
+        address valuableActionRegistry;
+        address verifierPowerToken;
+        address verifierElection;
+        address verifierManager;
+        address valuableActionSBT;
+        address treasuryAdapter;
+        address communityToken;
+        address paramController;
+    }
+
+    mapping(uint256 => ModuleAddresses) internal modulesByCommunity;
+
+    function setModuleAddresses(uint256 communityId, ModuleAddresses calldata modules) external {
+        modulesByCommunity[communityId] = modules;
+    }
+
+    function getCommunityModules(uint256 communityId) external view returns (ModuleAddresses memory) {
+        return modulesByCommunity[communityId];
+    }
+}
+
 contract MockValuableActionSBT {
     event TokenMinted(address indexed to, uint256 points, string metadataURI);
     
@@ -31,6 +59,7 @@ contract ClaimsTest is Test {
     ValuableActionRegistry public actionRegistry;
     MembershipTokenERC20Votes public membershipToken;
     MockValuableActionSBT public valuableActionSBT;
+    CommunityRegistryMock public communityRegistry;
     
     address public governance = makeAddr("governance");
     address public timelock = makeAddr("timelock");
@@ -78,7 +107,8 @@ contract ClaimsTest is Test {
         );
         
         // Deploy action registry and membership token
-        actionRegistry = new ValuableActionRegistry(governance);
+        communityRegistry = new CommunityRegistryMock();
+        actionRegistry = new ValuableActionRegistry(governance, address(communityRegistry));
         membershipToken = new MembershipTokenERC20Votes("Test Community Token", "TCT", COMMUNITY_ID, governance);
         valuableActionSBT = new MockValuableActionSBT();
         
@@ -90,6 +120,25 @@ contract ClaimsTest is Test {
             address(valuableActionSBT),
             address(membershipToken),
             COMMUNITY_ID
+        );
+
+        communityRegistry.setModuleAddresses(
+            COMMUNITY_ID,
+            CommunityRegistryMock.ModuleAddresses({
+                governor: address(0xBEEF),
+                timelock: governance,
+                requestHub: address(0),
+                draftsManager: address(0),
+                claimsManager: address(claims),
+                valuableActionRegistry: address(actionRegistry),
+                verifierPowerToken: address(vpt),
+                verifierElection: address(verifierElection),
+                verifierManager: address(verifierManager),
+                valuableActionSBT: address(valuableActionSBT),
+                treasuryAdapter: address(0),
+                communityToken: address(0),
+                paramController: address(paramController)
+            })
         );
         
         // Initialize VPT system
@@ -147,16 +196,15 @@ contract ClaimsTest is Test {
             evidenceTypes: 1,
             proposalThreshold: 1000,
             proposer: governance,
-            requiresGovernanceApproval: false,
             evidenceSpecCID: "QmCodeReviewSpec",
             titleTemplate: "Code Review #{claimId}",
             automationRules: new bytes32[](0),
             activationDelay: 0,
-            deprecationWarning: 0,
-            founderVerified: false
+            deprecationWarning: 0
         });
         
-        actionRegistry.proposeValuableAction(COMMUNITY_ID, action1, "QmDesc1");
+        uint256 actionId1 = actionRegistry.proposeValuableAction(COMMUNITY_ID, action1, 1);
+        actionRegistry.activateFromGovernance(actionId1, 1);
         
         // Action Type 2: High-value work with strict requirements  
         Types.ValuableAction memory action2 = Types.ValuableAction({
@@ -174,19 +222,13 @@ contract ClaimsTest is Test {
             evidenceTypes: 3,
             proposalThreshold: 2000,
             proposer: governance,
-            requiresGovernanceApproval: true, // Requires governance approval
             evidenceSpecCID: "QmDocumentationSpec",
             titleTemplate: "Documentation #{claimId}",
             automationRules: new bytes32[](0),
             activationDelay: 0,
-            deprecationWarning: 604800,
-            founderVerified: false // Not founder verified, needs governance
+            deprecationWarning: 604800
         });
-        
-        // Add governance as founder for community setup
-        actionRegistry.addFounder(governance, COMMUNITY_ID);
-        
-        actionRegistry.proposeValuableAction(COMMUNITY_ID, action2, "QmDesc2");
+        uint256 actionId2 = actionRegistry.proposeValuableAction(COMMUNITY_ID, action2, 2);
         
         vm.stopPrank();
     }

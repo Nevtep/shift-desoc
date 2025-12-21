@@ -2,7 +2,7 @@
 
 ## Mission: Meta-Governance Technology for Flexible Community Organization
 
-**Shift DeSoc is meta-governance technology** - flexible infrastructure that enables communities to model any organizational structure they choose. Rather than imposing a specific governance model, Shift provides building blocks (governance protocols, work verification systems, and economic mechanisms) that communities configure to implement their unique decision-making processes, value definitions, and coordination patterns.
+**Shift DeSoc is meta-governance technology** - flexible infrastructure that enables communities to model any organizational structure they choose. Rather than imposing a specific governance model, Shift provides building blocks (governance protocols, work verification systems, and economic mechanisms) that communities configure to implement their unique decision-making processes, value definitions, and coordination patterns. NEVER ADD PRIVATE KEYS TO ANY FILES.
 
 Core flow: `requests → drafts → proposals → timelock execution` with ValuableAction-based merit verification and token rewards.
 
