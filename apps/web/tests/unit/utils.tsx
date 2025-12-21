@@ -5,7 +5,7 @@ import { PropsWithChildren } from "react";
 
 import { ShiftProviders } from "../../app/providers";
 import { apiBaseUrl as defaultApiBaseUrl, graphqlUrl as defaultGraphqlUrl } from "./mocks/handlers";
-import { setWagmiMockState } from "./wagmiMock";
+import { setWagmiMockState } from "./mocks/wagmiMock";
 
 export type RenderOptions = {
   graphqlUrl?: string;
