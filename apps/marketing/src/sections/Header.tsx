@@ -194,7 +194,8 @@ export default function Header() {
             top={0}
             left={0}
             right={0}
-            bottom={0}
+            height="100vh"
+            width="100vw"
             backgroundColor="rgba(0,0,0,0.25)"
             zIndex={1000}
             display="none"
@@ -206,7 +207,8 @@ export default function Header() {
             top={0}
             left={0}
             right={0}
-            bottom={0}
+            height="100vh"
+            width="100vw"
             backgroundColor="#f6f0e1"
             padding="$6"
             gap="$4"
