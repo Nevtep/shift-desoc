@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { RequestList } from "../../components/requests/request-list";
+import { RequestList } from "../../components/requests/request-list.container";
 import { RequestCreateForm } from "../../components/requests/request-create-form";
 
 export const metadata = {

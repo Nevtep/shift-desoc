@@ -2,7 +2,7 @@ import { HttpResponse, graphql } from "msw";
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { RequestList } from "./request-list";
+import { RequestList } from "./request-list.container";
 import { server } from "../../tests/unit/server";
 import { renderWithProviders } from "../../tests/unit/utils";
 import { fixtures } from "../../tests/unit/mocks/fixtures";
