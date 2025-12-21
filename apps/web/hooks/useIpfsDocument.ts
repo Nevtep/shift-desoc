@@ -34,9 +34,6 @@ export function useIpfsDocument(cid?: string, enabled = true) {
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    onError: () => {
-      push("Failed to load IPFS content.", "error");
-    }
+    refetchOnReconnect: false
   });
 }

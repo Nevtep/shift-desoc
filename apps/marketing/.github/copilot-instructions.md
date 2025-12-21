@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-This is a Next.js 14 App Router marketing site for Shift, a decentralized governance platform. The project follows a component-driven architecture with Storybook for development and design system documentation.
+This is a Next.js 16 App Router marketing site for Shift, a decentralized governance platform. The project follows a component-driven architecture with Storybook for development and design system documentation.
 
 ## Key Patterns & Conventions
 

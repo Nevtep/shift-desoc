@@ -40,6 +40,8 @@ export function ProposalDetail({ proposalId }: ProposalDetailProps) {
     isError: isIpfsError
   } = useIpfsDocument(cid, Boolean(cid));
 
+  const ipfsDoc = useMemo(() => (isIpfsDocumentResponse(ipfsData) ? ipfsData : null), [ipfsData]);
+
   const votes = useMemo(() => proposal?.votes ?? [], [proposal]);
   const actionBundle = useMemo<ProposalActions | null>(() => {
     if (!proposal) return null;
@@ -115,10 +117,10 @@ export function ProposalDetail({ proposalId }: ProposalDetailProps) {
           <p className="text-sm text-muted-foreground">Loading description...</p>
         ) : isIpfsError ? (
           <p className="text-sm text-destructive">Failed to load IPFS description.</p>
-        ) : ipfsData?.html?.body ? (
+        ) : ipfsDoc?.html?.body ? (
           <article
             className="prose prose-sm max-w-none dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: ipfsData.html.body }}
+            dangerouslySetInnerHTML={{ __html: ipfsDoc.html.body }}
           />
         ) : (
           <p className="text-sm text-muted-foreground">No description available.</p>
@@ -410,6 +412,26 @@ function formatVoteOption(optionIndex?: number | null) {
   if (optionIndex === 1) return "For";
   if (optionIndex === 2) return "Abstain";
   return `Option ${optionIndex}`;
+}
+
+function isIpfsDocumentResponse(value: unknown): value is {
+  cid: string;
+  html: { body: string } | null;
+  data: unknown;
+  type: string;
+  version: string;
+  retrievedAt: string;
+} {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { cid?: unknown; html?: unknown; data?: unknown; type?: unknown; version?: unknown; retrievedAt?: unknown };
+  return Boolean(
+    candidate.cid &&
+    "html" in candidate &&
+    "data" in candidate &&
+    candidate.type &&
+    candidate.version &&
+    candidate.retrievedAt
+  );
 }
 
 function formatTxError(err: unknown) {

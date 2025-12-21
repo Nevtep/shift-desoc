@@ -21,10 +21,16 @@ export type DraftListProps = {
 };
 
 export function DraftList({ communityId }: DraftListProps) {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<DraftsQueryResult>(
+  type DraftsQueryVars = { limit: number; communityId?: number };
+
+  const variables: DraftsQueryVars = communityId
+    ? { communityId: Number(communityId), limit: 20 }
+    : { limit: 20 };
+
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<DraftsQueryResult, DraftsQueryVars>(
     ["drafts", communityId ?? "all"],
     DraftsQuery,
-    communityId ? { communityId: Number(communityId), limit: 20 } : { limit: 20 }
+    variables
   );
 
   const drafts = useMemo(() => {

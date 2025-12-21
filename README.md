@@ -21,6 +21,12 @@ _Building the organizational tools that unlock human cooperation: Where communit
 
 ## 🚀 **Quick Start**
 
+### Prerequisites
+
+- Node.js >=22 (Vercel Node 24 compatible)
+- pnpm >=8
+- Frontend apps use Next.js 16
+
 ### For Developers
 
 1. **Read the development guide**: [`.github/copilot-instructions.md`](.github/copilot-instructions.md)

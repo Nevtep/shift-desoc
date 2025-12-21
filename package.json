@@ -5,6 +5,9 @@
     "apps/*",
     "packages/*"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "fmt": "prettier -w 'contracts/**/*.sol' 'scripts/**/*.{ts,js}' 'test/**/*.{ts,js,sol}' '*.{ts,json}'",
     "lint": "solhint 'contracts/**/*.sol' 'test/**/*.sol'",

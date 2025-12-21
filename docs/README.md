@@ -41,6 +41,12 @@ Documentación completa en español incluyendo:
 
 ## 🚀 Quick Links | Enlaces Rápidos
 
+### Prerequisites | Requisitos
+
+- Node.js >=22 (compatible con Node 24 de Vercel)
+- pnpm >=8
+- Aplicaciones frontend en Next.js 16
+
 ### For Investors | Para Inversores
 
 - **EN**: [Investment Overview](./EN/Whitepaper.md#executive-summary)
