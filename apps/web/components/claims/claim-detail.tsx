@@ -13,6 +13,7 @@ import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { getContractConfig } from "../../lib/contracts";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "../ui/toaster";
 
 export type ClaimDetailProps = {
   claimId: string;
@@ -24,6 +25,8 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
     ClaimQuery,
     { id: claimId }
   );
+
+  const { push } = useToast();
 
   const claim = data?.claim ?? null;
   const manifestCid = claim?.evidenceManifestCid ?? undefined;
@@ -37,6 +40,9 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
   }
 
   if (isError || !claim) {
+    if (isError) {
+      push("Failed to load claim. Please retry.", "error");
+    }
     return (
       <div className="space-y-2">
         <p className="text-sm text-destructive">Failed to load claim.</p>

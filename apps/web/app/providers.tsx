@@ -16,6 +16,7 @@ import {
 import type { Config as WagmiConfigType } from "wagmi";
 import { WagmiConfig } from "wagmi";
 import { createShiftConfig, getEnv } from "@shift/shared";
+import { ToastProvider } from "../components/ui/toaster";
 
 const GraphQLClientContext = createContext<GraphQLClient | null>(null);
 const ApiBaseUrlContext = createContext<string | null>(null);
@@ -63,7 +64,9 @@ export function ShiftProviders({
     <WagmiConfig config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <GraphQLClientContext.Provider value={graphClient}>
-          <ApiBaseUrlContext.Provider value={apiBaseUrl}>{children}</ApiBaseUrlContext.Provider>
+          <ApiBaseUrlContext.Provider value={apiBaseUrl}>
+            <ToastProvider>{children}</ToastProvider>
+          </ApiBaseUrlContext.Provider>
         </GraphQLClientContext.Provider>
       </QueryClientProvider>
     </WagmiConfig>

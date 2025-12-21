@@ -28,6 +28,10 @@ export default function RootLayout({
     env.INDEXER_API_URL ??
     "http://localhost:42069";
 
+  const missingEnv =
+    (!env.NEXT_PUBLIC_GRAPHQL_URL && !env.GRAPHQL_URL) ||
+    (!env.NEXT_PUBLIC_INDEXER_API_URL && !env.INDEXER_API_URL);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -57,6 +61,11 @@ export default function RootLayout({
                 </div>
               </div>
             </header>
+            {missingEnv ? (
+              <div className="border-b border-destructive/40 bg-destructive/10 text-center text-xs text-destructive">
+                Missing GRAPHQL_URL or INDEXER_API_URL. Update .env to point at the Base Sepolia indexer.
+              </div>
+            ) : null}
             <main className="flex-1">{children}</main>
             <footer className="border-t border-border bg-background/60">
               <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 text-xs text-muted-foreground">

@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { useToast } from "../components/ui/toaster";
 import type { Document } from "../lib/ipfs/schemas";
 
 export type IpfsDocumentResponse = {
@@ -14,6 +15,8 @@ export type IpfsDocumentResponse = {
 };
 
 export function useIpfsDocument(cid?: string, enabled = true) {
+  const { push } = useToast();
+
   return useQuery<IpfsDocumentResponse | null>({
     queryKey: ["ipfs", cid],
     queryFn: async () => {
@@ -27,6 +30,13 @@ export function useIpfsDocument(cid?: string, enabled = true) {
       const data = (await response.json()) as IpfsDocumentResponse;
       return data;
     },
-    enabled: Boolean(cid && enabled)
+    enabled: Boolean(cid && enabled),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    onError: () => {
+      push("Failed to load IPFS content.", "error");
+    }
   });
 }
