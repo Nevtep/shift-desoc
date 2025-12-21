@@ -14,7 +14,7 @@ import {
   useState
 } from "react";
 import type { Config as WagmiConfigType } from "wagmi";
-import { WagmiConfig } from "wagmi";
+import { WagmiProvider } from "wagmi";
 import { createShiftConfig, getEnv } from "@shift/shared";
 import { ToastProvider } from "../components/ui/toaster";
 
@@ -48,7 +48,17 @@ export function ShiftProviders({
   children
 }: ShiftProvidersProps) {
   const [mounted, setMounted] = useState(false);
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            // Tests should surface errors immediately; in prod the default retry behavior is fine.
+            retry: process.env.NODE_ENV === "test" ? false : undefined
+          }
+        }
+      })
+  );
 
   const graphClient = useMemo(() => new GraphQLClient(graphqlUrl), [graphqlUrl]);
   const wagmiConfig: WagmiConfigType = useMemo(() => createShiftConfig({ env: getEnv() }), []);
@@ -61,7 +71,7 @@ export function ShiftProviders({
   }
 
   return (
-    <WagmiConfig config={wagmiConfig}>
+    <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <GraphQLClientContext.Provider value={graphClient}>
           <ApiBaseUrlContext.Provider value={apiBaseUrl}>
@@ -69,6 +79,6 @@ export function ShiftProviders({
           </ApiBaseUrlContext.Provider>
         </GraphQLClientContext.Provider>
       </QueryClientProvider>
-    </WagmiConfig>
+    </WagmiProvider>
   );
 }
