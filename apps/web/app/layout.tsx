@@ -2,11 +2,16 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 
 import { getEnv } from "@shift/shared";
 
 import { ShiftProviders } from "./providers";
-import { WalletConnect } from "../components/wallet/wallet-connect";
+
+const WalletConnect = dynamic(
+  () => import("../components/wallet/wallet-connect").then((m) => m.WalletConnect),
+  { ssr: false }
+);
 
 export const metadata: Metadata = {
   title: "Shift DeSoc",
