@@ -10,6 +10,7 @@ import {
   type ProposalNode,
   type ProposalsQueryResult
 } from "../../lib/graphql/queries";
+import { useToast } from "../ui/toaster";
 
 export type ProposalListProps = {
   communityId?: string | number;
@@ -21,6 +22,7 @@ export function ProposalList({ communityId }: ProposalListProps) {
 
   const [after, setAfter] = useState<string | undefined>(undefined);
   const [proposals, setProposals] = useState<ProposalNode[]>([]);
+  const { push } = useToast();
 
   useEffect(() => {
     setAfter(undefined);
@@ -50,6 +52,12 @@ export function ProposalList({ communityId }: ProposalListProps) {
       return merged;
     });
   }, [data]);
+
+  useEffect(() => {
+    if (isError) {
+      push("Failed to load proposals. Please retry.", "error");
+    }
+  }, [isError, push]);
 
   const hasNextPage = data?.proposals.pageInfo.hasNextPage ?? false;
   const endCursor = data?.proposals.pageInfo.endCursor ?? undefined;

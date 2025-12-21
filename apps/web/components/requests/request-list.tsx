@@ -3,7 +3,13 @@
 import { useMemo } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
-import { RequestsQuery, type RequestsQueryResult } from "../../lib/graphql/queries";
+import {
+  CommunitiesQuery,
+  type CommunitiesQueryResult,
+  RequestsQuery,
+  type RequestsQueryResult
+} from "../../lib/graphql/queries";
+import { useIpfsDocument } from "../../hooks/useIpfsDocument";
 
 export type RequestNode = {
   id: number;
@@ -26,6 +32,12 @@ export function RequestList({ communityId }: RequestListProps) {
     communityId ? { communityId: Number(communityId), limit: 20 } : { limit: 20 }
   );
 
+  const { data: communitiesData } = useGraphQLQuery<CommunitiesQueryResult>(
+    ["communities", "for-request-list"],
+    CommunitiesQuery,
+    { limit: 200 }
+  );
+
   const requests = useMemo(() => {
     return (data?.requests.nodes ?? []).map((node) => ({
       ...node,
@@ -34,18 +46,13 @@ export function RequestList({ communityId }: RequestListProps) {
     }));
   }, [data]);
 
-  const formatDate = (value?: string | number | null) => {
-    if (!value) return "Unknown";
-    if (typeof value === "string") {
-      const d = new Date(value);
-      if (!Number.isNaN(d.valueOf())) return d.toLocaleString();
-    }
-    if (typeof value === "number") {
-      const d = new Date(value < 1e12 ? value * 1000 : value);
-      if (!Number.isNaN(d.valueOf())) return d.toLocaleString();
-    }
-    return "Unknown";
-  };
+  const communityNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    (communitiesData?.communities.nodes ?? []).forEach((c) => {
+      map.set(Number(c.id), c.name ?? `Community ${c.id}`);
+    });
+    return map;
+  }, [communitiesData?.communities.nodes]);
 
   if (isLoading) {
     return <StatusMessage message="Loading requests…" />;
@@ -69,25 +76,32 @@ export function RequestList({ communityId }: RequestListProps) {
   return (
     <ul className="space-y-3">
       {requests.map((request) => (
-        <RequestListItem key={request.id} request={request} />
+        <RequestListItem
+          key={request.id}
+          request={request}
+          communityName={communityNameById.get(request.communityId)}
+        />
       ))}
     </ul>
   );
 }
 
-function RequestListItem({ request }: { request: RequestNode }) {
+function RequestListItem({ request, communityName }: { request: RequestNode; communityName?: string }) {
+  const { data: ipfs } = useIpfsDocument(request.cid, Boolean(request.cid));
+  const title = ipfs?.data?.type === "request" ? ipfs.data.title : null;
+
   return (
     <li className="rounded-lg border border-border p-4 shadow-sm">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">
-            Community {request.communityId}
+            {communityName ?? `Community ${request.communityId}`}
           </span>
           <span className="text-xs text-muted-foreground">
             Created {formatDate(request.createdAt)}
           </span>
         </div>
-        <p className="text-sm font-medium">Request #{request.id}</p>
+        <p className="text-sm font-medium">{title || `Request #${request.id}`}</p>
         <p className="text-sm text-muted-foreground">Author: {request.author}</p>
         <div className="flex flex-wrap gap-2">
           {request.tags?.length
@@ -112,4 +126,23 @@ function RequestListItem({ request }: { request: RequestNode }) {
 function StatusMessage({ message, tone = "default" }: { message: string; tone?: "default" | "error" }) {
   const toneClass = tone === "error" ? "text-destructive" : "text-muted-foreground";
   return <p className={`text-sm ${toneClass}`}>{message}</p>;
+}
+
+function formatDate(value?: string | number | null) {
+  if (!value) return "Unknown";
+  const numeric = typeof value === "string" ? Number(value) : value;
+
+  // Handle ISO strings
+  if (typeof value === "string") {
+    const iso = new Date(value);
+    if (!Number.isNaN(iso.valueOf())) return iso.toLocaleString();
+  }
+
+  // Handle numeric strings or numbers representing seconds/millis
+  if (Number.isFinite(numeric)) {
+    const d = new Date((numeric as number) < 1e12 ? (numeric as number) * 1000 : (numeric as number));
+    if (!Number.isNaN(d.valueOf())) return d.toLocaleString();
+  }
+
+  return "Unknown";
 }

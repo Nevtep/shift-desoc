@@ -14,6 +14,7 @@ import {
   type RequestQueryResult
 } from "../../lib/graphql/queries";
 import type { DraftNode } from "../drafts/draft-list";
+import { useToast } from "../ui/toaster";
 
 export type RequestDetailProps = {
   requestId: string;
@@ -67,25 +68,46 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     refetch: refetchIpfs
   } = useIpfsDocument(cid, Boolean(cid));
 
+  const displayTitle = useMemo(() => {
+    const ipfsTitle =
+      ipfsData?.data && "title" in ipfsData.data
+        ? (ipfsData.data as { title?: string }).title
+        : undefined;
+    return ipfsTitle?.trim() || null;
+  }, [ipfsData]);
+
+  const headerTitle = displayTitle ?? (isIpfsLoading ? "Loading title…" : request ? `Request ${request.id}` : "Request");
+
   const submittedAt = useMemo(() => {
     const candidates = [request?.createdAt, ipfsData?.data?.createdAt];
 
     for (const value of candidates) {
       if (!value) continue;
 
+      // ISO string
       if (typeof value === "string") {
-        const d = new Date(value);
-        if (!Number.isNaN(d.valueOf())) return d;
+        const iso = new Date(value);
+        if (!Number.isNaN(iso.valueOf())) return iso;
       }
 
-      if (typeof value === "number") {
-        const d = new Date(value < 1e12 ? value * 1000 : value);
+      // Numeric string or number (seconds or millis)
+      const numeric = typeof value === "string" ? Number(value) : value;
+      if (Number.isFinite(numeric)) {
+        const d = new Date((numeric as number) < 1e12 ? (numeric as number) * 1000 : (numeric as number));
         if (!Number.isNaN(d.valueOf())) return d;
       }
     }
 
     return null;
   }, [ipfsData?.data?.createdAt, request?.createdAt]);
+
+  const { push } = useToast();
+
+  useEffect(() => {
+    if (isError) {
+      push("Failed to load request. Please retry.", "error");
+    }
+  }, [isError, push]);
 
   useEffect(() => {
     const nextNodes = commentsData?.comments.nodes ?? [];
@@ -134,7 +156,10 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     <div className="space-y-8">
       <section className="space-y-3">
         <div className="rounded-lg border border-border p-4 shadow-sm">
-          <h2 className="text-lg font-medium">Metadata</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium">{headerTitle}</h2>
+            <span className="text-xs text-muted-foreground">ID {request.id}</span>
+          </div>
           <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <dt className="font-medium text-foreground">Community</dt>
