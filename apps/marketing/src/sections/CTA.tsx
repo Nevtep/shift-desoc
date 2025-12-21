@@ -57,11 +57,6 @@ export default function Contact() {
             justifyContent="center"
             width="100%"
             marginTop="$4"
-            display={media.md ? 'grid' : 'flex'}
-            $md={{
-              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-              gap: '$3',
-            }}
           >
             {socialNetworks.map((social) => {
               const content = (
@@ -69,6 +64,7 @@ export default function Contact() {
                   key={social.name}
                   alignItems="center"
                   gap="$1.5"
+                  $md={{ flexBasis: '48%', alignItems: 'center' }}
                   hoverStyle={{
                     scale: 1.05,
                     y: -4,
