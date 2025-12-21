@@ -1,12 +1,13 @@
 'use client'
 
 import React from 'react'
-import { YStack, Paragraph, XStack, Anchor } from 'tamagui'
+import { YStack, Paragraph, XStack, Anchor, Image, useMedia } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 
 export default function Footer() {
   const t = useTranslations()
+  const media = useMedia()
 
   const navItems = [
     { label: t.navHome, href: '#home' },
@@ -27,30 +28,52 @@ export default function Footer() {
       alignItems="center"
     >
       <Container maxWidth={1250} width="100%">
-        <XStack
-          width="100%"
-          justifyContent="space-between"
-          alignItems="center"
-          gap="$4"
-          flexWrap="wrap"
-        >
-          <Paragraph
-            fontSize="$2"
-            color="$white"
-            textAlign="left"
-            opacity={0.9}
-            flex={1}
-            minWidth={240}
-          >
-            {t.footerText}
-          </Paragraph>
+        {media.md ? (
+          <YStack width="100%" alignItems="center" gap="$4">
+            <Paragraph
+              fontSize="$2"
+              color="$white"
+              textAlign="center"
+              opacity={0.9}
+              flex={1}
+              minWidth={240}
+            >
+              {t.footerText}
+            </Paragraph>
 
-          <XStack gap="$5" alignItems="center" justifyContent="flex-end" flexWrap="wrap">
+            <Image
+              source={{ uri: '/imagotipo h b.svg' }}
+              width={180}
+              height={60}
+              resizeMode="contain"
+              alt="Shift logo"
+            />
+          </YStack>
+        ) : (
+          <XStack
+            width="100%"
+            alignItems="center"
+            justifyContent="space-between"
+            gap="$6"
+            flexWrap="nowrap"
+          >
+            <Paragraph
+              fontSize="$2"
+              color="$white"
+              textAlign="left"
+              opacity={0.9}
+              flexShrink={0}
+            >
+              {t.footerText}
+            </Paragraph>
+
             <XStack
               gap="$4"
               alignItems="center"
-              justifyContent="flex-end"
-              flexWrap="wrap"
+              justifyContent="center"
+              flexWrap="nowrap"
+              flex={1}
+              paddingHorizontal="$4"
             >
               {navItems.map((item) => (
                 <Anchor
@@ -65,6 +88,7 @@ export default function Footer() {
                     opacity: 1,
                     textDecorationLine: 'underline',
                   }}
+                  flexShrink={0}
                 >
                   {item.label}
                 </Anchor>
@@ -76,6 +100,7 @@ export default function Footer() {
               height={54}
               backgroundColor="$white"
               aria-label="Shift logo"
+              flexShrink={0}
               style={{
                 WebkitMaskImage: 'url("/isotipo%20b.svg")',
                 maskImage: 'url("/isotipo%20b.svg")',
@@ -88,7 +113,7 @@ export default function Footer() {
               }}
             />
           </XStack>
-        </XStack>
+        )}
       </Container>
     </YStack>
   )

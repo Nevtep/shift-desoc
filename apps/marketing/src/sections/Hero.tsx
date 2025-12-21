@@ -34,7 +34,7 @@ export default function Hero() {
       + src
       + '")',
     backgroundSize: 'cover, cover',
-    backgroundPosition: 'left top, left bottom',
+    backgroundPosition: 'right top, right center',
     backgroundRepeat: 'no-repeat, no-repeat',
   })
 
@@ -78,6 +78,7 @@ export default function Hero() {
           width="100%"
           position="relative"
           zIndex={1}
+          $md={{ maxWidth: '100%', gap: '$3' }}
         >
           <YStack gap={0} alignItems="flex-start">
             <Heading
@@ -89,6 +90,7 @@ export default function Hero() {
               textAlign="left"
               lineHeight={64}
               display="block"
+              $md={{ fontSize: 40, lineHeight: 44 }}
             >
               {t.heroTitleLine1}
             </Heading>
@@ -101,6 +103,7 @@ export default function Hero() {
               textAlign="left"
               lineHeight={64}
               display="block"
+              $md={{ fontSize: 40, lineHeight: 44 }}
             >
               {t.heroTitleLine2}
             </Heading>
@@ -111,6 +114,7 @@ export default function Hero() {
             fontWeight="400"
             color="#6C8158"
             textAlign="left"
+            $md={{ fontSize: 24, lineHeight: 30 }}
           >
             {t.heroSubtitle}
           </Paragraph>
@@ -121,21 +125,47 @@ export default function Hero() {
             textAlign="left"
             maxWidth={820}
             lineHeight={28}
+            $md={{ maxWidth: '100%', fontSize: 18, lineHeight: 26 }}
           >
             {t.heroDescription}
           </Paragraph>
 
-          <XStack gap="$3" alignItems="center" marginTop="$2">
+          <XStack
+            gap="$3"
+            alignItems="center"
+            marginTop="$2"
+            $md={{ flexDirection: 'column', alignItems: 'stretch', width: '100%', gap: '$2' }}
+          >
             <Anchor
               href="#getting-started"
               {...secondaryGradientButton}
+              $md={{ width: '100%', textAlign: 'center', justifyContent: 'center' }}
             >
               {t.navGetStarted}
             </Anchor>
 
             <Anchor
               href="#about"
-              {...secondaryOutlineButton}
+              backgroundColor="$primary"
+              color="$white"
+              borderRadius="$3"
+              paddingVertical="$3"
+              paddingHorizontal="$5"
+              fontSize="$5"
+              fontWeight="700"
+              textDecorationLine="none"
+              display="inline-flex"
+              alignItems="center"
+              justifyContent="center"
+              borderWidth={0}
+              hoverStyle={{
+                backgroundColor: '$primaryDark',
+              }}
+              $md={{
+                width: '100%',
+                textAlign: 'center',
+                justifyContent: 'center',
+              }}
             >
               {t.btnLearnMore}
             </Anchor>
