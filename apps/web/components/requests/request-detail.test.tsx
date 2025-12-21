@@ -46,6 +46,6 @@ describe("RequestDetail", () => {
 
     renderWithProviders(<RequestDetail requestId="2" />);
 
-    expect(await screen.findByText(/No markdown content available/i)).toBeInTheDocument();
+    expect(await screen.findByText(/No IPFS body was provided/i)).toBeInTheDocument();
   });
 });
