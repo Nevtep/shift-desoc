@@ -10,6 +10,7 @@ import {
   type RequestsQueryResult
 } from "../../lib/graphql/queries";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
+import { statusBadge } from "./request-status-badge";
 
 export type RequestNode = {
   id: number;
@@ -109,6 +110,11 @@ function RequestListItem({ request, communityName }: { request: RequestNode; com
           </span>
           <span className="text-xs text-muted-foreground">
             Created {formatDate(request.createdAt)}
+          </span>
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(request.status).className}`}
+          >
+            {statusBadge(request.status).label}
           </span>
         </div>
         <p className="text-sm font-medium">{title || `Request #${request.id}`}</p>

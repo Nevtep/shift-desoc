@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Abi } from "viem";
-import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useReadContract, useWriteContract } from "wagmi";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
@@ -16,6 +16,7 @@ import {
   type RequestQueryResult
 } from "../../lib/graphql/queries";
 import { getContractConfig } from "../../lib/contracts";
+import { statusBadge } from "./request-status-badge";
 import type { DraftNode } from "../drafts/draft-list";
 import { useToast } from "../ui/toaster";
 
@@ -27,7 +28,10 @@ type CommentView = CommentsByRequestResult["comments"]["nodes"][number] & {
   optimistic?: boolean;
   status?: "pending" | "confirmed" | "failed";
   error?: string;
+  isModerated?: boolean;
 };
+
+type RequestStatus = RequestQueryResult["request"]["status"];
 
 export function RequestDetail({ requestId }: RequestDetailProps) {
   const numericId = Number(requestId);
@@ -55,6 +59,8 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
   const [commentsCursor, setCommentsCursor] = useState<string | undefined>(undefined);
   const [commentNodes, setCommentNodes] = useState<CommentView[]>([]);
+  const [moderatingCommentId, setModeratingCommentId] = useState<string | null>(null);
+  const publicClient = usePublicClient({ chainId });
 
   const requestHubConfig = useMemo(() => {
     try {
@@ -107,6 +113,8 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       communityId: Number(requestData.request.communityId)
     };
   }, [requestData?.request]);
+
+  const isRequestOpen = request?.status === "OPEN_DEBATE";
 
   const { data: moderatorRole } = useReadContract({
     address: communityRegistryConfig?.address,
@@ -223,6 +231,11 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       return;
     }
 
+    if (!isRequestOpen) {
+      setCommentError("Comments are closed for this request.");
+      return;
+    }
+
     let optimisticId: string | null = null;
 
     try {
@@ -329,6 +342,29 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     }
   };
 
+  const handleModerateComment = async (commentId: string | number, hide: boolean) => {
+    if (!requestHubConfig || !isModerator) {
+      return;
+    }
+
+    try {
+      setModeratingCommentId(String(commentId));
+      await writeContractAsync({
+        address: requestHubConfig.address,
+        abi: requestHubConfig.abi,
+        functionName: "moderateComment",
+        args: [BigInt(commentId), hide]
+      });
+      await refetchComments();
+      push(hide ? "Comment hidden." : "Comment unhidden.", "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to moderate comment";
+      push(message, "error");
+    } finally {
+      setModeratingCommentId(null);
+    }
+  };
+
   const commentTree = useMemo(() => {
     const map = new Map<string, CommentView[]>();
 
@@ -353,29 +389,64 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
     return (
       <ul className="space-y-2">
-        {list.map((comment) => (
-          <li key={comment.id} className={`rounded border border-border p-3 ${depth ? "ml-4" : ""}`}>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{comment.author}</span>
-                {comment.status === "pending" ? (
-                  <span className="text-xs text-amber-600">Pending…</span>
-                ) : null}
-                {comment.status === "failed" ? (
-                  <span className="text-xs text-destructive">Failed</span>
-                ) : null}
+        {list.map((comment) => {
+          const isHidden = comment.isModerated;
+          const isAuthor = request && comment.author?.toLowerCase?.() === request.author?.toLowerCase?.();
+          const isSelf = address && comment.author?.toLowerCase?.() === address.toLowerCase();
+          const isModeratorAuthor = isSelf && isModerator;
+
+          return (
+            <li key={comment.id} className={`rounded border border-border p-3 ${depth ? "ml-4" : ""}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{comment.author}</span>
+                  {isAuthor ? <RoleChip label="Author" tone="blue" /> : null}
+                  {isModeratorAuthor ? <RoleChip label="Moderator" tone="purple" /> : null}
+                  {isSelf && !isModeratorAuthor ? <RoleChip label="You" tone="slate" /> : null}
+                  {comment.status === "pending" ? (
+                    <span className="text-xs text-amber-600">Pending…</span>
+                  ) : null}
+                  {comment.status === "failed" ? (
+                    <span className="text-xs text-destructive">Failed</span>
+                  ) : null}
+                  {isHidden ? <span className="text-xs text-amber-700">Hidden</span> : null}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{formatDate(comment.createdAt)}</span>
+                  <button className="underline" onClick={() => setReplyTo(String(comment.id))}>
+                    Reply
+                  </button>
+                  {isModerator ? (
+                    <>
+                      <button
+                        className="underline"
+                        disabled={Boolean(moderatingCommentId) || isWriting}
+                        onClick={() => void handleModerateComment(comment.id, true)}
+                      >
+                        Hide
+                      </button>
+                      <button
+                        className="underline"
+                        disabled={Boolean(moderatingCommentId) || isWriting}
+                        onClick={() => void handleModerateComment(comment.id, false)}
+                      >
+                        Unhide
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{formatDate(comment.createdAt)}</span>
-                <button className="underline" onClick={() => setReplyTo(String(comment.id))}>
-                  Reply
-                </button>
-              </div>
-            </div>
-            <CommentContent cid={comment.cid} />
-            {renderCommentTree(String(comment.id), depth + 1)}
-          </li>
-        ))}
+              {isHidden && !isModerator ? (
+                <div className="mt-2 rounded border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Comment hidden by a moderator.
+                </div>
+              ) : (
+                <CommentContent cid={comment.cid} />
+              )}
+              {renderCommentTree(String(comment.id), depth + 1)}
+            </li>
+          );
+        })}
       </ul>
     );
   };
@@ -391,7 +462,9 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       ...node,
       id: String(node.id),
       requestId: Number(node.requestId),
-      parentId: node.parentId ?? null
+      parentId: node.parentId ?? null,
+      createdAt: normalizeDateString(node.createdAt) ?? (typeof node.createdAt === "string" ? node.createdAt : undefined),
+      isModerated: (node as { isModerated?: boolean }).isModerated ?? false
     }));
 
     if (!nextNodes.length) {
@@ -413,9 +486,57 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     });
   }, [commentsData]);
 
+  useEffect(() => {
+    if (!publicClient || !requestHubConfig) return;
+
+    const targetComments = commentNodes.filter((comment) => !comment.optimistic);
+    if (!targetComments.length) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const results = await publicClient.multicall({
+          contracts: targetComments.map((comment) => ({
+            address: requestHubConfig.address,
+            abi: requestHubConfig.abi,
+            functionName: "comments",
+            args: [BigInt(comment.id)]
+          }))
+        });
+
+        if (cancelled) return;
+
+        const statusMap = new Map<string, boolean>();
+        targetComments.forEach((comment, index) => {
+          const res = results[index];
+          if (res.status === "success" && Array.isArray(res.result) && typeof res.result[5] === "boolean") {
+            statusMap.set(String(comment.id), res.result[5]);
+          }
+        });
+
+        if (!statusMap.size) return;
+
+        setCommentNodes((prev) =>
+          prev.map((comment) =>
+            statusMap.has(String(comment.id))
+              ? { ...comment, isModerated: statusMap.get(String(comment.id)) ?? false }
+              : comment
+          )
+        );
+      } catch (err) {
+        console.error("Failed to fetch comment visibility", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [commentNodes, publicClient, requestHubConfig]);
+
   const comments = useMemo(() => commentNodes, [commentNodes]);
   const commentsPageInfo = commentsData?.comments.pageInfo;
-  const commentDisabled = !isConnected || isSubmittingComment || isWriting || !requestHubConfig;
+  const commentDisabled = !isConnected || isSubmittingComment || isWriting || !requestHubConfig || !isRequestOpen;
   const drafts = useMemo(() => {
     return (draftsData?.drafts.nodes ?? []).map((node) => ({
       ...node,
@@ -458,7 +579,13 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
             </div>
             <div className="flex items-center gap-2">
               <dt className="font-medium text-foreground">Status</dt>
-              <dd>{request.status}</dd>
+              <dd>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadge(request.status).className}`}
+                >
+                  {statusBadge(request.status).label}
+                </span>
+              </dd>
             </div>
             <div className="flex items-center gap-2">
               <dt className="font-medium text-foreground">Submitted</dt>
@@ -568,6 +695,11 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
               </button>
             </div>
           ) : null}
+          {!isRequestOpen ? (
+            <p className="text-xs text-muted-foreground">
+              Comments are closed while this request is {request?.status?.toLowerCase?.() ?? "unavailable"}.
+            </p>
+          ) : null}
           <textarea
             required
             value={commentBody}
@@ -622,6 +754,17 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
   );
 }
 
+function RoleChip({ label, tone }: { label: string; tone: "blue" | "purple" | "slate" }) {
+  const toneClass =
+    tone === "blue"
+      ? "bg-blue-100 text-blue-800"
+      : tone === "purple"
+        ? "bg-purple-100 text-purple-800"
+        : "bg-slate-100 text-slate-700";
+
+  return <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${toneClass}`}>{label}</span>;
+}
+
 function CommentContent({ cid }: { cid: string }) {
   const { data, isLoading, isError, refetch } = useIpfsDocument(cid, Boolean(cid));
   const commentDoc = isIpfsDocumentResponse(data) ? data : null;
@@ -673,7 +816,12 @@ function isIpfsDocumentResponse(value: unknown): value is {
 function formatDate(value?: string | number | null) {
   if (value === null || value === undefined) return "Unknown";
 
+  if (value instanceof Date) {
+    if (!Number.isNaN(value.valueOf())) return value.toLocaleString();
+  }
+
   if (typeof value === "string") {
+    if (!value.trim()) return "Unknown";
     const iso = new Date(value);
     if (!Number.isNaN(iso.valueOf())) return iso.toLocaleString();
   }
@@ -685,4 +833,21 @@ function formatDate(value?: string | number | null) {
   }
 
   return "Unknown";
+}
+
+function normalizeDateString(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+
+  if (typeof value === "string" && value.length) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.valueOf())) return d.toISOString();
+  }
+
+  if (typeof value === "number") {
+    const millis = value < 1e12 ? value * 1000 : value;
+    const d = new Date(millis);
+    if (!Number.isNaN(d.valueOf())) return d.toISOString();
+  }
+
+  return undefined;
 }
