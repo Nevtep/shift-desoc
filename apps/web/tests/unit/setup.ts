@@ -35,7 +35,12 @@ vi.mock("wagmi", async () => {
     useConnect: () => buildMockedHooks().connect,
     useDisconnect: () => buildMockedHooks().disconnect,
     useSwitchChain: () => buildMockedHooks().switchChain,
-    useWriteContract: () => buildMockedHooks().writeContract
+    useWriteContract: () => buildMockedHooks().writeContract,
+    useReadContract: () => ({ data: undefined, isLoading: false, isError: false }),
+    usePublicClient: () => ({
+      waitForTransactionReceipt: async () => ({ status: "success" }),
+      readContract: async () => 1n
+    })
   };
 });
 

@@ -15,7 +15,7 @@ describe("RequestList", () => {
 
     expect(await screen.findByText(/Request title/i)).toBeInTheDocument();
     expect(screen.getByText(/Alpha/i)).toBeInTheDocument();
-    expect(screen.getByText(/Author:/i)).toBeInTheDocument();
+      expect(screen.getByText(/Author\b/i)).toBeInTheDocument();
   });
 
   it("shows empty state", async () => {
