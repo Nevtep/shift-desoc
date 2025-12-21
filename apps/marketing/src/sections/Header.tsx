@@ -263,12 +263,13 @@ export default function Header() {
                   {...secondaryGradientButton}
                   paddingHorizontal="$4"
                   fontSize="$5"
-                  onPress={(event) => {
-                    // previene navegación default y hace scroll manual
-                    // @ts-expect-error: onPress event puede no exponer preventDefault en web
-                    event?.preventDefault?.()
-                    scrollToSection('#getting-started')
-                  }}
+                onPress={(event) => {
+                  // previene navegación default y hace scroll manual
+                  if (typeof event?.preventDefault === 'function') {
+                    event.preventDefault()
+                  }
+                  scrollToSection('#getting-started')
+                }}
                 >
                   {t.navGetStarted}
                 </Anchor>
