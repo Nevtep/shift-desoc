@@ -87,8 +87,10 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
           <p className="text-sm text-muted-foreground">Loading manifest...</p>
         ) : isManifestError ? (
           <p className="text-sm text-destructive">Failed to load evidence manifest.</p>
-        ) : manifest ? (
+        ) : manifest && isIpfsDocumentResponse(manifest) ? (
           <EvidenceManifest manifest={manifest} />
+        ) : manifest ? (
+          <p className="text-sm text-destructive">Manifest response was invalid.</p>
         ) : (
           <p className="text-sm text-muted-foreground">No evidence manifest uploaded.</p>
         )}
@@ -137,7 +139,7 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
   );
 }
 
-type JurorAssignment = NonNullable<ClaimQueryResult["claim"]>["jurorAssignments"][number];
+type JurorAssignment = NonNullable<NonNullable<ClaimQueryResult["claim"]>["jurorAssignments"]>[number];
 
 function VerifyClaimForm({
   claimId,
@@ -252,6 +254,12 @@ function MetadataItem({ label, value }: { label: string; value?: string | null }
       <dd>{value}</dd>
     </div>
   );
+}
+
+function isIpfsDocumentResponse(value: unknown): value is IpfsDocumentResponse {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<IpfsDocumentResponse>;
+  return Boolean(candidate.cid && candidate.data && candidate.version && candidate.type);
 }
 
 function EvidenceManifest({ manifest }: { manifest: IpfsDocumentResponse }) {

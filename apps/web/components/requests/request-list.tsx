@@ -26,13 +26,19 @@ export type RequestListProps = {
 };
 
 export function RequestList({ communityId }: RequestListProps) {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<RequestsQueryResult>(
+  type RequestsQueryVars = { limit: number; communityId?: number };
+
+  const variables: RequestsQueryVars = communityId
+    ? { communityId: Number(communityId), limit: 20 }
+    : { limit: 20 };
+
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<RequestsQueryResult, RequestsQueryVars>(
     ["requests", communityId ?? "all"],
     RequestsQuery,
-    communityId ? { communityId: Number(communityId), limit: 20 } : { limit: 20 }
+    variables
   );
 
-  const { data: communitiesData } = useGraphQLQuery<CommunitiesQueryResult>(
+  const { data: communitiesData } = useGraphQLQuery<CommunitiesQueryResult, { limit: number }>(
     ["communities", "for-request-list"],
     CommunitiesQuery,
     { limit: 200 }
@@ -88,7 +94,11 @@ export function RequestList({ communityId }: RequestListProps) {
 
 function RequestListItem({ request, communityName }: { request: RequestNode; communityName?: string }) {
   const { data: ipfs } = useIpfsDocument(request.cid, Boolean(request.cid));
-  const title = ipfs?.data?.type === "request" ? ipfs.data.title : null;
+  const ipfsDoc = isIpfsDocumentResponse(ipfs) ? ipfs : null;
+  const title =
+    ipfsDoc?.data && typeof ipfsDoc.data === "object" && "type" in ipfsDoc.data && (ipfsDoc.data as { type?: string }).type === "request"
+      ? (ipfsDoc.data as { title?: string }).title ?? null
+      : null;
 
   return (
     <li className="rounded-lg border border-border p-4 shadow-sm">
@@ -145,4 +155,24 @@ function formatDate(value?: string | number | null) {
   }
 
   return "Unknown";
+}
+
+function isIpfsDocumentResponse(value: unknown): value is {
+  cid: string;
+  html: { body: string } | null;
+  data: unknown;
+  type: string;
+  version: string;
+  retrievedAt: string;
+} {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { cid?: unknown; html?: unknown; data?: unknown; type?: unknown; version?: unknown; retrievedAt?: unknown };
+  return Boolean(
+    candidate.cid &&
+    "html" in candidate &&
+    "data" in candidate &&
+    candidate.type &&
+    candidate.version &&
+    candidate.retrievedAt
+  );
 }

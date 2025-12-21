@@ -38,7 +38,7 @@ Deployment Method: API-based (no factory contracts)
 
 ```bash
 # Required tools
-node >= 18
+node >= 22
 pnpm >= 8
 git
 ```

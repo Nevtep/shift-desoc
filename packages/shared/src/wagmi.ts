@@ -49,12 +49,12 @@ export function createShiftConfig({ env }: CreateShiftConfigOptions = {}): Wagmi
   // Avoid initializing WalletConnect core on the server (SSR/edge) to prevent duplicate cores
   // and Fast Refresh re-initialization warnings.
   if (projectId && isBrowser) {
-    connectors.push(walletConnect({ projectId, showQrModal: true }));
+    connectors.push(walletConnect({ projectId, showQrModal: true }) as unknown as (typeof connectors)[number]);
   }
 
   return createConfig({
     chains,
     transports,
-    connectors
+    connectors: connectors as unknown as typeof connectors
   });
 }

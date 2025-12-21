@@ -23,7 +23,7 @@ Expo Mobile App → Next.js API Backend → Hardhat Scripts → Base Network →
 
 ```bash
 # Node.js and package management
-node >= 18.0.0
+node >= 22.0.0
 pnpm >= 8.0.0
 
 # Blockchain development

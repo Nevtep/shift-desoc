@@ -23,12 +23,16 @@ export type RequestDetailProps = {
 export function RequestDetail({ requestId }: RequestDetailProps) {
   const numericId = Number(requestId);
 
+  type RequestQueryVars = { id: number };
+  type DraftsByRequestVars = { requestId: number; limit: number };
+  type CommentsByRequestVars = { requestId: number; limit: number; after?: string };
+
   const {
     data: requestData,
     isLoading,
     isError,
     refetch
-  } = useGraphQLQuery<RequestQueryResult>(["request", requestId], RequestQuery, { id: numericId });
+  } = useGraphQLQuery<RequestQueryResult, RequestQueryVars>(["request", requestId], RequestQuery, { id: numericId });
 
   const [commentsCursor, setCommentsCursor] = useState<string | undefined>(undefined);
   const [commentNodes, setCommentNodes] = useState<CommentsByRequestResult["comments"]["nodes"]>([]);
@@ -38,13 +42,13 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     setCommentNodes([]);
   }, [numericId]);
 
-  const { data: draftsData } = useGraphQLQuery<DraftsQueryResult>(
+  const { data: draftsData } = useGraphQLQuery<DraftsQueryResult, DraftsByRequestVars>(
     ["drafts", "request", requestId],
     DraftsQuery,
     { requestId: numericId, limit: 20 }
   );
 
-  const { data: commentsData } = useGraphQLQuery<CommentsByRequestResult>(
+  const { data: commentsData } = useGraphQLQuery<CommentsByRequestResult, CommentsByRequestVars>(
     ["comments", "request", requestId, commentsCursor ?? "start"],
     CommentsByRequestQuery,
     { requestId: numericId, limit: 10, after: commentsCursor ?? undefined }
@@ -68,29 +72,30 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     refetch: refetchIpfs
   } = useIpfsDocument(cid, Boolean(cid));
 
+  const ipfsDoc = useMemo(() => (isIpfsDocumentResponse(ipfsData) ? ipfsData : null), [ipfsData]);
+  const ipfsMetadata = useMemo(() => {
+    if (!ipfsDoc?.data || typeof ipfsDoc.data !== "object") return null;
+    return ipfsDoc.data as { title?: string; createdAt?: unknown };
+  }, [ipfsDoc]);
+
   const displayTitle = useMemo(() => {
-    const ipfsTitle =
-      ipfsData?.data && "title" in ipfsData.data
-        ? (ipfsData.data as { title?: string }).title
-        : undefined;
+    const ipfsTitle = ipfsMetadata?.title;
     return ipfsTitle?.trim() || null;
-  }, [ipfsData]);
+  }, [ipfsMetadata]);
 
   const headerTitle = displayTitle ?? (isIpfsLoading ? "Loading title…" : request ? `Request ${request.id}` : "Request");
 
   const submittedAt = useMemo(() => {
-    const candidates = [request?.createdAt, ipfsData?.data?.createdAt];
+    const candidates = [request?.createdAt, ipfsMetadata?.createdAt];
 
     for (const value of candidates) {
       if (!value) continue;
 
-      // ISO string
       if (typeof value === "string") {
         const iso = new Date(value);
         if (!Number.isNaN(iso.valueOf())) return iso;
       }
 
-      // Numeric string or number (seconds or millis)
       const numeric = typeof value === "string" ? Number(value) : value;
       if (Number.isFinite(numeric)) {
         const d = new Date((numeric as number) < 1e12 ? (numeric as number) * 1000 : (numeric as number));
@@ -99,7 +104,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     }
 
     return null;
-  }, [ipfsData?.data?.createdAt, request?.createdAt]);
+  }, [ipfsMetadata?.createdAt, request?.createdAt]);
 
   const { push } = useToast();
 
@@ -113,13 +118,13 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     const nextNodes = commentsData?.comments.nodes ?? [];
     if (!nextNodes.length) return;
     setCommentNodes((prev) => {
-      const seen = new Set(prev.map((c) => c.id));
+      const seen = new Set(prev.map((c) => String(c.id)));
       const merged = [...prev];
       nextNodes.forEach((node) => {
-        const numericId = Number(node.id);
-        if (!seen.has(numericId)) {
-          merged.push({ ...node, id: numericId });
-          seen.add(numericId);
+        const key = String(node.id);
+        if (!seen.has(key)) {
+          merged.push({ ...node, id: key });
+          seen.add(key);
         }
       });
       return merged;
@@ -128,7 +133,6 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
   const comments = useMemo(() => commentNodes, [commentNodes]);
   const commentsPageInfo = commentsData?.comments.pageInfo;
-
   const drafts = useMemo(() => {
     return (draftsData?.drafts.nodes ?? []).map((node) => ({
       ...node,
@@ -211,10 +215,10 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
               Retry
             </button>
           </div>
-        ) : ipfsData?.html?.body ? (
+        ) : ipfsDoc?.html?.body ? (
           <article
             className="prose prose-sm max-w-none dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: ipfsData.html.body }}
+            dangerouslySetInnerHTML={{ __html: ipfsDoc.html.body }}
           />
         ) : (
           <p className="text-sm text-muted-foreground">No markdown content available.</p>
@@ -283,6 +287,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
 function CommentContent({ cid }: { cid: string }) {
   const { data, isLoading, isError, refetch } = useIpfsDocument(cid, Boolean(cid));
+  const commentDoc = isIpfsDocumentResponse(data) ? data : null;
 
   if (isLoading) {
     return <p className="mt-2 text-xs text-muted-foreground">Loading comment…</p>;
@@ -297,13 +302,33 @@ function CommentContent({ cid }: { cid: string }) {
       </div>
     );
   }
-  if (!data?.html?.body) {
+  if (!commentDoc?.html?.body) {
     return <p className="mt-2 text-xs text-muted-foreground">No comment body provided.</p>;
   }
   return (
     <article
       className="prose prose-xs mt-2 max-w-none dark:prose-invert"
-      dangerouslySetInnerHTML={{ __html: data.html.body }}
+      dangerouslySetInnerHTML={{ __html: commentDoc.html.body }}
     />
+  );
+}
+
+function isIpfsDocumentResponse(value: unknown): value is {
+  cid: string;
+  html: { body: string } | null;
+  data: unknown;
+  type: string;
+  version: string;
+  retrievedAt: string;
+} {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { cid?: unknown; html?: unknown; data?: unknown; type?: unknown; version?: unknown; retrievedAt?: unknown };
+  return Boolean(
+    candidate.cid &&
+    "html" in candidate &&
+    "data" in candidate &&
+    candidate.type &&
+    candidate.version &&
+    candidate.retrievedAt
   );
 }

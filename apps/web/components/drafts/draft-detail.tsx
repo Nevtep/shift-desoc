@@ -46,11 +46,16 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
   const latestCid = draft?.latestVersionCid ?? undefined;
 
   const {
-    data: latestVersion,
+    data: latestVersionRaw,
     isLoading: isLatestLoading,
     isError: isLatestError,
     refetch: refetchLatest
   } = useIpfsDocument(latestCid, Boolean(latestCid));
+
+  const latestVersion = useMemo(
+    () => (isIpfsDocumentResponse(latestVersionRaw) ? latestVersionRaw : null),
+    [latestVersionRaw]
+  );
 
   const versions = useMemo(() => draft?.versions ?? [], [draft]);
 
@@ -324,6 +329,7 @@ type VersionNode = {
 
 function VersionEntry({ version }: { version: VersionNode }) {
   const { data, isLoading, isError, refetch } = useIpfsDocument(version.cid, Boolean(version.cid));
+  const snapshotDoc = useMemo(() => (isIpfsDocumentResponse(data) ? data : null), [data]);
 
   return (
     <li className="rounded border border-border p-3">
@@ -342,10 +348,10 @@ function VersionEntry({ version }: { version: VersionNode }) {
             Retry
           </button>
         </div>
-      ) : data?.html?.body ? (
+      ) : snapshotDoc?.html?.body ? (
         <article
           className="prose prose-xs mt-2 max-w-none dark:prose-invert"
-          dangerouslySetInnerHTML={{ __html: data.html.body }}
+          dangerouslySetInnerHTML={{ __html: snapshotDoc.html.body }}
         />
       ) : (
         <p className="mt-2 text-xs text-muted-foreground">No content available.</p>
@@ -356,6 +362,7 @@ function VersionEntry({ version }: { version: VersionNode }) {
 
 function CommentContent({ cid }: { cid?: string }) {
   const { data, isLoading, isError, refetch } = useIpfsDocument(cid, Boolean(cid));
+  const commentDoc = useMemo(() => (isIpfsDocumentResponse(data) ? data : null), [data]);
 
   if (!cid) {
     return <p className="mt-2 text-xs text-muted-foreground">No comment supplied.</p>;
@@ -373,13 +380,13 @@ function CommentContent({ cid }: { cid?: string }) {
       </div>
     );
   }
-  if (!data?.html?.body) {
+  if (!commentDoc?.html?.body) {
     return <p className="mt-2 text-xs text-muted-foreground">No comment content.</p>;
   }
   return (
     <article
       className="prose prose-xs mt-2 max-w-none dark:prose-invert"
-      dangerouslySetInnerHTML={{ __html: data.html.body }}
+      dangerouslySetInnerHTML={{ __html: commentDoc.html.body }}
     />
   );
 }
@@ -398,4 +405,24 @@ function formatDraftTxError(err: unknown) {
     return "Review period not met yet.";
   }
   return message.replace(/execution reverted: ?/i, "");
+}
+
+function isIpfsDocumentResponse(value: unknown): value is {
+  cid: string;
+  html: { body: string } | null;
+  data: unknown;
+  type: string;
+  version: string;
+  retrievedAt: string;
+} {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { cid?: unknown; html?: unknown; data?: unknown; type?: unknown; version?: unknown; retrievedAt?: unknown };
+  return Boolean(
+    candidate.cid &&
+    "html" in candidate &&
+    "data" in candidate &&
+    candidate.type &&
+    candidate.version &&
+    candidate.retrievedAt
+  );
 }

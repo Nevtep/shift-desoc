@@ -1,4 +1,4 @@
-Build a Next.js 14 (App Router) marketing site for Shift with sections/pages:
+Build a Next.js 16 (App Router) marketing site for Shift with sections/pages:
 
 Home (Hero + CTA).
 
