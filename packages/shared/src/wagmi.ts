@@ -1,5 +1,5 @@
 import { http, createConfig } from "wagmi";
-import { base, baseSepolia } from "wagmi/chains";
+import { baseSepolia } from "wagmi/chains";
 import { injected } from "wagmi/connectors";
 import { walletConnect } from "wagmi/connectors";
 
@@ -12,26 +12,23 @@ export type CreateShiftConfigOptions = {
 };
 
 export function createShiftConfig({ env }: CreateShiftConfigOptions = {}): WagmiConfig {
+  const isBrowser = typeof window !== "undefined";
+
   const projectId =
     env?.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
     env?.WALLETCONNECT_PROJECT_ID ??
     process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
     process.env.WALLETCONNECT_PROJECT_ID;
 
-  const chains = [base, baseSepolia] as const;
+  // Base Sepolia is the supported network for this build; add Base mainnet when deployments are ready.
+  const chains = [baseSepolia] as const;
 
   const transports = chains.reduce<Record<number, ReturnType<typeof http>>>(
     (map, chain) => {
       const defaultRpc = chain.rpcUrls?.default?.http?.[0];
       const publicRpc = (chain.rpcUrls as { public?: { http?: readonly string[] } }).public?.http?.[0];
 
-      if (chain.id === base.id) {
-        const url = env?.RPC_BASE ?? process.env.RPC_BASE ?? publicRpc ?? defaultRpc;
-        if (!url) {
-          throw new Error("RPC URL missing for Base chain");
-        }
-        map[chain.id] = http(url);
-      } else if (chain.id === baseSepolia.id) {
+      if (chain.id === baseSepolia.id) {
         const url =
           env?.RPC_BASE_SEPOLIA ??
           process.env.RPC_BASE_SEPOLIA ??
@@ -47,14 +44,17 @@ export function createShiftConfig({ env }: CreateShiftConfigOptions = {}): Wagmi
     {}
   );
 
+  const connectors = [injected({ shimDisconnect: true })];
+
+  // Avoid initializing WalletConnect core on the server (SSR/edge) to prevent duplicate cores
+  // and Fast Refresh re-initialization warnings.
+  if (projectId && isBrowser) {
+    connectors.push(walletConnect({ projectId, showQrModal: true }));
+  }
+
   return createConfig({
     chains,
     transports,
-    connectors: [
-      injected({ shimDisconnect: true }),
-      ...(projectId
-        ? [walletConnect({ projectId, showQrModal: true })]
-        : [])
-    ]
+    connectors
   });
 }

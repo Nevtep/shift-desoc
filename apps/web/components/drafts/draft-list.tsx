@@ -4,7 +4,8 @@ import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { useMemo } from "react";
 
-import { useApiQuery } from "../../hooks/useApiQuery";
+import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
+import { DraftsQuery, type DraftsQueryResult } from "../../lib/graphql/queries";
 
 export type DraftNode = {
   id: number;
@@ -20,17 +21,19 @@ export type DraftListProps = {
 };
 
 export function DraftList({ communityId }: DraftListProps) {
-  const variables = communityId ? { communityId } : undefined;
-  const params = new URLSearchParams();
-  params.set("limit", "20");
-  if (communityId) params.set("communityId", communityId);
-
-  const { data, isLoading, isError, refetch } = useApiQuery<{ items: DraftNode[] }>(
-    ["drafts", variables],
-    `/drafts?${params.toString()}`
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<DraftsQueryResult>(
+    ["drafts", communityId ?? "all"],
+    DraftsQuery,
+    communityId ? { communityId: Number(communityId), limit: 20 } : { limit: 20 }
   );
 
-  const drafts = useMemo(() => data?.items ?? [], [data]);
+  const drafts = useMemo(() => {
+    return (data?.drafts.nodes ?? []).map((node) => ({
+      ...node,
+      id: Number(node.id),
+      requestId: Number(node.requestId)
+    }));
+  }, [data]);
 
   if (isLoading) return <StatusMessage message="Loading drafts…" />;
   if (isError)

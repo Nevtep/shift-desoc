@@ -44,9 +44,11 @@ export function RequestCreateForm() {
         body: JSON.stringify({
           payload: {
             type: "request",
+            version: "1",
             title,
-            body,
+            bodyMarkdown: body,
             tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+            attachments: [],
             createdBy: address,
             createdAt: new Date().toISOString()
           }

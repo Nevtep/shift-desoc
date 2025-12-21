@@ -1,45 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { useApiQuery } from "../../hooks/useApiQuery";
+import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
+import {
+  CommentsByRequestQuery,
+  DraftsQuery,
+  RequestQuery,
+  type CommentsByRequestResult,
+  type DraftsQueryResult,
+  type RequestQueryResult
+} from "../../lib/graphql/queries";
 import type { DraftNode } from "../drafts/draft-list";
-
-type CommentNode = {
-  id: number;
-  author: string;
-  cid: string;
-  createdAt: string;
-  parentId?: number | null;
-};
-
-type RequestDetailResponse = {
-  request: {
-    id: number;
-    communityId: number;
-    author: string;
-    status: string;
-    cid: string;
-    tags: string[];
-    createdAt: string;
-    comments: CommentNode[];
-    drafts: DraftNode[];
-  };
-};
 
 export type RequestDetailProps = {
   requestId: string;
 };
 
 export function RequestDetail({ requestId }: RequestDetailProps) {
-  const { data, isLoading, isError, refetch } = useApiQuery<RequestDetailResponse>(
-    ["request", requestId],
-    `/requests/${requestId}`
+  const numericId = Number(requestId);
+
+  const {
+    data: requestData,
+    isLoading,
+    isError,
+    refetch
+  } = useGraphQLQuery<RequestQueryResult>(["request", requestId], RequestQuery, { id: numericId });
+
+  const [commentsCursor, setCommentsCursor] = useState<string | undefined>(undefined);
+  const [commentNodes, setCommentNodes] = useState<CommentsByRequestResult["comments"]["nodes"]>([]);
+
+  useEffect(() => {
+    setCommentsCursor(undefined);
+    setCommentNodes([]);
+  }, [numericId]);
+
+  const { data: draftsData } = useGraphQLQuery<DraftsQueryResult>(
+    ["drafts", "request", requestId],
+    DraftsQuery,
+    { requestId: numericId, limit: 20 }
   );
 
-  const request = data?.request ?? null;
+  const { data: commentsData } = useGraphQLQuery<CommentsByRequestResult>(
+    ["comments", "request", requestId, commentsCursor ?? "start"],
+    CommentsByRequestQuery,
+    { requestId: numericId, limit: 10, after: commentsCursor ?? undefined }
+  );
+
+  const request = useMemo(() => {
+    if (!requestData?.request) return null;
+    return {
+      ...requestData.request,
+      id: Number(requestData.request.id),
+      communityId: Number(requestData.request.communityId)
+    };
+  }, [requestData?.request]);
+
   const cid = request?.cid;
 
   const {
@@ -49,7 +67,53 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     refetch: refetchIpfs
   } = useIpfsDocument(cid, Boolean(cid));
 
-  const comments = useMemo(() => request?.comments ?? [], [request]);
+  const submittedAt = useMemo(() => {
+    const candidates = [request?.createdAt, ipfsData?.data?.createdAt];
+
+    for (const value of candidates) {
+      if (!value) continue;
+
+      if (typeof value === "string") {
+        const d = new Date(value);
+        if (!Number.isNaN(d.valueOf())) return d;
+      }
+
+      if (typeof value === "number") {
+        const d = new Date(value < 1e12 ? value * 1000 : value);
+        if (!Number.isNaN(d.valueOf())) return d;
+      }
+    }
+
+    return null;
+  }, [ipfsData?.data?.createdAt, request?.createdAt]);
+
+  useEffect(() => {
+    const nextNodes = commentsData?.comments.nodes ?? [];
+    if (!nextNodes.length) return;
+    setCommentNodes((prev) => {
+      const seen = new Set(prev.map((c) => c.id));
+      const merged = [...prev];
+      nextNodes.forEach((node) => {
+        const numericId = Number(node.id);
+        if (!seen.has(numericId)) {
+          merged.push({ ...node, id: numericId });
+          seen.add(numericId);
+        }
+      });
+      return merged;
+    });
+  }, [commentsData]);
+
+  const comments = useMemo(() => commentNodes, [commentNodes]);
+  const commentsPageInfo = commentsData?.comments.pageInfo;
+
+  const drafts = useMemo(() => {
+    return (draftsData?.drafts.nodes ?? []).map((node) => ({
+      ...node,
+      id: Number(node.id),
+      requestId: Number(node.requestId)
+    })) as DraftNode[];
+  }, [draftsData]);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading request…</p>;
@@ -86,7 +150,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
             </div>
             <div className="flex items-center gap-2">
               <dt className="font-medium text-foreground">Submitted</dt>
-              <dd>{new Date(request.createdAt).toLocaleString()}</dd>
+              <dd>{submittedAt ? submittedAt.toLocaleString() : "Unknown"}</dd>
             </div>
           </dl>
           {request.tags?.length ? (
@@ -134,9 +198,9 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Drafts</h2>
-        {request.drafts?.length ? (
+        {drafts.length ? (
           <ul className="space-y-2 text-sm">
-            {request.drafts.map((draft) => (
+            {drafts.map((draft) => (
               <li key={draft.id} className="flex flex-wrap items-center gap-2">
                 <Link className="underline" href={`/drafts/${draft.id}`}>
                   Draft {draft.id}
@@ -153,19 +217,37 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Comments</h2>
         {comments.length ? (
-          <ul className="space-y-2 text-sm">
-            {comments.map((comment) => (
-              <li key={comment.id} className="rounded border border-border p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">{comment.author}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(comment.createdAt).toLocaleString()}
-                  </span>
-                </div>
-                <CommentContent cid={comment.cid} />
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-2 text-sm">
+            <ul className="space-y-2">
+              {comments.map((comment) => (
+                <li key={comment.id} className="rounded border border-border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">{comment.author}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(comment.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <CommentContent cid={comment.cid} />
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center gap-3">
+              {commentsPageInfo?.hasNextPage ? (
+                <button
+                  className="text-xs underline"
+                  onClick={() => {
+                    if (commentsPageInfo?.endCursor) {
+                      setCommentsCursor(commentsPageInfo.endCursor);
+                    }
+                  }}
+                >
+                  Load more comments
+                </button>
+              ) : (
+                <span className="text-xs text-muted-foreground">No more comments.</span>
+              )}
+            </div>
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">No comments yet.</p>
         )}
