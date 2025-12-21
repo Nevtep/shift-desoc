@@ -16,7 +16,7 @@ import {
   type RequestQueryResult
 } from "../../lib/graphql/queries";
 import { getContractConfig } from "../../lib/contracts";
-import { statusBadge } from "./request-status-badge";
+import { statusBadge } from "./helpers";
 import type { DraftNode } from "../drafts/draft-list";
 import { useToast } from "../ui/toaster";
 
