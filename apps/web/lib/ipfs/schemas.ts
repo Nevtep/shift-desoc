@@ -8,7 +8,7 @@ export const AttachmentSchema = z.object({
 });
 
 export const BaseDocumentSchema = z.object({
-  type: z.enum(["request", "draftVersion", "claimEvidence"]),
+  type: z.enum(["request", "draftVersion", "claimEvidence", "comment"]),
   version: z.string().min(1),
   createdAt: z.string().optional(),
   createdBy: z.string().optional()
@@ -57,14 +57,23 @@ export const ClaimEvidenceDocumentSchema = BaseDocumentSchema.extend({
   evidence: z.array(EvidenceItemSchema)
 });
 
+export const CommentDocumentSchema = BaseDocumentSchema.extend({
+  type: z.literal("comment"),
+  requestId: z.union([z.string(), z.number()]).transform((v) => v.toString()),
+  parentId: z.union([z.string(), z.number()]).optional().nullable().transform((v) => (v === null || v === undefined ? undefined : v.toString())),
+  bodyMarkdown: z.string().min(1)
+});
+
 export const DocumentSchema = z.discriminatedUnion("type", [
   RequestDocumentSchema,
   DraftVersionDocumentSchema,
-  ClaimEvidenceDocumentSchema
+  ClaimEvidenceDocumentSchema,
+  CommentDocumentSchema
 ]);
 
 export type Attachment = z.infer<typeof AttachmentSchema>;
 export type RequestDocument = z.infer<typeof RequestDocumentSchema>;
 export type DraftVersionDocument = z.infer<typeof DraftVersionDocumentSchema>;
 export type ClaimEvidenceDocument = z.infer<typeof ClaimEvidenceDocumentSchema>;
+export type CommentDocument = z.infer<typeof CommentDocumentSchema>;
 export type Document = z.infer<typeof DocumentSchema>;

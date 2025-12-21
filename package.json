@@ -21,7 +21,7 @@
     "deploy:ethereum-sepolia": "npx hardhat run scripts/deploy-complete.ts --network ethereum_sepolia",
     "deploy:ethereum": "npx hardhat run scripts/deploy-complete.ts --network ethereum",
     "forge:test": "forge test -vvv",
-    "forge:build": "forge build && node scripts/copy-ponder-abis.js",
+    "forge:build": "forge build && node scripts/copy-ponder-abis.js && node scripts/copy-web-abis.js",
     "forge:cov": "forge coverage --report lcov",
     "cov:gate": "bash ./scripts/check-coverage.sh",
     "build": "npm run forge:build && npm run hh:compile",
