@@ -75,7 +75,7 @@ export default function Vision() {
               color="$primary"
               textAlign="center"
             >
-              Visión
+              {t.visionTitle}
             </Heading>
             <Paragraph
               fontSize="$8"
