@@ -1,8 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { useAccount, useChainId, useWriteContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useReadContract, useWriteContract } from "wagmi";
 
 import { getContractConfig } from "../../lib/contracts";
 
@@ -10,6 +10,7 @@ export function RequestCreateForm() {
   const router = useRouter();
   const chainId = useChainId();
   const { address, status } = useAccount();
+  const publicClient = usePublicClient();
   const { writeContractAsync, isPending, error } = useWriteContract();
 
   const [communityId, setCommunityId] = useState("1");
@@ -17,10 +18,33 @@ export function RequestCreateForm() {
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [requestType, setRequestType] = useState<"governance" | "execution">("governance");
+  const [selectedValuableActionId, setSelectedValuableActionId] = useState("");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const isConnected = status === "connected";
   const disabled = !isConnected || isPending || isUploading;
+
+  const valuableActionRegistry = useMemo(() => {
+    try {
+      return getContractConfig("valuableActionRegistry", chainId);
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  }, [chainId]);
+
+  const { data: activeVaIdsRaw, isFetching: isFetchingVas } = useReadContract({
+    address: valuableActionRegistry?.address,
+    abi: valuableActionRegistry?.abi,
+    functionName: "getActiveValuableActions",
+    query: { enabled: requestType === "execution" && Boolean(valuableActionRegistry) }
+  });
+
+  const activeVaIds = useMemo(() => {
+    if (!Array.isArray(activeVaIdsRaw)) return [] as string[];
+    return (activeVaIdsRaw as bigint[]).map((id) => id.toString());
+  }, [activeVaIdsRaw]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,6 +57,11 @@ export function RequestCreateForm() {
     }
     if (!title.trim() || !body.trim()) {
       alert("Title and content are required");
+      return;
+    }
+
+    if (requestType === "execution" && !selectedValuableActionId.trim()) {
+      alert("Select a Valuable Action to link");
       return;
     }
 
@@ -50,7 +79,9 @@ export function RequestCreateForm() {
             tags: tags.split(",").map((tag) => tag.trim()).filter(Boolean),
             attachments: [],
             createdBy: address,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            requestType,
+            linkedValuableActionId: requestType === "execution" ? selectedValuableActionId || null : null
           }
         })
       });
@@ -62,7 +93,20 @@ export function RequestCreateForm() {
 
       const { address: contractAddress, abi } = getContractConfig("requestHub", chainId);
 
-      await writeContractAsync({
+      let anticipatedRequestId: bigint | null = null;
+      if (requestType === "execution" && publicClient) {
+        try {
+          anticipatedRequestId = await publicClient.readContract({
+            address: contractAddress,
+            abi,
+            functionName: "nextRequestId"
+          });
+        } catch (readErr) {
+          console.error(readErr);
+        }
+      }
+
+      const createTxHash = await writeContractAsync({
         address: contractAddress,
         abi,
         functionName: "createRequest",
@@ -77,10 +121,36 @@ export function RequestCreateForm() {
         ]
       });
 
-      setSuccessMessage("Request submitted on-chain. It will appear after the indexer updates.");
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash: createTxHash });
+      }
+
+      if (requestType === "execution" && selectedValuableActionId && anticipatedRequestId && publicClient) {
+        try {
+          const vaId = BigInt(selectedValuableActionId);
+          const linkTxHash = await writeContractAsync({
+            address: contractAddress,
+            abi,
+            functionName: "linkValuableAction",
+            args: [anticipatedRequestId, vaId]
+          });
+          await publicClient.waitForTransactionReceipt({ hash: linkTxHash });
+        } catch (linkErr) {
+          console.error(linkErr);
+          alert(linkErr instanceof Error ? linkErr.message : "Failed to link Valuable Action");
+        }
+      }
+
+      setSuccessMessage(
+        requestType === "execution"
+          ? "Request submitted and Valuable Action linked. It will appear after the indexer updates."
+          : "Request submitted on-chain. It will appear after the indexer updates."
+      );
       setTitle("");
       setBody("");
       setTags("");
+      setSelectedValuableActionId("");
+      setRequestType("governance");
       router.refresh();
     } catch (err) {
       console.error(err);
@@ -105,6 +175,32 @@ export function RequestCreateForm() {
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="text-muted-foreground">Request type</span>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="request-type"
+                value="governance"
+                checked={requestType === "governance"}
+                onChange={() => setRequestType("governance")}
+              />
+              <span>Governance (will escalate to draft/proposal)</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="request-type"
+                value="execution"
+                checked={requestType === "execution"}
+                onChange={() => setRequestType("execution")}
+              />
+              <span>Execution (link a Valuable Action)</span>
+            </label>
+          </div>
+        </label>
+
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Community ID</span>
           <input
@@ -115,6 +211,35 @@ export function RequestCreateForm() {
             placeholder="1"
           />
         </label>
+        {requestType === "execution" ? (
+          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+            <span className="text-muted-foreground">Linked Valuable Action</span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select
+                value={selectedValuableActionId}
+                onChange={(e) => setSelectedValuableActionId(e.target.value)}
+                className="rounded border border-border bg-background px-3 py-2 sm:w-1/2"
+                disabled={isFetchingVas || activeVaIds.length === 0}
+              >
+                <option value="">{isFetchingVas ? "Loading active actions..." : "Select active action"}</option>
+                {activeVaIds.map((id) => (
+                  <option key={id} value={id}>
+                    Valuable Action {id}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={selectedValuableActionId}
+                onChange={(e) => setSelectedValuableActionId(e.target.value)}
+                className="rounded border border-border bg-background px-3 py-2 sm:w-1/2"
+                placeholder="Or enter an action ID manually"
+              />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              Active Valuable Actions are loaded from chain; you can also paste a specific ID.
+            </span>
+          </label>
+        ) : null}
         <label className="flex flex-col gap-1 text-sm sm:col-span-1">
           <span className="text-muted-foreground">Tags (comma separated)</span>
           <input

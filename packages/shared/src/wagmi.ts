@@ -55,6 +55,8 @@ export function createShiftConfig({ env }: CreateShiftConfigOptions = {}): Wagmi
   return createConfig({
     chains,
     transports,
-    connectors: connectors as unknown as typeof connectors
+    connectors: connectors as unknown as typeof connectors,
+    // Enable SSR-safe hydration so wagmi defers setState to effects instead of render.
+    ssr: true
   });
 }

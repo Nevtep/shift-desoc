@@ -192,6 +192,7 @@ export const CommentsByRequestQuery = /* GraphQL */ `
         cid
         parentId
         createdAt
+        isModerated
       }
       pageInfo {
         endCursor
@@ -208,6 +209,7 @@ export type CommentNode = {
   cid: string;
   parentId?: number | null;
   createdAt: string;
+  isModerated?: boolean;
 };
 
 export type CommentsByRequestResult = {

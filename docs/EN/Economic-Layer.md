@@ -91,11 +91,19 @@ function markRecovered(uint256 cohortId, uint256 amount) external onlyRevenueRou
 function addInvestment(uint256 cohortId, address investor, uint256 amount) external onlyValuableActionSBT;
 ```
 
-### 2.4 TreasuryAdapter (Phase 2)
+### 2.4 TreasuryAdapter (Safe-module execution path)
 
-- Placeholder contract slated to integrate governance-approved proposals with external treasuries like Gnosis Safe or Zodiac modules.
-- Currently reverts `execute` calls, ensuring live deployments cannot mistakenly route funds through the unimplemented adapter.
-- Documentation captures the target architecture: queued treasury operations, multi-sig thresholds, and governance-driven spend approvals.
+- **Treasury custody:** Each community’s discretionary treasury is held in a dedicated **Gnosis Safe** (“Treasury Safe”). The Safe is the on-chain holder of stablecoins used for discretionary spending.
+- **Governance control:** `TreasuryAdapter` is a **Safe Module** installed on the Treasury Safe (via Safe `enableModule`). It is controlled by the community’s `ShiftGovernor` through the `TimelockController`: proposals are created/approved in the Governor, queued in the Timelock, and the **Timelock executes** calls into `TreasuryAdapter`.
+- **Spend execution:** The Timelock calls `executePayment(token, to, amount, reason)` on `TreasuryAdapter`. The adapter enforces:
+  - `token` must be on an allowlist (stablecoins only),
+  - `pause` state must be false,
+  - **frequency guardrail:** max **1 payment per week** (tracked via `lastSpendAt`),
+  - **size guardrail:** max **10% of the Safe’s balance** per token per payment,
+  - basic validity checks (`to != 0`, `amount > 0`).
+  If checks pass, the adapter instructs the Safe to execute an ERC-20 transfer by calling the Safe module entrypoint (e.g., `execTransactionFromModule(token, 0, transferCalldata, Operation.Call)`), reverting if the Safe execution fails.
+- **Emergency controls:** `pause()` and `emergencyWithdraw()` are callable by **Governor or a designated Guardian**; `unpause()` is **Governor-only**. All parameter updates (guardian, allowlist, limits) are governance-controlled via Timelock.
+- **Accounting:** `TreasuryAdapter` does not custody funds; it only maintains minimal policy state (e.g., `lastSpendAt`). Token balances remain the Safe’s source of truth.
 
 ## 3. Shared State & Accounting
 

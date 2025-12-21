@@ -1,6 +1,12 @@
 import type { Abi, Address } from "viem";
 import { baseSepolia } from "wagmi/chains";
 
+import communityRegistryArtifact from "../abis/CommunityRegistry.json" assert { type: "json" };
+import requestHubArtifact from "../abis/RequestHub.json" assert { type: "json" };
+import draftsManagerArtifact from "../abis/DraftsManager.json" assert { type: "json" };
+import claimsArtifact from "../abis/Claims.json" assert { type: "json" };
+import governorArtifact from "../abis/ShiftGovernor.json" assert { type: "json" };
+import valuableActionRegistryArtifact from "../abis/ValuableActionRegistry.json" assert { type: "json" };
 import baseSepoliaDeployment from "../../../deployments/base_sepolia.json" assert { type: "json" };
 
 type DeploymentJson = typeof baseSepoliaDeployment;
@@ -14,138 +20,13 @@ const deployments: Record<number, DeploymentJson> = {
   [baseSepolia.id]: baseSepoliaDeployment
 };
 
-const requestHubAbi: Abi = [
-  {
-    type: "function",
-    name: "createRequest",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "communityId", type: "uint256" },
-      { name: "title", type: "string" },
-      { name: "cid", type: "string" },
-      { name: "tags", type: "string[]" }
-    ],
-    outputs: [{ name: "requestId", type: "uint256" }]
-  }
-];
+const requestHubAbi = requestHubArtifact.abi as Abi;
+const communityRegistryAbi = communityRegistryArtifact.abi as Abi;
 
-const claimsAbi: Abi = [
-  {
-    type: "function",
-    name: "submit",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "typeId", type: "uint256" },
-      { name: "evidenceCID", type: "string" }
-    ],
-    outputs: [{ name: "claimId", type: "uint256" }]
-  },
-  {
-    type: "function",
-    name: "verify",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "claimId", type: "uint256" },
-      { name: "approve", type: "bool" }
-    ],
-    outputs: []
-  }
-];
-
-const governorAbi: Abi = [
-  {
-    type: "function",
-    name: "castVote",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "proposalId", type: "uint256" },
-      { name: "support", type: "uint8" }
-    ],
-    outputs: [{ name: "weight", type: "uint256" }]
-  },
-  {
-    type: "function",
-    name: "castVoteWithReason",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "proposalId", type: "uint256" },
-      { name: "support", type: "uint8" },
-      { name: "reason", type: "string" }
-    ],
-    outputs: [{ name: "weight", type: "uint256" }]
-  },
-  {
-    type: "function",
-    name: "castVoteMultiChoice",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "proposalId", type: "uint256" },
-      { name: "weights", type: "uint256[]" },
-      { name: "reason", type: "string" }
-    ],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "queue",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "targets", type: "address[]" },
-      { name: "values", type: "uint256[]" },
-      { name: "calldatas", type: "bytes[]" },
-      { name: "descriptionHash", type: "bytes32" }
-    ],
-    outputs: [{ name: "", type: "uint256" }]
-  },
-  {
-    type: "function",
-    name: "execute",
-    stateMutability: "payable",
-    inputs: [
-      { name: "targets", type: "address[]" },
-      { name: "values", type: "uint256[]" },
-      { name: "calldatas", type: "bytes[]" },
-      { name: "descriptionHash", type: "bytes32" }
-    ],
-    outputs: [{ name: "", type: "uint256" }]
-  }
-];
-
-const draftsManagerAbi: Abi = [
-  {
-    type: "function",
-    name: "createDraft",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "communityId", type: "uint256" },
-      { name: "requestId", type: "uint256" },
-      {
-        name: "actions",
-        type: "tuple",
-        components: [
-          { name: "targets", type: "address[]" },
-          { name: "values", type: "uint256[]" },
-          { name: "calldatas", type: "bytes[]" },
-          { name: "actionsHash", type: "bytes32" }
-        ]
-      },
-      { name: "versionCID", type: "string" }
-    ],
-    outputs: [{ name: "draftId", type: "uint256" }]
-  },
-  {
-    type: "function",
-    name: "escalateToProposal",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "draftId", type: "uint256" },
-      { name: "multiChoice", type: "bool" },
-      { name: "numOptions", type: "uint8" },
-      { name: "description", type: "string" }
-    ],
-    outputs: [{ name: "proposalId", type: "uint256" }]
-  }
-];
+const claimsAbi = claimsArtifact.abi as Abi;
+const governorAbi = governorArtifact.abi as Abi;
+const draftsManagerAbi = draftsManagerArtifact.abi as Abi;
+const valuableActionRegistryAbi = valuableActionRegistryArtifact.abi as Abi;
 
 export const CONTRACTS = {
   requestHub: {
@@ -163,6 +44,14 @@ export const CONTRACTS = {
   draftsManager: {
     key: "draftsManager" as ContractKey,
     abi: draftsManagerAbi
+  },
+  communityRegistry: {
+    key: "communityRegistry" as ContractKey,
+    abi: communityRegistryAbi
+  },
+  valuableActionRegistry: {
+    key: "valuableActionRegistry" as ContractKey,
+    abi: valuableActionRegistryAbi
   }
 };
 

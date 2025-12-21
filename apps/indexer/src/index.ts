@@ -266,6 +266,7 @@ ponder.on("RequestHub:CommentPosted", async ({ event, context }) => {
       cid: event.args.cid,
       parentId: Number(event.args.parentCommentId) === 0 ? null : Number(event.args.parentCommentId),
       createdAt: toDate(event.block.timestamp),
+      isModerated: false,
     })
     .onConflictDoNothing();
 });
@@ -273,9 +274,14 @@ ponder.on("RequestHub:CommentPosted", async ({ event, context }) => {
 ponder.on("RequestHub:RequestStatusChanged", async ({ event, context }) => {
   const statusIndex = Number(event.args.newStatus);
   await context.db
-    .update(requests)
-    .set({ status: requestStatuses[statusIndex] ?? requestStatuses[0] })
-    .where(eq(requests.id, Number(event.args.requestId)));
+    .update(requests, { id: Number(event.args.requestId) })
+    .set({ status: requestStatuses[statusIndex] ?? requestStatuses[0] });
+});
+
+ponder.on("RequestHub:CommentModerated", async ({ event, context }) => {
+  await context.db
+    .update(comments, { id: Number(event.args.commentId) })
+    .set({ isModerated: event.args.hidden });
 });
 
 ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
@@ -339,9 +345,8 @@ ponder.on("DraftsManager:VersionSnapshot", async ({ event, context }) => {
     });
 
   await context.db
-    .update(drafts)
-    .set({ latestVersionCid: event.args.versionCID, updatedAt: createdAt })
-    .where(eq(drafts.id, draftId));
+    .update(drafts, { id: draftId })
+    .set({ latestVersionCid: event.args.versionCID, updatedAt: createdAt });
 });
 
 ponder.on("DraftsManager:ReviewSubmitted", async ({ event, context }) => {
@@ -378,9 +383,8 @@ ponder.on("DraftsManager:DraftStatusChanged", async ({ event, context }) => {
   const updatedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(drafts)
-    .set({ status, updatedAt })
-    .where(eq(drafts.id, draftId));
+    .update(drafts, { id: draftId })
+    .set({ status, updatedAt });
 });
 
 ponder.on("DraftsManager:ProposalEscalated", async ({ event, context }) => {
@@ -392,9 +396,8 @@ ponder.on("DraftsManager:ProposalEscalated", async ({ event, context }) => {
     : null;
 
   await context.db
-    .update(drafts)
-    .set({ escalatedProposalId: proposalId.toString(), status: draftStatuses[3], updatedAt: createdAt })
-    .where(eq(drafts.id, draftId));
+    .update(drafts, { id: draftId })
+    .set({ escalatedProposalId: proposalId.toString(), status: draftStatuses[3], updatedAt: createdAt });
 
   await context.db
     .insert(proposals)
@@ -425,14 +428,12 @@ ponder.on("DraftsManager:ProposalOutcomeUpdated", async ({ event, context }) => 
   const updatedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(drafts)
-    .set({ status: outcome, updatedAt })
-    .where(eq(drafts.id, Number(event.args.draftId)));
+    .update(drafts, { id: Number(event.args.draftId) })
+    .set({ status: outcome, updatedAt });
 
   await context.db
-    .update(proposals)
-    .set({ state: outcome })
-    .where(eq(proposals.id, proposalId));
+    .update(proposals, { id: proposalId })
+    .set({ state: outcome });
 });
 
 ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
@@ -512,32 +513,28 @@ ponder.on("ShiftGovernor:MultiChoiceProposalCreated", async ({ event, context })
 ponder.on("CountingMultiChoice:MultiChoiceEnabled", async ({ event, context }) => {
   const options = Array.from({ length: Number(event.args.options) }, (_, i) => i);
   await context.db
-    .update(proposals)
-    .set({ multiChoiceOptions: options })
-    .where(eq(proposals.id, event.args.proposalId.toString()));
+    .update(proposals, { id: event.args.proposalId.toString() })
+    .set({ multiChoiceOptions: options });
 });
 
 ponder.on("ShiftGovernor:ProposalQueued", async ({ event, context }) => {
   const queuedAt = toDate(event.block.timestamp);
   await context.db
-    .update(proposals)
-    .set({ state: "Queued", queuedAt })
-    .where(eq(proposals.id, event.args.proposalId.toString()));
+    .update(proposals, { id: event.args.proposalId.toString() })
+    .set({ state: "Queued", queuedAt });
 });
 
 ponder.on("ShiftGovernor:ProposalExecuted", async ({ event, context }) => {
   const executedAt = toDate(event.block.timestamp);
   await context.db
-    .update(proposals)
-    .set({ state: "Executed", executedAt })
-    .where(eq(proposals.id, event.args.proposalId.toString()));
+    .update(proposals, { id: event.args.proposalId.toString() })
+    .set({ state: "Executed", executedAt });
 });
 
 ponder.on("CountingMultiChoice:ProposalCanceled", async ({ event, context }) => {
   await context.db
-    .update(proposals)
-    .set({ state: "Canceled" })
-    .where(eq(proposals.id, event.args.proposalId.toString()));
+    .update(proposals, { id: event.args.proposalId.toString() })
+    .set({ state: "Canceled" });
 });
 
 ponder.on("ShiftGovernor:VoteCast", async ({ event, context }) => {
@@ -634,9 +631,8 @@ ponder.on("VerifierManager:JurorsSelected", async ({ event, context }) => {
   const powers = event.args.powers as bigint[];
 
   await context.db
-    .update(claims)
-    .set({ communityId: Number(event.args.communityId) })
-    .where(eq(claims.id, claimId));
+    .update(claims, { id: claimId })
+    .set({ communityId: Number(event.args.communityId) });
 
   for (let i = 0; i < jurors.length; i += 1) {
     const juror = jurors[i]!;
@@ -682,9 +678,8 @@ ponder.on("Claims:ClaimVerified", async ({ event, context }) => {
   const decidedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(jurorAssignments)
-    .set({ decision, decidedAt })
-    .where(eq(jurorAssignments.id, buildJurorAssignmentId(claimId, event.args.verifier)));
+    .update(jurorAssignments, { id: buildJurorAssignmentId(claimId, event.args.verifier) })
+    .set({ decision, decidedAt });
 });
 
 ponder.on("Claims:ClaimResolved", async ({ event, context }) => {
@@ -692,15 +687,13 @@ ponder.on("Claims:ClaimResolved", async ({ event, context }) => {
   const resolvedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(claims)
-    .set({ status, resolvedAt })
-    .where(eq(claims.id, Number(event.args.claimId)));
+    .update(claims, { id: Number(event.args.claimId) })
+    .set({ status, resolvedAt });
 });
 
 ponder.on("Claims:ClaimRevoked", async ({ event, context }) => {
   const resolvedAt = toDate(event.block.timestamp);
   await context.db
-    .update(claims)
-    .set({ status: claimStatuses[3], resolvedAt })
-    .where(eq(claims.id, Number(event.args.claimId)));
+    .update(claims, { id: Number(event.args.claimId) })
+    .set({ status: claimStatuses[3], resolvedAt });
 });
