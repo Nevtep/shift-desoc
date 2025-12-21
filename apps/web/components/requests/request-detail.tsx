@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactElement } from "react";
 import type { Abi } from "viem";
 import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
 
@@ -31,7 +31,7 @@ type CommentView = CommentsByRequestResult["comments"]["nodes"][number] & {
   isModerated?: boolean;
 };
 
-type RequestStatus = RequestQueryResult["request"]["status"];
+type RequestStatus = NonNullable<RequestQueryResult["request"]>["status"];
 
 export function RequestDetail({ requestId }: RequestDetailProps) {
   const numericId = Number(requestId);
@@ -461,7 +461,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     return map;
   }, [commentNodes]);
 
-  const renderCommentTree = (parentKey: string, depth = 0): JSX.Element | null => {
+  const renderCommentTree = (parentKey: string, depth = 0): ReactElement | null => {
     const list = commentTree.get(parentKey) ?? [];
     if (!list.length) return null;
 
@@ -532,7 +532,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       id: String(node.id),
       requestId: Number(node.requestId),
       parentId: node.parentId ?? null,
-      createdAt: normalizeDateString(node.createdAt) ?? (typeof node.createdAt === "string" ? node.createdAt : undefined),
+      createdAt: normalizeDateString(node.createdAt) ?? (typeof node.createdAt === "string" ? node.createdAt : ""),
       isModerated: node.isModerated ?? false
     }));
 
@@ -881,7 +881,7 @@ function isIpfsDocumentResponse(value: unknown): value is {
   );
 }
 
-function formatDate(value?: string | number | null) {
+function formatDate(value?: string | number | Date | null) {
   if (value === null || value === undefined) return "Unknown";
 
   if (value instanceof Date) {
