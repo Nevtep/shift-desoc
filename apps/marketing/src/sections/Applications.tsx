@@ -143,17 +143,18 @@ export default function Applications() {
           overflow="hidden"
           minHeight={720}
           justifyContent="center"
-          paddingTop={20}
-          paddingBottom={20}
+          paddingTop={12}
+          paddingBottom={12}
         >
-          <YStack gap="$3" alignItems="center" position="relative" zIndex={1} paddingVertical={30}>
+          <YStack gap="$3" alignItems="center" position="relative" zIndex={1} paddingVertical={20}>
             <Heading
               fontSize="$11"
               fontWeight="700"
               color="$primary"
               textAlign="center"
+              lineHeight={50}
             >
-              Usos
+              {t.applicationsTitle}
             </Heading>
             <Paragraph
               fontSize="$7"

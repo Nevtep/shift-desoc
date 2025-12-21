@@ -146,18 +146,25 @@ export default function Hero() {
 
             <Anchor
               href="#about"
-              {...secondaryOutlineButton}
+              backgroundColor="$primary"
+              color="$white"
+              borderRadius="$3"
+              paddingVertical="$3"
+              paddingHorizontal="$5"
+              fontSize="$5"
+              fontWeight="700"
+              textDecorationLine="none"
+              display="inline-flex"
+              alignItems="center"
+              justifyContent="center"
+              borderWidth={0}
+              hoverStyle={{
+                backgroundColor: '$primaryDark',
+              }}
               $md={{
                 width: '100%',
                 textAlign: 'center',
                 justifyContent: 'center',
-                color: '$white',
-                borderColor: '$white',
-                hoverStyle: {
-                  borderColor: '#ffffff',
-                  color: '#ffffff',
-                  backgroundColor: 'rgba(255,255,255,0.08)',
-                },
               }}
             >
               {t.btnLearnMore}

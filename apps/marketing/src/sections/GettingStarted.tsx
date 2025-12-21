@@ -74,6 +74,8 @@ export default function GettingStarted() {
             fontWeight="700"
             color="$primary"
             textAlign="center"
+            lineHeight={64}
+            $md={{ lineHeight: 54 }}
           >
             {t.gettingStartedTitle}
           </Heading>
@@ -83,6 +85,8 @@ export default function GettingStarted() {
             fontWeight="600"
             color="$secondary"
             textAlign="center"
+            lineHeight={38}
+            $md={{ lineHeight: 34 }}
           >
             {t.ctaTitle}
           </Paragraph>
