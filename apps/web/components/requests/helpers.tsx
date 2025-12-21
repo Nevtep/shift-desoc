@@ -11,17 +11,20 @@ export function statusBadge(status: string) {
   }
 }
 
-export function formatDate(value?: string | number | null) {
-  if (!value) return "Unknown";
-  const numeric = typeof value === "string" ? Number(value) : value;
+export function formatDate(value?: string | number | Date | null) {
+  if (value === null || value === undefined) return "Unknown";
 
-  // Handle ISO strings
+  if (value instanceof Date) {
+    if (!Number.isNaN(value.valueOf())) return value.toLocaleString();
+  }
+
   if (typeof value === "string") {
+    if (!value.trim()) return "Unknown";
     const iso = new Date(value);
     if (!Number.isNaN(iso.valueOf())) return iso.toLocaleString();
   }
 
-  // Handle numeric strings or numbers representing seconds/millis
+  const numeric = typeof value === "string" ? Number(value) : value;
   if (Number.isFinite(numeric)) {
     const d = new Date((numeric as number) < 1e12 ? (numeric as number) * 1000 : (numeric as number));
     if (!Number.isNaN(d.valueOf())) return d.toLocaleString();
@@ -53,4 +56,45 @@ export function isIpfsDocumentResponse(value: unknown): value is {
     candidate.version &&
     candidate.retrievedAt
   );
+}
+
+export function normalizeDateString(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+
+  if (typeof value === "string" && value.length) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.valueOf())) return d.toISOString();
+  }
+
+  if (typeof value === "number") {
+    const millis = value < 1e12 ? value * 1000 : value;
+    const d = new Date(millis);
+    if (!Number.isNaN(d.valueOf())) return d.toISOString();
+  }
+
+  return undefined;
+}
+
+export function buildCommentTree<T extends { id: string | number; parentId?: string | number | null; createdAt?: string | number | Date | null }>(
+  items: T[]
+): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+
+  items.forEach((item) => {
+    const key = item.parentId ? String(item.parentId) : "root";
+    const list = map.get(key) ?? [];
+    list.push(item);
+    map.set(key, list);
+  });
+
+  map.forEach((list, key) => {
+    const sorted = [...list].sort((a, b) => {
+      const aDate = new Date(a.createdAt ?? "").valueOf();
+      const bDate = new Date(b.createdAt ?? "").valueOf();
+      return bDate - aDate;
+    });
+    map.set(key, sorted);
+  });
+
+  return map;
 }
