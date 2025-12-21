@@ -48,7 +48,17 @@ export function ShiftProviders({
   children
 }: ShiftProvidersProps) {
   const [mounted, setMounted] = useState(false);
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            // Tests should surface errors immediately; in prod the default retry behavior is fine.
+            retry: process.env.NODE_ENV === "test" ? false : undefined
+          }
+        }
+      })
+  );
 
   const graphClient = useMemo(() => new GraphQLClient(graphqlUrl), [graphqlUrl]);
   const wagmiConfig: WagmiConfigType = useMemo(() => createShiftConfig({ env: getEnv() }), []);
