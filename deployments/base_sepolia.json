@@ -1,6 +1,6 @@
 {
   "network": "base_sepolia",
-  "timestamp": "2025-12-08T00:00:00.000Z",
+  "timestamp": "2025-12-21T08:14:08.355Z",
   "deployer": "0x73af48d53f75827dB195189e6FeBaB726dF7D0e2",
   "communityId": 1,
   "addresses": {
@@ -20,7 +20,7 @@
     "cohortRegistry": "0xf0CF3221a594d46D98eDDf47dF0673aB72861090",
     "revenueRouter": "0x3A864aC5a94dcDAc6400f1FA7f641FB864b9F387",
     "treasuryAdapter": "0x6B01efC76100236eE0C047dC9983b793F5032961",
-    "requestHub": "0x2DA63b84557bf651E38dAa267235B92CFdfbf291",
+    "requestHub": "0x2EC25bcB3c2b1b3981e068132b271859F36e7b52",
     "draftsManager": "0xE649D6A3D6bE0a189b522C87434E39d516d80343",
     "commerceDisputes": "0xa4E7F78Cea65EdA2f17c17EEDb2B6B24Ff9811cc",
     "marketplace": "0xbecd14E0eDAEbC8Bd8FEE942B72542726739ab4D",
@@ -32,6 +32,11 @@
     "votingDelay": 7200,
     "votingPeriod": 86400,
     "executionDelay": 21600,
-    "revenueSplit": [60, 30, 10]
-  }
+    "revenueSplit": [
+      60,
+      30,
+      10
+    ]
+  },
+  "startBlock": 35268281
 }

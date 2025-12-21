@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Abi } from "viem";
-import { useAccount, useChainId, usePublicClient, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
@@ -60,7 +60,9 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
   const [commentsCursor, setCommentsCursor] = useState<string | undefined>(undefined);
   const [commentNodes, setCommentNodes] = useState<CommentView[]>([]);
   const [moderatingCommentId, setModeratingCommentId] = useState<string | null>(null);
-  const publicClient = usePublicClient({ chainId });
+  const [linkedValuableActionId, setLinkedValuableActionId] = useState<number | null>(null);
+  const [bountyAmount, setBountyAmount] = useState<string>("0");
+  const [linkDraft, setLinkDraft] = useState("");
 
   const requestHubConfig = useMemo(() => {
     try {
@@ -114,6 +116,11 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     };
   }, [requestData?.request]);
 
+  const isAuthor = useMemo(() => {
+    if (!request || !address) return false;
+    return request.author?.toLowerCase?.() === address.toLowerCase();
+  }, [address, request]);
+
   const isRequestOpen = request?.status === "OPEN_DEBATE";
 
   const { data: moderatorRole } = useReadContract({
@@ -150,6 +157,17 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     isError: isIpfsError,
     refetch: refetchIpfs
   } = useIpfsDocument(cid, Boolean(cid));
+
+  const { data: onchainRequest } = useReadContract({
+    address: requestHubConfig?.address,
+    abi: (requestHubConfig?.abi ?? []) as Abi,
+    functionName: "getRequest",
+    args: request ? [BigInt(request.id)] : undefined,
+    chainId,
+    query: {
+      enabled: Boolean(requestHubConfig && request)
+    }
+  });
 
   const ipfsDoc = useMemo(() => (isIpfsDocumentResponse(ipfsData) ? ipfsData : null), [ipfsData]);
   const ipfsMetadata = useMemo(() => {
@@ -188,6 +206,35 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
   useEffect(() => {
     setStatusDraft(request?.status ?? null);
   }, [request?.status]);
+
+  useEffect(() => {
+    if (!onchainRequest || !Array.isArray(onchainRequest)) return;
+
+    const tuple = onchainRequest as unknown as [
+      bigint,
+      string,
+      string,
+      string,
+      number,
+      bigint,
+      bigint,
+      string[],
+      bigint,
+      bigint,
+      bigint
+    ];
+
+    const bounty = tuple[9];
+    const linked = tuple[10];
+
+    setBountyAmount(bounty ? bounty.toString() : "0");
+
+    const linkedNumeric = linked ? Number(linked) : 0;
+    setLinkedValuableActionId(linkedNumeric > 0 ? linkedNumeric : null);
+    if (!linkDraft && linkedNumeric > 0) {
+      setLinkDraft(String(linkedNumeric));
+    }
+  }, [linkDraft, onchainRequest]);
 
   const { push } = useToast();
 
@@ -365,6 +412,37 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     }
   };
 
+  const handleLinkValuableAction = async () => {
+    if (!request || !requestHubConfig) {
+      push("Request not loaded", "error");
+      return;
+    }
+    if (!isModerator && !isAuthor) {
+      push("Only the author or a moderator can link a Valuable Action.", "error");
+      return;
+    }
+
+    const vaIdNum = Number(linkDraft);
+    if (!Number.isFinite(vaIdNum) || vaIdNum <= 0) {
+      push("Enter a valid Valuable Action ID.", "error");
+      return;
+    }
+
+    try {
+      await writeContractAsync({
+        address: requestHubConfig.address,
+        abi: requestHubConfig.abi,
+        functionName: "linkValuableAction",
+        args: [BigInt(request.id), BigInt(vaIdNum)]
+      });
+      setLinkedValuableActionId(vaIdNum);
+      push(`Linked to Valuable Action ${vaIdNum}.`, "success");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to link Valuable Action";
+      push(message, "error");
+    }
+  };
+
   const commentTree = useMemo(() => {
     const map = new Map<string, CommentView[]>();
 
@@ -417,22 +495,13 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
                     Reply
                   </button>
                   {isModerator ? (
-                    <>
-                      <button
-                        className="underline"
-                        disabled={Boolean(moderatingCommentId) || isWriting}
-                        onClick={() => void handleModerateComment(comment.id, true)}
-                      >
-                        Hide
-                      </button>
-                      <button
-                        className="underline"
-                        disabled={Boolean(moderatingCommentId) || isWriting}
-                        onClick={() => void handleModerateComment(comment.id, false)}
-                      >
-                        Unhide
-                      </button>
-                    </>
+                    <button
+                      className="underline"
+                      disabled={Boolean(moderatingCommentId) || isWriting}
+                      onClick={() => void handleModerateComment(comment.id, !isHidden)}
+                    >
+                      {isHidden ? "Unhide" : "Hide"}
+                    </button>
                   ) : null}
                 </div>
               </div>
@@ -464,7 +533,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       requestId: Number(node.requestId),
       parentId: node.parentId ?? null,
       createdAt: normalizeDateString(node.createdAt) ?? (typeof node.createdAt === "string" ? node.createdAt : undefined),
-      isModerated: (node as { isModerated?: boolean }).isModerated ?? false
+      isModerated: node.isModerated ?? false
     }));
 
     if (!nextNodes.length) {
@@ -486,55 +555,8 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     });
   }, [commentsData]);
 
-  useEffect(() => {
-    if (!publicClient || !requestHubConfig) return;
-
-    const targetComments = commentNodes.filter((comment) => !comment.optimistic);
-    if (!targetComments.length) return;
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const results = await publicClient.multicall({
-          contracts: targetComments.map((comment) => ({
-            address: requestHubConfig.address,
-            abi: requestHubConfig.abi,
-            functionName: "comments",
-            args: [BigInt(comment.id)]
-          }))
-        });
-
-        if (cancelled) return;
-
-        const statusMap = new Map<string, boolean>();
-        targetComments.forEach((comment, index) => {
-          const res = results[index];
-          if (res.status === "success" && Array.isArray(res.result) && typeof res.result[5] === "boolean") {
-            statusMap.set(String(comment.id), res.result[5]);
-          }
-        });
-
-        if (!statusMap.size) return;
-
-        setCommentNodes((prev) =>
-          prev.map((comment) =>
-            statusMap.has(String(comment.id))
-              ? { ...comment, isModerated: statusMap.get(String(comment.id)) ?? false }
-              : comment
-          )
-        );
-      } catch (err) {
-        console.error("Failed to fetch comment visibility", err);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [commentNodes, publicClient, requestHubConfig]);
-
   const comments = useMemo(() => commentNodes, [commentNodes]);
+  const hasHiddenComments = useMemo(() => comments.some((comment) => comment.isModerated), [comments]);
   const commentsPageInfo = commentsData?.comments.pageInfo;
   const commentDisabled = !isConnected || isSubmittingComment || isWriting || !requestHubConfig || !isRequestOpen;
   const drafts = useMemo(() => {
@@ -604,6 +626,42 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
               ))}
             </div>
           ) : null}
+
+          <div className="mt-4 grid gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground">Linked Valuable Action</span>
+              <span className="text-muted-foreground">
+                {linkedValuableActionId ? `Valuable Action ${linkedValuableActionId}` : "Not linked"}
+              </span>
+              {linkedValuableActionId ? (
+                <Link className="text-xs underline" href={`/claims?valuableActionId=${linkedValuableActionId}`}>
+                  Submit or view claims
+                </Link>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground">Bounty</span>
+              <span className="text-muted-foreground">{bountyAmount ?? "0"}</span>
+            </div>
+            {(isModerator || isAuthor) ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={linkDraft}
+                  onChange={(e) => setLinkDraft(e.target.value)}
+                  className="w-40 rounded border border-border bg-background px-2 py-1 text-xs"
+                  placeholder="Enter VA ID"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleLinkValuableAction()}
+                  className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+                  disabled={isWriting}
+                >
+                  {linkedValuableActionId ? "Update link" : "Link VA"}
+                </button>
+              </div>
+            ) : null}
+          </div>
           {isModerator ? (
             <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">Moderation:</span>
@@ -635,6 +693,9 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">Discussion</h2>
+          {!requestHubConfig ? (
+            <span className="text-xs text-destructive">Unsupported network. Switch to Base Sepolia to view and post.</span>
+          ) : null}
           {cid ? (
             <a className="text-xs underline" href={`https://gateway.pinata.cloud/ipfs/${cid}`} target="_blank" rel="noreferrer">
               View original document
@@ -656,7 +717,9 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
             dangerouslySetInnerHTML={{ __html: ipfsDoc.html.body }}
           />
         ) : (
-          <p className="text-sm text-muted-foreground">No markdown content available.</p>
+          <p className="text-sm text-muted-foreground">
+            No IPFS body was provided for this request. Ask the author to re-publish the markdown content if needed.
+          </p>
         )}
       </section>
 
@@ -685,6 +748,11 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
             <span className="text-xs text-muted-foreground">Connect a wallet to comment.</span>
           ) : null}
         </div>
+        {!isModerator && hasHiddenComments ? (
+          <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Some comments are hidden by moderators.
+          </div>
+        ) : null}
 
         <form onSubmit={handleCommentSubmit} className="space-y-2">
           {replyTo ? (
@@ -721,7 +789,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
               <span className="text-xs text-destructive">{writeError.message ?? "Transaction failed"}</span>
             ) : null}
             {commentDisabled && requestHubConfig === null ? (
-              <span className="text-xs text-destructive">Unsupported network.</span>
+              <span className="text-xs text-destructive">Unsupported network. Switch to Base Sepolia to comment.</span>
             ) : null}
           </div>
         </form>
