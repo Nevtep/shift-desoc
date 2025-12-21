@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { YStack, XStack, Heading, Paragraph, Image, Anchor } from 'tamagui'
+import { YStack, XStack, Heading, Paragraph, Image, Anchor, useMedia } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 
@@ -14,6 +14,7 @@ const socialNetworks = [
 
 export default function Contact() {
   const t = useTranslations()
+  const media = useMedia()
 
   return (
     <YStack
@@ -50,13 +51,24 @@ export default function Contact() {
             {t.contactSubtitle}
           </Paragraph>
 
-          <XStack flexWrap="wrap" gap="$6" justifyContent="center" width="100%" marginTop="$4">
+          <XStack
+            flexWrap="wrap"
+            gap={media.md ? '$3' : '$5'}
+            justifyContent="center"
+            width="100%"
+            marginTop="$4"
+            display={media.md ? 'grid' : 'flex'}
+            $md={{
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: '$3',
+            }}
+          >
             {socialNetworks.map((social) => {
               const content = (
                 <YStack
                   key={social.name}
                   alignItems="center"
-                  gap="$3"
+                  gap="$1.5"
                   hoverStyle={{
                     scale: 1.05,
                     y: -4,
@@ -64,8 +76,8 @@ export default function Contact() {
                 >
                   <Image
                     source={{ uri: social.image }}
-                    width={175}
-                    height={175}
+                    width={media.md ? 110 : 165}
+                    height={media.md ? 110 : 165}
                     resizeMode="contain"
                     alt={social.name}
                   />
