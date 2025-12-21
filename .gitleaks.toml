@@ -1,0 +1,12 @@
+title = "Shift gitleaks config"
+
+[allowlist]
+description = "Ignore local env and generated/build artifacts"
+paths = [
+  '''(^|/)\.env$''',
+  '''(^|/)\.env\..*$''',
+  '''(^|/)node_modules/''',
+  '''(^|/)cache/''',
+  '''(^|/)artifacts/''',
+  '''(^|/)coverage/'''
+]
