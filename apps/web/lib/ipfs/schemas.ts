@@ -9,7 +9,9 @@ export const AttachmentSchema = z.object({
 
 export const BaseDocumentSchema = z.object({
   type: z.enum(["request", "draftVersion", "claimEvidence"]),
-  version: z.string().min(1)
+  version: z.string().min(1),
+  createdAt: z.string().optional(),
+  createdBy: z.string().optional()
 });
 
 export const RequestDocumentSchema = BaseDocumentSchema.extend({

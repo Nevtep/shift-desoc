@@ -2,7 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import {
@@ -19,13 +19,40 @@ export function ProposalList({ communityId }: ProposalListProps) {
   const communityIdNumber = typeof communityId === "string" ? Number(communityId) : communityId;
   const variables = Number.isFinite(communityIdNumber) ? { communityId: Number(communityIdNumber) } : undefined;
 
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalsQueryResult, { communityId?: number }>(
-    ["proposals", variables],
+  const [after, setAfter] = useState<string | undefined>(undefined);
+  const [proposals, setProposals] = useState<ProposalNode[]>([]);
+
+  useEffect(() => {
+    setAfter(undefined);
+    setProposals([]);
+  }, [communityIdNumber]);
+
+  type ProposalQueryVariables = { communityId?: number; limit?: number; after?: string };
+
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalsQueryResult, ProposalQueryVariables>(
+    ["proposals", variables, after ?? "start"],
     ProposalsQuery,
-    variables
+    { ...variables, after, limit: 10 }
   );
 
-  const proposals = useMemo(() => data?.proposals.nodes ?? [], [data]);
+  useEffect(() => {
+    const nextNodes = data?.proposals.nodes ?? [];
+    if (!nextNodes.length) return;
+    setProposals((prev) => {
+      const seen = new Set(prev.map((p) => p.id));
+      const merged = [...prev];
+      nextNodes.forEach((node) => {
+        if (!seen.has(node.id)) {
+          merged.push(node);
+          seen.add(node.id);
+        }
+      });
+      return merged;
+    });
+  }, [data]);
+
+  const hasNextPage = data?.proposals.pageInfo.hasNextPage ?? false;
+  const endCursor = data?.proposals.pageInfo.endCursor ?? undefined;
 
   if (isLoading) return <StatusMessage message="Loading proposals…" />;
   if (isError)
@@ -40,11 +67,28 @@ export function ProposalList({ communityId }: ProposalListProps) {
   if (!proposals.length) return <StatusMessage message="No proposals indexed yet." />;
 
   return (
-    <ul className="space-y-3">
-      {proposals.map((proposal) => (
-        <ProposalListItem key={proposal.id} proposal={proposal} />
-      ))}
-    </ul>
+    <div className="space-y-3">
+      <ul className="space-y-3">
+        {proposals.map((proposal) => (
+          <ProposalListItem key={proposal.id} proposal={proposal} />
+        ))}
+      </ul>
+      <div className="flex items-center gap-3">
+        {hasNextPage ? (
+          <button
+            className="text-sm underline"
+            disabled={isLoading}
+            onClick={() => {
+              if (endCursor) setAfter(endCursor);
+            }}
+          >
+            {isLoading ? "Loading…" : "Load more"}
+          </button>
+        ) : (
+          <span className="text-sm text-muted-foreground">No more proposals.</span>
+        )}
+      </div>
+    </div>
   );
 }
 

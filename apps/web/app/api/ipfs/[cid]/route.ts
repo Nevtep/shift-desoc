@@ -74,7 +74,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const result = DocumentSchema.safeParse(parsed);
+  const normalized = normalizeDocument(parsed);
+  const result = DocumentSchema.safeParse(normalized);
   if (!result.success) {
     return NextResponse.json(
       { error: "Schema validation failed", issues: result.error.issues },
@@ -99,6 +100,32 @@ export async function GET(request: Request) {
       headers: buildCacheHeaders(cid)
     }
   );
+}
+
+function normalizeDocument(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+
+  const maybe: Record<string, unknown> = raw as Record<string, unknown>;
+
+  // Backward compatibility: older request uploads lacked version/bodyMarkdown fields.
+  if (maybe.type === "request") {
+    return {
+      version: typeof maybe.version === "string" && maybe.version.length ? maybe.version : "1",
+      type: "request",
+      title: maybe.title,
+      summary: maybe.summary,
+      bodyMarkdown:
+        typeof maybe.bodyMarkdown === "string" && maybe.bodyMarkdown.length
+          ? maybe.bodyMarkdown
+          : (typeof maybe.body === "string" ? maybe.body : ""),
+      tags: Array.isArray(maybe.tags) ? maybe.tags : [],
+      attachments: maybe.attachments,
+      createdAt: maybe.createdAt,
+      createdBy: maybe.createdBy
+    };
+  }
+
+  return raw;
 }
 
 async function buildHtmlPayload(document: Document) {

@@ -11,7 +11,7 @@ import {
 } from "../../lib/graphql/queries";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { getContractConfig } from "../../lib/contracts";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type ClaimDetailProps = {
@@ -89,7 +89,11 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
       </section>
 
       <section className="space-y-3">
-        <VerifyClaimForm claimId={claim.id} />
+        <VerifyClaimForm
+          claimId={claim.id}
+          claimStatus={claim.status}
+          assignments={claim.jurorAssignments ?? []}
+        />
       </section>
 
       <section className="space-y-3">
@@ -127,20 +131,41 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
   );
 }
 
-function VerifyClaimForm({ claimId }: { claimId: string }) {
+type JurorAssignment = NonNullable<ClaimQueryResult["claim"]>["jurorAssignments"][number];
+
+function VerifyClaimForm({
+  claimId,
+  claimStatus,
+  assignments
+}: {
+  claimId: string;
+  claimStatus: string;
+  assignments: JurorAssignment[];
+}) {
   const router = useRouter();
   const chainId = useChainId();
-  const { status } = useAccount();
+  const { status, address } = useAccount();
   const { writeContractAsync, isPending, error } = useWriteContract();
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [success, setSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const isConnected = status === "connected";
+  const jurorAssignment = useMemo(() => {
+    if (!address) return null;
+    return assignments.find((a) => a.juror.toLowerCase() === address.toLowerCase()) ?? null;
+  }, [address, assignments]);
+
+  const alreadyDecided = Boolean(jurorAssignment?.decision);
+  const isEligible = isConnected && Boolean(jurorAssignment) && !alreadyDecided && claimStatus !== "Resolved";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSuccess(null);
+    if (!jurorAssignment) {
+      setActionError("You are not assigned as a juror for this claim.");
+      return;
+    }
     try {
       const { address, abi } = getContractConfig("claims", chainId);
       await writeContractAsync({
@@ -193,12 +218,18 @@ function VerifyClaimForm({ claimId }: { claimId: string }) {
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          disabled={!isConnected || isPending}
+          disabled={!isEligible || isPending}
           className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
         >
           {isPending ? "Submitting..." : "Submit verification"}
         </button>
         {!isConnected ? <span className="text-xs text-destructive">Connect a wallet to verify.</span> : null}
+        {isConnected && !jurorAssignment ? (
+          <span className="text-xs text-destructive">You are not assigned as a juror for this claim.</span>
+        ) : null}
+        {alreadyDecided ? (
+          <span className="text-xs text-muted-foreground">Decision already submitted.</span>
+        ) : null}
         {error ? <span className="text-xs text-destructive">{error.message ?? "Transaction failed"}</span> : null}
         {success ? <span className="text-xs text-emerald-600">{success}</span> : null}
         {actionError ? <span className="text-xs text-destructive">{actionError}</span> : null}

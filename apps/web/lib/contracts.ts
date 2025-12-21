@@ -1,5 +1,5 @@
 import type { Abi, Address } from "viem";
-import { base, baseSepolia } from "wagmi/chains";
+import { baseSepolia } from "wagmi/chains";
 
 import baseSepoliaDeployment from "../../../deployments/base_sepolia.json" assert { type: "json" };
 
@@ -7,10 +7,11 @@ type DeploymentJson = typeof baseSepoliaDeployment;
 
 type ContractKey = keyof DeploymentJson["addresses"];
 
-type ChainId = typeof base.id | typeof baseSepolia.id | number;
+type ChainId = typeof baseSepolia.id | number;
 
-const deployments: Record<string, DeploymentJson> = {
-  [baseSepolia.network]: baseSepoliaDeployment
+// Key deployments by chain id to avoid network string mismatches (base_sepolia vs base-sepolia).
+const deployments: Record<number, DeploymentJson> = {
+  [baseSepolia.id]: baseSepoliaDeployment
 };
 
 const requestHubAbi: Abi = [
@@ -166,19 +167,24 @@ export const CONTRACTS = {
 };
 
 export function getContractAddress(key: ContractKey, chainId?: ChainId): Address {
-  // Currently only Base Sepolia deployment is available; default to it if chain is unsupported.
-  const deployment = deployments[baseSepoliaDeployment.network];
+  const requestedChain = Number(chainId) || baseSepolia.id;
 
-  if (chainId === baseSepolia.id || chainId === base.id) {
-    const addr = deployment.addresses[key];
-    if (addr) return addr as Address;
+  if (requestedChain !== baseSepolia.id) {
+    throw new Error("Unsupported chain. Switch to Base Sepolia.");
   }
 
-  const fallback = deployment.addresses[key];
-  if (!fallback) {
+  const deployment = deployments[baseSepolia.id];
+
+  if (!deployment) {
+    throw new Error("No deployments configured");
+  }
+
+  const addr = deployment.addresses[key];
+  if (!addr) {
     throw new Error(`Missing address for ${key}`);
   }
-  return fallback as Address;
+
+  return addr as Address;
 }
 
 export function getContractConfig<TAbi extends Abi>(key: keyof typeof CONTRACTS, chainId?: ChainId) {

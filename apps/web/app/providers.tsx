@@ -9,6 +9,7 @@ import {
   PropsWithChildren,
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState
 } from "react";
@@ -45,10 +46,18 @@ export function ShiftProviders({
   apiBaseUrl,
   children
 }: ShiftProvidersProps) {
+  const [mounted, setMounted] = useState(false);
   const [queryClient] = useState(() => new QueryClient());
 
   const graphClient = useMemo(() => new GraphQLClient(graphqlUrl), [graphqlUrl]);
   const wagmiConfig: WagmiConfigType = useMemo(() => createShiftConfig({ env: getEnv() }), []);
+
+  // Defer Wagmi/WalletConnect setup until after mount to avoid setState warnings during hydration.
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <WagmiConfig config={wagmiConfig}>

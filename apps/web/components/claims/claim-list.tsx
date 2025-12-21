@@ -12,8 +12,9 @@ export type ClaimListProps = {
 };
 
 export function ClaimList({ communityId }: ClaimListProps) {
-  const variables = communityId ? { communityId } : undefined;
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<ClaimsQueryResult, { communityId?: string }>(
+  const communityIdNumber = communityId ? Number(communityId) : undefined;
+  const variables = Number.isFinite(communityIdNumber) ? { communityId: communityIdNumber } : undefined;
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<ClaimsQueryResult, { communityId?: number }>(
     ["claims", variables],
     ClaimsQuery,
     variables

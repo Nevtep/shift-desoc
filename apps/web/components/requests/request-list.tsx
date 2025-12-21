@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 
-import { useApiQuery } from "../../hooks/useApiQuery";
+import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
+import { RequestsQuery, type RequestsQueryResult } from "../../lib/graphql/queries";
 
 export type RequestNode = {
   id: number;
@@ -19,18 +20,32 @@ export type RequestListProps = {
 };
 
 export function RequestList({ communityId }: RequestListProps) {
-  const variables = communityId ? { communityId } : undefined;
-
-  const params = new URLSearchParams();
-  params.set("limit", "20");
-  if (communityId) params.set("communityId", communityId);
-
-  const { data, isLoading, isError, refetch } = useApiQuery<{ items: RequestNode[] }>(
-    ["requests", variables],
-    `/requests?${params.toString()}`
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<RequestsQueryResult>(
+    ["requests", communityId ?? "all"],
+    RequestsQuery,
+    communityId ? { communityId: Number(communityId), limit: 20 } : { limit: 20 }
   );
 
-  const requests = useMemo(() => data?.items ?? [], [data]);
+  const requests = useMemo(() => {
+    return (data?.requests.nodes ?? []).map((node) => ({
+      ...node,
+      id: Number(node.id),
+      communityId: Number(node.communityId)
+    }));
+  }, [data]);
+
+  const formatDate = (value?: string | number | null) => {
+    if (!value) return "Unknown";
+    if (typeof value === "string") {
+      const d = new Date(value);
+      if (!Number.isNaN(d.valueOf())) return d.toLocaleString();
+    }
+    if (typeof value === "number") {
+      const d = new Date(value < 1e12 ? value * 1000 : value);
+      if (!Number.isNaN(d.valueOf())) return d.toLocaleString();
+    }
+    return "Unknown";
+  };
 
   if (isLoading) {
     return <StatusMessage message="Loading requests…" />;
@@ -69,7 +84,7 @@ function RequestListItem({ request }: { request: RequestNode }) {
             Community {request.communityId}
           </span>
           <span className="text-xs text-muted-foreground">
-            Created {new Date(request.createdAt).toLocaleString()}
+            Created {formatDate(request.createdAt)}
           </span>
         </div>
         <p className="text-sm font-medium">Request #{request.id}</p>

@@ -133,9 +133,9 @@ export type DraftQueryResult = {
 };
 
 export const DraftsQuery = /* GraphQL */ `
-  query Drafts($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
+  query Drafts($communityId: Int, $requestId: Int, $status: [String!], $limit: Int = 20, $after: String) {
     drafts: draftss(
-      where: { communityId: $communityId, status_in: $status }
+      where: { communityId: $communityId, requestId: $requestId, status_in: $status }
       orderBy: "updatedAt"
       orderDirection: "desc"
       after: $after
@@ -169,6 +169,50 @@ export type DraftNode = {
 export type DraftsQueryResult = {
   drafts: {
     nodes: DraftNode[];
+    pageInfo: {
+      endCursor?: string | null;
+      hasNextPage: boolean;
+    };
+  };
+};
+
+export const CommentsByRequestQuery = /* GraphQL */ `
+  query CommentsByRequest($requestId: Int!, $limit: Int = 50, $after: String) {
+    comments: commentss(
+      where: { requestId: $requestId }
+      orderBy: "createdAt"
+      orderDirection: "desc"
+      after: $after
+      limit: $limit
+    ) {
+      nodes: items {
+        id
+        requestId
+        author
+        cid
+        parentId
+        createdAt
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+`;
+
+export type CommentNode = {
+  id: string;
+  requestId: number;
+  author: string;
+  cid: string;
+  parentId?: number | null;
+  createdAt: string;
+};
+
+export type CommentsByRequestResult = {
+  comments: {
+    nodes: CommentNode[];
     pageInfo: {
       endCursor?: string | null;
       hasNextPage: boolean;
