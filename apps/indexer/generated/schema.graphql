@@ -189,6 +189,7 @@ type comments {
   cid: String!
   parentId: Int
   createdAt: String!
+  isModerated: Boolean!
 }
 
 type commentsPage {
@@ -254,6 +255,10 @@ input commentsFilter {
   createdAt_ends_with: String
   createdAt_not_starts_with: String
   createdAt_not_ends_with: String
+  isModerated: Boolean
+  isModerated_not: Boolean
+  isModerated_in: [Boolean]
+  isModerated_not_in: [Boolean]
 }
 
 type drafts {

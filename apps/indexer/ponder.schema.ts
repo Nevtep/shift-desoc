@@ -28,6 +28,7 @@ export const comments = schema.table("comments", (t) => ({
   cid: t.text().notNull(),
   parentId: t.integer(),
   createdAt: t.timestamp({ withTimezone: true }).notNull(),
+  isModerated: t.boolean().notNull(),
 }));
 
 export const drafts = schema.table("drafts", (t) => ({

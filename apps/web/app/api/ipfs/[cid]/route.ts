@@ -120,12 +120,41 @@ function normalizeDocument(raw: unknown): unknown {
           : (typeof maybe.body === "string" ? maybe.body : ""),
       tags: Array.isArray(maybe.tags) ? maybe.tags : [],
       attachments: maybe.attachments,
-      createdAt: maybe.createdAt,
+      createdAt: coerceIsoDate(maybe.createdAt),
+      createdBy: maybe.createdBy
+    };
+  }
+
+  if (maybe.type === "comment") {
+    return {
+      version: typeof maybe.version === "string" && maybe.version.length ? maybe.version : "1",
+      type: "comment",
+      bodyMarkdown: typeof maybe.bodyMarkdown === "string" ? maybe.bodyMarkdown : "",
+      requestId: maybe.requestId,
+      parentId: maybe.parentId,
+      createdAt: coerceIsoDate(maybe.createdAt),
       createdBy: maybe.createdBy
     };
   }
 
   return raw;
+}
+
+function coerceIsoDate(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+
+  if (typeof value === "string" && value.length) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.valueOf())) return d.toISOString();
+  }
+
+  if (typeof value === "number") {
+    const millis = value < 1e12 ? value * 1000 : value;
+    const d = new Date(millis);
+    if (!Number.isNaN(d.valueOf())) return d.toISOString();
+  }
+
+  return undefined;
 }
 
 async function buildHtmlPayload(document: Document) {
