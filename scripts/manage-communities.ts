@@ -336,8 +336,10 @@ class CommunityAdmin {
 }
 
 async function main() {
-  const command = process.argv[2];
+  // Use ADMIN_CMD environment variable when run via package scripts
+  const command = process.env.ADMIN_CMD || process.argv[2];
   const network = process.env.HARDHAT_NETWORK || "hardhat";
+  
   if (!command) {
     printHelp();
     return;
@@ -350,10 +352,10 @@ async function main() {
   try {
     switch (command) {
       case "create": {
-        const name = process.argv[3];
-        const description = process.argv[4];
-        const metadataURI = process.argv[5];
-        const parent = process.argv[6] ? Number(process.argv[6]) : 0;
+        const name = process.env.COMMUNITY_NAME || process.argv[3];
+        const description = process.env.COMMUNITY_DESCRIPTION || process.argv[4];
+        const metadataURI = process.env.COMMUNITY_METADATA_URI || process.argv[5];
+        const parent = process.env.COMMUNITY_PARENT_ID ? Number(process.env.COMMUNITY_PARENT_ID) : process.argv[6] ? Number(process.argv[6]) : 0;
         if (!name || !description || !metadataURI) {
           console.log("Usage: create <name> <description> <metadataURI> [parentId]");
           return;
@@ -363,9 +365,9 @@ async function main() {
       }
 
       case "grant-role": {
-        const communityId = Number(process.argv[3]);
-        const role = process.argv[4];
-        const user = process.argv[5];
+        const communityId = Number(process.env.COMMUNITY_ID || process.argv[3]);
+        const role = process.env.COMMUNITY_ROLE || process.argv[4];
+        const user = process.env.COMMUNITY_USER || process.argv[5];
         if (!communityId || !role || !user) {
           console.log("Usage: grant-role <communityId> <moderator|curator> <address>");
           return;
@@ -378,10 +380,10 @@ async function main() {
         const sub = process.argv[3];
         switch (sub) {
           case "governance": {
-            const communityId = Number(process.argv[4]);
-            const debate = Number(process.argv[5]);
-            const vote = Number(process.argv[6]);
-            const execution = Number(process.argv[7]);
+            const communityId = Number(process.env.COMMUNITY_ID || process.argv[4]);
+            const debate = Number(process.env.GOVERNANCE_DEBATE_WINDOW || process.argv[5]);
+            const vote = Number(process.env.GOVERNANCE_VOTE_WINDOW || process.argv[6]);
+            const execution = Number(process.env.GOVERNANCE_EXECUTION_DELAY || process.argv[7]);
             if (!communityId || !debate || !vote || !execution) {
               console.log("Usage: set-params governance <communityId> <debateWindow> <voteWindow> <executionDelay>");
               return;
@@ -390,11 +392,11 @@ async function main() {
             break;
           }
           case "eligibility": {
-            const communityId = Number(process.argv[4]);
-            const minSeniority = Number(process.argv[5]);
-            const minSBTs = Number(process.argv[6]);
-            const proposalThreshold = process.argv[7]
-              ? BigInt(process.argv[7])
+            const communityId = Number(process.env.COMMUNITY_ID || process.argv[4]);
+            const minSeniority = Number(process.env.ELIGIBILITY_MIN_SENIORITY || process.argv[5]);
+            const minSBTs = Number(process.env.ELIGIBILITY_MIN_SBTS || process.argv[6]);
+            const proposalThreshold = process.env.ELIGIBILITY_PROPOSAL_THRESHOLD || process.argv[7]
+              ? BigInt(process.env.ELIGIBILITY_PROPOSAL_THRESHOLD || process.argv[7])
               : undefined;
             if (
               !communityId ||
@@ -414,11 +416,11 @@ async function main() {
             break;
           }
           case "revenue": {
-            const communityId = Number(process.argv[4]);
-            const workers = Number(process.argv[5]);
-            const treasury = Number(process.argv[6]);
-            const investors = Number(process.argv[7]);
-            const spillover = Number(process.argv[8]);
+            const communityId = Number(process.env.COMMUNITY_ID || process.argv[4]);
+            const workers = Number(process.env.REVENUE_WORKERS_BPS || process.argv[5]);
+            const treasury = Number(process.env.REVENUE_TREASURY_BPS || process.argv[6]);
+            const investors = Number(process.env.REVENUE_INVESTORS_BPS || process.argv[7]);
+            const spillover = Number(process.env.REVENUE_SPILLOVER_TARGET || process.argv[8]);
             if (
               !communityId ||
               Number.isNaN(workers) ||
@@ -439,12 +441,12 @@ async function main() {
             break;
           }
           case "verifier": {
-            const communityId = Number(process.argv[4]);
-            const panel = Number(process.argv[5]);
-            const min = Number(process.argv[6]);
-            const maxPanels = Number(process.argv[7]);
-            const useWeighting = parseBool(process.argv[8]);
-            const maxWeight = Number(process.argv[9]);
+            const communityId = Number(process.env.COMMUNITY_ID || process.argv[4]);
+            const panel = Number(process.env.VERIFIER_PANEL_SIZE || process.argv[5]);
+            const min = Number(process.env.VERIFIER_MIN_APPROVALS || process.argv[6]);
+            const maxPanels = Number(process.env.VERIFIER_MAX_PANELS || process.argv[7]);
+            const useWeighting = parseBool(process.env.VERIFIER_USE_WEIGHTING || process.argv[8]);
+            const maxWeight = Number(process.env.VERIFIER_MAX_WEIGHT || process.argv[9]);
             const cooldown = Number(process.argv[10]);
             if (
               !communityId ||
@@ -477,14 +479,14 @@ async function main() {
       }
 
       case "timelock-roles": {
-        const sub = process.argv[3];
-        const role = process.argv[4];
+        const sub = process.env.TIMELOCK_SUB || process.argv[3];
+        const role = process.env.TIMELOCK_ROLE || process.argv[4];
         if (!sub || !role) {
           console.log("Usage: timelock-roles <grant|renounce> <role> [address]");
           return;
         }
         if (sub === "grant") {
-          const target = process.argv[5] || admin["deployer"].address;
+          const target = process.env.TIMELOCK_TARGET || process.argv[5] || admin["deployer"].address;
           await admin.grantTimelockRole(role, target);
         } else if (sub === "renounce") {
           await admin.renounceTimelockRole(role);

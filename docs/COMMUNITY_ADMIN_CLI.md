@@ -65,27 +65,52 @@ cast call <PARAM_CONTROLLER_ADDRESS> "governance()(address)" --rpc-url <RPC_URL>
 
 ## Quick Start
 
-### Using Package Scripts (Recommended)
+### Using Package Scripts with Environment Variables (Recommended)
+
+Due to Hardhat's argument handling limitations, use environment variables for parameters (all commands still accept positional args as a fallback):
 
 ```bash
-# Create a new community
-HARDHAT_NETWORK=base_sepolia pnpm admin:create "Pioneers DAO" "First community" "ipfs://QmXYZ" 0
-
 # Grant moderator role (for RequestHub/Drafts moderation)
-HARDHAT_NETWORK=base_sepolia pnpm admin:grant-role 2 moderator 0xMODERATOR_ADDRESS
+HARDHAT_NETWORK=base_sepolia \
+  COMMUNITY_ID=1 \
+  COMMUNITY_ROLE=moderator \
+  COMMUNITY_USER=0x73af48d53f75827dB195189e6FeBaB726dF7D0e2 \
+  pnpm admin:grant-role
 
-# Set governance parameters
-HARDHAT_NETWORK=base_sepolia pnpm admin:set-params governance 2 86400 259200 86400
+# Create a new community
+HARDHAT_NETWORK=base_sepolia \
+  COMMUNITY_NAME="Pioneers DAO" \
+  COMMUNITY_DESCRIPTION="First community" \
+  COMMUNITY_METADATA_URI="ipfs://QmXYZ" \
+  COMMUNITY_PARENT_ID=0 \
+  pnpm admin:create
+
+# Set governance parameters (use JSON for complex params)
+HARDHAT_NETWORK=base_sepolia \
+  COMMUNITY_ID=1 \
+  GOVERNANCE_DEBATE_WINDOW=86400 \
+  GOVERNANCE_VOTE_WINDOW=259200 \
+  GOVERNANCE_EXECUTION_DELAY=86400 \
+  pnpm admin:set-params
 
 # Grant timelock roles to governor for execution
-HARDHAT_NETWORK=base_sepolia pnpm admin:timelock grant proposer 0xGOVERNOR_ADDRESS
+HARDHAT_NETWORK=base_sepolia \
+  TIMELOCK_SUB=grant \
+  TIMELOCK_ROLE=proposer \
+  TIMELOCK_TARGET=0xGOVERNOR_ADDRESS \
+  pnpm admin:timelock
 ```
 
-### Direct CLI Usage
+### Direct CLI Usage (Alternative)
+
+For interactive use, you can call the script directly with arguments:
 
 ```bash
-# Full command syntax (for advanced usage)
-HARDHAT_NETWORK=base_sepolia ts-node scripts/manage-communities.ts <command> <args...>
+# Full command syntax with positional arguments
+HARDHAT_NETWORK=base_sepolia npx hardhat run scripts/manage-communities.ts -- grant-role 1 moderator 0x73af...
+
+# Using the admin shortcut
+HARDHAT_NETWORK=base_sepolia pnpm admin -- grant-role 1 moderator 0x73af...
 ```
 
 ---
