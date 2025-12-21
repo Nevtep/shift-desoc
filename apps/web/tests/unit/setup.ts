@@ -3,7 +3,7 @@ import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
 import { server } from "./server";
-import { wagmiMockState, buildMockedHooks } from "./wagmiMock";
+import { wagmiMockState, buildMockedHooks } from "./mocks/wagmiMock";
 
 // Default envs for client code
 process.env.NEXT_PUBLIC_GRAPHQL_URL ||= "http://localhost:4000/graphql";
