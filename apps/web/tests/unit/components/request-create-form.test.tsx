@@ -32,7 +32,10 @@ describe("RequestCreateForm", () => {
 
   it("submits request and shows success", async () => {
     mockWagmiHooks({ connected: true, address: "0x5550000000000000000000000000000000000555" });
-    const fetchSpy = vi.spyOn(global, "fetch");
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ cid: "mock-cid" })
+    } as any);
 
     renderWithProviders(<RequestCreateForm />);
 
