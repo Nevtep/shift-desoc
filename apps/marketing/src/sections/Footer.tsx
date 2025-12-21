@@ -51,6 +51,7 @@ export default function Footer() {
               alignItems="center"
               justifyContent="flex-end"
               flexWrap="wrap"
+              $md={{ display: 'none' }}
             >
               {navItems.map((item) => (
                 <Anchor
