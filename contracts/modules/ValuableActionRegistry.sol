@@ -39,11 +39,11 @@ contract ValuableActionRegistry {
     /// @notice Mapping to track active/inactive valuable actions
     mapping(uint256 => bool) public isActive;
     
-    /// @notice Mapping to track pending valuable actions awaiting governance activation
-    mapping(uint256 => uint256) public pendingValuableActions; // valuableActionId => proposalId
+    /// @notice Mapping to track pending valuable actions awaiting governance activation (by proposal ref)
+    mapping(uint256 => bytes32) public pendingValuableActions; // valuableActionId => proposalRef
 
-    /// @notice Track governance proposalIds already used to prevent reuse
-    mapping(uint256 => bool) public proposalIdUsed;
+    /// @notice Track proposal refs already used to prevent reuse
+    mapping(bytes32 => bool) public proposalRefUsed;
     
     /// @notice Address that can manage moderators (typically governance)
     address public governance;
@@ -106,12 +106,12 @@ contract ValuableActionRegistry {
     /// @notice Propose a new valuable action (must be executed via governance/Timelock)
     /// @param communityId Community ID this action belongs to
     /// @param params Valuable action configuration
-    /// @param governanceProposalId The Governor proposalId that is executing this call
+    /// @param proposalRef Arbitrary governance reference that ties creation and activation
     /// @return valuableActionId The ID of the created valuable action
     function proposeValuableAction(
         uint256 communityId,
         Types.ValuableAction calldata params,
-        uint256 governanceProposalId
+        bytes32 proposalRef
     ) external payable returns (uint256 valuableActionId) {
         CommunityRegistry.ModuleAddresses memory modules = communityRegistry.getCommunityModules(communityId);
         if (modules.timelock == address(0) || modules.governor == address(0)) {
@@ -122,8 +122,8 @@ contract ValuableActionRegistry {
         }
         if (msg.sender != modules.timelock) revert Errors.NotAuthorized(msg.sender);
 
-        if (governanceProposalId == 0) revert Errors.InvalidInput("Missing governance proposalId");
-        if (proposalIdUsed[governanceProposalId]) revert Errors.InvalidInput("ProposalId already used");
+        if (proposalRef == bytes32(0)) revert Errors.InvalidInput("Missing proposal ref");
+        if (proposalRefUsed[proposalRef]) revert Errors.InvalidInput("Proposal ref already used");
 
         _validateValuableAction(params);
         
@@ -131,20 +131,20 @@ contract ValuableActionRegistry {
         valuableActionsById[valuableActionId] = params;
         communityByActionId[valuableActionId] = communityId;
 
-        pendingValuableActions[valuableActionId] = governanceProposalId;
-        proposalIdUsed[governanceProposalId] = true;
+        pendingValuableActions[valuableActionId] = proposalRef;
+        proposalRefUsed[proposalRef] = true;
         
         emit ValuableActionCreated(valuableActionId, params, msg.sender);
     }
 
     /// @notice Activate valuable action after governance approval
     /// @param valuableActionId ID of the valuable action
-    /// @param approvedProposalId ID of the approved governance proposal
-    function activateFromGovernance(uint256 valuableActionId, uint256 approvedProposalId) external {
+    /// @param proposalRef Reference used when the action was proposed
+    function activateFromGovernance(uint256 valuableActionId, bytes32 proposalRef) external {
         if (!_exists(valuableActionId)) revert Errors.InvalidValuableAction(valuableActionId);
-        if (approvedProposalId == 0) revert Errors.InvalidInput("Missing proposalId");
-        if (pendingValuableActions[valuableActionId] != approvedProposalId) {
-            revert Errors.InvalidInput("Proposal ID mismatch");
+        if (proposalRef == bytes32(0)) revert Errors.InvalidInput("Missing proposal ref");
+        if (pendingValuableActions[valuableActionId] != proposalRef) {
+            revert Errors.InvalidInput("Proposal ref mismatch");
         }
         uint256 communityId = communityByActionId[valuableActionId];
         CommunityRegistry.ModuleAddresses memory modules = communityRegistry.getCommunityModules(communityId);
@@ -155,7 +155,7 @@ contract ValuableActionRegistry {
         // Clear pending status
         delete pendingValuableActions[valuableActionId];
         
-        emit ValuableActionActivated(valuableActionId, approvedProposalId);
+        emit ValuableActionActivated(valuableActionId, uint256(bytes32(proposalRef)));
     }
 
     /// @notice Update an existing valuable action

@@ -1,4 +1,6 @@
 import { ethers } from "hardhat";
+import fs from "fs";
+import path from "path";
 
 /**
  * Quick Contract Verification Script for Base Sepolia
@@ -9,28 +11,31 @@ import { ethers } from "hardhat";
  * Run: npx hardhat run scripts/verify-base-sepolia.ts --network base_sepolia
  */
 
-const CONTRACT_ADDRESSES = {
-  // Master Infrastructure
-  communityRegistry: "0x67eC4cAcC44D80B43Ce7CCA63cEF6D1Ae3E57f8B",
-  countingMultiChoice: "0x9a254605ccEf5c69Ce51b0a8C0a65016dD476c83",
+const DEPLOY_PATH = path.join(__dirname, "..", "deployments", "base_sepolia.json");
 
-  // Community ID 1 Contracts
-  shiftGovernor: "0x42362f0f2Cdd96902848e21d878927234C5C9425",
-  timelockController: "0xF140d690BadDf50C3a1006AD587298Eed61ADCfA",
-  membershipToken: "0xFf60937906c537685Ad21a67a2A4E8Dbf7A0F9cb",
-  valuableActionRegistry: "0x831Ef7C12aD1A564C32630e5D1A18A3b0c8829f2",
-  claims: "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35",
-  verifierPool: "0x8D0962Ca5c55b2432819De25061a25Eb32DC1d3B",
-  workerSBT: "0x8dA98a7ab4c487CFeD390c4C41c411213b1A6562",
-  requestHub: "0xc7d1d9db153e45f14ef3EbD86f02e986F1a18eCA",
-  draftsManager: "0xdd90c64f78D82cc6FD60DF756d96EFd6F4395c07",
-  communityToken: "0x9352b89B39D7b0e6255935A8053Df37393013371",
+const deployment = JSON.parse(fs.readFileSync(DEPLOY_PATH, "utf8"));
+
+const CONTRACT_ADDRESSES = {
+  communityRegistry: deployment.addresses.communityRegistry,
+  countingMultiChoice: deployment.addresses.countingMultiChoice,
+  shiftGovernor: deployment.addresses.governor,
+  timelockController: deployment.addresses.timelock,
+  membershipToken: deployment.addresses.membershipToken,
+  valuableActionRegistry: deployment.addresses.valuableActionRegistry,
+  claims: deployment.addresses.claims,
+  verifierPowerToken: deployment.addresses.verifierPowerToken,
+  verifierElection: deployment.addresses.verifierElection,
+  verifierManager: deployment.addresses.verifierManager,
+  valuableActionSBT: deployment.addresses.valuableActionSBT,
+  requestHub: deployment.addresses.requestHub,
+  draftsManager: deployment.addresses.draftsManager,
+  communityToken: deployment.addresses.communityToken,
 };
 
 const COMMUNITY_ID = 1;
 
 async function main() {
-  console.log("🔍 Verifying Base Sepolia Deployed Contracts...");
+  console.log("🔍 Verifying Base Sepolia Deployed Contracts (from deployments/base_sepolia.json)...");
   console.log("=".repeat(60));
 
   const network = await ethers.provider.getNetwork();
@@ -55,11 +60,7 @@ async function main() {
     const community = await communityRegistry.communities(COMMUNITY_ID);
     console.log("   ├── Community Name:", community.name);
     console.log("   ├── Active:", community.active);
-    console.log(
-      "   ├── Debate Window:",
-      community.debateWindow.toString(),
-      "seconds",
-    );
+    console.log("   ├── Created At (ts):", community.createdAt.toString());
     console.log("   └── ✅ Accessible");
 
     // 2. Governance System
@@ -118,24 +119,31 @@ async function main() {
       "ValuableActionRegistry",
       CONTRACT_ADDRESSES.valuableActionRegistry,
     );
-    const claims = await ethers.getContractAt(
-      "Claims",
-      CONTRACT_ADDRESSES.claims,
+    const claims = await ethers.getContractAt("Claims", CONTRACT_ADDRESSES.claims);
+    const verifierPowerToken = await ethers.getContractAt(
+      "VerifierPowerToken1155",
+      CONTRACT_ADDRESSES.verifierPowerToken,
     );
-    const verifierPool = await ethers.getContractAt(
-      "VerifierPool",
-      CONTRACT_ADDRESSES.verifierPool,
+    const verifierElection = await ethers.getContractAt(
+      "VerifierElection",
+      CONTRACT_ADDRESSES.verifierElection,
     );
-    const workerSBT = await ethers.getContractAt(
-      "WorkerSBT",
-      CONTRACT_ADDRESSES.workerSBT,
+    const verifierManager = await ethers.getContractAt(
+      "VerifierManager",
+      CONTRACT_ADDRESSES.verifierManager,
+    );
+    const valuableActionSBT = await ethers.getContractAt(
+      "ValuableActionSBT",
+      CONTRACT_ADDRESSES.valuableActionSBT,
     );
 
     // Test basic functionality instead of count functions that may not exist
     console.log("   ├── ValuableActionRegistry: ✅ Accessible");
     console.log("   ├── Claims: ✅ Accessible");
-    console.log("   ├── VerifierPool: ✅ Accessible");
-    console.log("   └── WorkerSBT: ✅ Accessible");
+    console.log("   ├── VerifierPowerToken1155: ✅ Accessible");
+    console.log("   ├── VerifierElection: ✅ Accessible");
+    console.log("   ├── VerifierManager: ✅ Accessible");
+    console.log("   └── ValuableActionSBT: ✅ Accessible");
 
     // 5. Economic System
     console.log("");
@@ -157,21 +165,41 @@ async function main() {
     console.log("6️⃣ Integration Verification");
 
     // Check if contracts know about each other
-    const registryGovernor = community.governor;
-    const registryToken = community.membershipToken;
-    const registryRequestHub = community.requestHub;
+    const modules = await communityRegistry.getCommunityModules(COMMUNITY_ID);
 
     console.log(
       "   ├── Registry → Governor:",
-      registryGovernor === CONTRACT_ADDRESSES.shiftGovernor ? "✅" : "❌",
+      modules.governor === CONTRACT_ADDRESSES.shiftGovernor ? "✅" : "❌",
     );
     console.log(
-      "   ├── Registry → Token:",
-      registryToken === CONTRACT_ADDRESSES.membershipToken ? "✅" : "❌",
+      "   ├── Registry → Timelock:",
+      modules.timelock === CONTRACT_ADDRESSES.timelockController ? "✅" : "❌",
     );
     console.log(
-      "   └── Registry → RequestHub:",
-      registryRequestHub === CONTRACT_ADDRESSES.requestHub ? "✅" : "❌",
+      "   ├── Registry → RequestHub:",
+      modules.requestHub === CONTRACT_ADDRESSES.requestHub ? "✅" : "❌",
+    );
+    console.log(
+      "   ├── Registry → DraftsManager:",
+      modules.draftsManager === CONTRACT_ADDRESSES.draftsManager ? "✅" : "❌",
+    );
+    console.log(
+      "   ├── Registry → ValuableActionRegistry:",
+      modules.valuableActionRegistry === CONTRACT_ADDRESSES.valuableActionRegistry
+        ? "✅"
+        : "❌",
+    );
+    console.log(
+      "   ├── Registry → Claims:",
+      modules.claimsManager === CONTRACT_ADDRESSES.claims ? "✅" : "❌",
+    );
+    console.log(
+      "   ├── Registry → VerifierManager:",
+      modules.verifierManager === CONTRACT_ADDRESSES.verifierManager ? "✅" : "❌",
+    );
+    console.log(
+      "   └── Registry → CommunityToken:",
+      modules.communityToken === CONTRACT_ADDRESSES.communityToken ? "✅" : "❌",
     );
   } catch (error) {
     console.log("❌ Error during verification:", error);
