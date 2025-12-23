@@ -1,50 +1,20 @@
 # Shift DeSoc - Project Management & Development Hub
 
-This directory contains all project management, deployment, and development coordination documents for the Shift DeSoc ecosystem.
+Working state: **Testing/Staging on Base Sepolia**; functionality may change. Use the resources below to stay aligned with specs and guardrails.
 
-## 📁 Directory Structure
+## Key References
+- [copilot-instructions.md](./copilot-instructions.md) — Operating Manual for AI/devs (architecture, invariants, staging caveats, gap handling).
+- [project-management/STATUS_REVIEW.md](./project-management/STATUS_REVIEW.md) — Current repo structure, workflows, invariants, and risks.
 
-### `/copilot-instructions.md`
+## Deployment Guides (staging-first)
+- [deployment/README.md](./deployment/README.md) — Current deploy flow (Base Sepolia), surgical redeploy scripts, and guardrails.
 
-**Primary development guide** - Core architecture, implementation status, and coding standards for AI assistants and developers.
+## What Matters Most
+- Timelock-only authority; ParamController as source of truth; no verifier staking/bonding; TreasuryAdapter guardrails (1 spend/week, ≤10% per token, stablecoin allowlist, pause/emergency withdraw); commerce disputes stay separate from work Claims.
+- Tooling from repo root: Node 22; Solidity ^0.8.24 + OZ 5.x; Foundry/Hardhat 2.22; Next.js 16/React 19; Ponder 0.7.17. Run format/lint/tests/coverage before changes: `pnpm fmt`, `pnpm lint`, `pnpm forge:test`, `pnpm forge:cov`, `pnpm cov:gate` (≥86%), then sync ABIs via `node scripts/copy-ponder-abis.js` and `node scripts/copy-web-abis.js`.
+- Addresses load from `deployments/*.json`; never hardcode; never commit secrets.
 
-### `/project-management/`
-
-Long-term project coordination and architecture analysis:
-
-- **`PROJECT_STATUS.md`** - Complete project status report with production readiness assessment
-- **`ARCHITECTURE_GAP_ANALYSIS.md`** - Technical architecture analysis and MVP implementation planning
-
-### `/deployment/`
-
-Network deployment guides and testing procedures:
-
-- **`BASE_SEPOLIA_DEPLOYMENT_GUIDE.md`** - Complete Base Sepolia testnet deployment configuration
-- **`E2E_TESTING_INSTRUCTIONS.md`** - End-to-end testing procedures and wallet setup
-
-## 🎯 Current Project Status
-
-**PRODUCTION-READY MVP COMPLETED** (November 2025)
-
-✅ **Complete ecosystem deployed** on Base Sepolia with verified contracts  
-✅ **API-based community creation** system operational (~$0.19 per community)  
-✅ **11 contracts fully documented** with technical and business analysis  
-✅ **100% test success rate** with comprehensive coverage  
-✅ **Mobile integration framework** complete (Next.js + Expo React Native)
-
-## 🚀 Quick Navigation
-
-**For Developers**: Start with `/copilot-instructions.md`  
-**For Deployment**: Check `/deployment/BASE_SEPOLIA_DEPLOYMENT_GUIDE.md`  
-**For Project Status**: Review `/project-management/PROJECT_STATUS.md`  
-**For Architecture**: See `../docs/EN/Architecture.md` and `/project-management/ARCHITECTURE_GAP_ANALYSIS.md`
-
-## 📋 Active Development Tasks
-
-Current focus: **Contract documentation review and alignment**
-
-**Next Priority**: ShiftGovernor contract review (compare docs vs implementation vs project vision)
-
----
-
-_This structure ensures all project coordination materials are centralized in the `.github` folder while maintaining clear separation between different types of documentation._
+## Active Gaps to Track
+- apps/marketing has no README; confirm expectations before edits.
+- Ensure `scripts/check-coverage.sh` keeps the ≥86% gate intact after test changes.
+- Keep `deployments/latest.json` in sync when running custom deploy flows.
