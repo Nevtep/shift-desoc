@@ -13,7 +13,6 @@ export default function Hero() {
   const t = useTranslations()
   const heroBackgrounds = HERO_BACKGROUNDS
   const [currentBg, setCurrentBg] = useState(0)
-  const [parallax, setParallax] = useState(0)
   const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   useEffect(() => {
@@ -30,19 +29,6 @@ export default function Hero() {
     )
     return () => clearInterval(id)
   }, [heroBackgrounds.length])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const handleScroll = () => {
-      window.requestAnimationFrame(() => {
-        const offset = window.scrollY * 0.08
-        setParallax(offset)
-      })
-    }
-    handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const getBackgroundStyle = (src: string) => ({
     backgroundImage:
@@ -70,7 +56,6 @@ export default function Hero() {
         marginLeft: 'auto',
         marginRight: 'auto',
       }}
-      className="parallax-bg"
       ref={ref}
     >
       <YStack position="absolute" inset={0} pointerEvents="none">
@@ -81,7 +66,6 @@ export default function Hero() {
             inset={0}
             style={{
               ...getBackgroundStyle(src),
-              transform: `translateY(${-parallax * 0.25}px)`,
               opacity: index === currentBg ? 1 : 0,
               transition: 'opacity 1.2s ease-in-out',
             }}

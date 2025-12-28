@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Card, useMedia } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
@@ -11,17 +11,6 @@ export default function Applications() {
   const media = useMedia()
   const { ref: headingRef, visible: headingVisible } = useRevealOnScroll<HTMLDivElement>()
   const { ref: listRef, visible: listVisible } = useRevealOnScroll<HTMLDivElement>()
-  const [parallaxY, setParallaxY] = useState(0)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const handleScroll = () => {
-      window.requestAnimationFrame(() => setParallaxY(window.scrollY * 0.12))
-    }
-    handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
 
   const useCases = [
     {
@@ -136,7 +125,7 @@ export default function Applications() {
       style={{
         backgroundImage: 'url(/uses-bg.webp)',
         backgroundSize: 'cover',
-        backgroundPosition: media.md ? `left ${parallaxY * -0.05}px` : `center ${parallaxY * -0.05}px`,
+        backgroundPosition: media.md ? 'left' : 'center',
         backgroundRepeat: 'repeat-y',
       }}
     >
