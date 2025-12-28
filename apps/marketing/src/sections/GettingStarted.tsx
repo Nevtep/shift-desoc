@@ -4,9 +4,11 @@ import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Card, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 export default function GettingStarted() {
   const t = useTranslations()
+  const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   const cards = [
     {
@@ -66,6 +68,7 @@ export default function GettingStarted() {
         // Evita que el header fijo tape el inicio de la sección al hacer scroll con anclas
         scrollMarginTop: 140,
       }}
+      ref={ref}
     >
       <Container maxWidth={1250} width="100%">
         <YStack gap="$6">
@@ -76,6 +79,7 @@ export default function GettingStarted() {
             textAlign="center"
             lineHeight={64}
             $md={{ lineHeight: 54 }}
+            className={`reveal reveal-up ${visible ? 'is-visible' : ''}`}
           >
             {t.gettingStartedTitle}
           </Heading>
@@ -87,6 +91,7 @@ export default function GettingStarted() {
             textAlign="center"
             lineHeight={38}
             $md={{ lineHeight: 34 }}
+            className={`reveal reveal-up reveal-delay-1 ${visible ? 'is-visible' : ''}`}
           >
             {t.ctaTitle}
           </Paragraph>
@@ -113,6 +118,9 @@ export default function GettingStarted() {
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                 }}
+                className={`reveal reveal-up ${visible ? 'is-visible' : ''} ${
+                  index === 1 ? 'reveal-delay-1' : index === 2 ? 'reveal-delay-2' : ''
+                }`}
               >
                 <YStack gap="$4" height="100%" justifyContent="space-between">
                   <YStack gap="$3">

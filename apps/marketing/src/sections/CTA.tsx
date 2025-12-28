@@ -4,6 +4,7 @@ import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Image, Anchor, useMedia } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 const socialNetworks = [
   { name: 'X', image: '/social1-x.webp', href: 'https://x.com/ShiftDeSoc' },
@@ -15,6 +16,7 @@ const socialNetworks = [
 export default function Contact() {
   const t = useTranslations()
   const media = useMedia()
+  const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   return (
     <YStack
@@ -57,6 +59,7 @@ export default function Contact() {
             justifyContent="center"
             width="100%"
             marginTop="$4"
+            ref={ref}
           >
             {socialNetworks.map((social) => {
               const content = (
@@ -69,6 +72,7 @@ export default function Contact() {
                     scale: 1.05,
                     y: -4,
                   }}
+                  className={`reveal reveal-up ${visible ? 'is-visible' : ''}`}
                 >
                   <Image
                     source={{ uri: social.image }}

@@ -1,13 +1,27 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { YStack, XStack, Heading, Paragraph, Card, useMedia } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 export default function Applications() {
   const t = useTranslations()
   const media = useMedia()
+  const { ref: headingRef, visible: headingVisible } = useRevealOnScroll<HTMLDivElement>()
+  const { ref: listRef, visible: listVisible } = useRevealOnScroll<HTMLDivElement>()
+  const [parallaxY, setParallaxY] = useState(0)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleScroll = () => {
+      window.requestAnimationFrame(() => setParallaxY(window.scrollY * 0.12))
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const useCases = [
     {
@@ -122,7 +136,7 @@ export default function Applications() {
       style={{
         backgroundImage: 'url(/uses-bg.webp)',
         backgroundSize: 'cover',
-        backgroundPosition: media.md ? 'left' : 'center',
+        backgroundPosition: media.md ? `left ${parallaxY * -0.05}px` : `center ${parallaxY * -0.05}px`,
         backgroundRepeat: 'repeat-y',
       }}
     >
@@ -145,6 +159,7 @@ export default function Applications() {
           justifyContent="center"
           paddingTop={12}
           paddingBottom={12}
+          ref={listRef}
         >
           <YStack gap="$3" alignItems="center" position="relative" zIndex={1} paddingVertical={20}>
             <Heading
@@ -153,6 +168,8 @@ export default function Applications() {
               color="$primary"
               textAlign="center"
               lineHeight={50}
+              className={`reveal reveal-up ${headingVisible ? 'is-visible' : ''}`}
+              ref={headingRef}
             >
               {t.applicationsTitle}
             </Heading>
@@ -163,6 +180,7 @@ export default function Applications() {
               textAlign="center"
               maxWidth={900}
               marginBottom={20}
+              className={`reveal reveal-up reveal-delay-1 ${headingVisible ? 'is-visible' : ''}`}
             >
               {t.applicationsSubtitle}
             </Paragraph>
@@ -171,7 +189,16 @@ export default function Applications() {
           <YStack position="relative" width="100%" gap="$6" paddingBottom={20} zIndex={1}>
             {media.md ? (
               <YStack gap="$4">
-                {useCases.map((useCase, index) => renderCard(useCase, index, true))}
+                {useCases.map((useCase, index) => (
+                  <YStack
+                    key={useCase.title}
+                    className={`reveal reveal-up ${listVisible ? 'is-visible' : ''} ${
+                      index % 3 === 1 ? 'reveal-delay-1' : index % 3 === 2 ? 'reveal-delay-2' : ''
+                    }`}
+                  >
+                    {renderCard(useCase, index, true)}
+                  </YStack>
+                ))}
               </YStack>
             ) : (
               <>
@@ -196,6 +223,9 @@ export default function Applications() {
                       position="relative"
                       gap="$3"
                       paddingVertical="$2"
+                      className={`reveal reveal-up ${listVisible ? 'is-visible' : ''} ${
+                        index % 3 === 1 ? 'reveal-delay-1' : index % 3 === 2 ? 'reveal-delay-2' : ''
+                      }`}
                     >
                       <YStack flex={1} alignItems="flex-end" justifyContent="center" paddingRight="$3">
                         {isLeft ? renderCard(useCase, index, false) : null}

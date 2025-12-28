@@ -4,6 +4,7 @@ import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Card, Image } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 const ValueSystemIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width={35} height={35}>
@@ -48,6 +49,7 @@ const VerifiedIcon = () => (
 
 export default function Features() {
   const t = useTranslations()
+  const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   const features = [
     {
@@ -147,6 +149,10 @@ export default function Features() {
                 }}
                 borderWidth={1}
                 borderColor="rgba(86, 102, 69, 0.15)"
+                ref={index === 0 ? ref : undefined}
+                className={`reveal reveal-up ${visible ? 'is-visible' : ''} ${
+                  index === 1 ? 'reveal-delay-1' : index === 2 ? 'reveal-delay-2' : ''
+                }`}
               >
                 <YStack gap="$4" alignItems="center" width="100%">
                   <YStack

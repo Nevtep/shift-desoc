@@ -5,6 +5,7 @@ import { YStack, Heading, Paragraph, XStack, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 import { secondaryGradientButton, secondaryOutlineButton } from '../components/buttonStyles'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 const HERO_BACKGROUNDS = ['/hero-backgound.webp', '/hero-backgound2.webp', '/hero-backgound3.webp']
 
@@ -12,6 +13,8 @@ export default function Hero() {
   const t = useTranslations()
   const heroBackgrounds = HERO_BACKGROUNDS
   const [currentBg, setCurrentBg] = useState(0)
+  const [parallax, setParallax] = useState(0)
+  const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   useEffect(() => {
     if (heroBackgrounds.length <= 1) return undefined
@@ -27,6 +30,19 @@ export default function Hero() {
     )
     return () => clearInterval(id)
   }, [heroBackgrounds.length])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleScroll = () => {
+      window.requestAnimationFrame(() => {
+        const offset = window.scrollY * 0.08
+        setParallax(offset)
+      })
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const getBackgroundStyle = (src: string) => ({
     backgroundImage:
@@ -54,6 +70,8 @@ export default function Hero() {
         marginLeft: 'auto',
         marginRight: 'auto',
       }}
+      className="parallax-bg"
+      ref={ref}
     >
       <YStack position="absolute" inset={0} pointerEvents="none">
         {heroBackgrounds.map((src, index) => (
@@ -63,6 +81,7 @@ export default function Hero() {
             inset={0}
             style={{
               ...getBackgroundStyle(src),
+              transform: `translateY(${-parallax * 0.25}px)`,
               opacity: index === currentBg ? 1 : 0,
               transition: 'opacity 1.2s ease-in-out',
             }}
@@ -79,6 +98,7 @@ export default function Hero() {
           position="relative"
           zIndex={1}
           $md={{ maxWidth: '100%', gap: '$3' }}
+          className={`reveal reveal-up ${visible ? 'is-visible' : ''}`}
         >
           <YStack gap={0} alignItems="flex-start">
             <Heading

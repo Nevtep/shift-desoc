@@ -4,9 +4,11 @@ import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Card, Image } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 export default function Principles() {
   const t = useTranslations()
+  const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   const principles = [
     {
@@ -75,6 +77,7 @@ export default function Principles() {
               justifyContent="center"
               width="100%"
               marginTop={0}
+              ref={ref}
             >
               {principles.map((principle, index) => (
                 <Card
@@ -94,6 +97,7 @@ export default function Principles() {
                   }}
                   borderWidth={1}
                   borderColor="rgba(86, 102, 69, 0.15)"
+                  className={`reveal reveal-up ${visible ? 'is-visible' : ''} ${index === 1 ? 'reveal-delay-1' : index === 2 ? 'reveal-delay-2' : ''}`}
                 >
                   <YStack gap="$4" alignItems="center">
                     <YStack
