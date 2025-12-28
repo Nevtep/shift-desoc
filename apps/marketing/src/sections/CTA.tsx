@@ -17,6 +17,7 @@ export default function Contact() {
   const t = useTranslations()
   const media = useMedia()
   const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
+  const floatDelays = ['float-delay-0', 'float-delay-1', 'float-delay-2', 'float-delay-3']
 
   return (
     <YStack
@@ -61,7 +62,8 @@ export default function Contact() {
             marginTop="$4"
             ref={ref}
           >
-            {socialNetworks.map((social) => {
+            {socialNetworks.map((social, index) => {
+              const delayClass = floatDelays[index % floatDelays.length]
               const content = (
                 <YStack
                   key={social.name}
@@ -72,7 +74,7 @@ export default function Contact() {
                     scale: 1.05,
                     y: -4,
                   }}
-                  className={`reveal reveal-up ${visible ? 'is-visible' : ''}`}
+                  className={`reveal reveal-up ${visible ? 'is-visible' : ''} floaty ${delayClass}`}
                 >
                   <Image
                     source={{ uri: social.image }}

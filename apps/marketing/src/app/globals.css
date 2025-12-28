@@ -67,6 +67,23 @@ body, html {
 .reveal-delay-2 { transition-delay: 140ms; }
 .reveal-delay-3 { transition-delay: 200ms; }
 
+/* Flotación sutil para iconos */
+@keyframes floaty {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+}
+
+.floaty {
+  animation: floaty 4.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+.float-delay-0 { animation-delay: 0s; }
+.float-delay-1 { animation-delay: 0.35s; }
+.float-delay-2 { animation-delay: 0.7s; }
+.float-delay-3 { animation-delay: 1.05s; }
+
 /* Parallax helpers (con fallback en reduce motion) */
 .parallax-bg {
   will-change: transform;
@@ -79,5 +96,8 @@ body, html {
     transition: none !important;
     animation: none !important;
     transform: none !important;
+  }
+  .floaty {
+    animation: none !important;
   }
 }
