@@ -2,12 +2,30 @@
 pragma solidity ^0.8.24;
 
 import {Errors} from "../libs/Errors.sol";
+import {Types} from "../libs/Types.sol";
 import {CommunityRegistry} from "./CommunityRegistry.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+interface IValuableActionRegistry {
+    function getValuableAction(uint256 id) external view returns (Types.ValuableAction memory action);
+    function isValuableActionActive(uint256 id) external view returns (bool);
+    function issueEngagement(
+        uint256 communityId,
+        address to,
+        Types.EngagementSubtype subtype,
+        bytes32 actionTypeId,
+        bytes calldata metadata
+    ) external returns (uint256 tokenId);
+}
+
+interface ITreasuryAdapter {
+    function payoutBounty(address token, uint256 amount, address to) external;
+}
 
 /// @title RequestHub
 /// @notice Decentralized discussion forum for community needs and collaborative solution development
 /// @dev On-chain discussion entry point where community members post needs/ideas and collaborate on solutions
-contract RequestHub {
+contract RequestHub is ReentrancyGuard {
     
     /*//////////////////////////////////////////////////////////////
                                 ENUMS
@@ -35,8 +53,11 @@ contract RequestHub {
         uint64 lastActivity;      // Last comment timestamp
         string[] tags;            // Categorization tags
         uint256 commentCount;     // Number of comments
-        uint256 bountyAmount;     // Optional bounty (0 if none)
+        address bountyToken;      // Token used for bounty payouts
+        uint256 bountyAmount;     // Optional bounty amount (0 if none)
         uint256 linkedValuableAction; // Linked ValuableAction ID (0 if none)
+        bool consumed;            // Whether engagement has been completed
+        address winner;           // Finalized winner/recipient
     }
     
     /// @notice Comment on a request
@@ -55,6 +76,12 @@ contract RequestHub {
     
     /// @notice Community registry for access control and community data
     CommunityRegistry public immutable communityRegistry;
+
+    /// @notice ValuableActionRegistry for engagement issuance and policy lookup
+    IValuableActionRegistry public immutable valuableActionRegistry;
+
+    /// @notice Treasury adapter used to pay bounties from the treasury vault
+    ITreasuryAdapter public immutable treasuryAdapter;
     
     /// @notice Next request ID
     uint256 public nextRequestId = 1;
@@ -79,6 +106,9 @@ contract RequestHub {
     
     /// @notice User last post time for rate limiting: communityId => user => timestamp
     mapping(uint256 => mapping(address => uint256)) public userLastPostTime;
+
+    /// @notice Pre-approved winner for a request (set by moderators/governance)
+    mapping(uint256 => address) public approvedWinner;
     
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -122,9 +152,10 @@ contract RequestHub {
         bool hidden
     );
     
-    /// @notice Emitted when a bounty is added to a request
+    /// @notice Emitted when a bounty is configured for a request
     event BountyAdded(
         uint256 indexed requestId,
+        address indexed token,
         uint256 amount,
         address indexed funder
     );
@@ -135,15 +166,37 @@ contract RequestHub {
         uint256 indexed valuableActionId,
         address indexed linker
     );
+
+    /// @notice Emitted when a winner is approved for completion
+    event ApprovedWinnerSet(
+        uint256 indexed requestId,
+        address indexed winner,
+        address indexed setter
+    );
+
+    /// @notice Emitted when a one-shot engagement is completed atomically
+    event OneShotEngagementCompleted(
+        uint256 indexed requestId,
+        address indexed winner,
+        address bountyToken,
+        uint256 bountyAmount,
+        uint256 engagementTokenId
+    );
     
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
     
     /// @param _communityRegistry Address of the community registry
-    constructor(address _communityRegistry) {
+    /// @param _valuableActionRegistry Address of ValuableActionRegistry
+    /// @param _treasuryAdapter Address of TreasuryAdapter
+    constructor(address _communityRegistry, address _valuableActionRegistry, address _treasuryAdapter) {
         if (_communityRegistry == address(0)) revert Errors.ZeroAddress();
+        if (_valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
+        if (_treasuryAdapter == address(0)) revert Errors.ZeroAddress();
         communityRegistry = CommunityRegistry(_communityRegistry);
+        valuableActionRegistry = IValuableActionRegistry(_valuableActionRegistry);
+        treasuryAdapter = ITreasuryAdapter(_treasuryAdapter);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -276,19 +329,22 @@ contract RequestHub {
                                BOUNTIES
     //////////////////////////////////////////////////////////////*/
     
-    /// @notice Add a bounty to a request
+    /// @notice Configure bounty token/amount for a request (mutable until winner approval)
     /// @param requestId Request to add bounty to
-    /// @param amount Bounty amount (in community tokens)
-    function addBounty(uint256 requestId, uint256 amount) external {
+    /// @param token ERC20 token address used for payout
+    /// @param amount Bounty amount
+    function addBounty(uint256 requestId, address token, uint256 amount) external {
         Request storage request = requests[requestId];
         if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
+        if (token == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidInput("Bounty amount must be positive");
+        if (approvedWinner[requestId] != address(0)) revert Errors.InvalidInput("Winner already approved");
+        if (request.consumed) revert Errors.InvalidInput("Request already consumed");
+
+        request.bountyToken = token;
+        request.bountyAmount = amount;
         
-        // TODO: Transfer tokens from sender to this contract
-        // For now, just update the bounty amount
-        request.bountyAmount += amount;
-        
-        emit BountyAdded(requestId, amount, msg.sender);
+        emit BountyAdded(requestId, token, amount, msg.sender);
     }
     
     /// @notice Link request to a ValuableAction for work verification
@@ -305,6 +361,66 @@ contract RequestHub {
         
         request.linkedValuableAction = valuableActionId;
         emit ValuableActionLinking(requestId, valuableActionId, msg.sender);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                    WINNER APPROVAL & COMPLETION
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Approve a winner for a one-shot engagement (non-clearable)
+    function setApprovedWinner(uint256 requestId, address winner) external {
+        Request storage request = requests[requestId];
+        if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
+        _requireModerator(request.communityId, msg.sender);
+        if (winner == address(0)) revert Errors.ZeroAddress();
+        if (approvedWinner[requestId] != address(0)) revert Errors.InvalidInput("Winner already approved");
+        if (request.consumed) revert Errors.InvalidInput("Request already consumed");
+
+        approvedWinner[requestId] = winner;
+        emit ApprovedWinnerSet(requestId, winner, msg.sender);
+    }
+
+    /// @notice Complete a one-shot engagement: payout bounty and mint WORK engagement SBT atomically
+    function completeEngagement(uint256 requestId, bytes calldata metadata)
+        external
+        nonReentrant
+        returns (uint256 engagementTokenId)
+    {
+        Request storage request = requests[requestId];
+        if (request.author == address(0)) revert Errors.InvalidInput("Request does not exist");
+        if (request.linkedValuableAction == 0) revert Errors.InvalidInput("No valuable action linked");
+
+        address winner = approvedWinner[requestId];
+        if (winner == address(0)) revert Errors.InvalidInput("Winner not approved");
+        if (request.consumed) revert Errors.InvalidInput("Request already consumed");
+        if (msg.sender != winner) revert Errors.NotAuthorized(msg.sender);
+
+        if (!valuableActionRegistry.isValuableActionActive(request.linkedValuableAction)) {
+            revert Errors.InvalidValuableAction(request.linkedValuableAction);
+        }
+        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(request.linkedValuableAction);
+        if (action.category != Types.ActionCategory.ENGAGEMENT_ONE_SHOT) {
+            revert Errors.InvalidInput("Not a one-shot action");
+        }
+
+        // Mark consumed before external calls to prevent replays
+        request.consumed = true;
+        request.winner = winner;
+
+        if (request.bountyAmount > 0) {
+            if (request.bountyToken == address(0)) revert Errors.ZeroAddress();
+            treasuryAdapter.payoutBounty(request.bountyToken, request.bountyAmount, winner);
+        }
+
+        engagementTokenId = valuableActionRegistry.issueEngagement(
+            request.communityId,
+            winner,
+            Types.EngagementSubtype.WORK,
+            bytes32(request.linkedValuableAction),
+            metadata
+        );
+
+        emit OneShotEngagementCompleted(requestId, winner, request.bountyToken, request.bountyAmount, engagementTokenId);
     }
     
     /*//////////////////////////////////////////////////////////////

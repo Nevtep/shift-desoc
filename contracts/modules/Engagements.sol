@@ -580,8 +580,7 @@ contract Engagements {
 
     /// @dev Map action category to engagement subtype for SBT issuance
     function _mapCategoryToSubtype(Types.ActionCategory category) internal pure returns (Types.EngagementSubtype) {
-        if (category == Types.ActionCategory.ROLE_CERTIFICATION) return Types.EngagementSubtype.ROLE;
-        if (category == Types.ActionCategory.CREDENTIAL_ISSUANCE) return Types.EngagementSubtype.CREDENTIAL;
+        if (category == Types.ActionCategory.CREDENTIAL) return Types.EngagementSubtype.CREDENTIAL;
         return Types.EngagementSubtype.WORK;
     }
 

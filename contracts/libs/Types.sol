@@ -11,11 +11,10 @@ library Types {
 
     /// @notice Action categories that map to issuance flows
     enum ActionCategory {
-        ONE_SHOT_WORK_COMPLETION,
-        ROLE_CERTIFICATION,
-        CREDENTIAL_ISSUANCE,
+        ENGAGEMENT_ONE_SHOT,
         POSITION_ASSIGNMENT,
-        INVESTMENT_CONTRIBUTION
+        INVESTMENT,
+        CREDENTIAL
     }
 
     /// @notice Verifier policy per valuable action
@@ -35,6 +34,8 @@ library Types {
 
         // Action classification
         ActionCategory category;        // High-level action category
+        bytes32 roleTypeId;             // Default role/position type (for POSITION_ASSIGNMENT)
+        uint32 positionPoints;          // Default points for position assignments
         VerifierPolicy verifierPolicy;  // How approvals are authorized
         bytes32 metadataSchemaId;       // Off-chain/on-chain metadata schema identifier
         

@@ -434,7 +434,10 @@ class ShiftDeSocDeployer {
     // Deploy TreasuryAdapter
     console.log("   🏦 Deploying TreasuryAdapter...");
     const TreasuryAdapter = await ethers.getContractFactory("TreasuryAdapter");
-    this.contracts.treasuryAdapter = await this.deployContract(TreasuryAdapter);
+    this.contracts.treasuryAdapter = await this.deployContract(
+      TreasuryAdapter,
+      await this.contracts.timelock.getAddress(),
+    );
     console.log(
       `   ✅ TreasuryAdapter: ${await this.contracts.treasuryAdapter.getAddress()}`,
     );
@@ -449,6 +452,8 @@ class ShiftDeSocDeployer {
     this.contracts.requestHub = await this.deployContract(
       RequestHub,
       await this.contracts.communityRegistry.getAddress(),
+      await this.contracts.valuableActionRegistry.getAddress(),
+      await this.contracts.treasuryAdapter.getAddress(),
     );
     console.log(
       `   ✅ RequestHub: ${await this.contracts.requestHub.getAddress()}`,
@@ -639,6 +644,32 @@ class ShiftDeSocDeployer {
     );
     await this.sleep(2000);
     console.log("   ✅ Granted DISTRIBUTOR_ROLE to Marketplace");
+
+    // Allow RequestHub to issue engagement SBTs (global allowlist)
+    try {
+      await this.contracts.valuableActionRegistry.setIssuanceModule(
+        await this.contracts.requestHub.getAddress(),
+        true,
+        this.gasSettings,
+      );
+      await this.sleep(2000);
+      console.log("   ✅ RequestHub added to ValuableActionRegistry issuance modules");
+    } catch (error) {
+      console.warn("   ⚠️ Could not set issuance module (run via governance):", error.message ?? error);
+    }
+
+    // Authorize RequestHub to pay bounties from TreasuryAdapter
+    try {
+      await this.contracts.treasuryAdapter.setAuthorizedCaller(
+        await this.contracts.requestHub.getAddress(),
+        true,
+        this.gasSettings,
+      );
+      await this.sleep(2000);
+      console.log("   ✅ RequestHub authorized on TreasuryAdapter");
+    } catch (error) {
+      console.warn("   ⚠️ Could not authorize RequestHub on TreasuryAdapter (run via governance):", error.message ?? error);
+    }
   }
 
   private async bootstrapInitialCommunity(): Promise<void> {
