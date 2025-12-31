@@ -143,6 +143,43 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
         );
     }
 
+    /// @notice Mint a role record derived from a position lifecycle
+    function mintRoleFromPosition(
+        address to,
+        uint256 communityId,
+        bytes32 roleTypeId,
+        uint32 points,
+        uint64 issuedAt,
+        uint64 endedAt,
+        uint8 closeOutcome,
+        bytes calldata metadata
+    ) external onlyRole(MANAGER_ROLE) returns (uint256 tokenId) {
+        if (to == address(0)) revert Errors.ZeroAddress();
+        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+        if (roleTypeId == bytes32(0)) revert Errors.InvalidInput("Invalid roleTypeId");
+        if (issuedAt == 0) revert Errors.InvalidInput("Invalid issuedAt");
+        if (endedAt < issuedAt) revert Errors.InvalidInput("Invalid endedAt");
+
+        tokenId = _mintTypedToken(
+            to,
+            TokenData({
+                kind: TokenKind.ROLE,
+                communityId: communityId,
+                actionTypeId: bytes32(0),
+                roleTypeId: roleTypeId,
+                cohortId: bytes32(0),
+                points: points,
+                weight: 0,
+                issuedAt: issuedAt,
+                endedAt: endedAt,
+                expiry: 0,
+                closeOutcome: closeOutcome,
+                verifier: msg.sender
+            }),
+            metadata
+        );
+    }
+
     /// @notice Mint an investment SBT
     function mintInvestment(
         address to,

@@ -34,6 +34,9 @@ contract ValuableActionRegistry {
     /// @notice Emitted when an investment SBT is issued
     event InvestmentIssued(address indexed to, uint256 indexed tokenId, bytes32 indexed cohortId, uint32 weight);
 
+    /// @notice Emitted when a role record is issued from a closed position
+    event RoleIssued(address indexed to, uint256 indexed tokenId, bytes32 indexed roleTypeId, uint32 points, uint64 issuedAt, uint64 endedAt, uint8 closeOutcome);
+
     /// @notice Counter for valuable action IDs
     uint256 public lastId;
     
@@ -319,6 +322,51 @@ contract ValuableActionRegistry {
 
         tokenId = IValuableActionSBT(valuableActionSBT).mintInvestment(to, communityId, cohortId, weight, metadata);
         emit InvestmentIssued(to, tokenId, cohortId, weight);
+    }
+
+    /// @notice Close a position token and stamp outcome
+    function closePositionToken(
+        uint256 communityId,
+        uint256 positionTokenId,
+        uint8 outcome
+    ) external issuanceEnabled onlyIssuanceModule(communityId) {
+        IValuableActionSBT.TokenData memory data = IValuableActionSBT(valuableActionSBT).getTokenData(positionTokenId);
+        if (data.kind != IValuableActionSBT.TokenKind.POSITION) revert Errors.InvalidInput("Not a position token");
+        if (data.communityId != communityId) revert Errors.InvalidInput("Community mismatch");
+        if (data.endedAt != 0) revert Errors.InvalidInput("Position already closed");
+
+        IValuableActionSBT(valuableActionSBT).closePositionToken(positionTokenId, outcome);
+    }
+
+    /// @notice Issue a role record derived from a closed position
+    function issueRoleFromPosition(
+        uint256 communityId,
+        address to,
+        bytes32 roleTypeId,
+        uint32 points,
+        uint64 issuedAt,
+        uint64 endedAt,
+        uint8 closeOutcome,
+        bytes calldata metadata
+    ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
+        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+        if (to == address(0)) revert Errors.ZeroAddress();
+        if (roleTypeId == bytes32(0)) revert Errors.InvalidInput("Missing roleTypeId");
+        if (issuedAt == 0) revert Errors.InvalidInput("Missing issuedAt");
+        if (endedAt < issuedAt) revert Errors.InvalidInput("endedAt before issuedAt");
+
+        tokenId = IValuableActionSBT(valuableActionSBT).mintRoleFromPosition(
+            to,
+            communityId,
+            roleTypeId,
+            points,
+            issuedAt,
+            endedAt,
+            closeOutcome,
+            metadata
+        );
+
+        emit RoleIssued(to, tokenId, roleTypeId, points, issuedAt, endedAt, closeOutcome);
     }
 
     /// @notice Get valuable action configuration

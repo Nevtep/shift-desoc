@@ -71,6 +71,18 @@ interface IValuableActionSBT {
         bytes calldata metadata
     ) external returns (uint256 tokenId);
 
+    /// @notice Mint a role record derived from a position lifecycle
+    function mintRoleFromPosition(
+        address to,
+        uint256 communityId,
+        bytes32 roleTypeId,
+        uint32 points,
+        uint64 issuedAt,
+        uint64 endedAt,
+        uint8 closeOutcome,
+        bytes calldata metadata
+    ) external returns (uint256 tokenId);
+
     /// @notice Set ended timestamp for a token (e.g., closing a position)
     function setEndedAt(uint256 tokenId, uint64 endedAt) external;
 
