@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 library Types {
-    enum ClaimStatus { Pending, Approved, Rejected, Revoked }
+    enum EngagementStatus { Pending, Approved, Rejected, Revoked }
     
     struct ValuableAction {
         uint32 membershipTokenReward;   // MembershipToken amount minted on completion
@@ -17,8 +17,8 @@ library Types {
         uint32 slashVerifierBps;       // Penalty for inaccurate verification (0..10000)
         
         // Quality Control
-        uint32 cooldownPeriod;         // Minimum time between claims of this type
-        uint32 maxConcurrent;          // Maximum active claims per person
+        uint32 cooldownPeriod;         // Minimum time between engagements of this type
+        uint32 maxConcurrent;          // Maximum active engagements per person
         bool revocable;                // Can community governance revoke this SBT
         uint32 evidenceTypes;          // Bitmask of required evidence formats
         
@@ -28,7 +28,7 @@ library Types {
         
         // Metadata & Automation
         string evidenceSpecCID;        // IPFS: detailed evidence requirements
-        string titleTemplate;          // Template for claim titles
+        string titleTemplate;          // Template for engagement titles
         bytes32[] automationRules;     // Integration with external systems (GitHub, etc)
         
         // Time-Based Parameters

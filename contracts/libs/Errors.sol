@@ -24,13 +24,13 @@ library Errors {
     error InvalidWeightsLength(uint256 provided, uint8 expected);
     error ExcessiveWeightAllocation(uint256 total);
     
-    // Claims verification errors
+    // Engagement verification errors
     error InvalidValuableAction(uint256 valuableActionId);
     error InvalidActionType(uint256 actionTypeId); // Legacy support
-    error ClaimNotFound(uint256 claimId);
-    error ClaimAlreadyVerified(uint256 claimId);
+    error EngagementNotFound(uint256 engagementId);
+    error EngagementAlreadyVerified(uint256 engagementId);
     error InsufficientVerifiers(uint256 available, uint256 required);
-    error VerificationWindowExpired(uint256 claimId, uint256 deadline);
+    error VerificationWindowExpired(uint256 engagementId, uint256 deadline);
     
     // Token errors
     error InsufficientBalance(address account, uint256 required, uint256 actual);

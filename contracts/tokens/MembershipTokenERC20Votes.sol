@@ -17,7 +17,7 @@ contract MembershipTokenERC20Votes is ERC20, ERC20Permit, ERC20Votes, AccessCont
                                 ROLES
     //////////////////////////////////////////////////////////////*/
     
-    /// @notice Role for contracts that can mint tokens (Claims, CommunityFactory)
+    /// @notice Role for contracts that can mint tokens (Engagements, CommunityFactory)
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     
     /// @notice Role for governance operations
@@ -79,23 +79,23 @@ contract MembershipTokenERC20Votes is ERC20, ERC20Permit, ERC20Votes, AccessCont
                             INITIALIZATION
     //////////////////////////////////////////////////////////////*/
     
-    /// @notice Initialize token with authorized minters (Claims and CommunityFactory)
-    /// @param claimsContract Address of the Claims contract
+    /// @notice Initialize token with authorized minters (Engagements and CommunityFactory)
+    /// @param engagementsContract Address of the Engagements contract
     /// @param communityFactory Address of the CommunityFactory contract
     /// @dev Can only be called once during community setup
-    function initialize(address claimsContract, address communityFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function initialize(address engagementsContract, address communityFactory) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (initialized) revert Errors.InvalidInput("Already initialized");
-        if (claimsContract == address(0) || communityFactory == address(0)) {
+        if (engagementsContract == address(0) || communityFactory == address(0)) {
             revert Errors.ZeroAddress();
         }
         
         // Grant minting rights to authorized contracts
-        _grantRole(MINTER_ROLE, claimsContract);
+        _grantRole(MINTER_ROLE, engagementsContract);
         _grantRole(MINTER_ROLE, communityFactory);
         
         initialized = true;
         
-        emit MinterRoleUpdated(claimsContract, true, msg.sender);
+        emit MinterRoleUpdated(engagementsContract, true, msg.sender);
         emit MinterRoleUpdated(communityFactory, true, msg.sender);
     }
     
@@ -107,7 +107,7 @@ contract MembershipTokenERC20Votes is ERC20, ERC20Permit, ERC20Votes, AccessCont
     /// @param to Address to mint tokens to
     /// @param amount Amount of tokens to mint
     /// @param reason Description of why tokens are being minted
-    /// @dev Can only be called by authorized minters (Claims, CommunityFactory)
+    /// @dev Can only be called by authorized minters (Engagements, CommunityFactory)
     function mint(address to, uint256 amount, string calldata reason) external onlyRole(MINTER_ROLE) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidInput("Amount cannot be zero");

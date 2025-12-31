@@ -4,15 +4,15 @@ pragma solidity ^0.8.24;
 /// @title IVerifierManager
 /// @notice Interface for VPT-based verifier management system
 interface IVerifierManager {
-    /// @notice Select M jurors from N available verifiers for a claim using VPT eligibility
-    /// @param claimId Claim ID requiring verification
+    /// @notice Select M jurors from N available verifiers for an engagement using VPT eligibility
+    /// @param engagementId Engagement ID requiring verification
     /// @param communityId Community identifier for verifier pool
     /// @param panelSize Total number of jurors to select (N)
     /// @param seed Randomness seed for selection
     /// @param useWeighting Whether to use VPT amounts as weights in selection
     /// @return selectedJurors Array of selected juror addresses
     function selectJurors(
-        uint256 claimId, 
+        uint256 engagementId, 
         uint256 communityId,
         uint256 panelSize,
         uint256 seed,
@@ -20,12 +20,12 @@ interface IVerifierManager {
     ) external returns (address[] memory selectedJurors);
 
     /// @notice Handle fraud detection by initiating governance ban process
-    /// @param claimId Claim ID where fraud was detected
+    /// @param engagementId Engagement ID where fraud was detected
     /// @param communityId Community identifier
     /// @param offenders Array of juror addresses that voted incorrectly
     /// @param evidenceCID IPFS hash with fraud evidence
     function reportFraud(
-        uint256 claimId,
+        uint256 engagementId,
         uint256 communityId,
         address[] calldata offenders,
         string calldata evidenceCID

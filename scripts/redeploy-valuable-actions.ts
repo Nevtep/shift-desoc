@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 
 /**
- * Redeploy ValuableActionRegistry (and dependent Claims) and update deployments JSON.
+ * Redeploy ValuableActionRegistry (and dependent Engagements) and update deployments JSON.
  * Assumes the caller has the necessary admin/governance rights to update CommunityRegistry module addresses.
  */
 async function main() {
@@ -32,9 +32,9 @@ async function main() {
   const valuableActionRegistryAddress = await valuableActionRegistry.getAddress();
   console.log(`✅ ValuableActionRegistry deployed: ${valuableActionRegistryAddress}`);
 
-  // Deploy new Claims pointing to the new registry
-  const Claims = await ethers.getContractFactory("Claims");
-  const claims = await Claims.deploy(
+  // Deploy new Engagements pointing to the new registry
+  const Engagements = await ethers.getContractFactory("Engagements");
+  const engagements = await Engagements.deploy(
     addresses.timelock,
     valuableActionRegistryAddress,
     addresses.verifierManager,
@@ -42,9 +42,9 @@ async function main() {
     addresses.membershipToken,
     communityId,
   );
-  await claims.waitForDeployment();
-  const claimsAddress = await claims.getAddress();
-  console.log(`✅ Claims deployed: ${claimsAddress}`);
+  await engagements.waitForDeployment();
+  const engagementsAddress = await engagements.getAddress();
+  console.log(`✅ Engagements deployed: ${engagementsAddress}`);
 
   // Update CommunityRegistry module addresses
   const communityRegistry = await ethers.getContractAt(
@@ -57,7 +57,7 @@ async function main() {
     timelock: addresses.timelock,
     requestHub: addresses.requestHub,
     draftsManager: addresses.draftsManager,
-    claimsManager: claimsAddress,
+    engagementsManager: engagementsAddress,
     valuableActionRegistry: valuableActionRegistryAddress,
     verifierPowerToken: addresses.verifierPowerToken,
     verifierElection: addresses.verifierElection,
@@ -75,7 +75,7 @@ async function main() {
 
   // Persist new addresses
   deploymentData.addresses.valuableActionRegistry = valuableActionRegistryAddress;
-  deploymentData.addresses.claims = claimsAddress;
+  deploymentData.addresses.engagements = engagementsAddress;
   deploymentData.timestamp = new Date().toISOString();
 
   fs.writeFileSync(deploymentsPath, JSON.stringify(deploymentData, null, 2), "utf8");

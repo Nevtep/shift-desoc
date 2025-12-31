@@ -12,7 +12,7 @@ contract CommunityRegistryMock {
         address timelock;
         address requestHub;
         address draftsManager;
-        address claimsManager;
+        address engagementsManager;
         address valuableActionRegistry;
         address verifierPowerToken;
         address verifierElection;
@@ -45,6 +45,10 @@ contract ValuableActionRegistryTest is Test {
     address user = makeAddr("user");
     
     uint256 constant COMMUNITY_ID = 1;
+    bytes32 constant PROPOSAL_REF_1 = bytes32("proposal-1");
+    bytes32 constant PROPOSAL_REF_2 = bytes32("proposal-2");
+    bytes32 constant PROPOSAL_REF_3 = bytes32("proposal-3");
+    bytes32 constant BAD_PROPOSAL_REF = bytes32("bad-proposal");
     
     // Sample ValuableAction parameters
     Types.ValuableAction sampleAction;
@@ -60,7 +64,7 @@ contract ValuableActionRegistryTest is Test {
                 timelock: governance,
                 requestHub: address(0),
                 draftsManager: address(0),
-                claimsManager: address(0),
+                engagementsManager: address(0),
                 valuableActionRegistry: address(registry),
                 verifierPowerToken: address(0),
                 verifierElection: address(0),
@@ -190,7 +194,7 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
         
         assertEq(actionId, 1);
@@ -202,9 +206,9 @@ contract ValuableActionRegistryTest is Test {
     
     function testProposeValuableActionFailsWhenProposalIdUsed() public {
         vm.startPrank(governance);
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "ProposalId already used"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Proposal ref already used"));
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -213,21 +217,21 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
         vm.stopPrank();
         
-        uint256 proposalId = registry.pendingValuableActions(actionId);
+        bytes32 proposalRef = registry.pendingValuableActions(actionId);
         
         vm.startPrank(governance);
         
         vm.expectEmit(true, true, false, true);
-        emit ValuableActionRegistry.ValuableActionActivated(actionId, proposalId);
+        emit ValuableActionRegistry.ValuableActionActivated(actionId, uint256(proposalRef));
         
-        registry.activateFromGovernance(actionId, proposalId);
+        registry.activateFromGovernance(actionId, proposalRef);
         
         assertTrue(registry.isValuableActionActive(actionId));
-        assertEq(registry.pendingValuableActions(actionId), 0); // Cleared
+        assertEq(registry.pendingValuableActions(actionId), bytes32(0)); // Cleared
         
         vm.stopPrank();
     }
@@ -237,13 +241,13 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
         vm.stopPrank();
         
         vm.startPrank(governance);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Proposal ID mismatch"));
-        registry.activateFromGovernance(actionId, 999); // Wrong proposal ID
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Proposal ref mismatch"));
+        registry.activateFromGovernance(actionId, BAD_PROPOSAL_REF); // Wrong proposal ref
         vm.stopPrank();
     }
     
@@ -253,9 +257,9 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
-        registry.activateFromGovernance(actionId, 1);
+        registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
         vm.stopPrank();
         
         // Update as moderator
@@ -279,9 +283,9 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
-        registry.activateFromGovernance(actionId, 1);
+        registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
         vm.stopPrank();
 
         vm.startPrank(user);
@@ -295,9 +299,9 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
-        registry.activateFromGovernance(actionId, 1);
+        registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
         vm.stopPrank();
         
         vm.startPrank(moderator);
@@ -315,12 +319,12 @@ contract ValuableActionRegistryTest is Test {
     function testGetActiveValuableActions() public {
         // Create multiple actions
         vm.startPrank(governance);
-        uint256 action1 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
-        uint256 action2 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 2);
-        uint256 action3 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 3);
-        registry.activateFromGovernance(action1, 1);
-        registry.activateFromGovernance(action2, 2);
-        registry.activateFromGovernance(action3, 3);
+        uint256 action1 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
+        uint256 action2 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_2);
+        uint256 action3 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_3);
+        registry.activateFromGovernance(action1, PROPOSAL_REF_1);
+        registry.activateFromGovernance(action2, PROPOSAL_REF_2);
+        registry.activateFromGovernance(action3, PROPOSAL_REF_3);
         vm.stopPrank();
         
         // Deactivate one
@@ -347,7 +351,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "MembershipToken reward cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -356,7 +360,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Minimum jurors cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -365,7 +369,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Panel size cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -375,7 +379,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Minimum jurors cannot exceed panel size"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -384,7 +388,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Verify window cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -393,7 +397,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Slash rate cannot exceed 100%"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -402,7 +406,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Evidence spec CID cannot be empty"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -411,14 +415,14 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cooldown period cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
 
     function testProposeValuableActionUnauthorized() public {
         vm.startPrank(user);
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     

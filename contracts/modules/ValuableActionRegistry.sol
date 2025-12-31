@@ -7,7 +7,7 @@ import {CommunityRegistry} from "./CommunityRegistry.sol";
 
 /// @title ValuableActionRegistry
 /// @notice Registry for configurable valuable actions with verification parameters
-/// @dev Manages work verification rules for the Claims system with enhanced governance integration
+/// @dev Manages work verification rules for the Engagements system with enhanced governance integration
 contract ValuableActionRegistry {
     /// @notice Emitted when a new valuable action is created
     event ValuableActionCreated(uint256 indexed id, Types.ValuableAction valuableAction, address indexed creator);

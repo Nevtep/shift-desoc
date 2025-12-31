@@ -7,7 +7,7 @@ import {Errors} from "../libs/Errors.sol";
 /**
  * @title CommerceDisputes
  * @notice Handles disputes for commerce transactions (Marketplace orders, housing reservations)
- * @dev Separate from WorkClaims which is dedicated to ValuableAction verification
+ * @dev Dedicated to commerce disputes; ValuableAction verification lives in Engagements
  *
  * MVP Implementation Notes:
  * - Supports two outcomes: REFUND_BUYER, PAY_SELLER

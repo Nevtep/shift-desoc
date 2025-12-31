@@ -34,7 +34,7 @@ interface AddressBook {
   verifierElection?: string;
   verifierManager?: string;
   valuableActionRegistry: string;
-  claims: string;
+  engagements: string;
   valuableActionSBT: string;
   communityToken: string;
   revenueRouter?: string;
@@ -72,7 +72,7 @@ function loadDeploymentAddresses(network: string): AddressBook {
       verifierElection: process.env.VERIFIER_ELECTION_ADDRESS || "",
       verifierManager: process.env.VERIFIER_MANAGER_ADDRESS || "",
       valuableActionRegistry: process.env.VALUABLE_ACTION_REGISTRY_ADDRESS || "",
-      claims: process.env.CLAIMS_ADDRESS || "",
+      engagements: process.env.ENGAGEMENTS_ADDRESS || "",
       valuableActionSBT: process.env.VALUABLE_ACTION_SBT_ADDRESS || "",
       communityToken: process.env.COMMUNITY_TOKEN_ADDRESS || "",
       revenueRouter: process.env.REVENUE_ROUTER_ADDRESS || "",
@@ -119,7 +119,7 @@ class CommunityAdmin {
     requireAddress(this.addresses.governor, "governor");
     requireAddress(this.addresses.timelock, "timelock");
     requireAddress(this.addresses.valuableActionRegistry, "valuableActionRegistry");
-    requireAddress(this.addresses.claims, "claims");
+    requireAddress(this.addresses.engagements, "engagements");
     requireAddress(this.addresses.valuableActionSBT, "valuableActionSBT");
     requireAddress(this.addresses.communityToken, "communityToken");
     requireAddress(this.addresses.treasuryAdapter, "treasuryAdapter");
@@ -183,7 +183,7 @@ class CommunityAdmin {
       timelock: this.addresses.timelock,
       requestHub: this.addresses.requestHub,
       draftsManager: this.addresses.draftsManager,
-      claimsManager: this.addresses.claims,
+      engagementsManager: this.addresses.engagements,
       valuableActionRegistry: this.addresses.valuableActionRegistry,
       verifierPowerToken: this.addresses.verifierPowerToken || ethers.ZeroAddress,
       verifierElection: this.addresses.verifierElection || ethers.ZeroAddress,

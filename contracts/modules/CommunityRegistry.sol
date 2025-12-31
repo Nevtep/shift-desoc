@@ -27,7 +27,7 @@ contract CommunityRegistry is AccessControl {
         address timelock;             // Timelock contract
         address requestHub;           // RequestHub contract
         address draftsManager;        // DraftsManager contract
-        address claimsManager;        // Claims contract
+        address engagementsManager;   // Engagements contract
         address valuableActionRegistry; // ValuableActionRegistry contract
         address verifierPowerToken;   // VerifierPowerToken1155 contract (VPT system)
         address verifierElection;     // VerifierElection contract (VPT system)
@@ -48,7 +48,7 @@ contract CommunityRegistry is AccessControl {
         address timelock;
         address requestHub;
         address draftsManager;
-        address claimsManager;
+        address engagementsManager;
         address valuableActionRegistry;
         address verifierPowerToken;
         address verifierElection;
@@ -269,9 +269,9 @@ contract CommunityRegistry is AccessControl {
         } else if (moduleKey == keccak256("draftsManager")) {
             oldAddress = community.draftsManager;
             community.draftsManager = moduleAddress;
-        } else if (moduleKey == keccak256("claimsManager")) {
-            oldAddress = community.claimsManager;
-            community.claimsManager = moduleAddress;
+        } else if (moduleKey == keccak256("engagementsManager")) {
+            oldAddress = community.engagementsManager;
+            community.engagementsManager = moduleAddress;
         } else if (moduleKey == keccak256("valuableActionRegistry")) {
             oldAddress = community.valuableActionRegistry;
             community.valuableActionRegistry = moduleAddress;
@@ -332,9 +332,9 @@ contract CommunityRegistry is AccessControl {
             emit ModuleAddressUpdated(communityId, keccak256("draftsManager"), community.draftsManager, modules.draftsManager);
             community.draftsManager = modules.draftsManager;
         }
-        if (modules.claimsManager != address(0)) {
-            emit ModuleAddressUpdated(communityId, keccak256("claimsManager"), community.claimsManager, modules.claimsManager);
-            community.claimsManager = modules.claimsManager;
+        if (modules.engagementsManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("engagementsManager"), community.engagementsManager, modules.engagementsManager);
+            community.engagementsManager = modules.engagementsManager;
         }
         if (modules.valuableActionRegistry != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("valuableActionRegistry"), community.valuableActionRegistry, modules.valuableActionRegistry);
@@ -550,7 +550,7 @@ contract CommunityRegistry is AccessControl {
     /// @return timelock Timelock contract address
     /// @return requestHub RequestHub contract address
     /// @return draftsManager DraftsManager contract address
-    /// @return claimsManager Claims contract address
+    /// @return engagementsManager Engagements contract address
     /// @return valuableActionRegistry ValuableActionRegistry contract address
     /// @return valuableActionSBT ValuableActionSBT contract address
     /// @return treasuryAdapter TreasuryAdapter contract address
@@ -560,7 +560,7 @@ contract CommunityRegistry is AccessControl {
         address timelock,
         address requestHub,
         address draftsManager,
-        address claimsManager,
+        address engagementsManager,
         address valuableActionRegistry,
         address valuableActionSBT,
         address treasuryAdapter,
@@ -573,7 +573,7 @@ contract CommunityRegistry is AccessControl {
             community.timelock,
             community.requestHub,
             community.draftsManager,
-            community.claimsManager,
+            community.engagementsManager,
             community.valuableActionRegistry,
             community.valuableActionSBT,
             community.treasuryAdapter,
@@ -637,7 +637,7 @@ contract CommunityRegistry is AccessControl {
             timelock: community.timelock,
             requestHub: community.requestHub,
             draftsManager: community.draftsManager,
-            claimsManager: community.claimsManager,
+            engagementsManager: community.engagementsManager,
             valuableActionRegistry: community.valuableActionRegistry,
             verifierPowerToken: community.verifierPowerToken,
             verifierElection: community.verifierElection,

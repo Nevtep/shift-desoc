@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { and, desc, eq, graphql } from "@ponder/core";
 import {
-  claims,
+  engagements,
   comments,
   communities,
   draftReviews,
@@ -147,35 +147,35 @@ ponder.get("/proposals/:id", async (c) => {
   return c.json({ proposal: proposal[0], votes });
 });
 
-ponder.get("/claims", async (c) => {
+ponder.get("/engagements", async (c) => {
   const { limit, offset } = parsePagination(c.req.query("limit"), c.req.query("offset"));
   const communityId = toNumberOrNull(c.req.query("communityId"));
 
   const rows = await c.db
     .select()
-    .from(claims)
-    .where(combineAnd([communityId ? eq(claims.communityId, communityId) : undefined]))
-    .orderBy(desc(claims.submittedAt))
+    .from(engagements)
+    .where(combineAnd([communityId ? eq(engagements.communityId, communityId) : undefined]))
+    .orderBy(desc(engagements.submittedAt))
     .limit(limit)
     .offset(offset);
 
   return c.json({ items: rows, nextOffset: offset + rows.length });
 });
 
-ponder.get("/claims/:id", async (c) => {
-  const claimId = Number(c.req.param("id"));
-  if (!Number.isFinite(claimId)) return c.json({ error: "invalid claim id" }, 400);
+ponder.get("/engagements/:id", async (c) => {
+  const engagementId = Number(c.req.param("id"));
+  if (!Number.isFinite(engagementId)) return c.json({ error: "invalid engagement id" }, 400);
 
-  const claim = await c.db.select().from(claims).where(eq(claims.id, claimId)).limit(1);
-  if (claim.length === 0) return c.json({ error: "not found" }, 404);
+  const engagement = await c.db.select().from(engagements).where(eq(engagements.id, engagementId)).limit(1);
+  if (engagement.length === 0) return c.json({ error: "not found" }, 404);
 
   const jurors = await c.db
     .select()
     .from(jurorAssignments)
-    .where(eq(jurorAssignments.claimId, claimId))
+    .where(eq(jurorAssignments.engagementId, engagementId))
     .orderBy(desc(jurorAssignments.weight));
 
-  return c.json({ claim: claim[0], jurors });
+  return c.json({ engagement: engagement[0], jurors });
 });
 
 // --- EVENT HANDLERS -------------------------------------------------------------
@@ -192,7 +192,7 @@ const defaultCommunityId = deployment.communityId ?? 0;
 const requestStatuses = ["OPEN_DEBATE", "FROZEN", "ARCHIVED"] as const;
 const draftStatuses = ["DRAFTING", "REVIEW", "FINALIZED", "ESCALATED", "WON", "LOST"] as const;
 const reviewTypes = ["SUPPORT", "OPPOSE", "NEUTRAL", "REQUEST_CHANGES"] as const;
-const claimStatuses = ["PENDING", "APPROVED", "REJECTED", "REVOKED"] as const;
+const engagementStatuses = ["PENDING", "APPROVED", "REJECTED", "REVOKED"] as const;
 
 const toDate = (timestamp: bigint) => new Date(Number(timestamp) * 1000);
 const toNumberOrNull = (value: string | null | undefined) => {
@@ -221,7 +221,7 @@ const parsePagination = (limitRaw: string | null, offsetRaw: string | null) => {
 const buildDraftVersionId = (draftId: number, versionNumber: number) => `${draftId}-${versionNumber}`;
 const buildReviewId = (draftId: number, reviewer: Address) => `${draftId}-${reviewer.toLowerCase()}`;
 const buildVoteId = (proposalId: bigint, voter: Address) => `${proposalId.toString()}-${voter.toLowerCase()}`;
-const buildJurorAssignmentId = (claimId: number, juror: Address) => `${claimId}-${juror.toLowerCase()}`;
+const buildJurorAssignmentId = (engagementId: number, juror: Address) => `${engagementId}-${juror.toLowerCase()}`;
 
 ponder.on("CommunityRegistry:CommunityRegistered", async ({ event, context }) => {
   const createdAt = toDate(event.block.timestamp);
@@ -597,27 +597,27 @@ ponder.on("ShiftGovernor:MultiChoiceVoteCast", async ({ event, context }) => {
     });
 });
 
-ponder.on("Claims:ClaimSubmitted", async ({ event, context }) => {
+ponder.on("Engagements:EngagementSubmitted", async ({ event, context }) => {
   const submittedAt = toDate(event.block.timestamp);
   await context.db
-    .insert(claims)
+    .insert(engagements)
     .values({
-      id: Number(event.args.claimId),
+      id: Number(event.args.engagementId),
       communityId: defaultCommunityId,
       valuableActionId: Number(event.args.typeId),
-      claimant: event.args.worker,
-      status: claimStatuses[0],
+      participant: event.args.participant,
+      status: engagementStatuses[0],
       evidenceManifestCid: event.args.evidenceCID,
       submittedAt,
       resolvedAt: null,
     })
     .onConflictDoUpdate({
-      target: claims.id,
+      target: engagements.id,
       set: {
         communityId: defaultCommunityId,
         valuableActionId: Number(event.args.typeId),
-        claimant: event.args.worker,
-        status: claimStatuses[0],
+        participant: event.args.participant,
+        status: engagementStatuses[0],
         evidenceManifestCid: event.args.evidenceCID,
         submittedAt,
         resolvedAt: null,
@@ -626,12 +626,12 @@ ponder.on("Claims:ClaimSubmitted", async ({ event, context }) => {
 });
 
 ponder.on("VerifierManager:JurorsSelected", async ({ event, context }) => {
-  const claimId = Number(event.args.claimId);
+  const engagementId = Number(event.args.engagementId);
   const jurors = event.args.jurors as Address[];
   const powers = event.args.powers as bigint[];
 
   await context.db
-    .update(claims, { id: claimId })
+    .update(engagements, { id: engagementId })
     .set({ communityId: Number(event.args.communityId) });
 
   for (let i = 0; i < jurors.length; i += 1) {
@@ -639,8 +639,8 @@ ponder.on("VerifierManager:JurorsSelected", async ({ event, context }) => {
     await context.db
       .insert(jurorAssignments)
       .values({
-        id: buildJurorAssignmentId(claimId, juror),
-        claimId,
+        id: buildJurorAssignmentId(engagementId, juror),
+        engagementId,
         juror,
         weight: powers[i],
         decision: null,
@@ -653,16 +653,16 @@ ponder.on("VerifierManager:JurorsSelected", async ({ event, context }) => {
   }
 });
 
-ponder.on("Claims:JurorsAssigned", async ({ event, context }) => {
-  const claimId = Number(event.args.claimId);
+ponder.on("Engagements:JurorsAssigned", async ({ event, context }) => {
+  const engagementId = Number(event.args.engagementId);
   const jurors = event.args.jurors as Address[];
 
   for (const juror of jurors) {
     await context.db
       .insert(jurorAssignments)
       .values({
-        id: buildJurorAssignmentId(claimId, juror),
-        claimId,
+        id: buildJurorAssignmentId(engagementId, juror),
+        engagementId,
         juror,
         weight: null,
         decision: null,
@@ -672,28 +672,28 @@ ponder.on("Claims:JurorsAssigned", async ({ event, context }) => {
   }
 });
 
-ponder.on("Claims:ClaimVerified", async ({ event, context }) => {
-  const claimId = Number(event.args.claimId);
+ponder.on("Engagements:EngagementVerified", async ({ event, context }) => {
+  const engagementId = Number(event.args.engagementId);
   const decision = event.args.approve ? "APPROVE" : "REJECT";
   const decidedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(jurorAssignments, { id: buildJurorAssignmentId(claimId, event.args.verifier) })
+    .update(jurorAssignments, { id: buildJurorAssignmentId(engagementId, event.args.verifier) })
     .set({ decision, decidedAt });
 });
 
-ponder.on("Claims:ClaimResolved", async ({ event, context }) => {
-  const status = claimStatuses[Number(event.args.status)] ?? claimStatuses[0];
+ponder.on("Engagements:EngagementResolved", async ({ event, context }) => {
+  const status = engagementStatuses[Number(event.args.status)] ?? engagementStatuses[0];
   const resolvedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(claims, { id: Number(event.args.claimId) })
+    .update(engagements, { id: Number(event.args.engagementId) })
     .set({ status, resolvedAt });
 });
 
-ponder.on("Claims:ClaimRevoked", async ({ event, context }) => {
+ponder.on("Engagements:EngagementRevoked", async ({ event, context }) => {
   const resolvedAt = toDate(event.block.timestamp);
   await context.db
-    .update(claims, { id: Number(event.args.claimId) })
-    .set({ status: claimStatuses[3], resolvedAt });
+    .update(engagements, { id: Number(event.args.engagementId) })
+    .set({ status: engagementStatuses[3], resolvedAt });
 });

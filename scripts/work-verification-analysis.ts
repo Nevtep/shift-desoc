@@ -8,8 +8,7 @@ import { ethers } from "hardhat";
 
 const CONTRACT_ADDRESSES = {
   valuableActionRegistry: "0x831Ef7C12aD1A564C32630e5D1A18A3b0c8829f2",
-  claims: "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35",
-  verifierPool: "0x8D0962Ca5c55b2432819De25061a25Eb32DC1d3B",
+  engagements: "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35",
   valuableActionSBT: "0x8dA98a7ab4c487CFeD390c4C41c411213b1A6562",
   membershipToken: "0xFf60937906c537685Ad21a67a2A4E8Dbf7A0F9cb",
   communityToken: "0x9352b89B39D7b0e6255935A8053Df37393013371",
@@ -29,13 +28,9 @@ async function main() {
     "ValuableActionRegistry",
     CONTRACT_ADDRESSES.valuableActionRegistry,
   );
-  const claims = await ethers.getContractAt(
-    "Claims",
-    CONTRACT_ADDRESSES.claims,
-  );
-  const verifierPool = await ethers.getContractAt(
-    "VerifierPool",
-    CONTRACT_ADDRESSES.verifierPool,
+  const engagements = await ethers.getContractAt(
+    "Engagements",
+    CONTRACT_ADDRESSES.engagements,
   );
   const valuableActionSBT = await ethers.getContractAt(
     "ValuableActionSBT",
@@ -90,23 +85,18 @@ async function main() {
   }
 
   try {
-    // Check VerifierPool
-    console.log("\n👥 VerifierPool Analysis:");
-    const isRegistered = await verifierPool.isRegisteredVerifier(
-      await deployer.getAddress(),
-    );
-    console.log("   Deployer is registered verifier:", isRegistered);
+    // Check Engagements
+    console.log("\n📋 Engagements Analysis:");
+    console.log("   Engagements contract accessible:", true);
+    // Pull latest engagement id if available
+    try {
+      const lastId = await engagements.lastEngagementId();
+      console.log("   Last engagement ID:", lastId.toString());
+    } catch (e) {
+      console.log("   Could not read last engagement ID");
+    }
   } catch (error: any) {
-    console.log("   ❌ Error accessing VerifierPool:", error.message);
-  }
-
-  try {
-    // Check Claims
-    console.log("\n📋 Claims Analysis:");
-    // Try to get any existing claims - most contracts have a public getter
-    console.log("   Claims contract accessible:", true);
-  } catch (error: any) {
-    console.log("   ❌ Error accessing Claims:", error.message);
+    console.log("   ❌ Error accessing Engagements:", error.message);
   }
 
   try {
@@ -219,8 +209,8 @@ async function main() {
   console.log("🔧 NEXT STEPS:");
   console.log("1. Set up proper permissions (moderator/founder status)");
   console.log("2. Create ValuableActions through governance if needed");
-  console.log("3. Register verifiers with bonding");
-  console.log("4. Submit and verify work claims");
+  console.log("3. Ensure VerifierManager is configured for juror selection");
+  console.log("4. Submit and verify engagements");
   console.log("");
   console.log("🚀 Work verification infrastructure fully deployed!");
 }

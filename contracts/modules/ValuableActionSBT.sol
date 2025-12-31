@@ -117,7 +117,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
     //////////////////////////////////////////////////////////////*/
     
     /// @param initialOwner Address that will have DEFAULT_ADMIN_ROLE
-    /// @param manager Address of the Claims contract (gets MANAGER_ROLE)
+    /// @param manager Address of the Engagements contract (gets MANAGER_ROLE)
     /// @param governance Address of governance contract (gets GOVERNANCE_ROLE)
     constructor(
         address initialOwner,
@@ -144,7 +144,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
     /// @param worker Address of the worker
     /// @param points Amount of WorkerPoints to award
     /// @param metadataURI IPFS URI for token metadata
-    /// @dev Only callable by manager (Claims contract)
+    /// @dev Only callable by manager (Engagements contract)
     function mintAndAwardPoints(
         address worker,
         uint256 points,

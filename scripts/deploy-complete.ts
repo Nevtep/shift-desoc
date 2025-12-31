@@ -9,7 +9,7 @@
  * 1. Core Infrastructure (Registry, ParamController)
  * 2. Governance System (Governor, Timelock, Tokens, Multi-Choice Voting)
  * 3. VPT System (VerifierPowerToken, Elections, Manager)
- * 4. Work Verification (ValuableActionRegistry, Claims, ValuableActionSBT, VerifierPool)
+ * 4. Work Verification (ValuableActionRegistry, Engagements, ValuableActionSBT, VerifierPool)
  * 5. Economic Layer (CommunityToken, RevenueRouter, TreasuryAdapter)
  * 6. Community Modules (RequestHub, DraftsManager, HousingManager, Marketplace, ProjectFactory)
  * 7. System Integration & Configuration
@@ -365,18 +365,18 @@ class ShiftDeSocDeployer {
     this.contracts.valuableActionSBT = await this.deployContract(
       ValuableActionSBT,
       this.deployer.address, // initialOwner
-      this.deployer.address, // manager (will be Claims after deployment)
+      this.deployer.address, // manager (will be Engagements after deployment)
       await this.contracts.timelock.getAddress(), // governance
     );
     console.log(
       `   ✅ ValuableActionSBT: ${await this.contracts.valuableActionSBT.getAddress()}`,
     );
 
-    // Deploy Claims
-    console.log("   📝 Deploying Claims...");
-    const Claims = await ethers.getContractFactory("Claims");
-    this.contracts.claims = await this.deployContract(
-      Claims,
+    // Deploy Engagements
+    console.log("   📝 Deploying Engagements...");
+    const Engagements = await ethers.getContractFactory("Engagements");
+    this.contracts.engagements = await this.deployContract(
+      Engagements,
       await this.contracts.timelock.getAddress(), // governance
       await this.contracts.valuableActionRegistry.getAddress(),
       await this.contracts.verifierManager.getAddress(),
@@ -384,7 +384,7 @@ class ShiftDeSocDeployer {
       await this.contracts.membershipToken.getAddress(),
       1, // communityId
     );
-    console.log(`   ✅ Claims: ${await this.contracts.claims.getAddress()}`);
+    console.log(`   ✅ Engagements: ${await this.contracts.engagements.getAddress()}`);
   }
 
   private async deployEconomicLayer(): Promise<void> {
@@ -604,11 +604,11 @@ class ShiftDeSocDeployer {
     const minterRole = await this.contracts.membershipToken.MINTER_ROLE();
     await this.contracts.membershipToken.grantRole(
       minterRole,
-      await this.contracts.claims.getAddress(),
+      await this.contracts.engagements.getAddress(),
       this.gasSettings,
     );
     await this.sleep(2000);
-    console.log("   ✅ Granted MINTER_ROLE to Claims contract");
+    console.log("   ✅ Granted MINTER_ROLE to Engagements contract");
 
     // Configure commerce module integrations
     console.log("   🛍️  Configuring commerce module integrations...");
@@ -667,7 +667,7 @@ class ShiftDeSocDeployer {
       timelock: await this.contracts.timelock.getAddress(),
       requestHub: await this.contracts.requestHub.getAddress(),
       draftsManager: await this.contracts.draftsManager.getAddress(),
-      claimsManager: await this.contracts.claims.getAddress(),
+      engagementsManager: await this.contracts.engagements.getAddress(),
       valuableActionRegistry: await this.contracts.valuableActionRegistry.getAddress(),
       verifierPowerToken: await this.contracts.verifierPowerToken.getAddress(),
       verifierElection: await this.contracts.verifierElection.getAddress(),
@@ -786,7 +786,7 @@ class ShiftDeSocDeployer {
 
         // Work Verification
         valuableActionRegistry: await this.contracts.valuableActionRegistry.getAddress(),
-        claims: await this.contracts.claims.getAddress(),
+        engagements: await this.contracts.engagements.getAddress(),
         valuableActionSBT: await this.contracts.valuableActionSBT.getAddress(),
 
         // Economic Layer
@@ -872,7 +872,7 @@ class ShiftDeSocDeployer {
     console.log(
       `   ValuableActionRegistry: ${this.contracts.valuableActionRegistry.target}`,
     );
-    console.log(`   Claims: ${this.contracts.claims.target}`);
+    console.log(`   Engagements: ${this.contracts.engagements.target}`);
     console.log(
       `   ValuableActionSBT: ${this.contracts.valuableActionSBT.target}`,
     );
@@ -915,7 +915,7 @@ class ShiftDeSocDeployer {
     console.log("   npm run manage elections    # Manage verifier elections");
     console.log("   npm run manage governance   # Governance operations");
     console.log("   npm run manage cohorts      # Manage investment cohorts");
-    console.log("   npm run manage claims       # Claims and verification");
+    console.log("   npm run manage engagements  # Engagements and verification");
   }
 }
 

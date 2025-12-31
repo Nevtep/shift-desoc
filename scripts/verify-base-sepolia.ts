@@ -22,7 +22,7 @@ const CONTRACT_ADDRESSES = {
   timelockController: deployment.addresses.timelock,
   membershipToken: deployment.addresses.membershipToken,
   valuableActionRegistry: deployment.addresses.valuableActionRegistry,
-  claims: deployment.addresses.claims,
+  engagements: deployment.addresses.engagements,
   verifierPowerToken: deployment.addresses.verifierPowerToken,
   verifierElection: deployment.addresses.verifierElection,
   verifierManager: deployment.addresses.verifierManager,
@@ -119,7 +119,10 @@ async function main() {
       "ValuableActionRegistry",
       CONTRACT_ADDRESSES.valuableActionRegistry,
     );
-    const claims = await ethers.getContractAt("Claims", CONTRACT_ADDRESSES.claims);
+    const engagements = await ethers.getContractAt(
+      "Engagements",
+      CONTRACT_ADDRESSES.engagements,
+    );
     const verifierPowerToken = await ethers.getContractAt(
       "VerifierPowerToken1155",
       CONTRACT_ADDRESSES.verifierPowerToken,
@@ -139,7 +142,7 @@ async function main() {
 
     // Test basic functionality instead of count functions that may not exist
     console.log("   ├── ValuableActionRegistry: ✅ Accessible");
-    console.log("   ├── Claims: ✅ Accessible");
+    console.log("   ├── Engagements: ✅ Accessible");
     console.log("   ├── VerifierPowerToken1155: ✅ Accessible");
     console.log("   ├── VerifierElection: ✅ Accessible");
     console.log("   ├── VerifierManager: ✅ Accessible");
@@ -190,8 +193,8 @@ async function main() {
         : "❌",
     );
     console.log(
-      "   ├── Registry → Claims:",
-      modules.claimsManager === CONTRACT_ADDRESSES.claims ? "✅" : "❌",
+      "   ├── Registry → Engagements:",
+      modules.engagementsManager === CONTRACT_ADDRESSES.engagements ? "✅" : "❌",
     );
     console.log(
       "   ├── Registry → VerifierManager:",
@@ -217,7 +220,7 @@ async function main() {
       "   ├── 📝 Governance workflow (Request → Draft → Proposal → Execute)",
     );
     console.log(
-      "   ├── ⚡ Work verification (Define → Claim → Verify → Reward)",
+      "   ├── ⚡ Work verification (Define → Engage → Verify → Reward)",
     );
     console.log("   └── 🔄 Cross-system integration");
     console.log("");

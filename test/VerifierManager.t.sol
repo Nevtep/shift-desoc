@@ -16,7 +16,7 @@ contract VerifierManagerTest is Test {
     
     address public timelock = makeAddr("timelock");
     address public governance = makeAddr("governance");
-    address public claimsContract = makeAddr("claims");
+    address public engagementsContract = makeAddr("engagements");
     
     address public verifier1 = makeAddr("verifier1");
     address public verifier2 = makeAddr("verifier2");
@@ -57,9 +57,9 @@ contract VerifierManagerTest is Test {
             governance
         );
         
-        // Set claims contract
+        // Set engagements contract
         vm.prank(governance);
-        verifierManager.setClaimsContract(claimsContract);
+        verifierManager.setEngagementsContract(engagementsContract);
         
         // Grant VerifierElection the TIMELOCK_ROLE to mint/burn VPT tokens
         vm.startPrank(timelock);
@@ -118,28 +118,28 @@ contract VerifierManagerTest is Test {
     }
     
     /*//////////////////////////////////////////////////////////////
-                        CLAIMS CONTRACT MANAGEMENT
+                        ENGAGEMENTS CONTRACT MANAGEMENT
     //////////////////////////////////////////////////////////////*/
-    
-    function testSetClaimsContract() public {
-        address newClaims = makeAddr("newClaims");
+
+    function testSetEngagementsContract() public {
+        address newEngagements = makeAddr("newEngagements");
         
         vm.prank(governance);
-        verifierManager.setClaimsContract(newClaims);
+        verifierManager.setEngagementsContract(newEngagements);
         
-        assertEq(verifierManager.claimsContract(), newClaims);
+        assertEq(verifierManager.engagementsContract(), newEngagements);
     }
     
-    function testSetClaimsContractNonGovernanceReverts() public {
+    function testSetEngagementsContractNonGovernanceReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
-        verifierManager.setClaimsContract(makeAddr("newClaims"));
+        verifierManager.setEngagementsContract(makeAddr("newEngagements"));
     }
     
-    function testSetClaimsContractZeroAddressReverts() public {
+    function testSetEngagementsContractZeroAddressReverts() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         vm.prank(governance);
-        verifierManager.setClaimsContract(address(0));
+        verifierManager.setEngagementsContract(address(0));
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -155,7 +155,7 @@ contract VerifierManagerTest is Test {
         vm.expectEmit(true, true, false, false);
         emit JurorsSelected(claimId, COMMUNITY_ID_1, new address[](0), new uint256[](0), seed, true);
         
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selectedJurors = verifierManager.selectJurors(
             claimId, COMMUNITY_ID_1, panelSize, seed, useWeighting
         );
@@ -179,7 +179,7 @@ contract VerifierManagerTest is Test {
         uint256 seed = 54321;
         bool useWeighting = false;
         
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selectedJurors = verifierManager.selectJurors(
             claimId, COMMUNITY_ID_1, panelSize, seed, useWeighting
         );
@@ -194,7 +194,7 @@ contract VerifierManagerTest is Test {
         }
     }
     
-    function testSelectJurorsNonClaimsReverts() public {
+    function testSelectJurorsNonEngagementsReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
         verifierManager.selectJurors(1, COMMUNITY_ID_1, 3, 12345, false);
@@ -202,14 +202,14 @@ contract VerifierManagerTest is Test {
     
     function testSelectJurorsZeroPanelSizeReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Panel size cannot be zero"));
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.selectJurors(1, COMMUNITY_ID_1, 0, 12345, false);
     }
     
     function testSelectJurorsInsufficientVerifiersReverts() public {
         // Try to select more jurors than available verifiers
         vm.expectRevert();
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.selectJurors(1, COMMUNITY_ID_1, 10, 12345, false); // Only 5 verifiers available
     }
     
@@ -217,12 +217,12 @@ contract VerifierManagerTest is Test {
         uint256 claimId = 1;
         
         // First selection succeeds
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, 12345, false);
         
         // Second selection for same claim should fail
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Jurors already selected for claim"));
-        vm.prank(claimsContract);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Jurors already selected for engagement"));
+        vm.prank(engagementsContract);
         verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, 54321, false);
     }
     
@@ -233,7 +233,7 @@ contract VerifierManagerTest is Test {
         vpt.initializeCommunity(COMMUNITY_ID_3, "metadata3");
         
         vm.expectRevert();
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.selectJurors(1, COMMUNITY_ID_3, 3, 12345, false);
     }
     
@@ -244,7 +244,7 @@ contract VerifierManagerTest is Test {
     function testReportFraud() public {
         // First select jurors
         uint256 claimId = 1;
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selectedJurors = verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, 12345, false);
         
         // Report some of them as fraudulent
@@ -257,11 +257,11 @@ contract VerifierManagerTest is Test {
         vm.expectEmit(true, true, false, true);
         emit FraudReported(claimId, COMMUNITY_ID_1, offenders, evidenceCID);
         
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.reportFraud(claimId, COMMUNITY_ID_1, offenders, evidenceCID);
     }
     
-    function testReportFraudNonClaimsReverts() public {
+    function testReportFraudNonEngagementsReverts() public {
         address[] memory offenders = new address[](1);
         offenders[0] = verifier1;
         
@@ -274,7 +274,7 @@ contract VerifierManagerTest is Test {
         address[] memory offenders = new address[](0);
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "No offenders provided"));
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.reportFraud(1, COMMUNITY_ID_1, offenders, "evidence");
     }
     
@@ -282,15 +282,15 @@ contract VerifierManagerTest is Test {
         address[] memory offenders = new address[](1);
         offenders[0] = verifier1;
         
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "No jury selection for claim"));
-        vm.prank(claimsContract);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "No jury selection for engagement"));
+        vm.prank(engagementsContract);
         verifierManager.reportFraud(1, COMMUNITY_ID_1, offenders, "evidence");
     }
     
     function testReportFraudOffenderNotSelectedReverts() public {
         // Select jurors
         uint256 claimId = 1;
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, 12345, false);
         
         // Try to report someone who wasn't selected
@@ -298,7 +298,7 @@ contract VerifierManagerTest is Test {
         offenders[0] = makeAddr("notSelected");
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Offender was not selected as juror"));
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.reportFraud(claimId, COMMUNITY_ID_1, offenders, "evidence");
     }
     
@@ -345,7 +345,7 @@ contract VerifierManagerTest is Test {
         assertFalse(selectionBefore.completed);
         
         // After selection
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, 12345, false);
         
         VerifierManager.JurorSelection memory selectionAfter = verifierManager.getJurorSelection(claimId);
@@ -367,7 +367,7 @@ contract VerifierManagerTest is Test {
         paramController.setBool(COMMUNITY_ID_1, verifierManager.USE_VPT_WEIGHTING(), true);
         vm.stopPrank();
         
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selectedJurors = verifierManager.selectJurors(
             claimId, COMMUNITY_ID_1, 3, 12345, false // Even though we pass false, community config should override
         );
@@ -388,7 +388,7 @@ contract VerifierManagerTest is Test {
         vm.stopPrank();
         
         uint256 claimId = 1;
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selectedJurors = verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, 12345, true);
         
         // Verify selection worked (detailed weight capping is tested in the weighted selection logic)
@@ -406,7 +406,7 @@ contract VerifierManagerTest is Test {
         for (uint256 i = 0; i < iterations; i++) {
             uint256 claimId = 1000 + i; // Use different claim IDs
             
-            vm.prank(claimsContract);
+            vm.prank(engagementsContract);
             address[] memory selected = verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 1, i + 1, true);
             
             // This test verifies the weighted selection functionality works
@@ -422,7 +422,7 @@ contract VerifierManagerTest is Test {
         uint256 claimId = 1;
         uint256 panelSize = 5; // Select all available verifiers
         
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selected = verifierManager.selectJurors(claimId, COMMUNITY_ID_1, panelSize, 12345, false);
         
         // Verify no duplicates
@@ -460,7 +460,7 @@ contract VerifierManagerTest is Test {
         verifierElection.banVerifiers(COMMUNITY_ID_1, toBan, REASON_CID);
         
         uint256 claimId = 1;
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selected = verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, 12345, false);
         
         // Verify banned verifiers are not in the selection
@@ -480,7 +480,7 @@ contract VerifierManagerTest is Test {
         
         uint256 claimId = seed % 1000000; // Ensure unique claim ID
         
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selected = verifierManager.selectJurors(
             claimId, COMMUNITY_ID_1, panelSize, seed, false
         );
@@ -501,7 +501,7 @@ contract VerifierManagerTest is Test {
         
         // First select jurors
         uint256 claimId = seed % 1000000;
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         address[] memory selectedJurors = verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, seed, false);
         
         // Create offenders array with selected jurors
@@ -510,7 +510,7 @@ contract VerifierManagerTest is Test {
             offenders[i] = selectedJurors[i % selectedJurors.length];
         }
         
-        vm.prank(claimsContract);
+        vm.prank(engagementsContract);
         verifierManager.reportFraud(claimId, COMMUNITY_ID_1, offenders, "fuzz-evidence");
         
         // No revert means success

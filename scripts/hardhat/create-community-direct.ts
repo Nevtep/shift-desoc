@@ -284,7 +284,7 @@ async function main() {
       address: draftsManagerAddress,
     },
     {
-      key: ethers.keccak256(ethers.toUtf8Bytes("claimsManager")),
+      key: ethers.keccak256(ethers.toUtf8Bytes("engagementsManager")),
       address: claimsAddress,
     },
     {

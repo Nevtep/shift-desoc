@@ -259,7 +259,7 @@ contract CommunityRegistryTest is Test {
         moduleKeys[1] = keccak256("timelock");
         moduleKeys[2] = keccak256("requestHub");
         moduleKeys[3] = keccak256("draftsManager");
-        moduleKeys[4] = keccak256("claimsManager");
+        moduleKeys[4] = keccak256("engagementsManager");
         moduleKeys[5] = keccak256("valuableActionRegistry");
         moduleKeys[6] = keccak256("valuableActionSBT");
         moduleKeys[7] = keccak256("treasuryAdapter");
@@ -277,7 +277,7 @@ contract CommunityRegistryTest is Test {
             address timelock,
             address requestHub,
             address draftsManager,
-            address claimsManager,
+            address engagementsManager,
             address valuableActionRegistry,
             address valuableActionSBT,
             address treasuryAdapter,
@@ -288,7 +288,7 @@ contract CommunityRegistryTest is Test {
         assertEq(timelock, addresses[1]);
         assertEq(requestHub, addresses[2]);
         assertEq(draftsManager, addresses[3]);
-        assertEq(claimsManager, addresses[4]);
+        assertEq(engagementsManager, addresses[4]);
         assertEq(valuableActionRegistry, addresses[5]);
         assertEq(valuableActionSBT, addresses[6]);
         assertEq(treasuryAdapter, addresses[7]);

@@ -11,7 +11,7 @@ const files = [
   { src: "DraftsManager.sol/DraftsManager.json", dest: "DraftsManager.json" },
   { src: "ShiftGovernor.sol/ShiftGovernor.json", dest: "ShiftGovernor.json" },
   { src: "CountingMultiChoice.sol/CountingMultiChoice.json", dest: "CountingMultiChoice.json" },
-  { src: "Claims.sol/Claims.json", dest: "Claims.json" },
+  { src: "Engagements.sol/Engagements.json", dest: "Engagements.json" },
   { src: "VerifierManager.sol/VerifierManager.json", dest: "VerifierManager.json" },
   { src: "ValuableActionRegistry.sol/ValuableActionRegistry.json", dest: "ValuableActionRegistry.json" }
 ];

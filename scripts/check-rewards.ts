@@ -13,7 +13,7 @@ const CONTRACT_ADDRESSES = {
   membershipToken: "0xFf60937906c537685Ad21a67a2A4E8Dbf7A0F9cb",
   communityToken: "0x9352b89B39D7b0e6255935A8053Df37393013371",
   valuableActionSBT: "0x8dA98a7ab4c487CFeD390c4C41c411213b1A6562",
-  claims: "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35",
+  engagements: "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35",
   valuableActionRegistry: "0x831Ef7C12aD1A564C32630e5D1A18A3b0c8829f2",
   verifierPool: "0x8D0962Ca5c55b2432819De25061a25Eb32DC1d3B",
 };
@@ -43,9 +43,9 @@ async function main() {
     "ValuableActionSBT",
     CONTRACT_ADDRESSES.valuableActionSBT,
   );
-  const claims = await ethers.getContractAt(
-    "Claims",
-    CONTRACT_ADDRESSES.claims,
+  const engagements = await ethers.getContractAt(
+    "Engagements",
+    CONTRACT_ADDRESSES.engagements,
   );
   const valuableActionRegistry = await ethers.getContractAt(
     "ValuableActionRegistry",
@@ -293,7 +293,7 @@ async function main() {
 
     if (activeActions > 0) {
       console.log(
-        "   🎯 Consider submitting work claims for available actions",
+        "   🎯 Consider submitting work engagements for available actions",
       );
       console.log(
         "      └── Command: npx hardhat run scripts/submit-claim.ts --network base_sepolia",

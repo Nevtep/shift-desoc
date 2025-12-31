@@ -15,6 +15,7 @@ const VALUABLE_ACTION_REGISTRY = "0x831Ef7C12aD1A564C32630e5D1A18A3b0c8829f2";
 const PROPOSAL_ID =
   "113920921519397733368469111639687140856855946985470387080321665420245744891488";
 const COMMUNITY_ID = 1;
+const PROPOSAL_REF = ethers.id("engagement-action-dev-task-1");
 
 async function main() {
   console.log("⚡ Execute Governance Proposal - Base Sepolia");
@@ -67,32 +68,64 @@ async function main() {
   }
 
   try {
-    // Prepare execution data for ValuableAction creation
+    // Prepare execution data for ValuableAction creation via governance path
+    const actionParams = {
+      membershipTokenReward: 100,
+      communityTokenReward: 50,
+      investorSBTReward: 0,
+      jurorsMin: 2,
+      panelSize: 3,
+      verifyWindow: 24 * 3600,
+      verifierRewardWeight: 15,
+      slashVerifierBps: 500,
+      cooldownPeriod: 60 * 60,
+      maxConcurrent: 1,
+      revocable: true,
+      evidenceTypes: 1,
+      proposalThreshold: 0,
+      proposer: await deployer.getAddress(),
+      evidenceSpecCID: "ipfs://QmE2ETestValuableActionForDevelopment",
+      titleTemplate: "Complete Development Task",
+      automationRules: [] as string[],
+      activationDelay: 0,
+      deprecationWarning: 0,
+    };
+
     const targets = [VALUABLE_ACTION_REGISTRY];
     const values = [0];
     const calldatas = [
-      valuableActionRegistry.interface.encodeFunctionData("createAction", [
-        COMMUNITY_ID,
-        "Complete Development Task",
-        "ipfs://QmE2ETestValuableActionForDevelopment",
-        100, // membershipTokenReward: 100 governance tokens
-        50, // communityTokenReward: 50 community tokens
-        0, // investorSBTReward: 0 (not investment work)
-        2, // jurorsMin: need 2 out of 3 approvals
-        3, // panelSize: 3 verifiers total
-        24 * 3600, // verifyWindow: 24 hours
-        60 * 60, // cooldownPeriod: 1 hour between claims
-        1, // maxConcurrent: 1 active claim at a time
-        15, // verifierRewardWeight: 15 points for accurate verifiers
-        500, // slashVerifierBps: 5% slashing for wrong decisions
-        true, // revocable: community can revoke if needed
-        0x01, // evidenceTypes: basic documentation
-        "GitHub repository link, pull request URL, and brief description of changes made",
-      ]),
+      valuableActionRegistry.interface.encodeFunctionData(
+        "proposeValuableAction",
+        [
+          COMMUNITY_ID,
+          [
+            actionParams.membershipTokenReward,
+            actionParams.communityTokenReward,
+            actionParams.investorSBTReward,
+            actionParams.jurorsMin,
+            actionParams.panelSize,
+            actionParams.verifyWindow,
+            actionParams.verifierRewardWeight,
+            actionParams.slashVerifierBps,
+            actionParams.cooldownPeriod,
+            actionParams.maxConcurrent,
+            actionParams.revocable,
+            actionParams.evidenceTypes,
+            actionParams.proposalThreshold,
+            actionParams.proposer,
+            actionParams.evidenceSpecCID,
+            actionParams.titleTemplate,
+            actionParams.automationRules,
+            actionParams.activationDelay,
+            actionParams.deprecationWarning,
+          ],
+          PROPOSAL_REF,
+        ],
+      ),
     ];
 
     const description =
-      "Create ValuableAction for Development Work Verification Testing";
+      "Propose ValuableAction via governance for Engagements verification";
     const descriptionHash = ethers.keccak256(ethers.toUtf8Bytes(description));
 
     // STEP 1: Queue proposal (if not already queued)
@@ -149,27 +182,23 @@ async function main() {
     // STEP 4: Verify ValuableAction was created
     console.log("\n🎯 STEP 4: Verifying ValuableAction creation...");
 
-    // Check if a new action was created
     try {
-      // The action should be created with ID 1 (assuming first action in community)
-      const action = await valuableActionRegistry.getAction(1);
-      console.log("   ✅ ValuableAction created successfully!");
-      console.log("   Action ID: 1");
-      console.log("   Title: Complete Development Task");
-      console.log(
-        "   Membership Token Reward:",
-        action.membershipTokenReward.toString(),
+      const lastId = await valuableActionRegistry.lastId();
+      const action = await valuableActionRegistry.getValuableAction(lastId);
+      const isActive = await valuableActionRegistry.isValuableActionActive(
+        lastId,
       );
-      console.log(
-        "   Community Token Reward:",
-        action.communityTokenReward.toString(),
-      );
-      console.log(
-        "   Required Jurors:",
-        action.jurorsMin.toString(),
-        "of",
-        action.panelSize.toString(),
-      );
+      console.log("   ✅ ValuableAction proposed!");
+      console.log("   Action ID:", lastId.toString());
+      console.log("   Title:", actionParams.titleTemplate);
+      console.log("   Membership Reward:", action.membershipTokenReward);
+      console.log("   Community Reward:", action.communityTokenReward);
+      console.log("   Active:", isActive ? "YES" : "NO (activate via governance)");
+      if (!isActive) {
+        console.log(
+          "   ℹ️ Submit follow-up proposal calling activateFromGovernance(id, PROPOSAL_REF)",
+        );
+      }
     } catch (error) {
       console.log("   ⚠️ Could not verify action creation:", error);
     }
@@ -177,18 +206,18 @@ async function main() {
     console.log("\n🎉 PROPOSAL EXECUTION COMPLETE!");
     console.log("============================================================");
     console.log("✅ Governance proposal executed successfully");
-    console.log("✅ ValuableAction created and ready for work verification");
-    console.log("✅ Work verification workflow can now proceed");
+    console.log("✅ ValuableAction proposed for Engagements workflow");
+    console.log("✅ Activate via governance to allow engagement submissions");
     console.log("");
     console.log("🔄 Next Steps:");
     console.log(
-      "   1. Register as verifiers: npx hardhat run scripts/register-verifier.ts --network base_sepolia",
+      "   1. Ensure VerifierManager roster is configured for this community",
     );
     console.log(
-      "   2. Submit work claims: npx hardhat run scripts/submit-claim.ts --network base_sepolia",
+      "   2. Submit engagements: npx hardhat run scripts/submit-claim.ts --network base_sepolia",
     );
     console.log(
-      "   3. Verify claims: npx hardhat run scripts/verify-claim.ts --network base_sepolia",
+      "   3. Verify engagements: npx hardhat run scripts/verify-claim.ts --network base_sepolia",
     );
     console.log(
       "   4. Check rewards: npx hardhat run scripts/check-rewards.ts --network base_sepolia",

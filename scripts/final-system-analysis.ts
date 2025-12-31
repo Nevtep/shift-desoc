@@ -5,8 +5,7 @@ const COMMUNITY_ID = 1;
 // Base Sepolia deployed contract addresses
 const VALUABLE_ACTION_REGISTRY = "0x831Ef7C12aD1A564C32630e5D1A18A3b0c8829f2";
 const MEMBERSHIP_TOKEN = "0xFf60937906c537685Ad21a67a2A4E8Dbf7A0F9cb";
-const CLAIMS = "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35";
-const VERIFIER_POOL = "0x8D0962Ca5c55b2432819De25061a25Eb32DC1d3B";
+const ENGAGEMENTS = "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35";
 const WORKER_SBT = "0x8dA98a7ab4c487CFeD390c4C41c411213b1A6562";
 
 async function main() {
@@ -25,10 +24,9 @@ async function main() {
     "MembershipTokenERC20Votes",
     MEMBERSHIP_TOKEN,
   )) as any;
-  const claims = (await ethers.getContractAt("Claims", CLAIMS)) as any;
-  const verifierPool = (await ethers.getContractAt(
-    "VerifierPool",
-    VERIFIER_POOL,
+  const engagements = (await ethers.getContractAt(
+    "Engagements",
+    ENGAGEMENTS,
   )) as any;
   const workerSBT = (await ethers.getContractAt(
     "WorkerSBT",
@@ -75,23 +73,13 @@ async function main() {
       console.log("   WorkerSBT access error:", (e as any).message);
     }
 
-    // Check if we're registered as verifier
+    console.log("\n4. Engagements System:");
     try {
-      // Try different function names that might exist
-      console.log("   Checking verifier registration...");
-
-      // This will help us understand what functions are actually available
-      console.log("   VerifierPool contract accessible");
+      const lastEngagementId = await engagements.lastEngagementId();
+      console.log("   Engagements contract accessible");
+      console.log("   Last engagement ID:", lastEngagementId.toString());
     } catch (e) {
-      console.log("   VerifierPool access error:", (e as any).message);
-    }
-
-    console.log("\n4. Claims System:");
-    try {
-      // Just verify the Claims contract is accessible
-      console.log("   Claims contract accessible");
-    } catch (e) {
-      console.log("   Claims access error:", (e as any).message);
+      console.log("   Engagements access error:", (e as any).message);
     }
 
     console.log("\n📋 SYSTEM READINESS ASSESSMENT:");

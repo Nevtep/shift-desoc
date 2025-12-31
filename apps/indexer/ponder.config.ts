@@ -18,7 +18,7 @@ type DeploymentAddresses = {
   verifierElection?: string;
   verifierManager?: string;
   valuableActionRegistry?: string;
-  claims?: string;
+  engagements?: string;
   valuableActionSBT?: string;
   communityToken?: string;
   treasuryAdapter?: string;
@@ -101,10 +101,10 @@ export default createConfig({
       abi: loadAbi("CountingMultiChoice.json"),
       startBlock
     },
-    Claims: {
+    Engagements: {
       network,
-      address: deployment.addresses?.claims ?? "",
-      abi: loadAbi("Claims.json"),
+      address: deployment.addresses?.engagements ?? "",
+      abi: loadAbi("Engagements.json"),
       startBlock
     },
     VerifierManager: {
