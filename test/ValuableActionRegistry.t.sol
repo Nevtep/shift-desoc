@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {ValuableActionRegistry} from "contracts/modules/ValuableActionRegistry.sol";
+import {ValuableActionSBT} from "contracts/modules/ValuableActionSBT.sol";
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
@@ -37,12 +38,14 @@ contract CommunityRegistryMock {
 contract ValuableActionRegistryTest is Test {
     ValuableActionRegistry registry;
     CommunityRegistryMock communityRegistry;
+    ValuableActionSBT sbt;
     
     address governance = makeAddr("governance");
     address moderator = makeAddr("moderator");
     address founder1 = makeAddr("founder1");
     address founder2 = makeAddr("founder2");
     address user = makeAddr("user");
+    address requestHubModule = makeAddr("requestHub");
     
     uint256 constant COMMUNITY_ID = 1;
     bytes32 constant PROPOSAL_REF_1 = bytes32("proposal-1");
@@ -56,6 +59,7 @@ contract ValuableActionRegistryTest is Test {
     function setUp() public {
         communityRegistry = new CommunityRegistryMock();
         registry = new ValuableActionRegistry(governance, address(communityRegistry));
+        sbt = new ValuableActionSBT(governance, governance, governance);
 
         communityRegistry.setModuleAddresses(
             COMMUNITY_ID,
@@ -75,12 +79,21 @@ contract ValuableActionRegistryTest is Test {
                 paramController: address(0)
             })
         );
+
+        vm.startPrank(governance);
+        registry.setValuableActionSBT(address(sbt));
+        sbt.grantRole(sbt.MANAGER_ROLE(), address(registry));
+        registry.setIssuanceModule(requestHubModule, true);
+        vm.stopPrank();
         
         // Setup sample valuable action
         sampleAction = Types.ValuableAction({
             membershipTokenReward: 100,
             communityTokenReward: 50,
             investorSBTReward: 0,
+            category: Types.ActionCategory.ONE_SHOT_WORK_COMPLETION,
+            verifierPolicy: Types.VerifierPolicy.JURY,
+            metadataSchemaId: bytes32("schema:work:v1"),
             jurorsMin: 2,
             panelSize: 3,
             verifyWindow: 7 days,
@@ -424,6 +437,111 @@ contract ValuableActionRegistryTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
         registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
+    }
+
+    function testIssueEngagementModuleOnly() public {
+        vm.prank(user);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        registry.issueEngagement(COMMUNITY_ID, user, Types.EngagementSubtype.WORK, bytes32("actionType"), hex"01");
+    }
+
+    function testIssueEngagementMintsAndEmits() public {
+        bytes32 actionTypeId = bytes32("actionType");
+        bytes memory metadata = hex"1234";
+
+        vm.expectEmit(true, true, true, true);
+        emit ValuableActionRegistry.EngagementIssued(user, 1, Types.EngagementSubtype.WORK, actionTypeId);
+
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issueEngagement(COMMUNITY_ID, user, Types.EngagementSubtype.WORK, actionTypeId, metadata);
+
+        assertEq(tokenId, 1);
+        assertEq(sbt.ownerOf(tokenId), user);
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.WORK));
+    }
+
+    function testIssuePositionMintsAndEmits() public {
+        bytes32 positionTypeId = bytes32("roleType");
+        bytes memory metadata = hex"cafebabe";
+
+        vm.expectEmit(true, true, true, true);
+        emit ValuableActionRegistry.PositionIssued(user, 1, positionTypeId, 10);
+
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issuePosition(COMMUNITY_ID, user, positionTypeId, 10, metadata);
+
+        assertEq(tokenId, 1);
+        assertEq(sbt.ownerOf(tokenId), user);
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.POSITION));
+        assertEq(data.points, 10);
+    }
+
+    function testIssueInvestmentMintsAndEmits() public {
+        bytes32 cohortId = bytes32("cohort-1");
+        bytes memory metadata = hex"deadbeef";
+        vm.expectEmit(true, true, true, true);
+        emit ValuableActionRegistry.InvestmentIssued(user, 1, cohortId, 5);
+
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issueInvestment(COMMUNITY_ID, user, cohortId, 5, metadata);
+
+        assertEq(tokenId, 1);
+        assertEq(sbt.ownerOf(tokenId), user);
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.INVESTMENT));
+        assertEq(data.weight, 5);
+    }
+
+    function testClosePositionSetsEndedAt() public {
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issuePosition(COMMUNITY_ID, user, bytes32("pos"), 10, hex"00");
+
+        vm.startPrank(governance);
+        sbt.grantRole(sbt.MANAGER_ROLE(), governance);
+        vm.stopPrank();
+
+        vm.prank(governance);
+        sbt.closePositionToken(tokenId, 1);
+
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertTrue(data.endedAt > 0);
+        assertEq(data.closeOutcome, 1);
+    }
+
+    function testCommunityNarrowingBlocksOtherCommunities() public {
+        // Enable narrowing and allow module only for COMMUNITY_ID
+        vm.prank(governance);
+        registry.setCommunityNarrowing(COMMUNITY_ID, true);
+        vm.prank(governance);
+        registry.setCommunityIssuanceModule(COMMUNITY_ID, requestHubModule, true);
+
+        // Using different community should revert
+        uint256 otherCommunity = COMMUNITY_ID + 1;
+        vm.prank(governance);
+        registry.setCommunityNarrowing(otherCommunity, true);
+
+        vm.prank(requestHubModule);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, requestHubModule));
+        registry.issueEngagement(otherCommunity, user, Types.EngagementSubtype.WORK, bytes32("actionType"), hex"01");
+    }
+
+    function testCommunityNarrowingAllowsAuthorizedCommunity() public {
+        vm.prank(governance);
+        registry.setCommunityNarrowing(COMMUNITY_ID, true);
+        vm.prank(governance);
+        registry.setCommunityIssuanceModule(COMMUNITY_ID, requestHubModule, true);
+
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issuePosition(COMMUNITY_ID, user, bytes32("pos"), 1, hex"00");
+        assertEq(tokenId, 1);
+
+        assertEq(tokenId, 1);
+        assertEq(sbt.ownerOf(tokenId), user);
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.POSITION));
+        assertEq(data.points, 1);
     }
     
     function testUpdateGovernance() public {

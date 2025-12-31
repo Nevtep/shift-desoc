@@ -317,14 +317,13 @@ contract Engagements {
                 );
             }
             
-            // Mint SBT and award ParticipantPoints
+            // Mint typed engagement SBT
             if (valuableActionSBT != address(0)) {
                 uint256 participantPoints = valuableAction.membershipTokenReward > 0 
                     ? valuableAction.membershipTokenReward 
                     : 10; // Default 10 points
-                
-                // Generate basic metadata URI for the engagement
-                string memory metadataURI = string(abi.encodePacked(
+
+                bytes memory metadata = abi.encodePacked(
                     "{\"type\":\"engagement\",\"id\":", 
                     _uint2str(engagementId),
                     ",\"valuableAction\":", 
@@ -334,9 +333,15 @@ contract Engagements {
                     ",\"timestamp\":", 
                     _uint2str(block.timestamp),
                     "}"
-                ));
-                
-                IValuableActionSBT(valuableActionSBT).mintAndAwardPoints(engagement.participant, participantPoints, metadataURI);
+                );
+
+                IValuableActionSBT(valuableActionSBT).mintEngagement(
+                    engagement.participant,
+                    communityId,
+                    _mapCategoryToSubtype(valuableAction.category),
+                    bytes32(engagement.typeId),
+                    metadata
+                );
             }
             
             emit CooldownUpdated(engagement.participant, engagement.typeId, participantCooldowns[engagement.participant][engagement.typeId]);
@@ -571,6 +576,13 @@ contract Engagements {
     /// @return jurors Array of juror addresses
     function getEngagementJurors(uint256 engagementId) external view returns (address[] memory jurors) {
         return engagements[engagementId].jurors;
+    }
+
+    /// @dev Map action category to engagement subtype for SBT issuance
+    function _mapCategoryToSubtype(Types.ActionCategory category) internal pure returns (Types.EngagementSubtype) {
+        if (category == Types.ActionCategory.ROLE_CERTIFICATION) return Types.EngagementSubtype.ROLE;
+        if (category == Types.ActionCategory.CREDENTIAL_ISSUANCE) return Types.EngagementSubtype.CREDENTIAL;
+        return Types.EngagementSubtype.WORK;
     }
 
     /// @dev Convert uint to string for metadata generation

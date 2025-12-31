@@ -2,12 +2,41 @@
 pragma solidity ^0.8.24;
 
 library Types {
+    /// @notice Engagement subtypes for SBTs
+    enum EngagementSubtype {
+        WORK,
+        ROLE,
+        CREDENTIAL
+    }
+
+    /// @notice Action categories that map to issuance flows
+    enum ActionCategory {
+        ONE_SHOT_WORK_COMPLETION,
+        ROLE_CERTIFICATION,
+        CREDENTIAL_ISSUANCE,
+        POSITION_ASSIGNMENT,
+        INVESTMENT_CONTRIBUTION
+    }
+
+    /// @notice Verifier policy per valuable action
+    enum VerifierPolicy {
+        NONE,
+        FIXED,
+        ROLE_BASED,
+        JURY,
+        MULTISIG
+    }
     enum EngagementStatus { Pending, Approved, Rejected, Revoked }
     
     struct ValuableAction {
         uint32 membershipTokenReward;   // MembershipToken amount minted on completion
         uint32 communityTokenReward;    // CommunityToken amount earned for period salary calculation  
         uint32 investorSBTReward;      // InvestorSBT minting for investment-type actions
+
+        // Action classification
+        ActionCategory category;        // High-level action category
+        VerifierPolicy verifierPolicy;  // How approvals are authorized
+        bytes32 metadataSchemaId;       // Off-chain/on-chain metadata schema identifier
         
         // Verification Parameters
         uint32 jurorsMin;              // M (minimum approvals needed)

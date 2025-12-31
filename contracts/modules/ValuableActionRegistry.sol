@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Types} from "../libs/Types.sol";
 import {Errors} from "../libs/Errors.sol";
 import {CommunityRegistry} from "./CommunityRegistry.sol";
+import {IValuableActionSBT} from "../core/interfaces/IValuableActionSBT.sol";
 
 /// @title ValuableActionRegistry
 /// @notice Registry for configurable valuable actions with verification parameters
@@ -23,6 +24,15 @@ contract ValuableActionRegistry {
     
     /// @notice Emitted when moderator status is changed
     event ModeratorUpdated(address indexed account, bool isModerator, address indexed updater);
+
+    /// @notice Emitted when an engagement SBT is issued
+    event EngagementIssued(address indexed to, uint256 indexed tokenId, Types.EngagementSubtype subtype, bytes32 indexed actionTypeId);
+
+    /// @notice Emitted when a position SBT is issued
+    event PositionIssued(address indexed to, uint256 indexed tokenId, bytes32 indexed positionTypeId, uint32 points);
+
+    /// @notice Emitted when an investment SBT is issued
+    event InvestmentIssued(address indexed to, uint256 indexed tokenId, bytes32 indexed cohortId, uint32 weight);
 
     /// @notice Counter for valuable action IDs
     uint256 public lastId;
@@ -44,6 +54,21 @@ contract ValuableActionRegistry {
 
     /// @notice Track proposal refs already used to prevent reuse
     mapping(bytes32 => bool) public proposalRefUsed;
+
+    /// @notice Global allowlist for modules that can call issuance functions
+    mapping(address => bool) public isIssuanceModule;
+
+    /// @notice Optional per-community allowlist narrowing (communityId => module => allowed)
+    mapping(uint256 => mapping(address => bool)) public isCommunityIssuanceModule;
+
+    /// @notice Toggle to enforce community-level narrowing
+    mapping(uint256 => bool) public communityNarrowingEnabled;
+
+    /// @notice Pause switch for issuance
+    bool public issuancePaused;
+
+    /// @notice ValuableActionSBT contract used for minting typed SBTs
+    address public valuableActionSBT;
     
     /// @notice Address that can manage moderators (typically governance)
     address public governance;
@@ -67,6 +92,22 @@ contract ValuableActionRegistry {
         _;
     }
 
+    /// @notice Only modules allowed to issue SBTs
+    modifier onlyIssuanceModule(uint256 communityId) {
+        if (!isIssuanceModule[msg.sender]) revert Errors.NotAuthorized(msg.sender);
+        if (communityNarrowingEnabled[communityId] && !isCommunityIssuanceModule[communityId][msg.sender]) {
+            revert Errors.NotAuthorized(msg.sender);
+        }
+        _;
+    }
+
+    /// @notice Ensure issuance is not paused and SBT set
+    modifier issuanceEnabled() {
+        if (issuancePaused) revert Errors.InvalidInput("Issuance paused");
+        if (valuableActionSBT == address(0)) revert Errors.ZeroAddress();
+        _;
+    }
+
     /// @notice Initialize the registry
     /// @param _governance Address that can manage moderators
     /// @param _communityRegistry CommunityRegistry contract address
@@ -79,6 +120,43 @@ contract ValuableActionRegistry {
         // Make governance the initial moderator
         isModerator[_governance] = true;
         emit ModeratorUpdated(_governance, true, msg.sender);
+    }
+
+    /// @notice Set the ValuableActionSBT contract address
+    /// @param sbt Address of the SBT contract
+    function setValuableActionSBT(address sbt) external onlyGovernance {
+        if (sbt == address(0)) revert Errors.ZeroAddress();
+        valuableActionSBT = sbt;
+    }
+
+    /// @notice Set issuance pause state
+    /// @param paused Whether issuance should be paused
+    function setIssuancePaused(bool paused) external onlyGovernance {
+        issuancePaused = paused;
+    }
+
+    /// @notice Allow or disallow a module globally for issuance
+    /// @param module Module address
+    /// @param allowed Whether the module is allowed
+    function setIssuanceModule(address module, bool allowed) external onlyGovernance {
+        if (module == address(0)) revert Errors.ZeroAddress();
+        isIssuanceModule[module] = allowed;
+    }
+
+    /// @notice Toggle community-level narrowing for issuance modules
+    /// @param communityId Community identifier
+    /// @param enabled Whether narrowing is enabled
+    function setCommunityNarrowing(uint256 communityId, bool enabled) external onlyGovernance {
+        communityNarrowingEnabled[communityId] = enabled;
+    }
+
+    /// @notice Allow or disallow a module for a specific community (only applies if narrowing is enabled)
+    /// @param communityId Community identifier
+    /// @param module Module address
+    /// @param allowed Whether the module is allowed
+    function setCommunityIssuanceModule(uint256 communityId, address module, bool allowed) external onlyGovernance {
+        if (module == address(0)) revert Errors.ZeroAddress();
+        isCommunityIssuanceModule[communityId][module] = allowed;
     }
 
     /// @notice Set moderator status for an address
@@ -179,6 +257,68 @@ contract ValuableActionRegistry {
         
         isActive[id] = false;
         emit ValuableActionDeactivated(id, msg.sender);
+    }
+
+    /// @notice Issue an engagement SBT (WORK/ROLE/CREDENTIAL)
+    /// @param to Recipient address
+    /// @param subtype Engagement subtype
+    /// @param actionTypeId Identifier for the engagement action definition
+    /// @param metadata Arbitrary metadata payload (schema defined by metadataSchemaId)
+    function issueEngagement(
+        uint256 communityId,
+        address to,
+        Types.EngagementSubtype subtype,
+        bytes32 actionTypeId,
+        bytes calldata metadata
+    ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
+        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+        if (to == address(0)) revert Errors.ZeroAddress();
+        if (actionTypeId == bytes32(0)) revert Errors.InvalidInput("Missing actionTypeId");
+
+        tokenId = IValuableActionSBT(valuableActionSBT).mintEngagement(to, communityId, subtype, actionTypeId, metadata);
+        emit EngagementIssued(to, tokenId, subtype, actionTypeId);
+    }
+
+    /// @notice Issue a position SBT
+    /// @param to Recipient address
+    /// @param positionTypeId Role/position type identifier
+    /// @param points Points weight for revenue routing
+    /// @param metadata Arbitrary metadata payload (schema defined by manager)
+    function issuePosition(
+        uint256 communityId,
+        address to,
+        bytes32 positionTypeId,
+        uint32 points,
+        bytes calldata metadata
+    ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
+        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+        if (to == address(0)) revert Errors.ZeroAddress();
+        if (positionTypeId == bytes32(0)) revert Errors.InvalidInput("Missing positionTypeId");
+        if (points == 0) revert Errors.InvalidInput("Points cannot be zero");
+
+        tokenId = IValuableActionSBT(valuableActionSBT).mintPosition(to, communityId, positionTypeId, points, metadata);
+        emit PositionIssued(to, tokenId, positionTypeId, points);
+    }
+
+    /// @notice Issue an investment SBT
+    /// @param to Recipient address
+    /// @param cohortId Cohort identifier
+    /// @param weight Weight used for revenue share in cohort
+    /// @param metadata Arbitrary metadata payload (schema defined by manager)
+    function issueInvestment(
+        uint256 communityId,
+        address to,
+        bytes32 cohortId,
+        uint32 weight,
+        bytes calldata metadata
+    ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
+        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+        if (to == address(0)) revert Errors.ZeroAddress();
+        if (cohortId == bytes32(0)) revert Errors.InvalidInput("Missing cohortId");
+        if (weight == 0) revert Errors.InvalidInput("Weight cannot be zero");
+
+        tokenId = IValuableActionSBT(valuableActionSBT).mintInvestment(to, communityId, cohortId, weight, metadata);
+        emit InvestmentIssued(to, tokenId, cohortId, weight);
     }
 
     /// @notice Get valuable action configuration

@@ -41,10 +41,39 @@ contract CommunityRegistryMock {
 }
 
 contract MockValuableActionSBT {
-    event TokenMinted(address indexed to, uint256 points, string metadataURI);
+    event TokenMinted(address indexed to, Types.EngagementSubtype subtype, bytes32 refId, bytes metadata);
 
-    function mintAndAwardPoints(address to, uint256 points, string memory metadataURI) external {
-        emit TokenMinted(to, points, metadataURI);
+    function mintEngagement(
+        address to,
+        uint256,
+        Types.EngagementSubtype subtype,
+        bytes32 actionTypeId,
+        bytes calldata metadata
+    ) external returns (uint256 tokenId) {
+        tokenId = 1;
+        emit TokenMinted(to, subtype, actionTypeId, metadata);
+    }
+
+    function mintPosition(
+        address to,
+        uint256,
+        bytes32 positionTypeId,
+        uint32,
+        bytes calldata metadata
+    ) external returns (uint256 tokenId) {
+        tokenId = 1;
+        emit TokenMinted(to, Types.EngagementSubtype.ROLE, positionTypeId, metadata);
+    }
+
+    function mintInvestment(
+        address to,
+        uint256,
+        bytes32 cohortId,
+        uint32,
+        bytes calldata metadata
+    ) external returns (uint256 tokenId) {
+        tokenId = 1;
+        emit TokenMinted(to, Types.EngagementSubtype.WORK, cohortId, metadata);
     }
 }
 
@@ -177,6 +206,9 @@ contract EngagementsTest is Test {
             membershipTokenReward: 100,
             communityTokenReward: 50,
             investorSBTReward: 0,
+            category: Types.ActionCategory.ONE_SHOT_WORK_COMPLETION,
+            verifierPolicy: Types.VerifierPolicy.JURY,
+            metadataSchemaId: bytes32("schema:work:v1"),
             jurorsMin: 2,
             panelSize: 3,
             verifyWindow: 86400, // 1 day
@@ -202,6 +234,9 @@ contract EngagementsTest is Test {
             membershipTokenReward: 200,
             communityTokenReward: 100,
             investorSBTReward: 10,
+            category: Types.ActionCategory.ONE_SHOT_WORK_COMPLETION,
+            verifierPolicy: Types.VerifierPolicy.JURY,
+            metadataSchemaId: bytes32("schema:work:v1"),
             jurorsMin: 3,
             panelSize: 5,
             verifyWindow: 172800, // 2 days
