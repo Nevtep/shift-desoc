@@ -844,9 +844,11 @@ class ShiftDeSocDeployer {
         await this.sleep(500);
         console.log(`   ✅ Issuance module enabled: ${target.target}`);
       } catch (error) {
+        const message =
+          error instanceof Error ? error.message : JSON.stringify(error);
         console.warn(
           `   ⚠️ Issuance module requires governance for ${target?.target ?? "unknown"}:`,
-          error.message ?? error,
+          message,
         );
       }
     }

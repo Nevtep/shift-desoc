@@ -174,7 +174,7 @@ contract DraftsManagerTest is Test {
     
     /* ======== CONSTRUCTOR TESTS ======== */
     
-    function testConstructor() public {
+    function testConstructor() public view {
         assertEq(draftsManager.communityRegistry(), address(communityRegistry));
         assertEq(draftsManager.governor(), address(governor));
         assertEq(draftsManager.getDraftsCount(), 0);
@@ -506,7 +506,7 @@ contract DraftsManagerTest is Test {
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
         
-        (,,,,,, DraftsManager.DraftStatus status, uint64 createdAt, uint64 reviewStartedAt,,) = draftsManager.getDraft(draftId);
+        (,,,,,, DraftsManager.DraftStatus status, , uint64 reviewStartedAt,,) = draftsManager.getDraft(draftId);
         assertTrue(status == DraftsManager.DraftStatus.REVIEW);
         assertEq(reviewStartedAt, block.timestamp);
     }
@@ -628,6 +628,7 @@ contract DraftsManagerTest is Test {
         // Check review is no longer active
         (,, uint64 timestamp, bool isActive) = draftsManager.getReview(draftId, reviewer1);
         assertFalse(isActive);
+        assertGt(timestamp, 0);
         
         // Check counters updated
         (uint256 support,,,, uint256 total) = draftsManager.getReviewSummary(draftId);
@@ -877,7 +878,7 @@ contract DraftsManagerTest is Test {
         uint256 draft1 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
-        uint256 draft2 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 1, testActions, VERSION_CID);
+        draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 1, testActions, VERSION_CID);
         
         vm.prank(user2);
         uint256 draft3 = draftsManager.createDraft(COMMUNITY_ID + 1, REQUEST_ID, testActions, VERSION_CID);

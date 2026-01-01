@@ -75,6 +75,13 @@ contract Engagements {
     event AppealSubmitted(uint256 indexed appealId, uint256 indexed engagementId, address indexed appellant, string reason);
     event AppealResolved(uint256 indexed appealId, Types.EngagementStatus status);
     event CooldownUpdated(address indexed participant, uint256 indexed typeId, uint64 nextAllowed);
+    event FraudReportOutcome(
+        uint256 indexed engagementId,
+        uint256 indexed communityId,
+        address[] offenders,
+        bool success,
+        string evidenceCID
+    );
 
     /// @notice Access control modifiers
     modifier onlyGovernance() {
@@ -400,16 +407,20 @@ contract Engagements {
                 "-incorrect-votes-", _uint2str(uint256(finalStatus))
             ));
             
+            bool reportSucceeded = true;
+
             // Report to VerifierManager for governance review
             try IVerifierManager(verifierManager).reportFraud(
                 engagementId, communityId, offenders, evidenceCID
             ) {
-                // Fraud report successful - governance will handle from here
-            // solhint-disable-next-line no-empty-blocks  
+                reportSucceeded = true;
             } catch {
+                reportSucceeded = false;
                 // If fraud report fails, continue - this is not critical for engagement resolution
                 // The fraud can still be reported manually through governance
             }
+
+            emit FraudReportOutcome(engagementId, communityId, offenders, reportSucceeded, evidenceCID);
         }
     }
 

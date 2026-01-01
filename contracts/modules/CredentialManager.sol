@@ -152,9 +152,7 @@ contract CredentialManager {
 
         pendingApplicationId[courseId][msg.sender] = appId;
         emit CredentialApplied(appId, msg.sender, courseId, course.communityId);
-        if (evidence.length == 0) {
-            // Evidence is verified off-chain; empty payload is permitted for now
-        }
+        // Evidence can be verified off-chain; empty payload is permitted for now
     }
 
     function approveApplication(uint256 appId) external returns (uint256 tokenId) {

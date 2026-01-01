@@ -100,12 +100,12 @@ contract TreasuryAdapterTest is Test {
         adapter.setTokenAllowed(COMMUNITY_ID, address(token), false);
     }
 
-    function testMaxSpendPerTxUsesVaultBalance() public {
+    function testMaxSpendPerTxUsesVaultBalance() public view {
         uint256 maxSpend = adapter.maxSpendPerTx(COMMUNITY_ID, address(token));
         assertEq(maxSpend, 100 ether);
     }
 
-    function testValidateSpendHappyPath() public {
+    function testValidateSpendHappyPath() public view {
         (bool ok, bytes32 reason) = adapter.validateSpend(COMMUNITY_ID, address(token), destination, 50 ether);
         assertTrue(ok);
         assertEq(reason, adapter.REASON_OK());
@@ -137,7 +137,7 @@ contract TreasuryAdapterTest is Test {
         assertEq(reasonAmt, adapter.REASON_AMOUNT_EXCEEDS_CAP());
     }
 
-    function testBuildErc20TransferTxSuccess() public {
+    function testBuildErc20TransferTxSuccess() public view {
         (address target, uint256 value, bytes memory data) = adapter.buildERC20TransferTx(COMMUNITY_ID, address(token), destination, 50 ether);
         assertEq(target, address(token));
         assertEq(value, 0);
@@ -151,7 +151,7 @@ contract TreasuryAdapterTest is Test {
         adapter.buildERC20TransferTx(COMMUNITY_ID, address(token), destination, 10 ether);
     }
 
-    function testBuildRequestBountyTx() public {
+    function testBuildRequestBountyTx() public view {
         (address target, uint256 value, bytes memory data) = adapter.buildSetRequestBountyTx(COMMUNITY_ID, address(requestHub), 1, address(token), 20 ether);
         assertEq(target, address(requestHub));
         assertEq(value, 0);
@@ -165,7 +165,7 @@ contract TreasuryAdapterTest is Test {
         adapter.buildSetRequestBountyTx(COMMUNITY_ID, address(requestHub), 1, address(token), 20 ether);
     }
 
-    function testBuildVaultDepositTx() public {
+    function testBuildVaultDepositTx() public view {
         (address target, uint256 value, bytes memory data) = adapter.buildVaultDepositTx(COMMUNITY_ID, address(vaultAdapter), address(token), 50 ether, bytes("params"));
         assertEq(target, address(vaultAdapter));
         assertEq(value, 0);

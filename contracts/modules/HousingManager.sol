@@ -285,6 +285,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
         override
         returns (uint256 finalPrice)
     {
+        basePrice; // base price intentionally ignored (unit's basePrice used)
         Unit storage unit = units[productId];
         if (unit.unitId == 0) revert UnitNotFound(productId);
 
@@ -354,6 +355,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
      * @param outcome 1=PAID (settled), 2=REFUNDED (dispute)
      */
     function onOrderSettled(uint256 productId, uint256 resourceId, uint8 outcome) external override onlyMarketplace {
+        productId; // unused in current flow; reserved for future logic
         Reservation storage reservation = reservations[resourceId];
         if (reservation.reservationId == 0) return; // Graceful handling for non-existent
 
