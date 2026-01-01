@@ -36,6 +36,17 @@ _Construyendo las herramientas organizacionales que liberan la cooperación huma
 
 **Shift DeSoc es infraestructura de tecnología de gobernanza** que permite a las organizaciones transicionar desde la gestión jerárquica tradicional hacia la coordinación democrática y transparente. Proporcionamos las herramientas organizacionales fundamentales que los protocolos blockchain, DAOs y comunidades necesitan para operar eficazmente a escala.
 
+> **Guía rápida de conceptos actualizados (lectura clave):**
+> - **Engagements (compromisos verificados)**: cada envío de trabajo o certificación se procesa como un Engagement.
+> - **Tres familias de SBT (tokens soulbound, no transferibles)**:  
+>   - **Engagement SBT** (trabajo puntual, credenciales o roles ya completados).  
+>   - **Position SBT** (roles activos con participación garantizada en ingresos).  
+>   - **Investment SBT** (participación de capital emitida por cohortes con ROI objetivo).  
+> - **Position SBT**: rol activo; al cerrarse puede emitirse un *Role Engagement SBT* histórico.  
+> - **Investment Cohorts** (cohortes de inversión con ROI inmutable): grupos de inversionistas que reciben distribuciones mientras la cohorte está activa.  
+> - **RevenueRouter** (motor de ruteo económico): garantiza primero tesorería mínima y posiciones, y luego distribuye el resto a cohortes; define spillover si no hay cohortes activas.  
+> - **VPT (Verifier Power Token)**: poder de verificación asignado por elecciones; se usa para seleccionar jurados M‑de‑N en la verificación de Engagements.
+
 ### **Stack Tecnológico de Gobernanza Central:**
 
 - **Motor de Gobernanza Multi-Opción**: Más allá de la votación binaria para capturar preferencias organizacionales matizadas
@@ -122,15 +133,15 @@ La mayoría de las herramientas de votación te fuerzan a elegir entre dos opcio
 
 **El Problema con los Sistemas Actuales**: Tu trabajo desaparece cuando cambias de plataforma. No hay manera de demostrar tus contribuciones reales a nuevas comunidades o empleadores.
 
-**La Solución de Shift**: **Sistema de Verificación de Trabajo Descentralizado**
+**La Solución de Shift**: **Sistema de Verificación de Trabajo Descentralizado** basado en **Engagements (compromisos verificados)**.
 
 **Cómo Funciona**:
 
-1. **Envía Evidencia**: Sube pruebas de tu trabajo (código, fotos, documentos, testimonios)
-2. **Verificación por Pares**: Otros miembros comunitarios califican y verifican tu trabajo
-3. **Consenso Distribuido**: Múltiples verificadores deben estar de acuerdo antes de la aprobación
-4. **Registro Permanente**: Una vez verificado, tu trabajo queda registrado permanentemente en blockchain
-5. **Reputación Portátil**: Tu historial de contribuciones te acompaña a cualquier comunidad que use Shift
+1. **Envía Evidencia**: Sube pruebas de tu trabajo (código, fotos, documentos, testimonios).
+2. **Verificación por Pares**: Jurados elegidos con VPT revisan el Engagement.
+3. **Consenso M‑de‑N**: Se necesita mayoría configurada (p.ej. 3 de 5).
+4. **Registro Permanente**: Al aprobarse, se acuña el SBT correspondiente y se actualiza reputación.
+5. **Reputación Portátil**: Tu historial de contribuciones te acompaña a cualquier comunidad que use Shift.
 
 **Ejemplo Real**:
 
@@ -144,59 +155,48 @@ La mayoría de las herramientas de votación te fuerzan a elegir entre dos opcio
 
 **Más Allá de los Tokens Especulativos: Credenciales Que Representan Quién Eres Realmente**
 
-Los tokens tradicionales se pueden comprar y vender, creando economías especulativas que no reflejan contribución real. Los **Soulbound Tokens (SBTs)** son diferentes: están permanentemente vinculados a tu identidad y no pueden ser transferidos.
+Los tokens tradicionales se pueden comprar y vender, creando economías especulativas que no reflejan contribución real. Los **Soulbound Tokens (SBTs, tokens no transferibles)** son diferentes: están permanentemente vinculados a tu identidad.
 
-**¿Qué Son los SBTs?** Piénsalos como diplomas digitales permanentes:
+**Tres familias de SBT en Shift**:
 
-- **No se pueden vender**: Como un título universitario, representa tu logro personal
-- **No se pueden falsificar**: Verificados criptográficamente en blockchain
-- **Portátiles entre comunidades**: Tu reputación te acompaña a cualquier lugar
-- **Reflejan contribución real**: Cada SBT representa trabajo verificado que realmente hiciste
+- **Engagement SBT**: Para trabajo puntual aprobado, certificaciones y roles ya completados (históricos).  
+- **Position SBT**: Para roles activos y continuos; mientras estén vivos participan con un mínimo garantizado en la distribución económica. Al cerrarse, pueden dar lugar a un *Role Engagement SBT* histórico.  
+- **Investment SBT**: Para participación de capital; se emiten vía **cohortes de inversión** con ROI objetivo inmutable y peso de prioridad.
 
-**Dos Tipos de SBTs en Shift**:
-
-**ValuableActionSBTs**: Para contribuidores y trabajadores
-
-- Se otorgan cuando completas trabajo verificado
-- Acumulan "WorkerPoints" que reflejan tu historial de contribuciones
-- Te dan privilegios en la comunidad (poder de voto, acceso a oportunidades)
-- Funcionan como un "currículum blockchain" permanente
-
-**InvestorSBTs**: Para quienes aportan capital
-
-- Se otorgan cuando haces inversiones en comunidades
-- Incluyen términos de inversión y expectativas de retorno
-- Su influencia en la gobernanza decrece con el tiempo a medida que los trabajadores toman más control
-- Aseguran retornos justos sin permitir que el dinero compre democracia permanentemente
+Todos se verifican on-chain, no son transferibles y forman tu reputación portátil. El poder de voto (MembershipToken) se acuña al aprobar Engagements y se basa en mérito, no en compra.
 
 ### **Pilar 4: Economía Propiedad de la Comunidad**
 
 **El Problema Fundamental**: En las plataformas tradicionales, el valor que crean las comunidades fluye hacia accionistas externos. Los trabajadores construyen valor, pero los propietarios del capital se quedan con las ganancias.
 
-**La Solución de Shift**: **Distribución Económica Democrática Basada en Contribución**
+**La Solución de Shift**: **Distribución Económica Democrática Basada en Contribución**, gestionada por el **RevenueRouter (motor de ruteo económico)**.
 
 **Principios Centrales**:
 
-1. **Las decisiones las toman quienes hacen el trabajo** - La gobernanza está basada en contribución verificada
-2. **Los beneficios fluyen hacia quienes crean valor** - Los ingresos se distribuyen basándose en contribución real
-3. **Los inversores obtienen retornos justos sin comprar democracia** - El capital es recompensado pero no controla decisiones
-4. **La comunidad posee su propio destino económico** - Ninguna entidad externa puede extraer valor arbitrariamente
+1. **Las decisiones las toman quienes hacen el trabajo** - La gobernanza está basada en contribución verificada.
+2. **Los beneficios fluyen hacia quienes crean valor** - Los ingresos se distribuyen basándose en contribución real y roles activos.
+3. **Los inversores obtienen retornos justos sin comprar democracia** - El capital es recompensado vía cohortes, pero no controla decisiones.
+4. **La comunidad posee su propio destino económico** - Ninguna entidad externa puede extraer valor arbitrariamente.
 
-**Cómo Funciona en la Práctica**:
+**Cómo Funciona en la Práctica (flujo de ruteo)**:
 
-**CommunityToken - Tu Salario Basado en Mérito**:
+- **Paso 1 — Tesorería mínima garantizada**: Porcentaje definido por gobernanza para sostener operaciones.  
+- **Paso 2 — Positions (roles activos)**: Mínimo garantizado para titulares de Position SBT, proporcional a sus puntos.  
+- **Paso 3 — Cohortes de inversión activas**: El remanente se distribuye a Investment SBT según peso y ROI objetivo.  
+- **Spillover** (si no hay cohortes activas): La gobernanza decide si el excedente vuelve a Tesorería, Positions o se reparte entre ambos.
 
-- Cada comunidad tiene su propio token respaldado 1:1 por USDC (moneda estable)
-- Los miembros reclaman salarios periódicamente basándose en sus contribuciones verificadas
-- Los que han contribuido más obtienen una porción mayor de los ingresos comunitarios
-- Es dinero real que puedes usar para gastos o intercambiar por otras criptomonedas
+**CommunityToken - Pago basado en mérito y respaldo 1:1 USDC**:
 
-**Ejemplo de Distribución de Ingresos**:
-Una comunidad genera $10,000 en ingresos mensuales:
+- Cada comunidad tiene su propio token estable.  
+- Los pagos pueden ser automáticos para roles activos (Position SBT) y por bounties para Engagements puntuales.  
+- Se puede canjear 1:1 por USDC, manteniendo transparencia y respaldo.
 
-- **70% a Trabajadores** ($7,000): Distribuido basándose en WorkerPoints ganados
-- **20% a Tesorería** ($2,000): Para gastos comunitarios y crecimiento
-- **10% a Inversores** ($1,000): Retornos decrecientes con el tiempo
+**Ejemplo de Distribución de Ingresos** (configurable por gobernanza):
+Una comunidad genera $10,000 en un período:
+
+- **20% Tesorería mínima**: $2,000 para runway y operaciones.  
+- **40% Positions**: $4,000 proporcional a puntos de Position SBT activos.  
+- **40% Cohortes activas**: $4,000 distribuido por pesos y prioridades de cohortes; si no hay cohortes, este 40% se redirige según regla de spillover.  
 
 **MembershipToken - Tu Poder de Gobernanza**:
 
@@ -264,7 +264,7 @@ _Nuestra Innovación Democrática_: **VerifierPowerToken1155 (VPT) - Verificaci�
 
 Shift DeSoc no es solo una plataforma tecnológica - es infraestructura para una transición civilizacional desde **sociedades basadas en escasez artificial** hacia **abundancia colaborativa**.
 
-### La Visión del Proyecto Venus: De la Escasez a la Abundancia
+### De la Escasez a la Abundancia
 
 **El Problema Fundamental**: Los sistemas económicos actuales crean escasez artificial para mantener control. Las comunidades compiten por recursos que podrían ser abundantes si se coordinaran efectivamente.
 
@@ -273,6 +273,8 @@ Shift DeSoc no es solo una plataforma tecnológica - es infraestructura para una
 **Casos de Uso del Mundo Real**:
 
 - **Comunidades de Co-Housing**: Coordinan recursos compartidos (cocinas, herramientas, transporte) reduciendo costos individuales 60-80%
+- **Comunidades de Vecinos**: Gestión transparente de gastos comunes, mantenimiento y proyectos colectivos, facilitando la toma de decisiones y el ahorro.
+- **Plataformas de eLearning**: Creación y certificación colaborativa de cursos, tutores comunitarios y reconocimiento de aprendizajes verificados.
 - **Cooperativas de Alimentos**: Compras colectivas y producción local reduciendo costos de alimentación 40-50%
 - **Redes de Cuidado Mutuo**: Intercambio de servicios (cuidado infantil, cuidado de ancianos, educación) reduciendo dependencia de servicios comerciales
 - **Cooperativas Tecnológicas**: Desarrollo colaborativo de herramientas que benefician a toda la red, no solo a propietarios de capital
@@ -609,9 +611,9 @@ Shift implementa un pipeline completo: **Coordinación Comunitaria → Verificac
 
 **Sistema de Poder de Verificador (VPS)**: Gestión democrática de verificadores con VerifierElection (gobernanza timelock), VerifierPowerToken1155 (tokens de poder no transferibles) y VerifierManager (selección M-de-N)
 
-**Claims**: Flujo de trabajo de envío y verificación de trabajo con validación de evidencia y proceso de apelaciones
+**Engagements (compromisos verificados)**: Flujo de trabajo de envío y verificación de trabajo con validación de evidencia y proceso de apelaciones M‑de‑N.
 
-**ValuableActionSBT**: Tokens soulbound acuñados en reclamos aprobados con seguimiento EMA de WorkerPoints y revocación de gobernanza
+**ValuableActionSBT**: Tokens soulbound acuñados en compromisos aprobados con seguimiento EMA de WorkerPoints y revocación de gobernanza
 
 ### **Capa 4: Economía de Tokens y Distribución de Ingresos**
 
@@ -842,7 +844,7 @@ ROI Total para Inversores: $375,000 ($75,000 ganancia)
 **Entregables**:
 
 - Smart contracts centrales desplegados en Base Sepolia (testnet)
-- Sistema básico de Claims + ValuableActionRegistry + Sistema VPS (VerifierElection + VerifierPowerToken1155 + VerifierManager)
+- Sistema básico de Engagements (compromisos verificados) + ValuableActionRegistry + Sistema VPS (VerifierElection + VerifierPowerToken1155 + VerifierManager)
 - Interfaz web para gestión comunitaria y verificación de trabajo
 - Documentación técnica completa
 
@@ -1042,7 +1044,7 @@ Los ganadores reciben tokens VPT1155 y pueden:
 # Reportar verificadores problemáticos
 pnpm vpt:manage report-fraud \
   --verifier 0x123...abc \
-  --claim-id 42 \
+  --engagement-id 42 \
   --evidence "ipfs://Qm..." \
   --network base_sepolia
 
@@ -1406,7 +1408,7 @@ El futuro pertenece a las comunidades que pueden organizarse democráticamente, 
 
 ### **Recursos y Enlaces**
 
-- **Sitio Web**: [shift-desoc.org](https://shift-desoc.org)
+- **Sitio Web**: [shift-desoc.org](https://landing.shift-desoc.org)
 - **Documentación Técnica**: [docs.shift-desoc.org](https://docs.shift-desoc.org)
 - **Código Fuente**: [github.com/shift-org/shift-desoc](https://github.com/shift-org/shift-desoc) (Licencia MIT)
 - **Demo en Vivo**: [demo.shift-desoc.org](https://demo.shift-desoc.org) (Red de prueba)
