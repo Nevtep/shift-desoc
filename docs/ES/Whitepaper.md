@@ -12,7 +12,7 @@ _Construyendo las herramientas organizacionales que liberan la cooperación huma
 
 **La Sociedad Descentralizada (DeSoc)** es la transición desde organizaciones jerárquicas y extractivas hacia comunidades colaborativas y generativas donde las personas tienen voz real, sus contribuciones son reconocidas justamente, y el valor que crean juntas fluye de vuelta hacia ellas.
 
-**Valores Centrales de DeSoc:**
+**Valores Centrales de Shift DeSoc:**
 
 - **Auto-Organización Democrática**: Las comunidades diseñan sus propias reglas y sistemas económicos
 - **Reconocimiento de Contribuciones**: El trabajo valioso crea reputación duradera y portátil que no puede ser borrada o falsificada
@@ -187,7 +187,7 @@ Los tokens tradicionales se pueden comprar y vender, creando economías especula
 **CommunityToken - Tu Salario Basado en Mérito**:
 
 - Cada comunidad tiene su propio token respaldado 1:1 por USDC (moneda estable)
-- Los miembros reclaman salarios periódicamente basándose en sus contribuciones verificadas
+- Los miembros cobran salarios periódicamente basándose en sus contribuciones verificadas
 - Los que han contribuido más obtienen una porción mayor de los ingresos comunitarios
 - Es dinero real que puedes usar para gastos o intercambiar por otras criptomonedas
 
@@ -229,7 +229,7 @@ _Nuestra Innovación Democrática_: **VerifierPowerToken1155 (VPT) - Verificaci�
    - Los resultados son públicamente auditables
 
 4. **Servicio de Verificadores**: Los verificadores elegidos reciben tokens VPT1155 que otorgan:
-   - Autoridad para verificar reclamos de trabajo comunitario
+   - Autoridad para verificar compromisos de trabajo comunitario
    - Responsabilidad de mantener altos estándares de precisión
    - Rendición de cuentas a la comunidad que los eligió
 
@@ -260,11 +260,27 @@ _Nuestra Innovación Democrática_: **VerifierPowerToken1155 (VPT) - Verificaci�
 
 ## El Sueño: Construyendo Redes Comunitarias Basadas en Recursos
 
+> _"Sé el cambio que quieres ver en el mundo."_ — Mahatma Gandhi
+
+> _"Otro mundo no solo es posible, está en camino. En un día tranquilo, puedo escuchar su respiración."_ — Arundhati Roy
+
+> _"Unidos en la diversidad, construimos el futuro que merecemos."_ — Movimiento de Economía Solidaria Latinoamericana
+
 ### Un Nuevo Modelo para la Organización Humana
+
+**¿Qué pasaría si las comunidades pudieran coordinarse con la eficiencia de las corporaciones multinacionales, pero manteniendo los valores de las cooperativas agrícolas, las asambleas barriales, y las redes de trueque que han sostenido a nuestros pueblos durante generaciones?**
 
 Shift DeSoc no es solo una plataforma tecnológica - es infraestructura para una transición civilizacional desde **sociedades basadas en escasez artificial** hacia **abundancia colaborativa**.
 
-### La Visión del Proyecto Venus: De la Escasez a la Abundancia
+**Esto no es utopía — es ingeniería social.** Desde las cooperativas de Mondragón en España hasta las economías solidarias de Argentina, Brasil y México, sabemos que las comunidades organizadas democráticamente pueden prosperar. Lo que faltaba era la tecnología para coordinar a escala sin perder la confianza y la transparencia. Blockchain nos da esas herramientas.
+
+**Principios Fundamentales:**
+- **Propiedad Democrática**: Quienes trabajan deciden, no quienes solo invierten
+- **Transparencia Total**: Cada decisión, cada peso, cada contribución es verificable
+- **Solidaridad como Sistema**: La tecnología refuerza los lazos comunitarios en lugar de atomizarnos
+- **Abundancia Compartida**: Los recursos fluyen hacia donde se necesitan, no hacia donde se acumulan
+
+### De la Escasez a la Abundancia
 
 **El Problema Fundamental**: Los sistemas económicos actuales crean escasez artificial para mantener control. Las comunidades compiten por recursos que podrían ser abundantes si se coordinaran efectivamente.
 
@@ -273,9 +289,12 @@ Shift DeSoc no es solo una plataforma tecnológica - es infraestructura para una
 **Casos de Uso del Mundo Real**:
 
 - **Comunidades de Co-Housing**: Coordinan recursos compartidos (cocinas, herramientas, transporte) reduciendo costos individuales 60-80%
+- **Comunidades de Vecinos**: Gestión transparente de gastos comunes, mantenimiento y proyectos colectivos, facilitando la toma de decisiones y el ahorro.
+- **Plataformas de eLearning**: Creación y certificación colaborativa de cursos, tutores comunitarios y reconocimiento de aprendizajes verificados.
 - **Cooperativas de Alimentos**: Compras colectivas y producción local reduciendo costos de alimentación 40-50%
 - **Redes de Cuidado Mutuo**: Intercambio de servicios (cuidado infantil, cuidado de ancianos, educación) reduciendo dependencia de servicios comerciales
 - **Cooperativas Tecnológicas**: Desarrollo colaborativo de herramientas que benefician a toda la red, no solo a propietarios de capital
+- **Economías Solidarias**: Redes de intercambio justo que priorizan el bienestar comunitario sobre la maximización de ganancias, conectando productores locales directamente con consumidores
 
 ### El Ecosistema Comunitario Completo
 
@@ -491,7 +510,7 @@ El problema fundamental con las organizaciones tradicionales y la mayoría de la
 
 **El Sistema de Salario Más Justo Jamás Creado**:
 
-En lugar de salarios por hora que no reflejan valor real, o equity que favorece a los primeros en llegar, Shift crea **reclamaciones de salario periódicas basadas en contribución verificada**.
+En lugar de salarios por hora que no reflejan valor real, o equity que favorece a los primeros en llegar, Shift crea **cobro de salario periódico basado en contribución verificada**.
 
 **Cómo Funciona el Sistema de Salario Revolucionario**:
 
@@ -499,7 +518,7 @@ En lugar de salarios por hora que no reflejan valor real, o equity que favorece 
 
 1. **La comunidad genera ingresos** (ventas, donaciones, servicios, etc.)
 2. **Se calcula el "pool de salarios"** (ej. 70% de ingresos van a trabajadores)
-3. **Los miembros reclaman su porción** basándose en sus WorkerPoints acumulados
+3. **Los miembros cobran su porción** basándose en sus WorkerPoints acumulados
 4. **El token se acuña instantáneamente** respaldado 1:1 por USDC real
 5. **Puedes usar inmediatamente** para gastos o intercambio
 
@@ -508,7 +527,7 @@ Tu comunidad generó $20,000 este mes:
 
 - **Total para trabajadores**: $14,000 (70%)
 - **Tus WorkerPoints**: 250 de 1,000 totales (25%)
-- **Tu reclamo de salario**: $3,500 en CommunityTokens
+- **Tu cobro de salario**: $3,500 en CommunityTokens
 - **Valor real**: $3,500 USDC que puedes gastar inmediatamente
 
 **Por Qué Esto Es Revolucionario**:
@@ -516,7 +535,7 @@ Tu comunidad generó $20,000 este mes:
 - **Meritocrático**: Tu salario refleja tu contribución real verificada
 - **Transparente**: Todos pueden ver cómo se calculan los salarios
 - **Justo**: Los que crean más valor obtienen más recompensas
-- **Flexible**: Puedes contribuir a múltiples comunidades y reclamar de cada una
+- **Flexible**: Puedes contribuir a múltiples comunidades y cobrar de cada una
 - **Real**: No es "tokenomics" especulativa - es dinero real por trabajo real
 
 ### **ValuableAction Registry: El Corazón del Sistema de Valor**
@@ -609,9 +628,9 @@ Shift implementa un pipeline completo: **Coordinación Comunitaria → Verificac
 
 **Sistema de Poder de Verificador (VPS)**: Gestión democrática de verificadores con VerifierElection (gobernanza timelock), VerifierPowerToken1155 (tokens de poder no transferibles) y VerifierManager (selección M-de-N)
 
-**Claims**: Flujo de trabajo de envío y verificación de trabajo con validación de evidencia y proceso de apelaciones
+**Engagements (Compromisos Verificados)**: Flujo de trabajo de envío y verificación con validación de evidencia y proceso de apelaciones distribuido.
 
-**ValuableActionSBT**: Tokens soulbound acuñados en reclamos aprobados con seguimiento EMA de WorkerPoints y revocación de gobernanza
+**ValuableActionSBT**: Tokens soulbound acuñados en compromisos aprobados con seguimiento EMA de WorkerPoints y revocación de gobernanza
 
 ### **Capa 4: Economía de Tokens y Distribución de Ingresos**
 
@@ -842,7 +861,7 @@ ROI Total para Inversores: $375,000 ($75,000 ganancia)
 **Entregables**:
 
 - Smart contracts centrales desplegados en Base Sepolia (testnet)
-- Sistema básico de Claims + ValuableActionRegistry + Sistema VPS (VerifierElection + VerifierPowerToken1155 + VerifierManager)
+- Sistema básico de Engagements (compromisos verificados) + ValuableActionRegistry + Sistema VPS (VerifierElection + VerifierPowerToken1155 + VerifierManager)
 - Interfaz web para gestión comunitaria y verificación de trabajo
 - Documentación técnica completa
 
@@ -877,7 +896,7 @@ ROI Total para Inversores: $375,000 ($75,000 ganancia)
 
 - CommunityToken con respaldo USDC 1:1
 - RevenueRouter con distribución basada en cohortes y ROI objetivo garantizado
-- Sistema de reclamo de salarios basado en WorkerPoints
+- Sistema de cobro de salarios basado en WorkerPoints
 - Marketplace básico para servicios inter-comunitarios
 
 **Métricas de Éxito**:
@@ -1014,9 +1033,9 @@ pnpm vpt:manage create-election \
 **Paso 2: Período de Candidaturas (1 semana típicamente)**
 Los miembros de la comunidad pueden aplicar proporcionando:
 
-- Su plataforma de verificación: "Verificaré reclamos de manera justa y transparente"
+- Su plataforma de verificación: "Verificaré compromisos de manera justa y transparente"
 - Calificaciones relevantes: Experiencia técnica, comprensión de valores comunitarios
-- Compromiso de tiempo: Disponibilidad para revisar reclamos oportunamente
+- Compromiso de tiempo: Disponibilidad para revisar compromisos oportunamente
 
 **Paso 3: Votación Comunitaria**
 
@@ -1042,7 +1061,7 @@ Los ganadores reciben tokens VPT1155 y pueden:
 # Reportar verificadores problemáticos
 pnpm vpt:manage report-fraud \
   --verifier 0x123...abc \
-  --claim-id 42 \
+  --engagement-id 42 \
   --evidence "ipfs://Qm..." \
   --network base_sepolia
 
@@ -1406,10 +1425,10 @@ El futuro pertenece a las comunidades que pueden organizarse democráticamente, 
 
 ### **Recursos y Enlaces**
 
-- **Sitio Web**: [shift-desoc.org](https://shift-desoc.org)
-- **Documentación Técnica**: [docs.shift-desoc.org](https://docs.shift-desoc.org)
+- **Sitio Web**: [shiftdesoc.io](https://landing.shiftdesoc.io)
+- **Documentación Técnica**: [docs.shiftdesoc.org](https://docs.shiftdesoc.io)
 - **Código Fuente**: [github.com/shift-org/shift-desoc](https://github.com/shift-org/shift-desoc) (Licencia MIT)
-- **Demo en Vivo**: [demo.shift-desoc.org](https://demo.shift-desoc.org) (Red de prueba)
+- **Demo en Vivo**: [demo.shiftdesoc.org](https://demo.shiftdesoc.io) (Red de prueba)
 
 ### **Comunidad y Comunicación**
 
@@ -1420,11 +1439,11 @@ El futuro pertenece a las comunidades que pueden organizarse democráticamente, 
 
 ### **Contáctanos**
 
-**Para Comunidades Interesadas**: hello@shift-desoc.org
-**Para Inversores**: investors@shift-desoc.org  
-**Para Desarrolladores**: developers@shift-desoc.org
-**Para Partnerships**: partnerships@shift-desoc.org
-**Para Medios**: press@shift-desoc.org
+**Para Comunidades Interesadas**: hello@shiftdesoc.io
+**Para Inversores**: investors@shiftdesoc.io  
+**Para Desarrolladores**: developers@shiftdesoc.io
+**Para Partnerships**: partnerships@shiftdesoc.io
+**Para Medios**: press@shiftdesoc.io
 
 ---
 
