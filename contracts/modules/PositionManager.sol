@@ -5,6 +5,10 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {Errors} from "../libs/Errors.sol";
 import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
 import {IValuableActionSBT} from "../core/interfaces/IValuableActionSBT.sol";
+interface IRevenueRouter {
+    function registerPosition(uint256 tokenId) external;
+    function unregisterPosition(uint256 tokenId) external;
+}
 
 /// @title PositionManager
 /// @notice Manages position definitions, applications, assignments, and closures with ROLE minting on SUCCESS
@@ -22,6 +26,7 @@ contract PositionManager {
         uint64 endedAt,
         uint256 roleTokenId
     );
+    event RevenueRouterUpdated(address indexed router);
 
     /*//////////////////////////////////////////////////////////////
                                    STRUCTS
@@ -59,6 +64,7 @@ contract PositionManager {
 
     ValuableActionRegistry public immutable valuableActionRegistry;
     IValuableActionSBT public immutable valuableActionSBT;
+    IRevenueRouter public revenueRouter;
 
     mapping(bytes32 => PositionType) public positionTypes;
     mapping(uint256 => PositionApplication) public applications;
@@ -91,6 +97,15 @@ contract PositionManager {
 
         // Governance starts as moderator for convenience
         isModerator[_governance] = true;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                            WIRING CONTROLS
+    //////////////////////////////////////////////////////////////*/
+    function setRevenueRouter(address router) external onlyGovernance {
+        if (router == address(0)) revert Errors.ZeroAddress();
+        revenueRouter = IRevenueRouter(router);
+        emit RevenueRouterUpdated(router);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -170,6 +185,9 @@ contract PositionManager {
             metadata
         );
 
+        if (address(revenueRouter) == address(0)) revert Errors.InvalidInput("RevenueRouter not set");
+        revenueRouter.registerPosition(positionTokenId);
+
         application.status = STATUS_APPROVED;
         application.positionTokenId = positionTokenId;
 
@@ -192,6 +210,9 @@ contract PositionManager {
         uint64 endedAt = uint64(block.timestamp);
 
         valuableActionRegistry.closePositionToken(data.communityId, positionTokenId, uint8(outcome));
+
+        if (address(revenueRouter) == address(0)) revert Errors.InvalidInput("RevenueRouter not set");
+        revenueRouter.unregisterPosition(positionTokenId);
 
         if (outcome == CloseOutcome.SUCCESS) {
             roleTokenId = valuableActionRegistry.issueRoleFromPosition(

@@ -226,10 +226,9 @@ contract CommunityRegistry is AccessControl {
         // Set default eligibility rules (no restrictions by default)
         paramController.setEligibilityParams(communityId, 0, 0, 1e18);
         
-        // Set default revenue policy (25% min workers, 25% treasury, 50% investors, spillover to treasury)
-
-        // Using basis points: 2500 = 25%, 2500 = 25%, 5000 = 50%
-        paramController.setRevenuePolicy(communityId, 2500, 2500, 5000, 1);
+        // Set default revenue policy (25% treasury minimum, 25% positions minimum, spillover to treasury)
+        // Using basis points: 2500 = 25%
+        paramController.setRevenuePolicy(communityId, 2500, 2500, 1, 0);
         
         // Set default backing assets (empty by default)
         address[] memory emptyAssets = new address[](0);
@@ -523,22 +522,22 @@ contract CommunityRegistry is AccessControl {
     
     /// @notice Get revenue policy parameters for a community
     /// @param communityId Community ID
-    /// @return minWorkersBps Minimum workers share in basis points
-    /// @return treasuryBps Treasury base share in basis points
-    /// @return investorsBps Investors pool share in basis points
-    /// @return spilloverTarget 0 = spillover to workers, 1 = spillover to treasury
+    /// @return minTreasuryBps Minimum treasury share in basis points
+    /// @return minPositionsBps Minimum positions share in basis points
+    /// @return spilloverTarget 0 = spillover to positions, 1 = spillover to treasury, 2 = split
+    /// @return spilloverSplitBpsToTreasury Treasury split when spilloverTarget = split (bps)
     /// @return feeOnWithdraw Withdrawal fee in basis points
     /// @return backingAssets Array of backing asset addresses
     function getEconomicParameters(uint256 communityId) external view returns (
-        uint256 minWorkersBps,
-        uint256 treasuryBps,
-        uint256 investorsBps,
+        uint256 minTreasuryBps,
+        uint256 minPositionsBps,
         uint8 spilloverTarget,
+        uint256 spilloverSplitBpsToTreasury,
         uint256 feeOnWithdraw,
         address[] memory backingAssets
     ) {
         _requireValidCommunity(communityId);
-        (minWorkersBps, treasuryBps, investorsBps, spilloverTarget) = 
+        (minTreasuryBps, minPositionsBps, spilloverTarget, spilloverSplitBpsToTreasury) = 
             paramController.getRevenuePolicy(communityId);
         feeOnWithdraw = paramController.getUint256(communityId, paramController.FEE_ON_WITHDRAW());
         backingAssets = paramController.getAddressArray(communityId, paramController.BACKING_ASSETS());

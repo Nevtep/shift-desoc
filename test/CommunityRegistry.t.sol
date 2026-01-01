@@ -521,19 +521,18 @@ contract CommunityRegistryTest is Test {
         
         // Set parameters first via ParamController
         vm.startPrank(admin);
-        paramController.setRevenuePolicy(communityId, 7000, 2000, 1000, 0); // 70%, 20%, 10% in basis points
+        paramController.setRevenuePolicy(communityId, 7000, 2000, 1, 0); // 70% treasury, 20% positions, spillover to treasury
         
         address[] memory assets = new address[](0);
         paramController.setAddressArray(communityId, paramController.BACKING_ASSETS(), assets);
         vm.stopPrank();
         
-        (uint256 minWorkersBps, uint256 treasuryBps, uint256 investorsBps, 
-         uint8 spilloverTarget, uint256 feeOnWithdraw, address[] memory backingAssets) = registry.getEconomicParameters(communityId);
+        (uint256 minTreasuryBps, uint256 minPositionsBps, uint8 spilloverTarget, uint256 splitBps, uint256 feeOnWithdraw, address[] memory backingAssets) = registry.getEconomicParameters(communityId);
         
-        assertEq(minWorkersBps, 7000); // 70% min workers
-        assertEq(treasuryBps, 2000); // 20% treasury
-        assertEq(investorsBps, 1000); // 10% investors
-        assertEq(spilloverTarget, 0); // spillover to workers
+        assertEq(minTreasuryBps, 7000); // 70% min treasury
+        assertEq(minPositionsBps, 2000); // 20% min positions
+        assertEq(spilloverTarget, 1); // spillover to treasury
+        assertEq(splitBps, 0);
         assertEq(feeOnWithdraw, 0);
         assertEq(backingAssets.length, 0);
     }

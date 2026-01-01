@@ -36,10 +36,10 @@ contract ParamController {
     bytes32 public constant PROPOSAL_THRESHOLD = keccak256("PROPOSAL_THRESHOLD");
     
     /// @notice Parameter keys for economic system
-    bytes32 public constant REVENUE_SPLIT_TREASURY = keccak256("REVENUE_SPLIT_TREASURY");
-    bytes32 public constant REVENUE_SPLIT_INVESTORS = keccak256("REVENUE_SPLIT_INVESTORS");
-    bytes32 public constant MIN_WORKERS_BPS = keccak256("MIN_WORKERS_BPS");
+    bytes32 public constant MIN_TREASURY_BPS = keccak256("MIN_TREASURY_BPS");
+    bytes32 public constant MIN_POSITIONS_BPS = keccak256("MIN_POSITIONS_BPS");
     bytes32 public constant SPILLOVER_TARGET = keccak256("SPILLOVER_TARGET");
+    bytes32 public constant SPILLOVER_SPLIT_BPS_TREASURY = keccak256("SPILLOVER_SPLIT_BPS_TREASURY");
     bytes32 public constant FEE_ON_WITHDRAW = keccak256("FEE_ON_WITHDRAW");
     bytes32 public constant BACKING_ASSETS = keccak256("BACKING_ASSETS");
     
@@ -286,53 +286,56 @@ contract ParamController {
     
 
     
-    /// @notice Set revenue policy parameters for cohort-based distribution
+    /// @notice Set revenue policy parameters for distribution
     /// @param communityId Community identifier
-    /// @param minWorkersBps Minimum workers share in basis points (hard floor)
-    /// @param treasuryBps Treasury base share in basis points
-    /// @param investorsBps Investors pool share in basis points
-    /// @param spilloverTarget 0 = spillover to workers, 1 = spillover to treasury
+    /// @param minTreasuryBps Minimum share for treasury (bps)
+    /// @param minPositionsBps Minimum share for positions (bps)
+    /// @param spilloverTarget 0 = positions, 1 = treasury, 2 = split
+    /// @param spilloverSplitBpsToTreasury Treasury share when target = split (bps)
     function setRevenuePolicy(
         uint256 communityId,
-        uint256 minWorkersBps,
-        uint256 treasuryBps,
-        uint256 investorsBps,
-        uint8 spilloverTarget
+        uint16 minTreasuryBps,
+        uint16 minPositionsBps,
+        uint8 spilloverTarget,
+        uint16 spilloverSplitBpsToTreasury
     ) external onlyGovernance {
-        if (minWorkersBps + treasuryBps + investorsBps != 10000) {
-            revert Errors.InvalidInput("Revenue policy must sum to 100%");
+        if (minTreasuryBps + minPositionsBps > 10000) {
+            revert Errors.InvalidInput("Guarantees exceed 100%");
         }
-        if (spilloverTarget > 1) {
-            revert Errors.InvalidInput("Spillover target must be 0 (workers) or 1 (treasury)");
+        if (spilloverTarget > 2) {
+            revert Errors.InvalidInput("Invalid spillover target");
         }
-        
-        uintParams[communityId][MIN_WORKERS_BPS] = minWorkersBps;
-        uintParams[communityId][REVENUE_SPLIT_TREASURY] = treasuryBps;
-        uintParams[communityId][REVENUE_SPLIT_INVESTORS] = investorsBps;
+        if (spilloverTarget == 2 && spilloverSplitBpsToTreasury > 10000) {
+            revert Errors.InvalidInput("Split bps > 100%");
+        }
+
+        uintParams[communityId][MIN_TREASURY_BPS] = minTreasuryBps;
+        uintParams[communityId][MIN_POSITIONS_BPS] = minPositionsBps;
         uintParams[communityId][SPILLOVER_TARGET] = spilloverTarget;
-        
-        emit UintParamSet(communityId, MIN_WORKERS_BPS, minWorkersBps);
-        emit UintParamSet(communityId, REVENUE_SPLIT_TREASURY, treasuryBps);
-        emit UintParamSet(communityId, REVENUE_SPLIT_INVESTORS, investorsBps);
+        uintParams[communityId][SPILLOVER_SPLIT_BPS_TREASURY] = spilloverSplitBpsToTreasury;
+
+        emit UintParamSet(communityId, MIN_TREASURY_BPS, minTreasuryBps);
+        emit UintParamSet(communityId, MIN_POSITIONS_BPS, minPositionsBps);
         emit UintParamSet(communityId, SPILLOVER_TARGET, spilloverTarget);
+        emit UintParamSet(communityId, SPILLOVER_SPLIT_BPS_TREASURY, spilloverSplitBpsToTreasury);
     }
-    
-    /// @notice Get revenue policy parameters for cohort-based distribution
+
+    /// @notice Get revenue policy parameters
     /// @param communityId Community identifier
-    /// @return minWorkersBps Minimum workers share in basis points
-    /// @return treasuryBps Treasury base share in basis points
-    /// @return investorsBps Investors pool share in basis points
-    /// @return spilloverTarget 0 = spillover to workers, 1 = spillover to treasury
+    /// @return minTreasuryBps Minimum treasury share (bps)
+    /// @return minPositionsBps Minimum positions share (bps)
+    /// @return spilloverTarget Spillover target (0=positions,1=treasury,2=split)
+    /// @return spilloverSplitBpsToTreasury Treasury share when split
     function getRevenuePolicy(uint256 communityId) external view returns (
-        uint256 minWorkersBps,
-        uint256 treasuryBps,
-        uint256 investorsBps,
-        uint8 spilloverTarget
+        uint16 minTreasuryBps,
+        uint16 minPositionsBps,
+        uint8 spilloverTarget,
+        uint16 spilloverSplitBpsToTreasury
     ) {
-        minWorkersBps = uintParams[communityId][MIN_WORKERS_BPS];
-        treasuryBps = uintParams[communityId][REVENUE_SPLIT_TREASURY];
-        investorsBps = uintParams[communityId][REVENUE_SPLIT_INVESTORS];
+        minTreasuryBps = uint16(uintParams[communityId][MIN_TREASURY_BPS]);
+        minPositionsBps = uint16(uintParams[communityId][MIN_POSITIONS_BPS]);
         spilloverTarget = uint8(uintParams[communityId][SPILLOVER_TARGET]);
+        spilloverSplitBpsToTreasury = uint16(uintParams[communityId][SPILLOVER_SPLIT_BPS_TREASURY]);
     }
     
     /// @notice Set cohort system parameters

@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {PositionManager} from "contracts/modules/PositionManager.sol";
 import {ValuableActionRegistry} from "contracts/modules/ValuableActionRegistry.sol";
 import {ValuableActionSBT} from "contracts/modules/ValuableActionSBT.sol";
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {PositionManager} from "contracts/modules/PositionManager.sol";
 
 contract CommunityRegistryMock {
     struct ModuleAddresses {
@@ -36,11 +36,25 @@ contract CommunityRegistryMock {
     }
 }
 
+contract RevenueRouterMock {
+    uint256 public lastRegistered;
+    uint256 public lastUnregistered;
+
+    function registerPosition(uint256 tokenId) external {
+        lastRegistered = tokenId;
+    }
+
+    function unregisterPosition(uint256 tokenId) external {
+        lastUnregistered = tokenId;
+    }
+}
+
 contract PositionManagerTest is Test {
     ValuableActionRegistry registry;
     ValuableActionSBT sbt;
     PositionManager manager;
     CommunityRegistryMock communityRegistry;
+    RevenueRouterMock router;
 
     address governance = makeAddr("governance");
     address moderator = makeAddr("moderator");
@@ -54,6 +68,7 @@ contract PositionManagerTest is Test {
         registry = new ValuableActionRegistry(governance, address(communityRegistry));
         sbt = new ValuableActionSBT(governance, governance, governance);
         manager = new PositionManager(governance, address(registry), address(sbt));
+        router = new RevenueRouterMock();
 
         communityRegistry.setModuleAddresses(
             COMMUNITY_ID,
@@ -78,6 +93,7 @@ contract PositionManagerTest is Test {
         registry.setValuableActionSBT(address(sbt));
         sbt.grantRole(sbt.MANAGER_ROLE(), address(registry));
         registry.setIssuanceModule(address(manager), true);
+        manager.setRevenueRouter(address(router));
         manager.setModerator(moderator, true);
         manager.definePositionType(ROLE_TYPE, COMMUNITY_ID, 10, true);
         vm.stopPrank();
@@ -101,6 +117,7 @@ contract PositionManagerTest is Test {
         vm.prank(governance);
         uint256 positionTokenId = manager.approveApplication(appId, bytes("metadata"));
         assertEq(positionTokenId, 1);
+        assertEq(router.lastRegistered(), positionTokenId);
 
         ValuableActionSBT.TokenData memory data = sbt.getTokenData(positionTokenId);
         assertEq(uint256(data.kind), uint256(ValuableActionSBT.TokenKind.POSITION));
@@ -135,6 +152,7 @@ contract PositionManagerTest is Test {
         assertEq(roleData.points, beforeClose.points);
         assertEq(roleData.issuedAt, beforeClose.issuedAt);
         assertEq(roleData.endedAt, posData.endedAt);
+        assertEq(router.lastUnregistered(), positionTokenId);
     }
 
     function testCloseNeutralNoRole() public {
