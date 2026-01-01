@@ -234,8 +234,8 @@ contract MarketplaceRevenueRouterTest is Test {
 
     function test_RevenueDistributedToCohort() public {
         // Create a cohort
-        uint256 cohortId = cohortRegistry.createCohort(COMMUNITY_ID, 15000, 100); // 150% ROI target
-        cohortRegistry.addInvestor(cohortId, investor1, 1000e6); // 1000 USDC investment
+        uint256 cohortId = cohortRegistry.createCohort(COMMUNITY_ID, 15000, 100, keccak256("ipfs://c1"), 0, 0, true); // 150% ROI target
+        cohortRegistry.addInvestment(cohortId, investor1, 1000e6, 1); // 1000 USDC investment
 
         // Complete order
         uint64 checkIn = uint64(block.timestamp + 1 days);
@@ -262,11 +262,11 @@ contract MarketplaceRevenueRouterTest is Test {
 
     function test_MultipleCohortDistribution() public {
         // Create two cohorts with different priorities
-        uint256 cohort1 = cohortRegistry.createCohort(COMMUNITY_ID, 15000, 100);
-        cohortRegistry.addInvestor(cohort1, investor1, 1000e6);
+        uint256 cohort1 = cohortRegistry.createCohort(COMMUNITY_ID, 15000, 100, keccak256("ipfs://c1"), 0, 0, true);
+        cohortRegistry.addInvestment(cohort1, investor1, 1000e6, 1);
 
-        uint256 cohort2 = cohortRegistry.createCohort(COMMUNITY_ID, 20000, 50);
-        cohortRegistry.addInvestor(cohort2, investor2, 500e6);
+        uint256 cohort2 = cohortRegistry.createCohort(COMMUNITY_ID, 20000, 50, keccak256("ipfs://c2"), 0, 0, true);
+        cohortRegistry.addInvestment(cohort2, investor2, 500e6, 2);
 
         // Complete order
         uint64 checkIn = uint64(block.timestamp + 1 days);
@@ -429,6 +429,8 @@ contract CohortRegistryMock {
         uint256 communityId;
         uint16 targetRoiBps;
         uint64 createdAt;
+        uint64 startAt;
+        uint64 endAt;
         uint32 priorityWeight;
         uint256 investedTotal;
         uint256 recoveredTotal;
@@ -440,32 +442,44 @@ contract CohortRegistryMock {
     mapping(uint256 => Cohort) public cohorts;
     mapping(uint256 => uint256[]) public communityCohorts;
     mapping(uint256 => mapping(address => uint256)) public investments;
+    mapping(uint256 => uint256) public investmentByToken;
     mapping(uint256 => address[]) public cohortInvestors;
     mapping(uint256 => mapping(address => uint256)) public cohortAllocations;
 
-    function createCohort(uint256 communityId, uint16 targetRoiBps, uint32 priorityWeight) external returns (uint256) {
+    function createCohort(
+        uint256 communityId,
+        uint16 targetRoiBps,
+        uint32 priorityWeight,
+        bytes32 termsHash,
+        uint64 startAt,
+        uint64 endAt,
+        bool active
+    ) external returns (uint256) {
         uint256 cohortId = nextCohortId++;
         cohorts[cohortId] = Cohort({
             id: cohortId,
             communityId: communityId,
             targetRoiBps: targetRoiBps,
             createdAt: uint64(block.timestamp),
+            startAt: startAt,
+            endAt: endAt,
             priorityWeight: priorityWeight,
             investedTotal: 0,
             recoveredTotal: 0,
-            active: true,
-            termsHash: bytes32(0)
+            active: active,
+            termsHash: termsHash
         });
         communityCohorts[communityId].push(cohortId);
         return cohortId;
     }
 
-    function addInvestor(uint256 cohortId, address investor, uint256 amount) external {
+    function addInvestment(uint256 cohortId, address investor, uint256 amount, uint256 tokenId) external {
         if (investments[cohortId][investor] == 0) {
             cohortInvestors[cohortId].push(investor);
         }
         investments[cohortId][investor] += amount;
         cohorts[cohortId].investedTotal += amount;
+        investmentByToken[tokenId] = amount;
     }
 
     function getActiveCohorts(uint256 communityId) external view returns (uint256[] memory) {

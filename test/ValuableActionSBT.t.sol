@@ -143,7 +143,7 @@ contract ValuableActionSBTTest is Test {
 
         vm.prank(manager);
         vm.expectRevert();
-        valuableActionSBT.mintInvestment(bob, 1, 1, 1, "");
+        valuableActionSBT.mintInvestment(bob, 1, 0, 1, "");
     }
 
     /*//////////////////////////////////////////////////////////////

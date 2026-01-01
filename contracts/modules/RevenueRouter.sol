@@ -24,6 +24,8 @@ interface ICohortRegistry {
         uint256 communityId;
         uint16 targetRoiBps;
         uint64 createdAt;
+        uint64 startAt;
+        uint64 endAt;
         uint32 priorityWeight;
         uint256 investedTotal;
         uint256 recoveredTotal;

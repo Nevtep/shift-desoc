@@ -207,14 +207,17 @@ contract RevenueRouterCohortTest is Test {
             COMMUNITY_ID,
             TARGET_ROI_125,
             500, // 5% priority weight
-            "ipfs://cohort1"
+            keccak256("ipfs://cohort1"),
+            0,
+            0,
+            true
         );
 
         // Add investors to cohort (note: in real system, this is called by ValuableActionSBT contract)
         vm.prank(admin);
-        cohortRegistry.addInvestment(cohortId, investor1, 5000e18);
+        cohortRegistry.addInvestment(cohortId, investor1, 5000e18, 1);
         vm.prank(admin);
-        cohortRegistry.addInvestment(cohortId, investor2, 3000e18);
+        cohortRegistry.addInvestment(cohortId, investor2, 3000e18, 2);
 
         uint256 revenueAmount = 1000e18;
 
@@ -245,16 +248,16 @@ contract RevenueRouterCohortTest is Test {
         vm.startPrank(admin);
         
         // Cohort 1: 5000 invested, 125% target (6250 needed), 5% weight
-        uint256 cohort1 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_125, 500, "ipfs://c1");
-        cohortRegistry.addInvestment(cohort1, investor1, 5000e18);
+        uint256 cohort1 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_125, 500, keccak256("ipfs://c1"), 0, 0, true);
+        cohortRegistry.addInvestment(cohort1, investor1, 5000e18, 1);
         
         // Cohort 2: 8000 invested, 150% target (12000 needed), 7% weight  
-        uint256 cohort2 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_150, 700, "ipfs://c2");
-        cohortRegistry.addInvestment(cohort2, investor2, 8000e18);
+        uint256 cohort2 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_150, 700, keccak256("ipfs://c2"), 0, 0, true);
+        cohortRegistry.addInvestment(cohort2, investor2, 8000e18, 2);
         
         // Cohort 3: 3000 invested, 200% target (6000 needed), 3% weight
-        uint256 cohort3 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_200, 300, "ipfs://c3");
-        cohortRegistry.addInvestment(cohort3, investor3, 3000e18);
+        uint256 cohort3 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_200, 300, keccak256("ipfs://c3"), 0, 0, true);
+        cohortRegistry.addInvestment(cohort3, investor3, 3000e18, 3);
         
         vm.stopPrank();
 
@@ -297,11 +300,14 @@ contract RevenueRouterCohortTest is Test {
             COMMUNITY_ID,
             11000, // 110% target - achievable with small investments
             1000,  // 10% priority weight
-            "ipfs://cohort1"
+            keccak256("ipfs://cohort1"),
+            0,
+            0,
+            true
         );
 
         vm.prank(admin);
-        cohortRegistry.addInvestment(cohortId, investor1, 1000e18);
+        cohortRegistry.addInvestment(cohortId, investor1, 1000e18, 1);
 
         // Multiple distributions to complete the cohort
         // Need 1100e18 total return (110% of 1000e18)
@@ -328,9 +334,9 @@ contract RevenueRouterCohortTest is Test {
     function testWithdrawInvestorRevenue() public {
         // Set up cohort and distribution
         vm.prank(admin);
-        uint256 cohortId = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_150, 500, "ipfs://c1");
+        uint256 cohortId = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_150, 500, keccak256("ipfs://c1"), 0, 0, true);
         vm.prank(admin);
-        cohortRegistry.addInvestment(cohortId, investor1, 5000e18);
+        cohortRegistry.addInvestment(cohortId, investor1, 5000e18, 1);
 
         vm.prank(distributor);
         router.routeRevenue(COMMUNITY_ID, address(usdc), 1000e18);
@@ -401,11 +407,11 @@ contract RevenueRouterCohortTest is Test {
     function testPreviewCohortDistributionWithCohorts() public {
         // Create two cohorts
         vm.startPrank(admin);
-        uint256 cohort1 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_150, 600, "ipfs://c1");
-        cohortRegistry.addInvestment(cohort1, investor1, 3000e18);
+        uint256 cohort1 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_150, 600, keccak256("ipfs://c1"), 0, 0, true);
+        cohortRegistry.addInvestment(cohort1, investor1, 3000e18, 1);
         
-        uint256 cohort2 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_200, 400, "ipfs://c2");
-        cohortRegistry.addInvestment(cohort2, investor2, 2000e18);
+        uint256 cohort2 = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_200, 400, keccak256("ipfs://c2"), 0, 0, true);
+        cohortRegistry.addInvestment(cohort2, investor2, 2000e18, 2);
         vm.stopPrank();
 
         (uint256[] memory cohortIds, uint256[] memory cohortPayments, uint256 totalDistributed) = 
@@ -475,16 +481,16 @@ contract RevenueRouterCohortTest is Test {
         vm.startPrank(admin);
         
         // Early cohort with low target (will complete first)
-        uint256 earlyCohort = cohortRegistry.createCohort(COMMUNITY_ID, 11000, 800, "ipfs://early");
-        cohortRegistry.addInvestment(earlyCohort, investor1, 2000e18);
+        uint256 earlyCohort = cohortRegistry.createCohort(COMMUNITY_ID, 11000, 800, keccak256("ipfs://early"), 0, 0, true);
+        cohortRegistry.addInvestment(earlyCohort, investor1, 2000e18, 1);
         
         // Medium cohort
-        uint256 midCohort = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_150, 600, "ipfs://mid");
-        cohortRegistry.addInvestment(midCohort, investor2, 5000e18);
+        uint256 midCohort = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_150, 600, keccak256("ipfs://mid"), 0, 0, true);
+        cohortRegistry.addInvestment(midCohort, investor2, 5000e18, 2);
         
         // Late cohort with high target
-        uint256 lateCohort = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_200, 400, "ipfs://late");
-        cohortRegistry.addInvestment(lateCohort, investor3, 8000e18);
+        uint256 lateCohort = cohortRegistry.createCohort(COMMUNITY_ID, TARGET_ROI_200, 400, keccak256("ipfs://late"), 0, 0, true);
+        cohortRegistry.addInvestment(lateCohort, investor3, 8000e18, 3);
         
         vm.stopPrank();
 
