@@ -160,7 +160,7 @@ function getEligibleVerifiers(uint256 communityId) external view returns (
 
 - **CommunityRegistry**: Lee requisitos de verificadores específicos de comunidad
 - **ParamController**: Accede a parámetros de verificación establecidos por gobernanza
-- **Contrato Claims**: Recibe reportes de fraude y recomendaciones disciplinarias
+- **Contrato Compromisos**: Recibe reportes de fraude y recomendaciones disciplinarias
 
 ## 📊 Modelo Económico
 
@@ -292,7 +292,7 @@ if (oldPower > newPower) {
 
 **Integraciones Opcionales**:
 - **VerifierManager**: Selección de jurados y reporte de fraude
-- **Contrato Claims**: Seguimiento de resultados de verificación y métricas de calidad
+- **Contrato Compromisos**: Seguimiento de resultados de verificación y métricas de calidad
 - **Panel de Analíticas**: Monitoreo de rendimiento de verificadores comunitarios
 
 ### Consideraciones de Despliegue

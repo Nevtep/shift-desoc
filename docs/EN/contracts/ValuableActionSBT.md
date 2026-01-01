@@ -80,7 +80,7 @@ function mintAndAwardPoints(address worker, uint256 points, string calldata meta
 4. **Add new points**: Update current and lifetime totals
 5. **Check achievements**: Automatically unlock milestones
 
-**Integration**: Called by Claims contract after successful work verification.
+**Integration**: Called by Engagements contract after successful work verification.
 
 ### Time-Based Decay System
 
@@ -150,19 +150,19 @@ function checkAchievements(address worker) external {
 ### Access Control & Roles
 
 ```solidity
-bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");      // Claims contract
+bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");      // Engagements contract
 bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE"); // Community governance
 
 constructor(address initialOwner, address manager, address governance) {
     _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
-    _grantRole(MANAGER_ROLE, manager);           // Claims can mint SBTs
+    _grantRole(MANAGER_ROLE, manager);           // Engagements can mint SBTs
     _grantRole(GOVERNANCE_ROLE, governance);     // Community can revoke SBTs
 }
 ```
 
 **Integration Points**:
 
-- **Claims Contract**: Can mint SBTs and award WorkerPoints after verification
+- **Engagements Contract**: Can mint SBTs and award WorkerPoints after verification
 - **Governance**: Can revoke SBTs, adjust decay rates, add achievements
 - **Other Contracts**: Can query WorkerPoints for enhanced permissions
 
@@ -254,14 +254,14 @@ uint256 public constant MIN_DECAY_RATE = 500;            // 50% min retention
 
 ## � Usage Examples
 
-### SBT Minting (Claims Integration)
+### SBT Minting (Engagements Integration)
 
 ```solidity
-// Claims contract awards points after successful verification
-WorkerSBT(workerSBT).mintAndAwardPoints(
+// Engagements contract awards points after successful verification
+ValuableActionSBT(sbtContract).mintAndAwardPoints(
     worker,
     250,                        // WorkerPoints earned
-    "ipfs://QmClaimEvidence..." // Claim metadata URI
+    "ipfs://QmEngagementEvidence..." // Engagement metadata URI
 );
 ```
 

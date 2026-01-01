@@ -311,7 +311,7 @@ function notifyRequestResolved(uint256 requestId, uint256 approvedDraftId)
 }
 ```
 
-### Con Claims (Sistema de Bounties)
+### Con Compromisos (Sistema de Bounties)
 
 ```solidity
 function _setupBounty(uint256 requestId, uint256 bountyAmount, uint256 actionTypeId) internal {
@@ -325,25 +325,25 @@ function _setupBounty(uint256 requestId, uint256 bountyAmount, uint256 actionTyp
         amount: bountyAmount,
         actionTypeId: actionTypeId,
         active: true,
-        claimIds: new uint256[](0)
+        engagementIds: new uint256[](0)
     });
 
     emit BountyCreated(requestId, actionTypeId, bountyAmount);
 }
 
-function submitBountyClaim(uint256 requestId, string calldata evidenceCID)
-    external returns (uint256 claimId) {
+function submitBountyEngagement(uint256 requestId, string calldata evidenceCID)
+    external returns (uint256 engagementId) {
     BountyInfo storage bounty = requestBounties[requestId];
     require(bounty.active, "Bounty no activo");
 
-    // Crear claim en Claims contract
-    claimId = claims.submitClaim(bounty.actionTypeId, evidenceCID, abi.encode(requestId));
+    // Crear compromiso en contrato Compromisos
+    engagementId = engagements.submitEngagement(bounty.actionTypeId, evidenceCID, abi.encode(requestId));
 
-    // Vincular claim a bounty
-    bounty.claimIds.push(claimId);
-    claimToBounty[claimId] = requestId;
+    // Vincular compromiso a bounty
+    bounty.engagementIds.push(engagementId);
+    engagementToBounty[engagementId] = requestId;
 
-    emit BountyClaimSubmitted(requestId, claimId, msg.sender);
+    emit BountyEngagementSubmitted(requestId, engagementId, msg.sender);
 }
 ```
 
@@ -356,25 +356,25 @@ struct BountyInfo {
     uint256 amount;              // Cantidad de recompensa
     uint256 actionTypeId;        // Tipo de trabajo requerido
     bool active;                 // Estado del bounty
-    uint256[] claimIds;          // Claims enviados
-    uint256 winnerClaimId;       // Claim ganador (0 si no hay)
+    uint256[] engagementIds;     // Compromisos enviados
+    uint256 winnerEngagementId;  // Compromiso ganador (0 si no hay)
 }
 
-function awardBounty(uint256 requestId, uint256 winningClaimId)
-    external onlyClaimsContract {
+function awardBounty(uint256 requestId, uint256 winningEngagementId)
+    external onlyEngagementsContract {
     BountyInfo storage bounty = requestBounties[requestId];
     require(bounty.active, "Bounty no activo");
-    require(_isValidClaim(winningClaimId, requestId), "Claim inválido");
+    require(_isValidEngagement(winningEngagementId, requestId), "Compromiso inválido");
 
     bounty.active = false;
-    bounty.winnerClaimId = winningClaimId;
+    bounty.winnerEngagementId = winningEngagementId;
 
     // Transferir bounty al ganador
-    address winner = claims.getClaimWorker(winningClaimId);
+    address winner = engagements.getEngagementWorker(winningEngagementId);
     bytes32 bountyPaymentId = keccak256(abi.encodePacked("bounty_award", requestId));
     communityToken.executePayment(bountyPaymentId, winner, bounty.amount);
 
-    emit BountyAwarded(requestId, winningClaimId, winner, bounty.amount);
+    emit BountyAwarded(requestId, winningEngagementId, winner, bounty.amount);
 }
 ```
 

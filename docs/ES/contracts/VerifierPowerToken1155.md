@@ -171,12 +171,12 @@ function getCommunityStats(uint256 communityId) external view returns (
 }
 ```
 
-### Autorización de Contrato Claims
+### Autorización de Contrato Compromisos
 
 ```solidity
-// Contrato Claims verifica autorización de verificador vía balance VPT
-function verifyClaimVPS(uint256 claimId, bool approved) external {
-    uint256 communityId = _getClaimCommunity(claimId);
+// Contrato Compromisos verifica autorización de verificador vía balance VPT
+function verifyEngagementVPS(uint256 engagementId, bool approved) external {
+    uint256 communityId = _getEngagementCommunity(engagementId);
     require(vpt.balanceOf(msg.sender, communityId) > 0, "No verifier power");
     // Procesar verificación con autoridad concedida por gobernanza
 }
@@ -347,7 +347,7 @@ if (!communityInitialized[communityId]) revert CommunityNotInitialized(community
 **Contratos de Integración**:
 - **VerifierElection**: Gestión de distribución de poder y sincronización
 - **VerifierManager**: Verificaciones de autorización para selección de jurados
-- **Contrato Claims**: Validación de poder de verificador para procesamiento de reclamos
+- **Contrato Compromisos**: Validación de poder de verificador para procesamiento de compromisos
 
 ### Consideraciones de Despliegue
 

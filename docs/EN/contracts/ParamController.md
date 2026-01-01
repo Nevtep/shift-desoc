@@ -221,15 +221,15 @@ function _getVotingPeriod() internal view override returns (uint256) {
 }
 ```
 
-### Claims Contract Integration
+### Engagements Contract Integration
 
 ```solidity
-// Claims contract checks eligibility before processing
-function submitClaim(uint256 actionId, string calldata evidenceCID) external {
+// Engagements contract checks eligibility before processing
+function submitEngagement(uint256 actionId, string calldata evidenceCID) external {
     (bool eligible, string memory reason) = paramController.checkEligibility(msg.sender, communityId);
     require(eligible, reason);
 
-    // Proceed with claim processing...
+    // Proceed with engagement processing...
 }
 ```
 

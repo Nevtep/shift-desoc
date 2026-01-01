@@ -160,7 +160,7 @@ function getEligibleVerifiers(uint256 communityId) external view returns (
 
 - **CommunityRegistry**: Reads community-specific verifier requirements
 - **ParamController**: Accesses governance-set verification parameters
-- **Claims Contract**: Receives fraud reports and disciplinary recommendations
+- **Engagements Contract**: Receives fraud reports and disciplinary recommendations
 
 ## 📊 Economic Model
 
@@ -292,7 +292,7 @@ if (oldPower > newPower) {
 
 **Optional Integrations**:
 - **VerifierManager**: Juror selection and fraud reporting
-- **Claims Contract**: Verification result tracking and quality metrics
+- **Engagements Contract**: Verification result tracking and quality metrics
 - **Analytics Dashboard**: Community verifier performance monitoring
 
 ### Deployment Considerations

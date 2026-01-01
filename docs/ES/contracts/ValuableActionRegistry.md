@@ -193,7 +193,7 @@ Trabajador verifica requisitos de Acción Valiosa → Envía reclamación → Co
 ### 3. Uso de Parámetros de Verificación
 
 ```
-Contrato Claims lee Acción Valiosa → Configura verificación M-de-N → Selecciona jurados
+Contrato Compromisos lee Acción Valiosa → Configura verificación M-de-N → Selecciona jurados
 ```
 
 ### 4. Integración Económica

@@ -4,7 +4,7 @@
 
 The **MembershipTokenERC20Votes** serves as the **pure merit-based governance token** for Shift DeSoc communities. Unlike traditional tokens that can be bought, MembershipTokens can **only be earned through completing verified ValuableActions**. This creates a governance system where voting power is directly tied to proven contributions rather than financial investment.
 
-**Core Principle**: "Pure merit-based governance where voting power is EARNED, not bought" - tokens minted only when Claims are approved for ValuableAction completion.
+**Core Principle**: "Pure merit-based governance where voting power is EARNED, not bought" - tokens minted only when Engagements are approved for ValuableAction completion.
 
 **Current Status**: ⚡ **Production-Ready** - Simple, secure governance token with proper role-based minting controls and comprehensive testing coverage.
 
@@ -16,7 +16,7 @@ The **MembershipTokenERC20Votes** serves as the **pure merit-based governance to
 
 ```solidity
 contract MembershipTokenERC20Votes is ERC20, ERC20Votes, ERC20Permit, AccessControlEnumerable {
-    /// @notice Role for contracts that can mint tokens (Claims, CommunityFactory)
+    /// @notice Role for contracts that can mint tokens (Engagements, CommunityFactory)
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     /// @notice Maximum supply cap to prevent inflation attacks
@@ -92,7 +92,7 @@ function mint(address to, uint256 amount, string calldata reason) external onlyR
 **Distribution Mechanisms (Merit-Only)**:
 
 - **NO Initial Distribution** - Zero token supply at deployment
-- **Work Rewards ONLY** - Tokens minted when Claims are approved by VPS (VerifierManager + democratic verification)
+- **Work Rewards ONLY** - Tokens minted when Engagements are approved by VPS (VerifierManager + democratic verification)
 - **NO Purchase Mechanism** - Cannot be bought with ETH/USDC
 - **NO Staking Rewards** - Only earned through verified contributions
 - **Founder Bootstrap** - CommunityFactory mints initial tokens for founders only during community creation
@@ -136,7 +136,7 @@ function batchMint(
 **Use Cases**:
 
 - **Community Bootstrapping**: CommunityFactory mints initial tokens for founders
-- **Bulk Rewards**: Claims contract mints tokens for multiple approved claims
+- **Bulk Rewards**: Engagements contract mints tokens for multiple approved engagements
 - **Gas Optimization**: Reduced transaction costs for multiple recipients
 
 ## 🛡️ Security Features
@@ -155,7 +155,7 @@ function mint(address to, uint256 amount, string calldata reason) external onlyR
 
 **Role Management**:
 
-- **MINTER_ROLE**: Only Claims contract and CommunityFactory can mint tokens
+- **MINTER_ROLE**: Only Engagements contract and CommunityFactory can mint tokens
 - **GOVERNANCE_ROLE**: Community governance for role management and emergency functions
 - **DEFAULT_ADMIN_ROLE**: Initial setup and admin operations
 - **No PAUSER_ROLE**: No pause mechanism - tokens should always be transferable for governance
@@ -203,23 +203,23 @@ function grantMinterRole(address account) external onlyRole(GOVERNANCE_ROLE) {
 
 ## 🔗 Integration Points
 
-### Claims System Integration
+### Engagements System Integration
 
 The MembershipToken is minted automatically when workers complete verified work:
 
 ```solidity
-// In Claims.sol - mint governance tokens on successful work verification
-function approveClaim(uint256 claimId) external {
-    Claim storage claim = claims[claimId];
+// In Engagements.sol - mint governance tokens on successful work verification
+function approveEngagement(uint256 engagementId) external {
+    Engagement storage engagement = engagements[engagementId];
 
     // Get reward from ValuableAction configuration
-    ValuableAction memory action = valuableActionRegistry.getAction(claim.actionId);
+    ValuableAction memory action = valuableActionRegistry.getAction(engagement.actionId);
 
     // Mint governance tokens to worker based on completed work value
     membershipToken.mint(
-        claim.worker,
+        engagement.worker,
         action.membershipTokenReward,
-        string(abi.encodePacked("Work verified - Claim:", claimId))
+        string(abi.encodePacked("Work verified - Engagement:", engagementId))
     );
 }
 ```
@@ -301,7 +301,7 @@ constructor(uint256 _communityId, string memory name, string memory symbol)
 
 **Work-Based Issuance**:
 
-- **✅ Verified Claims**: Tokens minted when community approves completed work
+- **✅ Verified Engagements**: Tokens minted when community approves completed work
 - **✅ Founder Bootstrap**: Minimal initial allocation for community startup
 - **❌ No Purchases**: Cannot buy governance power with money
 - **❌ No Airdrops**: No free distribution - must contribute value
@@ -344,7 +344,7 @@ function mint(address to, uint256 amount, string calldata reason) external onlyR
 
 **Merit-Only Access**:
 
-- **Work Verification Required**: All tokens earned through Claims system
+- **Work Verification Required**: All tokens earned through Engagements system
 - **No Secondary Market**: Focus on contribution, not speculation
 - **Governance Control**: Community can revoke minting permissions
 - **Transparent Allocation**: All minting events logged with reasons
@@ -467,7 +467,7 @@ function batchMint(
 
 - **Token Distribution**: How to maintain fair distribution as community grows
 - **Governance Participation**: Preventing voter apathy in large communities
-- **Merit Verification**: Scaling the Claims system with increased membership
+- **Merit Verification**: Scaling the Engagements system with increased membership
 - **Economic Sustainability**: Balancing token rewards with community treasury
 
 ### Integration Opportunities

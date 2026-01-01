@@ -14,7 +14,7 @@ struct WorkerData {
     uint256 effectivePoints;        // Puntos efectivos después de la decadencia
     uint256 lastActiveTimestamp;    // Última vez que se acumularon puntos
     uint256 communityId;            // ID de comunidad asociado
-    uint256[] claimIds;             // Reclamos de trabajo aprobados
+    uint256[] engagementIds;        // Compromisos de trabajo aprobados
     uint256 mintedAt;               // Timestamp de creación del token
 }
 
@@ -30,7 +30,7 @@ struct DecayParameters {
 - **Datos por Token**: Mapeo de tokenId a WorkerData para rastrear métricas individuales
 - **Búsqueda por Propietario**: Mapeo inverso de dirección de propietario a tokenId
 - **Parámetros de Decadencia**: Configuración global para cálculos de decadencia de reputación
-- **Lista Blanca de Minters**: Control de acceso para acuñación de tokens (típicamente contratos Claims)
+- **Lista Blanca de Minters**: Control de acceso para acuñación de tokens (típicamente contratos Compromisos)
 
 ## ⚙️ Funciones y Lógica Clave
 
@@ -53,7 +53,7 @@ function mintValuableActionSBT(address to, uint256 communityId, uint256 initialP
 ### Sistema de Puntos de Trabajo
 
 ```solidity
-function addWorkerPoints(address worker, uint256 points, uint256 claimId)
+function addWorkerPoints(address worker, uint256 points, uint256 engagementId)
     external onlyMinter
 ```
 
@@ -64,7 +64,7 @@ function addWorkerPoints(address worker, uint256 points, uint256 claimId)
 - Actualiza `totalWorkerPoints` (nunca decae, registro histórico)
 - Recalcula `effectivePoints` incorporando decadencia y nuevos puntos
 - Actualiza `lastActiveTimestamp` para preservar actividad reciente
-- Rastrea `claimIds` para auditoría y verificación
+- Rastrea `engagementIds` para auditoría y verificación
 
 ### Cálculo de Decadencia
 
@@ -124,17 +124,17 @@ function revokeValuableActionSBT(uint256 tokenId) external onlyGovernor
 
 ## 🔗 Puntos de Integración
 
-### Con Sistema de Reclamos
+### Con Sistema de Compromisos
 
 ```solidity
-// El contrato Claims llama después de verificación exitosa
-function addWorkerPoints(address worker, uint256 points, uint256 claimId) external onlyMinter {
+// El contrato Compromisos llama después de verificación exitosa
+function addWorkerPoints(address worker, uint256 points, uint256 engagementId) external onlyMinter {
     if (balanceOf(worker) == 0) {
         // Acuñar primer SBT para nuevo trabajador
         mintValuableActionSBT(worker, communityId, points);
     } else {
         // Agregar puntos a SBT existente
-        _addPointsToExisting(worker, points, claimId);
+        _addPointsToExisting(worker, points, engagementId);
     }
 }
 ```

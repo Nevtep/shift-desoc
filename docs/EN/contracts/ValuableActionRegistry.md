@@ -27,13 +27,13 @@ struct ValuableAction {
     uint32 verifyWindow;           // Time limit for verification (seconds)
     uint32 verifierRewardWeight;   // Points earned by accurate verifiers
     uint32 slashVerifierBps;       // Penalty for inaccurate verification
-    uint32 cooldownPeriod;         // Minimum time between claims
-    uint32 maxConcurrent;          // Maximum active claims per person
+    uint32 cooldownPeriod;         // Minimum time between engagements
+    uint32 maxConcurrent;          // Maximum active engagements per person
     bool revocable;                // Can governance revoke this SBT
     bool requiresGovernanceApproval; // Community vote needed to activate
     bool founderVerified;          // Bootstrap security mechanism
     string evidenceSpecCID;        // IPFS hash of evidence requirements
-    string titleTemplate;          // Template for claim titles
+    string titleTemplate;          // Template for engagement titles
 }
 ```
 
@@ -81,7 +81,7 @@ The ValuableActionRegistry follows these key principles:
 
 #### `deactivate(uint256 id)`
 
-**Purpose**: Disable Valuable Actions without deletion, preventing new claims.
+**Purpose**: Disable Valuable Actions without deletion, preventing new engagements.
 
 **Use Cases**:
 
@@ -137,12 +137,12 @@ function _validateValuableAction(Types.ValuableAction calldata params) internal 
 
 ### Triple Reward System
 
-Each Valuable Action defines how approved claims translate into three types of value:
+Each Valuable Action defines how approved engagements translate into three types of value:
 
 **MembershipToken Rewards** (Governance Power):
 
 ```solidity
-membershipTokenReward  // Voting power minted for each approved claim
+membershipTokenReward  // Voting power minted for each approved engagement
 ```
 
 **CommunityToken Rewards** (Economic Value):
@@ -182,19 +182,19 @@ Alternative: Founder → Bootstrap ValuableAction → Immediate Activation
 ### 2. Work Submission Flow
 
 ```
-Worker checks ValuableAction requirements → Submits claim → Verification begins
+Worker checks ValuableAction requirements → Submits engagement → Verification begins
 ```
 
 ### 3. Verification Parameter Usage
 
 ```
-Claims contract reads ValuableAction → Configures M-of-N verification → Selects jurors
+Engagements contract reads ValuableAction → Configures M-of-N verification → Selects jurors
 ```
 
 ### 4. Economic Integration
 
 ```
-Approved Claim → Mint MembershipTokens → Update CommunityToken salary basis → Mint WorkerSBT
+Approved Engagement → Mint MembershipTokens → Update CommunityToken salary basis → Mint ValuableActionSBT
 ```
 
 ## 📈 Advanced Features
@@ -248,7 +248,7 @@ ValuableAction({
     verifierRewardWeight: 50,       // Modest verifier reward
     slashVerifierBps: 100,          // 1% reputation penalty for errors
     cooldownPeriod: 86400,          // Daily contribution limit
-    maxConcurrent: 2,               // Max 2 active code claims
+    maxConcurrent: 2,               // Max 2 active code engagements
     revocable: true,                // Governance can revoke if bugs found
     requiresGovernanceApproval: true, // Community vote required
     founderVerified: false,         // Not a bootstrap action
@@ -269,7 +269,7 @@ ValuableAction({
     verifyWindow: 86400,            // 24 hours for quick turnaround
     verifierRewardWeight: 25,       // Lower verifier reward (higher volume)
     slashVerifierBps: 200,          // 2% penalty (subjective decisions)
-    cooldownPeriod: 3600,           // 1 hour between moderation claims
+    cooldownPeriod: 3600,           // 1 hour between moderation engagements
     maxConcurrent: 5,               // Allow multiple concurrent moderation
     revocable: false,               // Moderation decisions should be final
     requiresGovernanceApproval: false, // Direct activation
@@ -323,7 +323,7 @@ proposeValuableAction(
     }),
     "ipfs://QmBootstrap..."
 );
-// Result: Immediately active, ready for claims
+// Result: Immediately active, ready for engagements
 ```
 
 ### Creating a Governance-Controlled Valuable Action
