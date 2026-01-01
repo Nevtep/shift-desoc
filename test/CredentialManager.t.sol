@@ -181,4 +181,26 @@ contract CredentialManagerTest is Test {
         vm.prank(governance);
         manager.revokeCredential(tokenId, COURSE_ID, "bad");
     }
+
+    function testRevokeCourseMismatchReverts() public {
+        vm.prank(user);
+        uint256 appId = manager.applyForCredential(COURSE_ID, "");
+        vm.prank(verifier);
+        uint256 tokenId = manager.approveApplication(appId);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Course mismatch"));
+        vm.prank(governance);
+        manager.revokeCredential(tokenId, bytes32("other"), "bad");
+    }
+
+    function testGovernanceUpdatePropagatesModerator() public {
+        address newGov = makeAddr("newGov");
+
+        vm.prank(governance);
+        manager.updateGovernance(newGov);
+
+        assertTrue(manager.isModerator(newGov));
+        vm.prank(newGov);
+        manager.setModerator(address(0x1234), true);
+    }
 }

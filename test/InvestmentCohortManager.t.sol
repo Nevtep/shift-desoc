@@ -104,6 +104,15 @@ contract InvestmentCohortManagerTest is Test {
         manager.issueInvestment(investor, cohortId, 1, "");
     }
 
+    function testIssueInvestmentRejectsInactiveCohort() public {
+        vm.prank(governance);
+        uint256 cohortId = manager.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, false);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cohort inactive"));
+        vm.prank(governance);
+        manager.issueInvestment(investor, cohortId, 1, "");
+    }
+
     function testUnauthorizedReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, investor));
         vm.prank(investor);

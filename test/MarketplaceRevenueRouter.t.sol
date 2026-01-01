@@ -152,6 +152,10 @@ contract ValuableActionSBTMock is IValuableActionSBT {
         });
     }
 
+    function setEndedAtMock(uint256 tokenId, uint64 endedAt) external {
+        data[tokenId].endedAt = endedAt;
+    }
+
     // Interface compliance
     function mintEngagement(address, uint256, Types.EngagementSubtype, bytes32, bytes calldata) external pure returns (uint256) { revert("unused"); }
     function mintPosition(address, uint256, bytes32, uint32, bytes calldata) external pure returns (uint256) { revert("unused"); }
@@ -243,6 +247,73 @@ contract MarketplaceRevenueRouterTest is Test {
         assertEq(token.balanceOf(positionHolder), 800e18);
 
         assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 200e18); // min treasury
+    }
+
+    function testRegisterPositionRejectsEndedToken() public {
+        uint256 positionId = sbt.mintPosition(positionHolder, COMMUNITY_ID, 100);
+        sbt.setEndedAtMock(positionId, 1);
+
+        router.grantRole(router.POSITION_MANAGER_ROLE(), admin);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Position ended"));
+        router.registerPosition(positionId);
+    }
+
+    function testClaimPositionRequiresOwnerAndIsIdempotent() public {
+        paramController.setRevenuePolicy(COMMUNITY_ID, 0, 3000, 1, 0);
+
+        uint256 positionId = sbt.mintPosition(positionHolder, COMMUNITY_ID, 100);
+        router.grantRole(router.POSITION_MANAGER_ROLE(), admin);
+        router.registerPosition(positionId);
+
+        vm.startPrank(distributor);
+        token.approve(address(router), type(uint256).max);
+        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        vm.stopPrank();
+
+        address other = address(0xBB);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, other));
+        vm.prank(other);
+        router.claimPosition(positionId, address(token), other);
+
+        vm.prank(positionHolder);
+        router.claimPosition(positionId, address(token), positionHolder);
+        assertGt(token.balanceOf(positionHolder), 0);
+
+        uint256 before = token.balanceOf(positionHolder);
+        vm.prank(positionHolder);
+        router.claimPosition(positionId, address(token), positionHolder);
+        assertEq(token.balanceOf(positionHolder), before);
+    }
+
+    function testSpilloverToTreasuryWhenNoPositions() public {
+        paramController.setRevenuePolicy(COMMUNITY_ID, 0, 3000, 1, 0); // min positions with treasury spillover
+
+        vm.startPrank(distributor);
+        token.approve(address(router), type(uint256).max);
+        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        vm.stopPrank();
+
+        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 1_000e18);
+    }
+
+    function testWithdrawTreasuryAuthAndBalance() public {
+        paramController.setRevenuePolicy(COMMUNITY_ID, 1000, 0, 1, 0);
+
+        vm.startPrank(distributor);
+        token.approve(address(router), type(uint256).max);
+        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        vm.stopPrank();
+
+        address payout = address(0xFEED);
+        vm.prank(treasury);
+        router.withdrawTreasury(COMMUNITY_ID, address(token), 500e18, payout);
+
+        assertEq(token.balanceOf(payout), 500e18);
+        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 500e18);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, distributor));
+        vm.prank(distributor);
+        router.withdrawTreasury(COMMUNITY_ID, address(token), 1, distributor);
     }
 
     function testSpilloverSplitDefaultsToHalf() public {

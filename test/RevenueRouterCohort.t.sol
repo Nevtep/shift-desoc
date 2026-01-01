@@ -216,6 +216,47 @@ contract RevenueRouterCohortTest is Test {
         router.routeRevenue(COMMUNITY_ID, address(0xDEAD), 1);
     }
 
+    function testInactiveCohortsDoNotReceiveRevenue() public {
+        paramController.setRevenuePolicy(COMMUNITY_ID, 0, 0, 1, 0);
+
+        cohorts.setActive(_arr(1, 2));
+        cohorts.setCohort(1, COMMUNITY_ID, 1_000e18, false); // inactive
+        cohorts.setCohort(2, COMMUNITY_ID, 2_000e18, false); // inactive
+
+        uint256 investment = sbt.mintInvestment(investor, COMMUNITY_ID, 1, 0);
+        cohorts.setInvestmentWeight(investment, 1_000e18);
+
+        token.mint(distributor, 500e18);
+        vm.startPrank(distributor);
+        token.approve(address(router), type(uint256).max);
+        router.routeRevenue(COMMUNITY_ID, address(token), 500e18);
+        vm.stopPrank();
+
+        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 500e18);
+        assertEq(router.getClaimableInvestment(investment, address(token)), 0);
+    }
+
+    function testClaimInvestmentRequiresOwner() public {
+        paramController.setRevenuePolicy(COMMUNITY_ID, 0, 0, 1, 0);
+
+        cohorts.setActive(_arr(1, 1));
+        cohorts.setCohort(1, COMMUNITY_ID, 1_000e18, true);
+
+        uint256 investment = sbt.mintInvestment(investor, COMMUNITY_ID, 1, 0);
+        cohorts.setInvestmentWeight(investment, 1_000e18);
+
+        token.mint(distributor, 100e18);
+        vm.startPrank(distributor);
+        token.approve(address(router), type(uint256).max);
+        router.routeRevenue(COMMUNITY_ID, address(token), 100e18);
+        vm.stopPrank();
+
+        address other = address(0xEEE);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, other));
+        vm.prank(other);
+        router.claimInvestment(investment, address(token), other);
+    }
+
     function _arr(uint256 a, uint256 b) internal pure returns (uint256[] memory out) {
         out = new uint256[](2);
         out[0] = a;
