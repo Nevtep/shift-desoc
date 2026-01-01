@@ -19,6 +19,7 @@ contract CommunityRegistryMock {
         address verifierElection;
         address verifierManager;
         address valuableActionSBT;
+        address treasuryVault;
         address treasuryAdapter;
         address communityToken;
         address paramController;
@@ -68,6 +69,7 @@ contract CredentialManagerTest is Test {
                 verifierElection: address(0),
                 verifierManager: address(0),
                 valuableActionSBT: address(0),
+                treasuryVault: address(0),
                 treasuryAdapter: address(0),
                 communityToken: address(0),
                 paramController: address(0)

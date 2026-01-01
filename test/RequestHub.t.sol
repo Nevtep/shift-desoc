@@ -7,16 +7,37 @@ import "contracts/modules/CommunityRegistry.sol";
 import "contracts/modules/ParamController.sol";
 import "contracts/libs/Errors.sol";
 import "contracts/libs/Types.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract TreasuryAdapterMock {
-    address public lastToken;
-    uint256 public lastAmount;
-    address public lastTo;
+contract MockERC20 {
+    string public name = "Mock Token";
+    string public symbol = "MOCK";
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
 
-    function payoutBounty(address token, uint256 amount, address to) external {
-        lastToken = token;
-        lastAmount = amount;
-        lastTo = to;
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event Approval(address indexed owner, address indexed spender, uint256 amount);
+
+    function mint(address to, uint256 amount) external {
+        totalSupply += amount;
+        balanceOf[to] += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
     }
 }
 
@@ -52,14 +73,15 @@ contract ValuableActionRegistryMock {
 contract RequestHubTest is Test {
     RequestHub requestHub;
     CommunityRegistry communityRegistry;
-    TreasuryAdapterMock treasuryAdapter;
     ValuableActionRegistryMock valuableActionRegistry;
+    MockERC20 token;
     
     // Test accounts
     address admin = makeAddr("admin");
     address user1 = makeAddr("user1");
     address user2 = makeAddr("user2");
     address moderator = makeAddr("moderator");
+    address treasuryVault = makeAddr("vault");
     
     // Test data
     uint256 communityId;
@@ -98,10 +120,10 @@ contract RequestHubTest is Test {
         // Deploy contracts
         ParamController paramController = new ParamController(admin);
         communityRegistry = new CommunityRegistry(admin, address(paramController));
-        treasuryAdapter = new TreasuryAdapterMock();
         valuableActionRegistry = new ValuableActionRegistryMock();
+        token = new MockERC20();
 
-        requestHub = new RequestHub(address(communityRegistry), address(valuableActionRegistry), address(treasuryAdapter));
+        requestHub = new RequestHub(address(communityRegistry), address(valuableActionRegistry));
         
         // Create test community
         communityId = communityRegistry.registerCommunity(
@@ -110,6 +132,8 @@ contract RequestHubTest is Test {
             "ipfs://test",
             0 // no parent community
         );
+
+        communityRegistry.setModuleAddress(communityId, keccak256("treasuryVault"), treasuryVault);
 
         // Configure a default valuable action for completion tests
         Types.ValuableAction memory action = Types.ValuableAction({
@@ -438,14 +462,19 @@ contract RequestHubTest is Test {
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
         
         vm.startPrank(user2);
+        token.mint(user2, 1_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
         
         vm.expectEmit(true, true, false, true);
-        emit RequestHub.BountyAdded(requestId, address(0xBEEF), 1000, user2);
+        emit RequestHub.BountyAdded(requestId, communityId, address(token), 1_000, user2);
         
-        requestHub.addBounty(requestId, address(0xBEEF), 1000);
+        requestHub.addBounty(requestId, address(token), 1_000);
         
         RequestHub.Request memory request = requestHub.getRequest(requestId);
-        assertEq(request.bountyAmount, 1000);
+        assertEq(request.bountyAmount, 1_000);
+        assertEq(request.bountyToken, address(token));
+        assertEq(token.balanceOf(treasuryVault), 1_000);
+        assertEq(token.balanceOf(address(requestHub)), 0);
         
         vm.stopPrank();
     }
@@ -475,15 +504,35 @@ contract RequestHubTest is Test {
         vm.prank(user1);
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
 
-        vm.prank(user1);
-        requestHub.addBounty(requestId, address(0xBEEF), 1000);
+        vm.startPrank(user1);
+        token.mint(user1, 2_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
+        requestHub.addBounty(requestId, address(token), 1_000);
+        vm.stopPrank();
 
         vm.prank(moderator);
         requestHub.setApprovedWinner(requestId, user2);
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Winner already approved"));
-        requestHub.addBounty(requestId, address(0xBEEF), 500);
+        requestHub.addBounty(requestId, address(token), 500);
+    }
+
+    function testAddBountyTopUpTransfersDelta() public {
+        vm.prank(user1);
+        uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
+
+        vm.startPrank(user1);
+        token.mint(user1, 2_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
+        requestHub.addBounty(requestId, address(token), 1_000);
+        requestHub.addBounty(requestId, address(token), 1_600);
+        vm.stopPrank();
+
+        RequestHub.Request memory request = requestHub.getRequest(requestId);
+        assertEq(request.bountyAmount, 1_600);
+        assertEq(token.balanceOf(treasuryVault), 1_600);
+        assertEq(token.balanceOf(address(requestHub)), 0);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -530,15 +579,20 @@ contract RequestHubTest is Test {
     function testCompleteEngagementHappyPath() public {
         uint256 requestId = _createLinkedRequest();
 
-        vm.prank(user1);
-        requestHub.addBounty(requestId, address(0xBEEF), 500);
+        vm.startPrank(user1);
+        token.mint(user1, 1_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
+        requestHub.addBounty(requestId, address(token), 500);
+        vm.stopPrank();
 
         vm.prank(moderator);
         requestHub.setApprovedWinner(requestId, user2);
 
         vm.startPrank(user2);
+        vm.expectEmit(true, true, true, true);
+        emit RequestHub.BountyReady(requestId, communityId, user2, address(token), 500);
         vm.expectEmit(true, true, false, true);
-        emit RequestHub.OneShotEngagementCompleted(requestId, user2, address(0xBEEF), 500, 1);
+        emit RequestHub.OneShotEngagementCompleted(requestId, user2, address(token), 500, 1);
         uint256 tokenId = requestHub.completeEngagement(requestId, bytes("evidence"));
         vm.stopPrank();
 
@@ -546,9 +600,8 @@ contract RequestHubTest is Test {
         RequestHub.Request memory request = requestHub.getRequest(requestId);
         assertTrue(request.consumed);
         assertEq(request.winner, user2);
-        assertEq(treasuryAdapter.lastToken(), address(0xBEEF));
-        assertEq(treasuryAdapter.lastAmount(), 500);
-        assertEq(treasuryAdapter.lastTo(), user2);
+        assertEq(token.balanceOf(treasuryVault), 500);
+        assertEq(token.balanceOf(address(requestHub)), 0);
     }
 
     function testCompleteEngagementRequiresApproval() public {

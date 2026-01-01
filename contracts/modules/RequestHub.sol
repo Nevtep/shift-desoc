@@ -5,6 +5,8 @@ import {Errors} from "../libs/Errors.sol";
 import {Types} from "../libs/Types.sol";
 import {CommunityRegistry} from "./CommunityRegistry.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 interface IValuableActionRegistry {
     function getValuableAction(uint256 id) external view returns (Types.ValuableAction memory action);
@@ -18,14 +20,11 @@ interface IValuableActionRegistry {
     ) external returns (uint256 tokenId);
 }
 
-interface ITreasuryAdapter {
-    function payoutBounty(address token, uint256 amount, address to) external;
-}
-
 /// @title RequestHub
 /// @notice Decentralized discussion forum for community needs and collaborative solution development
 /// @dev On-chain discussion entry point where community members post needs/ideas and collaborate on solutions
 contract RequestHub is ReentrancyGuard {
+    using SafeERC20 for IERC20;
     
     /*//////////////////////////////////////////////////////////////
                                 ENUMS
@@ -79,9 +78,6 @@ contract RequestHub is ReentrancyGuard {
 
     /// @notice ValuableActionRegistry for engagement issuance and policy lookup
     IValuableActionRegistry public immutable valuableActionRegistry;
-
-    /// @notice Treasury adapter used to pay bounties from the treasury vault
-    ITreasuryAdapter public immutable treasuryAdapter;
     
     /// @notice Next request ID
     uint256 public nextRequestId = 1;
@@ -155,9 +151,10 @@ contract RequestHub is ReentrancyGuard {
     /// @notice Emitted when a bounty is configured for a request
     event BountyAdded(
         uint256 indexed requestId,
+        uint256 indexed communityId,
         address indexed token,
         uint256 amount,
-        address indexed funder
+        address funder
     );
     
     /// @notice Emitted when a request is linked to a ValuableAction
@@ -182,6 +179,15 @@ contract RequestHub is ReentrancyGuard {
         uint256 bountyAmount,
         uint256 engagementTokenId
     );
+
+    /// @notice Emitted when bounty funds are ready for manual payout via the community treasury vault
+    event BountyReady(
+        uint256 indexed requestId,
+        uint256 indexed communityId,
+        address indexed winner,
+        address token,
+        uint256 amount
+    );
     
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -189,14 +195,11 @@ contract RequestHub is ReentrancyGuard {
     
     /// @param _communityRegistry Address of the community registry
     /// @param _valuableActionRegistry Address of ValuableActionRegistry
-    /// @param _treasuryAdapter Address of TreasuryAdapter
-    constructor(address _communityRegistry, address _valuableActionRegistry, address _treasuryAdapter) {
+    constructor(address _communityRegistry, address _valuableActionRegistry) {
         if (_communityRegistry == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
-        if (_treasuryAdapter == address(0)) revert Errors.ZeroAddress();
         communityRegistry = CommunityRegistry(_communityRegistry);
         valuableActionRegistry = IValuableActionRegistry(_valuableActionRegistry);
-        treasuryAdapter = ITreasuryAdapter(_treasuryAdapter);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -341,10 +344,23 @@ contract RequestHub is ReentrancyGuard {
         if (approvedWinner[requestId] != address(0)) revert Errors.InvalidInput("Winner already approved");
         if (request.consumed) revert Errors.InvalidInput("Request already consumed");
 
+        CommunityRegistry.Community memory community = communityRegistry.getCommunity(request.communityId);
+        if (community.treasuryVault == address(0)) revert Errors.InvalidInput("Treasury vault not set");
+
+        if (request.bountyToken != address(0) && request.bountyToken != token) {
+            revert Errors.InvalidInput("Bounty token mismatch");
+        }
+        if (amount < request.bountyAmount) revert Errors.InvalidInput("Bounty cannot decrease");
+
+        uint256 delta = amount - request.bountyAmount;
+        if (delta > 0) {
+            IERC20(token).safeTransferFrom(msg.sender, community.treasuryVault, delta);
+        }
+
         request.bountyToken = token;
         request.bountyAmount = amount;
         
-        emit BountyAdded(requestId, token, amount, msg.sender);
+        emit BountyAdded(requestId, request.communityId, token, amount, msg.sender);
     }
     
     /// @notice Link request to a ValuableAction for work verification
@@ -407,11 +423,6 @@ contract RequestHub is ReentrancyGuard {
         request.consumed = true;
         request.winner = winner;
 
-        if (request.bountyAmount > 0) {
-            if (request.bountyToken == address(0)) revert Errors.ZeroAddress();
-            treasuryAdapter.payoutBounty(request.bountyToken, request.bountyAmount, winner);
-        }
-
         engagementTokenId = valuableActionRegistry.issueEngagement(
             request.communityId,
             winner,
@@ -419,6 +430,10 @@ contract RequestHub is ReentrancyGuard {
             bytes32(request.linkedValuableAction),
             metadata
         );
+
+        if (request.bountyAmount > 0) {
+            emit BountyReady(requestId, request.communityId, winner, request.bountyToken, request.bountyAmount);
+        }
 
         emit OneShotEngagementCompleted(requestId, winner, request.bountyToken, request.bountyAmount, engagementTokenId);
     }

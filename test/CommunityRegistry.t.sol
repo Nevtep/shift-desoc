@@ -221,7 +221,7 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         registry.setModuleAddress(communityId, keccak256("governor"), governorAddress);
         
-        (address governor, , , , , , , , ) = registry.getModuleAddresses(communityId);
+        (address governor, , , , , , , , , ) = registry.getModuleAddresses(communityId);
         assertEq(governor, governorAddress);
     }
     
@@ -249,12 +249,12 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
-        address[] memory addresses = new address[](10);
-        for (uint256 i = 0; i < 10; i++) {
+        address[] memory addresses = new address[](11);
+        for (uint256 i = 0; i < 11; i++) {
             addresses[i] = address(uint160(0x1000 + i));
         }
         
-        bytes32[] memory moduleKeys = new bytes32[](10);
+        bytes32[] memory moduleKeys = new bytes32[](11);
         moduleKeys[0] = keccak256("governor");
         moduleKeys[1] = keccak256("timelock");
         moduleKeys[2] = keccak256("requestHub");
@@ -262,12 +262,13 @@ contract CommunityRegistryTest is Test {
         moduleKeys[4] = keccak256("engagementsManager");
         moduleKeys[5] = keccak256("valuableActionRegistry");
         moduleKeys[6] = keccak256("valuableActionSBT");
-        moduleKeys[7] = keccak256("treasuryAdapter");
-        moduleKeys[8] = keccak256("communityToken");
-        moduleKeys[9] = keccak256("paramController");
+        moduleKeys[7] = keccak256("treasuryVault");
+        moduleKeys[8] = keccak256("treasuryAdapter");
+        moduleKeys[9] = keccak256("communityToken");
+        moduleKeys[10] = keccak256("paramController");
         
         vm.startPrank(user1);
-        for (uint256 i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < 11; i++) {
             registry.setModuleAddress(communityId, moduleKeys[i], addresses[i]);
         }
         vm.stopPrank();
@@ -280,6 +281,7 @@ contract CommunityRegistryTest is Test {
             address engagementsManager,
             address valuableActionRegistry,
             address valuableActionSBT,
+            address treasuryVault,
             address treasuryAdapter,
             address communityToken
         ) = registry.getModuleAddresses(communityId);
@@ -291,8 +293,9 @@ contract CommunityRegistryTest is Test {
         assertEq(engagementsManager, addresses[4]);
         assertEq(valuableActionRegistry, addresses[5]);
         assertEq(valuableActionSBT, addresses[6]);
-        assertEq(treasuryAdapter, addresses[7]);
-        assertEq(communityToken, addresses[8]);
+        assertEq(treasuryVault, addresses[7]);
+        assertEq(treasuryAdapter, addresses[8]);
+        assertEq(communityToken, addresses[9]);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -611,7 +614,7 @@ contract CommunityRegistryTest is Test {
         vm.prank(user2); // user2 has global admin role now
         registry.setModuleAddress(communityId, keccak256("governor"), governorAddress);
         
-        (address governor, , , , , , , , ) = registry.getModuleAddresses(communityId);
+        (address governor, , , , , , , , , ) = registry.getModuleAddresses(communityId);
         assertEq(governor, governorAddress);
     }
 }

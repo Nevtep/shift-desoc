@@ -55,15 +55,6 @@ contract ERC20Mock {
     }
 }
 
-contract TreasuryAdapterMock {
-    event Payout(address token, uint256 amount, address to);
-
-    function payoutBounty(address token, uint256 amount, address to) external {
-        ERC20Mock(token).transfer(to, amount);
-        emit Payout(token, amount, to);
-    }
-}
-
 contract WiringTest is Test {
     ParamController paramController;
     CommunityRegistry communityRegistry;
@@ -77,7 +68,6 @@ contract WiringTest is Test {
     CredentialManager credentialManager;
 
     ERC20Mock token;
-    TreasuryAdapterMock treasuryAdapter;
 
     address governance = address(this);
     address distributor = address(0xD1);
@@ -96,7 +86,6 @@ contract WiringTest is Test {
 
     function setUp() public {
         token = new ERC20Mock();
-        treasuryAdapter = new TreasuryAdapterMock();
 
         paramController = new ParamController(governance);
         communityRegistry = new CommunityRegistry(governance, address(paramController));
@@ -111,7 +100,7 @@ contract WiringTest is Test {
             address(valuableActionRegistry),
             address(sbt)
         );
-        requestHub = new RequestHub(address(communityRegistry), address(valuableActionRegistry), address(treasuryAdapter));
+        requestHub = new RequestHub(address(communityRegistry), address(valuableActionRegistry));
         credentialManager = new CredentialManager(governance, address(valuableActionRegistry), address(sbt));
 
         communityId = communityRegistry.registerCommunity("Comm", "Desc", "ipfs://meta", 0);
@@ -119,6 +108,7 @@ contract WiringTest is Test {
         communityRegistry.setModuleAddress(communityId, keccak256("governor"), governance);
         communityRegistry.setModuleAddress(communityId, keccak256("timelock"), governance);
         communityRegistry.setModuleAddress(communityId, keccak256("valuableActionRegistry"), address(valuableActionRegistry));
+        communityRegistry.setModuleAddress(communityId, keccak256("treasuryVault"), treasury);
 
         // Wire SBT manager + issuance allowlists
         vm.startPrank(governance);
@@ -245,18 +235,21 @@ contract WiringTest is Test {
         assertEq(token.balanceOf(investor), 900e18);
 
         // ---- RequestHub one-shot ----
-        vm.prank(governance);
+        token.mint(governance, 100e18);
+        vm.startPrank(governance);
         uint256 requestId = requestHub.createRequest(communityId, "title", "cid", new string[](0));
         requestHub.linkValuableAction(requestId, valuableActionId);
+        token.approve(address(requestHub), type(uint256).max);
         requestHub.addBounty(requestId, address(token), 100e18);
 
-        token.mint(address(treasuryAdapter), 100e18);
-
         requestHub.setApprovedWinner(requestId, requestWinner);
+        vm.stopPrank();
 
         vm.prank(requestWinner);
         requestHub.completeEngagement(requestId, bytes("meta"));
-        assertEq(token.balanceOf(requestWinner), 100e18);
+        assertEq(token.balanceOf(requestWinner), 0);
+        assertEq(token.balanceOf(treasury), 100e18);
+        assertEq(token.balanceOf(address(requestHub)), 0);
         assertEq(router.treasuryAccrual(communityId, address(token)), 1_200e18); // unchanged by RequestHub
 
         // ---- Credential flow ----

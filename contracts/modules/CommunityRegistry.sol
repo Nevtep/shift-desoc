@@ -33,6 +33,7 @@ contract CommunityRegistry is AccessControl {
         address verifierElection;     // VerifierElection contract (VPT system)
         address verifierManager;      // VerifierManager contract (VPT system)
         address valuableActionSBT;    // ValuableActionSBT contract
+        address treasuryVault;        // Community treasury Safe (for manual custody)
         address treasuryAdapter;      // TreasuryAdapter contract
         address communityToken;       // CommunityToken contract
         address paramController;      // ParamController contract
@@ -54,6 +55,7 @@ contract CommunityRegistry is AccessControl {
         address verifierElection;
         address verifierManager;
         address valuableActionSBT;
+        address treasuryVault;
         address treasuryAdapter;
         address communityToken;
         address paramController;
@@ -286,6 +288,9 @@ contract CommunityRegistry is AccessControl {
         } else if (moduleKey == keccak256("valuableActionSBT")) {
             oldAddress = community.valuableActionSBT;
             community.valuableActionSBT = moduleAddress;
+        } else if (moduleKey == keccak256("treasuryVault")) {
+            oldAddress = community.treasuryVault;
+            community.treasuryVault = moduleAddress;
         } else if (moduleKey == keccak256("treasuryAdapter")) {
             oldAddress = community.treasuryAdapter;
             community.treasuryAdapter = moduleAddress;
@@ -354,6 +359,10 @@ contract CommunityRegistry is AccessControl {
         if (modules.valuableActionSBT != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("valuableActionSBT"), community.valuableActionSBT, modules.valuableActionSBT);
             community.valuableActionSBT = modules.valuableActionSBT;
+        }
+        if (modules.treasuryVault != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("treasuryVault"), community.treasuryVault, modules.treasuryVault);
+            community.treasuryVault = modules.treasuryVault;
         }
         if (modules.treasuryAdapter != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("treasuryAdapter"), community.treasuryAdapter, modules.treasuryAdapter);
@@ -552,6 +561,7 @@ contract CommunityRegistry is AccessControl {
     /// @return engagementsManager Engagements contract address
     /// @return valuableActionRegistry ValuableActionRegistry contract address
     /// @return valuableActionSBT ValuableActionSBT contract address
+    /// @return treasuryVault Treasury vault (Safe) address
     /// @return treasuryAdapter TreasuryAdapter contract address
     /// @return communityToken CommunityToken contract address
     function getModuleAddresses(uint256 communityId) external view returns (
@@ -562,6 +572,7 @@ contract CommunityRegistry is AccessControl {
         address engagementsManager,
         address valuableActionRegistry,
         address valuableActionSBT,
+        address treasuryVault,
         address treasuryAdapter,
         address communityToken
     ) {
@@ -575,6 +586,7 @@ contract CommunityRegistry is AccessControl {
             community.engagementsManager,
             community.valuableActionRegistry,
             community.valuableActionSBT,
+            community.treasuryVault,
             community.treasuryAdapter,
             community.communityToken
         );
@@ -642,6 +654,7 @@ contract CommunityRegistry is AccessControl {
             verifierElection: community.verifierElection,
             verifierManager: community.verifierManager,
             valuableActionSBT: community.valuableActionSBT,
+            treasuryVault: community.treasuryVault,
             treasuryAdapter: community.treasuryAdapter,
             communityToken: community.communityToken,
             paramController: community.paramController

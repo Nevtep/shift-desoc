@@ -24,6 +24,7 @@ contract CommunityRegistryMock {
         address verifierElection;
         address verifierManager;
         address valuableActionSBT;
+        address treasuryVault;
         address treasuryAdapter;
         address communityToken;
         address paramController;
@@ -162,6 +163,7 @@ contract EngagementsTest is Test {
                 verifierElection: address(verifierElection),
                 verifierManager: address(verifierManager),
                 valuableActionSBT: address(valuableActionSBT),
+                treasuryVault: address(0),
                 treasuryAdapter: address(0),
                 communityToken: address(0),
                 paramController: address(paramController)
