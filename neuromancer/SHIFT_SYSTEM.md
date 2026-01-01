@@ -8,7 +8,7 @@
 
 **Core Flow**: `requests → drafts → proposals → timelock execution` with Engagement-based merit verification and token rewards.
 
-**Contract Count**: 24 Solidity contracts (excluding libs/interfaces)
+**Contract Count**: 25 Solidity contracts (excluding libs/interfaces; includes ProjectFactory)
 
 **Target Networks**: Base (primary), Ethereum (secondary), Base Sepolia (testing)
 
@@ -20,8 +20,8 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  LAYER 5: COMMERCE MODULES (3 contracts)                               │
-│  Marketplace, CommerceDisputes, HousingManager                         │
+│  LAYER 5: COMMERCE MODULES (4 contracts)                               │
+│  Marketplace, CommerceDisputes, HousingManager, ProjectFactory         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  LAYER 4: ECONOMIC ENGINE (4 contracts)                                │
 │  CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter        │
@@ -40,7 +40,7 @@
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Contract Suite (24 Total)
+### Contract Suite (25 Total)
 
 | Layer | Contract | Purpose |
 |-------|----------|---------|
@@ -68,6 +68,7 @@
 | **L5** | Marketplace | Decentralized service marketplace |
 | **L5** | CommerceDisputes | Commercial dispute resolution |
 | **L5** | HousingManager | Co-housing coordination |
+| **L5** | ProjectFactory | Project shell registry / future milestones |
 
 ---
 
@@ -82,6 +83,7 @@ Foundation for community coordination, discussion, and collaborative decision-ma
 - Single source of truth for community metadata, parameters, module addresses
 - Manages cross-community relationships and role-based permissions
 - Stores identity, governance timing, eligibility rules, economic settings
+- Authority expectation: Timelock-only for parameter/module writes (current admin shortcuts must be migrated)
 
 **RequestHub**
 - On-chain discussion forum for community needs and ideas
@@ -92,6 +94,7 @@ Foundation for community coordination, discussion, and collaborative decision-ma
 - Multi-contributor proposal development with versioning
 - Action bundles for governance execution
 - Status lifecycle: DRAFTING → REVIEW → FINALIZED → ESCALATED → WON/LOST
+- Gaps: governance/config setters need Timelock gating; community/request existence validation pending
 
 **ParamController**
 - Central storage for governed configuration
@@ -203,15 +206,21 @@ Democratic work verification replacing economic bonding with community-elected v
 - Delegates to CohortRegistry for storage
 - Issues INVESTMENT SBTs via ValuableActionRegistry
 
-### SBT Types
+### Engagement Subtypes (from code)
+- WORK: Engagements (one-shot contributions)
+- ROLE: Engagements (one-shot role credential)
+- CREDENTIAL: Engagements (one-shot credential issuance)
+- Position and Investment are **not** engagement subtypes; they are separate token kinds minted via dedicated flows.
 
-| Type | Issued By | Purpose |
-|------|-----------|---------|
-| WORK | Engagements | Completed one-shot contributions |
-| ROLE | PositionManager | Successfully completed positions |
-| CREDENTIAL | CredentialManager | Course/training certifications |
-| POSITION | PositionManager | Active ongoing roles |
-| INVESTMENT | InvestmentCohortManager | Investment participation |
+### SBT Token Kinds (5 total)
+
+| TokenKind | Issued By | Purpose |
+|-----------|-----------|---------|
+| WORK | Engagements → ValuableActionSBT.mintEngagement | Completed one-shot contributions |
+| ROLE | Engagements → mintEngagement (role subtype) and PositionManager → mintRoleFromPosition | Role credential (one-shot or derived from position close) |
+| CREDENTIAL | Engagements → mintEngagement (credential subtype) | Course/training certifications |
+| POSITION | PositionManager → mintPosition | Active ongoing roles |
+| INVESTMENT | InvestmentCohortManager → mintInvestment | Investment participation |
 
 ### Verifier Power System (VPS)
 **CRITICAL**: No economic bonding/staking. Verifier power is governance-controlled.
@@ -244,9 +253,9 @@ Revenue distribution, investment management, and treasury operations.
 - Reads splits from ParamController
 
 **TreasuryAdapter**
-- Safe module for community treasury (Gnosis Safe)
+- Safe module for community treasury (Gnosis Safe) — stub, implement guardrails
 - Guardrails: 1 payment/week max, 10% balance cap per token
-- Stablecoin allowlist, pause/emergencyWithdraw paths
+- Stablecoin allowlist, pause/emergencyWithdraw paths (expected in implementation)
 
 ### Revenue Waterfall
 ```
@@ -277,19 +286,25 @@ On-chain coordination for products, services, and co-housing.
 ### Components
 
 **Marketplace**
-- Canonical commerce exchange per community
-- OfferKind routing: GENERIC, HOUSING, future adapters
-- Escrow management and settlement via RevenueRouter
+- Canonical commerce exchange per community — stub (events only)
+- OfferKind routing: GENERIC, HOUSING, future adapters (planned)
+- Escrow management and settlement via RevenueRouter (planned)
 
 **CommerceDisputes**
 - Dedicated dispute resolution for commerce (separate from work verification)
 - Binary outcomes: REFUND_BUYER, PAY_SELLER
 - Prevents duplicate disputes per resource
+- Authority expectation: Timelock-governed; current owner/authorized-caller model must be migrated
 
 **HousingManager**
-- Co-housing inventory and reservations
-- ModuleProduct interface for Marketplace integration
-- Check-in/out lifecycle, cancellation policies
+- Co-housing inventory and reservations — stub (events only)
+- ModuleProduct interface for Marketplace integration (planned)
+- Check-in/out lifecycle, cancellation policies (planned)
+
+**ProjectFactory**
+- Project shell registry (ERC-1155 association)
+- Planned milestone validation and crowdfunding protections
+- Authority expectation: Timelock-governed for project config
 
 ### Commerce vs Work Verification
 **CRITICAL**: Keep domains separated.
@@ -370,17 +385,28 @@ Community Member
    - Stablecoin allowlist enforced
    - Pause + emergency withdraw path via governance/guardian
 
+### Authority Expectations vs Current Gaps
+- CommunityRegistry: current admin-based updates; must move parameter/module writes behind Timelock
+- DraftsManager: config/governor updates and community/request validation missing
+- CommerceDisputes: owner/authorized-caller model; must be Timelock-driven
+- TreasuryAdapter, Marketplace, HousingManager: stubs; implement guardrails + Timelock wiring before use
+- ParamController: remains single policy oracle; avoid duplicating configs elsewhere
+
 ### Access Control Summary
 
 | Contract | Write Authority |
 |----------|-----------------|
+| CommunityRegistry | Timelock expected (current admin shortcuts to migrate) |
 | ParamController | Timelock only |
 | VerifierPowerToken1155 | Timelock only |
 | VerifierElection | Timelock only |
 | ValuableActionRegistry | Governance/moderators |
 | Engagements | Workers (submit), Jurors (vote), Governance (revoke) |
+| DraftsManager | Governance/moderators (needs Timelock gating on config) |
+| CommerceDisputes | Timelock expected (current owner/authorized callers) |
 | TreasuryAdapter | Timelock (spend), Governor/Guardian (pause) |
 | CohortRegistry | RevenueRouter (recovery), ValuableActionSBT (investments) |
+| ProjectFactory | Timelock expected |
 
 ---
 
@@ -391,7 +417,7 @@ Community Member
 |------|-------------|
 | **Engagements** | One-shot work verification contract (formerly Claims) |
 | **ValuableActionSBT** | Multi-type soulbound tokens (formerly WorkerSBT) |
-| **EngagementSubtype** | Enum: WORK, ROLE, CREDENTIAL, POSITION, INVESTMENT |
+| **EngagementSubtype** | Enum (code): WORK, ROLE, CREDENTIAL |
 | **Target ROI** | Investment return target (not "guaranteed" ROI) |
 | **VPS** | Verifier Power System (governance-controlled, no staking) |
 
@@ -437,7 +463,7 @@ pnpm hh:compile          # Compile contracts
 
 ## Quick Reference
 
-### 24 Contracts by Layer
+### 25 Contracts by Layer
 ```
 L1 (4): CommunityRegistry, RequestHub, DraftsManager, ParamController
 L2 (4): ShiftGovernor, CountingMultiChoice, MembershipTokenERC20Votes, TimelockController
@@ -445,14 +471,14 @@ L3 (9): ValuableActionRegistry, Engagements, VerifierPowerToken1155, VerifierEle
         VerifierManager, ValuableActionSBT, CredentialManager, PositionManager,
         InvestmentCohortManager
 L4 (4): CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter
-L5 (3): Marketplace, CommerceDisputes, HousingManager
+L5 (4): Marketplace, CommerceDisputes, HousingManager, ProjectFactory
 ```
 
 ### 5 SBT Types
 ```
 WORK       → Engagements (one-shot contributions)
-ROLE       → PositionManager (completed positions)
-CREDENTIAL → CredentialManager (certifications)
+ROLE       → Engagements (role subtype) and PositionManager (derived on close)
+CREDENTIAL → Engagements (credential subtype)
 POSITION   → PositionManager (active roles)
 INVESTMENT → InvestmentCohortManager (investor participation)
 ```
