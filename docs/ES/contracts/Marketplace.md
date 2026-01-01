@@ -314,14 +314,14 @@ function processCommunityTokenPayment(
 }
 ```
 
-### Con Claims Sistema
+### Con Sistema de Compromisos (Engagements)
 
 ```solidity
 // Crear ValuableActions para ventas exitosas
 function rewardSuccessfulSales(address seller, uint256 saleAmount) external {
     // Los vendedores exitosos pueden ganar WorkerPoints por actividad de marketplace
     if (saleAmount > 100e18) { // Ventas de $100+
-        claims.submitClaim(
+        engagements.submitEngagement(
             seller,
             marketplaceSalesActionId,
             abi.encode(saleAmount, block.timestamp),

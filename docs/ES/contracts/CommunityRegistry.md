@@ -34,7 +34,7 @@ struct Community {
     address timelock;
     address requestHub;
     address draftsManager;
-    address claimsManager;
+    address engagementsManager;
     address actionTypeRegistry;
     address verifierPool;
     address workerSBT;

@@ -295,8 +295,8 @@ pnpm check:permissions --network base_sepolia
 # Analizar estado de governance
 pnpm check:governance --network base_sepolia
 
-# Verificar estado de claims y rewards
-pnpm check:claims --network base_sepolia
+# Verificar estado de compromisos y rewards
+pnpm check:engagements --network base_sepolia
 pnpm check:rewards --network base_sepolia
 ```
 

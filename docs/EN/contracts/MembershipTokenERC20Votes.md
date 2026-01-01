@@ -381,7 +381,7 @@ ValuableAction memory codeReview = ValuableAction({
     cooldownPeriod: 1 days           // Max 1 review per day per person
 });
 
-// Tokens automatically minted when claims approved
+// Tokens automatically minted when engagements approved
 // No manual distribution needed
 ```
 

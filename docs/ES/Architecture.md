@@ -1370,7 +1370,7 @@ _Esta arquitectura está diseñada para evolucionar con las necesidades de la co
 │ CAPA DE VERIFICACIÓN │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ ┌─────────────────┐ ┌──────────────────┐ ┌─────────────────────────┐ │
-│ │ValuableActionReg │◄───┤ Claims ├────┤ Sistema VPS  │ │
+│ │ValuableActionReg │◄───┤ Compromisos ├────┤ Sistema VPS  │ │
 │ │ - Tipos Trabajo │ │ - Envíos │ │ - Registro │ │
 │ │ - Parámetros │ │ - Votación M-de-N│ │ - Elecciones VPT │ │
 │ │ - Spec Evidencia│ │ - Apelaciones │ │ - Reputación │ │
@@ -1402,7 +1402,7 @@ _Esta arquitectura está diseñada para evolucionar con las necesidades de la co
 ▼ ▼ ▼
 ┌─────────────┐ ┌──────────────┐ ┌─────────────┐
 │ValuableAction│ │Sistema VPS  │ │ Resolución │
-│Registry │ │ │ │ Claims │
+│Registry │ │ │ │ Compromisos│
 └─────────────┘ └──────────────┘ └─────────────┘
 │ │ │
 ▼ ▼ ▼
@@ -2087,7 +2087,7 @@ contract CommunityTokenTreasury {
 | ShiftGovernor          | 86%+             | 95%+                | 80%+            | ✅ Completado    |
 | CountingMultiChoice    | 100%             | 100%                | 100%            | ✅ Completado    |
 | ValuableActionRegistry | 96%+             | 98%+                | 92%+            | ✅ Completado    |
-| Claims                 | 98%+             | 100%                | 95%+            | ✅ Completado    |
+| Engagements            | 98%+             | 100%                | 95%+            | ✅ Completado    |
 | VerifierElection       | 98%+             | 98%+                | 95%+            | ✅ Completado    |
 | VerifierPowerToken1155 | 96%+             | 96%+                | 90%+            | ✅ Completado    |
 | VerifierManager        | 95%+             | 97%+                | 88%+            | ✅ Completado    |

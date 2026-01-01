@@ -73,7 +73,7 @@ We're not there yet. Today's organizational systems—from corporations to onlin
 When you help build something valuable—whether it's code, content, or community—your work becomes invisible:
 
 - **No permanent record** - Your contributions vanish when platforms shut down or you move on
-- **Easily falsified claims** - Anyone can claim credit for work they didn't do
+- **Easily falsified credit** - Anyone can take credit for work they didn't do
 - **Popularity over merit** - Recognition depends more on social connections than actual value created
 
 _What we need_: **Permanent, unfakeable proof** of the value you've created that follows you everywhere.
@@ -216,7 +216,7 @@ _Our Democratic Innovation_: **VerifierPowerToken1155 (VPT) - Community-Elected 
    - Results are publicly auditable
 
 4. **Verifier Service**: Elected verifiers receive VPT1155 tokens granting:
-   - Authority to verify community work claims
+   - Authority to verify community work submissions
    - Responsibility to maintain high accuracy standards
    - Accountability to the community that elected them
 
@@ -506,12 +506,12 @@ Our revolutionary solution: **Pure merit-based governance where voting power is 
 
 **3. Flexible Claiming & Redemption**
 
-- **Periodic claims enabled**: Workers claim earned CommunityTokens each salary period
+- **Periodic salary claims enabled**: Workers claim earned CommunityTokens each salary period
 - **1:1 USDC redemption**: Burn CommunityTokens anytime for equivalent USDC from treasury
 - **Rollover protection**: Unclaimed tokens carry forward to next period, preventing loss
 
 **Real Example:**
-_Community allocates $6,000 monthly salary budget. Three workers earned SBTs: Alice (50 points), Bob (25 points), Carol (25 points). Distribution: Alice claims $3,000, Bob and Carol each claim $1,500._
+_Community allocates $6,000 monthly salary budget. Three workers earned SBTs: Alice (50 points), Bob (25 points), Carol (25 points). Distribution: Alice receives $3,000, Bob and Carol each receive $1,500._
 
 **Built-in Fairness Features:**
 
@@ -1174,7 +1174,7 @@ Shift DeSoc offers a valuable platform for strategic partnerships with leading d
 - **Kleros**: Integration opportunity for decentralized arbitration in community disputes, work verification appeals, and governance conflicts
 - **Aragon Court**: Partnership potential for specialized governance dispute resolution in high-stakes community decisions
 - **OpenLaw**: Collaboration opportunity for smart contract legal templates supporting community governance structures and asset management
-- **Chainlink Functions**: Integration potential for oracle services enabling real-world data verification in claims and milestone tracking
+- **Chainlink Functions**: Integration potential for oracle services enabling real-world data verification in engagements and milestone tracking
 
 #### **Property & Asset Tokenization Partners**
 

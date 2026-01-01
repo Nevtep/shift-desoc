@@ -521,8 +521,8 @@ contract ValuableActionRegistry {
         uint32 slashVerifierBps;       // Penalty for inaccurate verification
 
         // Quality Control
-        uint32 cooldownPeriod;         // Minimum time between claims of this type
-        uint32 maxConcurrent;          // Maximum active claims per person
+        uint32 cooldownPeriod;         // Minimum time between engagements of this type
+        uint32 maxConcurrent;          // Maximum active engagements per person
         bool revocable;                // Can community governance revoke this SBT
         uint32 evidenceTypes;          // Bitmask of required evidence formats
 
@@ -533,7 +533,7 @@ contract ValuableActionRegistry {
 
         // Metadata & Automation
         string evidenceSpecCID;        // IPFS: detailed evidence requirements
-        string titleTemplate;          // Template for claim titles
+        string titleTemplate;          // Template for engagement titles
         bytes32[] automationRules;     // Integration with external systems (GitHub, etc)
 
         // Time-Based Parameters
@@ -634,27 +634,27 @@ ValuableActions create the **mathematical foundation** for the entire merit-base
 
 ```solidity
 contract ValuableActionEconomicEngine {
-    function processApprovedClaim(uint256 claimId, uint256 valuableActionId) external {
+    function processApprovedEngagement(uint256 engagementId, uint256 valuableActionId) external {
         ValuableAction memory valuableAction = registry.getValuableAction(valuableActionId);
-        address claimant = claims.getClaimant(claimId);
+        address contributor = engagements.getContributor(engagementId);
 
         // 1. Mint governance power (MembershipToken)
-        membershipToken.mintFromSBT(claimant, valuableAction.membershipTokenReward, "WORKER");
+        membershipToken.mintFromSBT(contributor, valuableAction.membershipTokenReward, "WORKER");
 
-        // 2. Update salary earning rate (for CommunityToken claims)
-        communityToken.increaseSalaryWeight(claimant, valuableAction.communityTokenReward);
+        // 2. Update salary earning rate (for CommunityToken)
+        communityToken.increaseSalaryWeight(contributor, valuableAction.communityTokenReward);
 
         // 3. Mint ValuableActionSBT with embedded weights
-        valuableActionSBT.mintWithValuableAction(claimant, valuableActionId, valuableAction.membershipTokenReward);
+        valuableActionSBT.mintWithValuableAction(contributor, valuableActionId, valuableAction.membershipTokenReward);
 
         // 4. Special handling for founder actions
         if (valuableAction.founderVerified && valuableAction.investorSBTReward > 0) {
-            investorSBT.mintFromFounderWork(claimant, actionType.initialInvestorBonus);
-            membershipToken.mintFromSBT(claimant, actionType.initialInvestorBonus, "INVESTOR");
+            investorSBT.mintFromFounderWork(contributor, actionType.initialInvestorBonus);
+            membershipToken.mintFromSBT(contributor, actionType.initialInvestorBonus, "INVESTOR");
         }
 
         // 5. Reward accurate verifiers
-        address[] memory accurateVerifiers = claims.getAccurateVerifiers(claimId);
+        address[] memory accurateVerifiers = engagements.getAccurateVerifiers(engagementId);
         for (uint i = 0; i < accurateVerifiers.length; i++) {
             valuableActionSBT.mintVerifierReward(accurateVerifiers[i], actionType.verifierRewardWeight);
         }
@@ -768,7 +768,7 @@ contract FounderVerificationSystem {
                         ▼                                                  ▼
                 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
                 │Workers Submit   │────▶│  M-of-N Peer     │────▶│SBT Minting &    │
-                │Claims w/Evidence│     │  Verification    │     │Revenue Sharing  │
+                │Engagements      │     │  Verification    │     │Revenue Sharing  │
                 └─────────────────┘     └──────────────────┘     └─────────────────┘
 ```
 
@@ -786,16 +786,16 @@ contract CommunityToken is ERC20 {
         uint256 totalBudget;           // Total USDC allocated for this period
         uint256 totalSBTWeight;        // Sum of all SBT weights at period start
         uint256 claimedAmount;         // Total claimed so far this period
-        bool finalized;                // Period closed for claims
+        bool finalized;                // Period closed for salary claims
         mapping(address => uint256) workerWeightSnapshot;  // SBT weights at period start
-        mapping(address => bool) hasClaimed;               // Claim tracking
+        mapping(address => bool) hasClaimed;               // Salary claim tracking
     }
 
     struct WorkerSalaryState {
         uint256 accumulatedWeight;      // Total SBT weight earned across ActionTypes
         uint256 lastClaimPeriod;       // Last period worker claimed salary
         uint256 unclaimedPeriods;      // Number of unclaimed periods (rollover)
-        bool fraudFlagged;             // Temporarily suspended from claims
+        bool fraudFlagged;             // Temporarily suspended from engagements
         uint256 lifetimeEarnings;      // Total CommunityToken ever earned
         uint64 joinDate;               // First contribution timestamp
     }
@@ -836,7 +836,7 @@ contract CommunityToken is ERC20 {
 ### **Sophisticated Claiming Mechanism**
 
 ```solidity
-contract CommunityTokenClaiming {
+contract CommunityTokenSalary {
     function claimSalary(uint256[] calldata periodIds) external nonReentrant {
         require(!workerStates[msg.sender].fraudFlagged, "Worker flagged for fraud review");
 
@@ -887,7 +887,7 @@ contract CommunityTokenClaiming {
 
         adjustedShare = baseShare;
 
-        // Rollover bonus: Extra reward for delayed claims (encourages batching)
+        // Rollover bonus: Extra reward for delayed salary claims (encourages batching)
         uint256 unclaimed = workerStates[worker].unclaimedPeriods;
         if (unclaimed > 1) {
             uint256 rolloverBonus = Math.min(unclaimed * 5, 25); // Up to 25% bonus
@@ -1047,7 +1047,7 @@ contract CommunityTokenTreasury {
 
     // Emergency functions for edge cases
     function emergencyFreeze() external onlyGovernance {
-        // Temporarily halt all salary claims during crisis
+        // Temporarily halt all salary withdrawals during crisis
         emit EmergencyFreeze(block.timestamp);
     }
 
@@ -1063,12 +1063,12 @@ contract CommunityTokenTreasury {
 ```
 ┌───────────┐     ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
 │  Worker   │────▶│ Submit      │────▶│ Juror        │────▶│ Reputation  │
-│           │     │ Claim       │     │ Selection    │     │ Update      │
+│           │     │ Engagement  │     │ Selection    │     │ Update      │
 └───────────┘     └─────────────┘     └──────────────┘     └─────────────┘
                          │                     │                    │
                          ▼                     ▼                    ▼
                   ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-                  │ActionType   │     │VPS System    │     │ Claims      │
+                  │ActionType   │     │VPS System    │     │ Engagements │
                   │Registry     │     │              │     │ Resolution  │
                   └─────────────┘     └──────────────┘     └─────────────┘
                          │                     │                    │
@@ -1127,7 +1127,7 @@ graph TD
     J --> K[Timelock Execution]
     K --> L[Work Authorization]
 
-    L --> M[Claims Submission]
+    L --> M[Engagement Submission]
     M --> N[M-of-N Verification]
     N --> O[SBT & Revenue Distribution]
     O --> P[Community Impact Measurement]
@@ -1209,7 +1209,7 @@ graph TD
 
     C --> D[Elected Verifiers Receive VPT1155 Tokens]
     D --> E[Available for Juror Selection]
-    E --> F[Selected for Claims Panel]
+    E --> F[Selected for Engagements Panel]
 
     F --> G[Review Evidence & Vote]
     G --> H[Claim Resolution]
@@ -1250,8 +1250,8 @@ mapping(uint256 => uint256) totalSupplyHistory; // Token supply snapshots
 #### Verification State
 
 ```solidity
-// Claim lifecycle
-mapping(uint256 => Claim) claims;               // All submitted claims
+// Engagement lifecycle
+mapping(uint256 => Engagement) engagements;     // All submitted engagements
 mapping(uint256 => Appeal) appeals;             // Appeal tracking
 mapping(address => mapping(uint256 => uint64)) workerCooldowns; // Rate limiting
 
@@ -1587,10 +1587,10 @@ event ProposalExecuted(uint256 indexed proposalId);
 #### Verification Events
 
 ```solidity
-event ClaimSubmitted(uint256 indexed claimId, address indexed worker, uint256 typeId);
-event JurorsAssigned(uint256 indexed claimId, address[] jurors);
-event ClaimVerified(uint256 indexed claimId, address indexed verifier, bool approve);
-event ClaimResolved(uint256 indexed claimId, uint8 status, uint32 approvals, uint32 rejections);
+event EngagementSubmitted(uint256 indexed engagementId, address indexed worker, uint256 typeId);
+event JurorsAssigned(uint256 indexed engagementId, address[] jurors);
+event EngagementVerified(uint256 indexed engagementId, address indexed verifier, bool approve);
+event EngagementResolved(uint256 indexed engagementId, uint8 status, uint32 approvals, uint32 rejections);
 event ReputationUpdated(address indexed verifier, uint256 oldRep, uint256 newRep);
 ```
 
@@ -1600,7 +1600,7 @@ event ReputationUpdated(address indexed verifier, uint256 oldRep, uint256 newRep
 event ElectionCreated(uint256 indexed electionId, uint256 indexed communityId, uint256 seats);
 event VerifierElected(uint256 indexed electionId, address indexed verifier, uint256 votes);
 event VerifierTermStarted(address indexed verifier, uint256 powerTokens, uint64 termEnd);
-event FraudReported(address indexed verifier, address indexed reporter, uint256 claimId);
+event FraudReported(address indexed verifier, address indexed reporter, uint256 engagementId);
 event VerifierRemoved(address indexed verifier, string reason, address replacedBy);
 ```
 
@@ -1680,14 +1680,14 @@ event VerifierRemoved(address indexed verifier, string reason, address replacedB
 #### Throughput Metrics
 
 - **Governance**: 1000+ votes per proposal without performance degradation
-- **Verification**: 100+ concurrent claims with automated juror selection
+- **Verification**: 100+ concurrent engagements with automated juror selection
 - **Token Operations**: Standard ERC-20/ERC-721 performance characteristics
 
 #### Latency Targets
 
 - **Vote Casting**: <5 second confirmation times
-- **Claim Submission**: <10 second processing including juror selection
-- **Reputation Updates**: Real-time updates on claim resolution
+- **Engagement Submission**: <10 second processing including juror selection
+- **Reputation Updates**: Real-time updates on engagement resolution
 
 ## 🔮 Future Architecture Evolution
 
@@ -1814,12 +1814,12 @@ contract GitHubPartnership {
         // Enables seamless developer onboarding
     }
 
-    function submitClaimFromPR(
+    function submitEngagementFromPR(
         uint256 actionTypeId,
         string calldata pullRequestUrl,
         bytes32 evidenceHash
-    ) external returns (uint256 claimId) {
-        // Submit work claims directly from GitHub PR
+    ) external returns (uint256 engagementId) {
+        // Submit work engagements directly from GitHub PR
         // Links code contribution to reputation system
     }
 }
@@ -1988,7 +1988,7 @@ contract CommunityFactory {
         address verifierElection;
         address verifierPowerToken1155;
         address verifierManager;
-        address claims;
+        address engagements;
         uint256 communityId;
     }
 
@@ -2254,7 +2254,7 @@ contract CommunityRegistry {
         address timelock;
         address requestHub;
         address draftsManager;
-        address claimsManager;
+        address engagementsManager;
         address valuableActionRegistry;
         address verifierElection;
         address verifierPowerToken1155;
@@ -2339,7 +2339,7 @@ pnpm manage:system --network base_sepolia
     "verifierElection": "0x...",
     "verifierManager": "0x...",
     "valuableActionRegistry": "0x...",
-    "claims": "0x...",
+    "engagements": "0x...",
     "valuableActionSBT": "0x...",
     "communityToken": "0x...",
     "cohortRegistry": "0x...",
@@ -2397,7 +2397,7 @@ pnpm manage:system --network base_sepolia
 **Technical Deliverables:**
 
 - ✅ ShiftGovernor with multi-choice voting (completed)
-- ✅ Claims + ValuableActionRegistry + VPS System (completed)
+- ✅ Engagements + ValuableActionRegistry + VPS System (completed)
 - ✅ ValuableActionSBT with WorkerPoints EMA tracking (completed)
 - ✅ CommunityToken 1:1 USDC backing (completed)
 - ✅ API-based deployment system with JSON address management (completed)
@@ -2410,7 +2410,7 @@ pnpm manage:system --network base_sepolia
 
 - API-based community creation (avoiding blockchain size limits)
 - Automated address management via deployments/{network}.json files
-- Core workflow validation: request → draft → proposal → execution → claims → verification
+- Core workflow validation: request → draft → proposal → execution → engagements → verification
 - Production-ready deployment infrastructure for Base mainnet
 
 ### **Phase 2: Advanced Tokenomics (Month 3-8)**
@@ -2500,26 +2500,26 @@ pnpm manage:system --network base_sepolia
 
 _This is not just a governance platform - it's infrastructure for the transition from scarcity-based employment to abundance-based contribution._
 
-**Claims Contract**
+**Engagements Contract**
 
 ```solidity
-contract Claims {
-    struct Claim {
+contract Engagements {
+    struct Engagement {
         uint256 actionTypeId;
-        address claimant;
+        address contributor;
         string evidenceCID;
         uint64 submittedAt;
-        ClaimStatus status;
+        EngagementStatus status;
         uint256[] selectedJurors;
         mapping(address => Vote) votes;
         uint64 resolvedAt;
         bool appealed;
     }
 
-    function submitClaim(uint256 actionTypeId, string calldata evidenceCID) external returns (uint256 claimId);
-    function vote(uint256 claimId, bool approve, string calldata reason) external;
-    function resolve(uint256 claimId) external;
-    function appeal(uint256 claimId) external payable;
+    function submitEngagement(uint256 actionTypeId, string calldata evidenceCID) external returns (uint256 engagementId);
+    function vote(uint256 engagementId, bool approve, string calldata reason) external;
+    function resolve(uint256 engagementId) external;
+    function appeal(uint256 engagementId) external payable;
 }
 ```
 
@@ -2572,8 +2572,8 @@ struct PackedVote {
 }
 
 // Event-driven architecture for off-chain indexing
-event ClaimSubmitted(uint256 indexed claimId, address indexed claimant, uint256 indexed actionTypeId);
-event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
+event EngagementSubmitted(uint256 indexed engagementId, address indexed contributor, uint256 indexed actionTypeId);
+event VoteCast(uint256 indexed engagementId, address indexed voter, bool approved);
 ```
 
 ### Security Implementation
@@ -2622,7 +2622,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 - ✅ **ShiftGovernor**: Multi-choice voting with OpenZeppelin integration
 - ✅ **CountingMultiChoice**: Weighted voting distribution logic
 - ✅ **ValuableActionRegistry**: Community-configured value definition system
-- ✅ **Claims**: M-of-N verification with appeals process
+- ✅ **Engagements**: M-of-N verification with appeals process
 - ✅ **VerifierManager**: Governance-elected verifier system with VPT1155 tokens
 
 #### **In Development**
@@ -2635,22 +2635,22 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 
 ```javascript
 // Example test structure
-describe("Claims Verification Flow", () => {
+describe("Engagements Verification Flow", () => {
   it("should complete M-of-N verification", async () => {
-    // Submit claim
-    const claimId = await claims.submitClaim(actionTypeId, evidenceCID);
+    // Submit engagement
+    const engagementId = await engagements.submitEngagement(actionTypeId, evidenceCID);
 
     // Select jurors
-    const jurors = await verifierManager.selectJurors(claimId, communityId, seed);
+    const jurors = await verifierManager.selectJurors(engagementId, communityId, seed);
 
     // Cast votes
     for (const juror of jurors.slice(0, MIN_APPROVALS)) {
-      await claims.connect(juror).vote(claimId, true, "Good work");
+      await engagements.connect(juror).vote(engagementId, true, "Good work");
     }
 
     // Verify resolution
-    await claims.resolve(claimId);
-    expect(await claims.getStatus(claimId)).to.equal(ClaimStatus.Approved);
+    await engagements.resolve(engagementId);
+    expect(await engagements.getStatus(engagementId)).to.equal(EngagementStatus.Approved);
   });
 });
 ```

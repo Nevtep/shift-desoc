@@ -196,7 +196,7 @@ struct ValuableAction {
     uint32 jurorsMin;               // M (minimum approvals)
     uint32 panelSize;               // N (total jurors)
     uint32 verifyWindow;            // Time limit for verification
-    uint32 cooldownPeriod;          // Time between claims
+    uint32 cooldownPeriod;          // Time between engagements
     bool revocable;                 // Can governance revoke
     string evidenceSpecCID;         // IPFS evidence requirements
 }

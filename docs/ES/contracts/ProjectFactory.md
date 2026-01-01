@@ -173,8 +173,8 @@ function rewardProjectContribution(
     uint256 contributionType,
     string calldata evidence
 ) external {
-    // Crear reclamación para contribución al proyecto
-    claims.submitClaim(
+    // Crear compromiso para contribución al proyecto
+    engagements.submitEngagement(
         contributor,
         projectContributionActionId,
         abi.encode(projectId, contributionType, evidence),

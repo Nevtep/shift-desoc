@@ -316,7 +316,7 @@ The following contracts are **shared across all communities** (keyed by `communi
 ✅ VerifierPowerToken1155 (ERC1155 with communityId as tokenId)  
 ✅ VerifierElection  
 ✅ VerifierManager  
-✅ Claims  
+✅ Engagements  
 ✅ ValuableActionSBT  
 ✅ RevenueRouter  
 ✅ TreasuryAdapter  

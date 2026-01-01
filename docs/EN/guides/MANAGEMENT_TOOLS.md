@@ -42,7 +42,7 @@ Shift DeSoc provides two complementary CLI tools for managing deployed systems:
 - ✅ Checking system status and community info
 - ✅ Creating and managing verifier elections
 - ✅ Viewing governance proposals and voting
-- ✅ Submitting and verifying work claims
+- ✅ Submitting and verifying work engagements
 - ✅ Minting VPT tokens and checking balances
 - ✅ Monitoring community activity
 
@@ -319,7 +319,7 @@ Balance: 0.5 ETH
    CommunityRegistry: 0x...
    Governor: 0x...
    VerifierElection: 0x...
-   Claims: 0x...
+   Engagements: 0x...
 
 🏘️  Communities:
    1. Pioneers DAO - First community
@@ -437,31 +437,31 @@ HARDHAT_NETWORK=base_sepolia pnpm manage governance vote 12345... 1 "I support t
 
 ---
 
-### 4. Claims & Work Verification
+### 4. Engagements & Work Verification
 
-#### Submit Claim
+#### Submit Engagement
 
 ```bash
-HARDHAT_NETWORK=base_sepolia pnpm manage claims submit <communityId> <valuableActionId> <evidenceCID>
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements submit <communityId> <valuableActionId> <evidenceCID>
 ```
 
 **Example:**
 ```bash
-HARDHAT_NETWORK=base_sepolia pnpm manage claims submit 1 5 "QmEvidenceHash..."
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements submit 1 5 "QmEvidenceHash..."
 ```
 
-#### View Claim Info
+#### View Engagement Info
 
 ```bash
-HARDHAT_NETWORK=base_sepolia pnpm manage claims info <claimId>
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements info <engagementId>
 ```
 
 **Example:**
 ```bash
-HARDHAT_NETWORK=base_sepolia pnpm manage claims info 42
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements info 42
 
 # Output:
-# 📊 Claim 42:
+# 📊 Engagement 42:
 #    Worker: 0xWorker...
 #    Community: 1
 #    ValuableAction: 5
@@ -469,19 +469,19 @@ HARDHAT_NETWORK=base_sepolia pnpm manage claims info 42
 #    Status: 1
 ```
 
-#### Verify Claim (Juror only)
+#### Verify Engagement (Juror only)
 
 ```bash
-HARDHAT_NETWORK=base_sepolia pnpm manage claims verify <claimId> <true|false>
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements verify <engagementId> <true|false>
 ```
 
 **Example:**
 ```bash
-# Approve claim
-HARDHAT_NETWORK=base_sepolia pnpm manage claims verify 42 true
+# Approve engagement
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements verify 42 true
 
-# Reject claim
-HARDHAT_NETWORK=base_sepolia pnpm manage claims verify 42 false
+# Reject engagement
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements verify 42 false
 ```
 
 ---
@@ -658,25 +658,25 @@ HARDHAT_NETWORK=base_sepolia pnpm manage elections finalize 1
 
 ---
 
-## Workflow 3: Submit and Verify Work Claim
+## Workflow 3: Submit and Verify Work Engagement
 
-**Goal:** Worker submits claim, verifiers review and approve/reject
+**Goal:** Worker submits engagement, verifiers review and approve/reject
 
 ```bash
-# Step 1: Worker submits claim with evidence
-HARDHAT_NETWORK=base_sepolia pnpm manage claims submit 1 5 "QmEvidenceIPFSHash..."
+# Step 1: Worker submits engagement with evidence
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements submit 1 5 "QmEvidenceIPFSHash..."
 
-# Output shows: Claim submitted (assume claim ID 42)
+# Output shows: Engagement submitted (assume engagement ID 42)
 
-# Step 2: Check claim status
-HARDHAT_NETWORK=base_sepolia pnpm manage claims info 42
+# Step 2: Check engagement status
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements info 42
 
-# Step 3: Selected verifiers verify claim
+# Step 3: Selected verifiers verify engagement
 # (Each selected juror runs this)
-HARDHAT_NETWORK=base_sepolia pnpm manage claims verify 42 true
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements verify 42 true
 
-# Step 4: Check claim status after M-of-N threshold
-HARDHAT_NETWORK=base_sepolia pnpm manage claims info 42
+# Step 4: Check engagement status after M-of-N threshold
+HARDHAT_NETWORK=base_sepolia pnpm manage engagements info 42
 
 # Step 5: Verify worker received SBT and tokens
 HARDHAT_NETWORK=base_sepolia pnpm manage community info 1
@@ -868,10 +868,10 @@ pnpm manage elections finalize <electionId>
 pnpm manage governance proposal <proposalId>
 pnpm manage governance vote <proposalId> <support> [reason]
 
-# Claims
-pnpm manage claims submit <cid> <vaId> <evidenceCID>
-pnpm manage claims info <claimId>
-pnpm manage claims verify <claimId> <true|false>
+# Engagements
+pnpm manage engagements submit <cid> <vaId> <evidenceCID>
+pnpm manage engagements info <engagementId>
+pnpm manage engagements verify <engagementId> <true|false>
 
 # VPT
 pnpm manage vpt mint <address> <cid> <amount>
