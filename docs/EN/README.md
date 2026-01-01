@@ -102,13 +102,13 @@
 
 ---
 
-## 📊 Current Status (December 2025)
+## 📊 Current Status (January 2026)
 
-**✅ Production-Ready MVP**
-- 24 contracts deployed to Base Sepolia
-- Complete documentation coverage
-- Community ID 1 operational
-- Base mainnet deployment ready (~$10 cost)
+**🚧 Early Beta (Base Sepolia Testnet)**
+- 24 contracts deployed on Base Sepolia testnet (Community ID 1 operational)
+- API-based deployment system (~$0.19 per community on testnet)
+- Full documentation coverage in EN/ES (Architecture, Layers, Tokenomics, 24 contracts)
+- Mainnet readiness: in progress; no mainnet deployment yet
 
 ### Contract Suite (24 contracts)
 

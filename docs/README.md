@@ -28,12 +28,12 @@ Documentación completa en español incluyendo:
 
 ## 🎯 **Project Status** | **Estado del Proyecto**
 
-**✅ PRODUCTION-READY MVP COMPLETED** (November 2025)
+**🚧 Early Beta (Base Sepolia Testnet)**
 
-- Real community deployments operating on Base Sepolia
-- Complete API-based deployment system (~$0.19 per community)
-- 11 contracts fully documented and verified
-- Mobile integration framework complete
+- 24 contracts deployed on Base Sepolia testnet (Community ID 1 operational)
+- API-based deployment system (~$0.19 per community on testnet)
+- Full documentation coverage in EN/ES (Architecture, Layers, Tokenomics, 24 contracts)
+- Mainnet readiness: in progress; no mainnet deployment yet
 
 **For latest status**: Check [Project Management Hub](../.github/project-management/)
 
@@ -60,7 +60,11 @@ Documentación completa en español incluyendo:
 ### For Developers | Para Desarrolladores
 
 - **EN**: [Technical Architecture](./EN/Architecture.md)
+- **EN**: [Layers Reference](./EN/Layers.md)
+- **EN**: [Tokenomics](./EN/Tokenomics.md)
 - **ES**: [Arquitectura Técnica](./ES/Architecture.md)
+- **ES**: [Referencia de Capas](./ES/Layers.md)
+- **ES**: [Tokenomics](./ES/Tokenomics.md)
 
 ---
 

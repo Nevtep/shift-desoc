@@ -103,11 +103,11 @@
 
 ## 📊 Estado Actual (Enero 2026)
 
-**✅ MVP Listo para Producción**
-- 24 contratos desplegados en Base Sepolia
-- Cobertura de documentación completa
-- Community ID 1 operacional
-- Despliegue en Base mainnet listo (~$10 de costo)
+**🚧 Beta Temprana (Base Sepolia Testnet)**
+- 24 contratos desplegados en Base Sepolia (testnet) con Community ID 1 operacional
+- Sistema de despliegue vía API (~$0.19 por comunidad en testnet)
+- Cobertura completa de documentación EN/ES (Arquitectura, Capas, Tokenomics, 24 contratos)
+- Preparación para mainnet: en progreso; sin despliegue en mainnet aún
 
 ### Suite de Contratos (24 contratos)
 
