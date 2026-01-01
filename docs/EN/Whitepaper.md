@@ -1,5 +1,602 @@
 # Shift DeSoc: Governance Technology for Human Potential
 
+## Whitepaper for Investors, Community Founders and Organizations
+
+_Building the organizational tools that unlock human cooperation: where communities coordinate abundant resources, make wise collective decisions, and share the value they create together_
+
+---
+
+## What is Decentralized Society (DeSoc)?
+
+**Imagine communities coordinating as effectively as large corporations while keeping human-scale democracy and shared ownership.** Imagine technology enabling cooperation instead of competition, abundance instead of artificial scarcity, and human potential instead of pure profit extraction.
+
+**Decentralized Society (DeSoc)** is the transition from hierarchical, extractive organizations toward collaborative, generative communities where people have a real voice, their contributions are fairly recognized, and the value they create together flows back to them.
+
+**Core DeSoc Values:**
+
+- **Democratic Self-Organization**: Communities design their own rules and economic systems
+- **Contribution Recognition**: Valuable work creates portable, lasting reputation that cannot be erased or falsified
+- **Collaborative Abundance**: Resources and revenue flow to those creating value, enabling post-scarcity cooperation
+- **Transparent Governance**: All decisions happen through open, auditable processes
+
+### Why Blockchain Technology?
+
+**Blockchain** is a shared, tamper-proof ledger that multiple computers maintain together. Think of it as a community notebook everyone can read but no single person can alter or delete.
+
+**Key Benefits for Communities:**
+
+- **Permanent Records**: All decisions and contributions are recorded permanently
+- **No Central Authority**: No company or person can shut down or censor the community
+- **Programmable Rules**: Community agreements execute automatically without human intervention
+- **Portable Identity**: Your reputation and achievements travel with you across communities
+
+---
+
+## Executive Summary
+
+**Shift DeSoc is governance technology infrastructure** that helps organizations move from hierarchical management to transparent, democratic coordination. We provide the missing organizational tools that blockchain protocols, DAOs, and communities need to operate effectively at scale.
+
+> **Quick guide to updated concepts (read first):**
+> - **Engagements (verified commitments)**: every work submission or certification is processed as an Engagement.
+> - **Three families of SBTs (soulbound tokens, non-transferable)**:  
+>   - **Engagement SBT** (one-off work, credentials, or completed roles).  
+>   - **Position SBT** (active roles with guaranteed revenue participation).  
+>   - **Investment SBT** (capital participation issued by cohorts with target ROI).  
+> - **Position SBT**: active role; when closed it can mint a historical *Role Engagement SBT*.  
+> - **Investment Cohorts**: groups of investors with immutable ROI targets that receive distributions while active.  
+> - **RevenueRouter (economic routing engine)**: guarantees treasury minimum and active roles first, then routes the rest to cohorts; defines spillover if no cohorts are active.  
+> - **VPT (Verifier Power Token)**: verification power assigned via elections; used to select M-of-N juror panels for Engagement verification.
+
+### **Core Governance Technology Stack:**
+
+- **Multi-Choice Governance Engine**: Beyond binary voting to capture nuanced organizational preferences
+- **Merit-Based Reputation System**: Soulbound tokens that reward contribution over capital accumulation
+- **Dynamic Economic Distribution**: Mathematical models aligning stakeholder incentives over time
+- **Community Coordination Infrastructure**: Discussion → collaborative drafts → governance execution
+- **Cross-Organization Reputation**: Portable credentials creating network effects across partner ecosystems
+
+### **Target Market Segments:**
+
+- **Blockchain Protocols**: DAOs needing governance beyond simple token voting
+- **Open Source Projects**: Contributor communities needing transparent coordination and merit recognition
+- **Local Cooperatives**: Resource-sharing communities needing democratic decision infrastructure
+- **Enterprise Organizations**: Companies transitioning toward more democratic and transparent management
+
+### **Competitive Advantages as Governance Technology:**
+
+- **Organizational Value Creation**: We solve coordination problems existing tools cannot
+- **Dependency-Free Integration**: Adopt specific components without full system migration
+- **Proven Network Effects**: High-reputation members attract better opportunities and stronger communities
+
+### **Market Opportunity**:
+
+Organizations urgently need governance technology that blends operational efficiency with democratic legitimacy. Shift enables this transition by providing tested infrastructure that organizations can adopt gradually.
+
+---
+
+## The Problem: Why Today’s Systems Hold Communities Back
+
+As the economy becomes more collaborative and knowledge-driven, 20th-century organizational tools no longer work. Communities face fundamental barriers that limit their potential:
+
+### **1. Your Contributions Disappear Into the Void**
+
+**The Problem**: In traditional platforms, years of hard work can vanish when policies change, algorithms shift, or you move elsewhere. Your contribution history isn’t yours—it belongs to the platform.
+
+**Real Impact**: Creators lose millions of followers overnight. Open-source contributors cannot prove their work to future employers. Freelancers start from zero on every new platform. **Your reputation is trapped in silos you don’t own.**
+
+### **2. Complex Decisions Get Oversimplified**
+
+**The Problem**: Real-world decisions are rarely yes/no, but current voting tools force that false choice. Nuanced preferences are lost, leading to polarization and decisions that satisfy no one.
+
+**Real Impact**: Communities split over decisions that could have been resolved with gradients and compromise. Projects fail because binary votes cannot capture broadly acceptable solutions. **Poor decision tools create unnecessary conflict.**
+
+### **3. Value Flows to Capital, Not to Creators**
+
+**The Problem**: Current economic systems reward capital ownership over value creation. Platforms extract 30–50% of the value communities create, while those doing the work see only a fraction.
+
+**Real Impact**: Top contributors leave because they aren’t rewarded fairly. Communities can’t reinvest in their own growth. Investors capture disproportionate returns while workers struggle. **Talent and effort are systematically under-rewarded.**
+
+---
+
+## The Shift DeSoc Solution: Governance Technology for Human Flourishing
+
+**Shift tackles these fundamental problems with governance technology that puts communities in control.** We don’t build another platform—we build the infrastructure that lets any community create its own democratic and economic systems.
+
+### **Four Pillars of Democratic Community Technology**
+
+Instead of copying extractive structures, Shift delivers entirely new organizational tools:
+
+### **Pillar 1: Decision-Making That Actually Works**
+
+**The Power of Multiple Preferences over Binary Options**
+
+Most voting tools force two options, but real community choices are more complex. Shift enables **multi-choice voting where members express graded preferences** across alternatives.
+
+**How Multi-Option Voting Works**:
+
+- Distribute your voting power across multiple alternatives (e.g., 40% Option A, 35% Option B, 25% Option C)
+- Final decisions reflect true community preferences, not just the loudest voice
+- Minorities keep a voice; majorities can find compromise
+
+**Real Example**: The community must decide funding priorities:
+
+- **Binary Vote**: “Fund Project X?” (51% Yes, 49% No → community split)
+- **Shift Multi-Option**: Allocate $10,000 among:
+  - Project X: 35% ($3,500)
+  - Project Y: 40% ($4,000)
+  - Emergency Fund: 25% ($2,500)
+  - **Result**: Everyone gets something; no one is fully excluded
+
+**Why It Matters**: Decisions that mirror true community preferences create less conflict and higher long-term satisfaction.
+
+### **Pillar 2: Permanent Proof of Your Contributions**
+
+**The Problem with Current Systems**: Your work disappears when you change platforms. There’s no way to prove real contributions to new communities or employers.
+
+**The Shift Solution**: **Decentralized Work Verification** based on **Engagements (verified commitments)**.
+
+**How It Works**:
+
+1. **Submit Evidence**: Upload proof of your work (code, photos, docs, testimonials).
+2. **Peer Verification**: Jurors elected with VPT review the Engagement.
+3. **M-of-N Consensus**: A configured majority (e.g., 3 of 5) is required.
+4. **Permanent Record**: Once approved, the corresponding SBT is minted and reputation updated.
+5. **Portable Reputation**: Your contributions travel with you to any community using Shift.
+
+**Real Examples**:
+
+- **Developer**: Code contribution verified → earns a permanent “Senior Code Contributor” credential.
+- **Designer**: Graphic work verified by clients → builds a provable design reputation.
+- **Organizer**: Event coordination validated by attendees → gains an “Effective Event Organizer” credential.
+
+**Transformative Value**: Your reputation is yours—not the platform’s. You build a “blockchain résumé” that no company can erase.
+
+### **Pillar 3: Soulbound Achievement System**
+
+**Beyond Speculative Tokens: Credentials That Represent Who You Really Are**
+
+Traditional tokens can be bought and sold, creating speculative economies disconnected from real contribution. **Soulbound Tokens (SBTs, non-transferable)** are different: permanently tied to your identity.
+
+**Three SBT Families in Shift**:
+
+- **Engagement SBT**: For approved one-off work, certifications, and completed roles (historical).  
+- **Position SBT**: For active, ongoing roles; while alive they receive a guaranteed minimum in revenue distribution. When closed, they can mint a historical *Role Engagement SBT*.  
+- **Investment SBT**: For capital participation; issued via **investment cohorts** with immutable target ROI and priority weight.
+
+All are verified on-chain, non-transferable, and form your portable reputation. Voting power (MembershipToken) is minted when Engagements are approved and is based on merit, not purchase.
+
+### **Pillar 4: Community-Owned Economics**
+
+**The Fundamental Problem**: In traditional platforms, the value communities create flows to external shareholders. Workers create value; capital owners keep the gains.
+
+**The Shift Solution**: **Democratic, Contribution-Based Economic Distribution**, orchestrated by the **RevenueRouter (economic routing engine)**.
+
+**Core Principles**:
+
+1. **Decisions by those doing the work** – Governance is based on verified contribution.
+2. **Benefits flow to value creators** – Revenue is distributed by real contribution and active roles.
+3. **Investors earn fairly without buying democracy** – Capital is rewarded via cohorts but doesn’t control decisions.
+4. **Communities own their economic destiny** – No external entity can arbitrarily extract value.
+
+**How It Works (routing flow)**:
+
+- **Step 1 — Treasury minimum guaranteed**: Governance-defined percentage to sustain operations.  
+- **Step 2 — Positions (active roles)**: Guaranteed minimum for Position SBT holders, proportional to their points.  
+- **Step 3 — Active investment cohorts**: Remaining funds go to Investment SBTs by weight and target ROI.  
+- **Spillover** (if no active cohorts): Governance decides whether the surplus goes to Treasury, Positions, or both.
+
+**CommunityToken – Merit-Based Payments, 1:1 USDC-Backed**:
+
+- Each community has its own stable token.  
+- Payments can be automatic for active roles (Position SBT) and bounty-based for one-off Engagements.  
+- Redeemable 1:1 for USDC with full transparency and backing.
+
+**Revenue Distribution Example** (governance configurable):
+Community generates $10,000 in a period:
+
+- **20% Treasury minimum**: $2,000 for runway and operations.  
+- **40% Positions**: $4,000 proportional to Position SBT points.  
+- **40% Active cohorts**: $4,000 by cohort weights and priorities; if no cohorts, this 40% is rerouted per spillover rule.  
+
+**MembershipToken – Your Governance Power**:
+
+- Granted automatically when you complete verified work
+- Determines your voting power in community decisions
+- Cannot be purchased—only earned through contribution
+- Represents your democratic participation in the community
+
+### **Innovation Spotlight: Democratic Verifier Elections (VPT System)**
+
+**The Traditional Problem**: Most blockchain systems require economic bonds to serve as verifiers, creating financial barriers that exclude qualified people without spare capital.
+
+**Our Democratic Innovation**: **VerifierPowerToken1155 (VPT) – Community-Elected Verification**
+
+**How It Works**:
+
+1. **Election Creation**: Governance sets elections with parameters (seats, term length, candidate requirements).
+2. **Candidate Applications**: Members apply, sharing platform, qualifications, and values.
+3. **Democratic Voting**: Eligible members vote; results are transparent and auditable.
+4. **Verifier Service**: Winners receive VPT1155 tokens granting verification authority and accountability.
+5. **Performance Monitoring**: Community tracks accuracy, responsiveness, fairness.
+6. **Accountability**: Underperforming verifiers can be removed and replaced in regular elections.
+
+**Why It Matters**: Merit and community trust matter more than wealth; democratic oversight replaces financial barriers.
+
+---
+
+## The Dream: Building Resource-Based Community Networks
+
+### A New Model for Human Organization
+
+Shift DeSoc is infrastructure for a civilizational shift from **artificial scarcity** to **collaborative abundance**.
+
+### From Scarcity to Abundance
+
+**The Fundamental Problem**: Current economic systems create artificial scarcity to maintain control. Communities compete for resources that could be abundant with effective coordination.
+
+**The Technological Solution**: When communities coordinate resources, work, and knowledge transparently, they discover they can create abundance for all members.
+
+**Real-World Use Cases**:
+
+- **Co-Housing Communities**: Shared resources (kitchens, tools, transport) cut individual costs by 60–80%.
+- **Neighbor Communities**: Transparent management of shared expenses, maintenance, and collective projects improves decisions and savings.
+- **eLearning Platforms**: Community-driven course creation, tutoring, and verified learning credentials.
+- **Food Cooperatives**: Collective purchasing and local production reduce food costs by 40–50%.
+- **Mutual Care Networks**: Service exchange (childcare, elder care, education) reduces dependence on commercial services.
+- **Tech Cooperatives**: Collaborative development of tools that benefit the entire network, not just capital owners.
+
+### The Complete Community Ecosystem
+
+**Level 1: Basic Coordination (0–100 members)**
+
+- Transparent decisions on shared resources
+- Verification of work and time contributions
+- Economic distribution based on real participation
+
+**Level 2: Economic Self-Sufficiency (100–1,000 members)**
+
+- Internal marketplace for service exchange
+- Community currency to reduce dependency on external money
+- Cooperative production of basic needs (food, housing, technology)
+
+**Level 3: Inter-Community Network (1,000+ members)**
+
+- Resource and knowledge exchange across communities
+- Portable reputation enabling large-scale collaboration
+- Post-capitalist economy based on verified contribution instead of capital ownership
+
+**Level 4: Civilizational Infrastructure**
+
+- Regional/global resource coordination
+- Democratic production planning based on real needs
+- Less unnecessary work; more focus on human creativity and well-being
+
+**Concrete Example: 500-Person Community Hub**
+
+- **Shared Physical Resources**: industrial kitchen (70% food cost savings); maker space ($50k tooling for $100/mo); shared vehicles; community gardens (40% of food needs).
+- **Collaborative Services**: cooperative childcare; community health/wellness; cooperative education; art and creation studios.
+- **Internal Economy**: 60% of needs met internally; CommunityToken for internal exchange; external goods/services generate income; surplus reinvested in infrastructure and well-being.
+- **Democratic Coordination**: multi-choice funding decisions; work allocation by interests/skills/needs; transparent dispute resolution; long-term planning based on science and real human needs.
+
+**Case Study: Path to Self-Sufficiency**
+
+- **Year 1 – Basic Coordination**: 50 people coordinate shared resources; average $500/mo savings per person; transparent governance and work verification.
+- **Years 2–3 – Capability Building**: invest in productive infrastructure; develop specialized skills; create external market offerings.
+- **Years 4–5 – Self-Sufficiency**: 70% of basics covered internally; surplus reinvested in well-being and creativity; model replicated elsewhere.
+- **Year 6+ – Regional Network**: specialized resource exchange; large-scale infrastructure coordination; demonstration of post-capitalist viability.
+
+### Beyond Employment: Post-Wage Society
+
+**The End of Alienated Work**: With guaranteed basics via cooperation, people can focus on meaningful work instead of survival jobs.
+
+**Passion-Based Contribution**: Verified work systems let people contribute by interest and natural skill, not by highest-paying task.
+
+**Time for Human Development**: Cooperative efficiency meets material needs with fewer hours, freeing time for art, science, relationships, and growth.
+
+### The Technological Foundation for Freedom
+
+- **Decentralized Infrastructure**: No central authority can control or censor communities.
+- **Scalable Coordination**: Shift systems enable efficient democratic coordination from small groups to global networks.
+- **Verified Value**: SBTs create contribution-based reputation, not inherited wealth or connections.
+- **Demonstrable Abundance**: Communities using Shift can empirically show cooperation creates more value than competition.
+
+---
+
+## Who Benefits and How: Real-World Value Creation
+
+### **For Workers and Community Contributors**
+
+**Your work finally reflects what it produces**
+
+**Immediate Benefits**:
+
+- **Portable Reputation**: Build verifiable history that travels with you.
+- **Fair Compensation**: Receive a share of the income your work helps generate.
+- **Real Decision Power**: Your vote is based on contribution, not wealth.
+- **Professional Growth**: Communities can see objective work quality.
+
+**Use Cases**:
+
+- **Freelance Developer**: Verifiable reputation across projects → access to better-paid opportunities.
+- **Content Creator**: Audience and metrics are yours, not the platform’s → you keep value when moving.
+- **Remote Worker**: Demonstrate real productivity → negotiate better terms based on proof.
+
+**Long-Term Transformation**: From “employee” to “co-owner” in communities you contribute to. Your work builds equity, not just wages.
+
+### **For Community Managers and Leaders**
+
+**Build organizations that truly work**
+
+**Management Benefits**:
+
+- **Evidence-Based Decisions**: See who contributes and how.
+- **Better Conflict Resolution**: Multi-choice decisions reduce polarization.
+- **Talent Retention**: Contributors stay when rewarded fairly.
+- **Operational Transparency**: Decisions and resource allocation are auditable.
+
+**Organizational Use Cases**:
+
+- **Open Source Lead**: Identify and reward top contributors automatically.
+- **Startup Founder**: Distribute equity based on real contribution, not arrival time.
+- **NGO Coordinator**: Show transparency to donors and allocate resources by proven impact.
+
+**Leadership Shift**: From “managing people” to “coordinating contributions.” Leadership is about enabling value, not controlling people.
+
+### **For Investors and Community Supporters**
+
+**Support what you love while earning fair returns**
+
+**Investor Value**:
+
+- **Performance-Based Returns**: Investment grows when the community prospers.
+- **Full Transparency**: See exactly how capital is used and what results it produces.
+- **Aligned Impact**: Support projects with real social value, not just financial gain.
+- **Risk Reduction**: Distributed governance lowers mismanagement/fraud risk.
+
+**Revolutionary Investment Model**:
+
+- **Decreasing Returns**: Income share tapers as target ROI is met.
+- **No Purchased Control**: Capital doesn’t automatically control operations.
+- **Long-Term Alignment**: Benefit from sustainable community success, not value extraction.
+
+**For Impact Investors**: Earn returns while genuinely supporting community development and democracy.
+
+---
+
+## Revolutionary Tokenomics: From Capital Rule to Merit Power
+
+### **The Great Separation: Money ≠ Decision Power**
+
+Problem: Most organizations and DAOs mix capital with control. Those with more money decide, even without expertise or consequences.
+
+**Shift’s Innovation**: **Full separation between economic participation and governance power.**
+
+### **Triple-Token Architecture: Each Token Has a Specific Purpose**
+
+#### **Token 1: MembershipToken – Your Democratic Voice (EARNED only)**
+
+**What it is**: Governance voting power **only earned** through verified contribution.
+
+**Principles**:
+
+- ❌ **Cannot be bought**
+- ❌ **Cannot be sold**
+- ✅ **Only earned by working**
+- ✅ **Reflects real merit**: voting power tracks verified contribution history
+
+**Example**:
+
+- 40 hours of development → 40 MembershipTokens
+- Successful event organization → 20 MembershipTokens
+- Community moderation for 1 month → 30 MembershipTokens
+- **Result**: 90 votes based on real contribution
+
+#### **Token 2: Soulbound Tokens (SBTs) – Your Permanent Credential**
+
+**Three soulbound families**:
+
+- **Engagement SBT** (work/credential/role completed)
+- **Position SBT** (active role with guaranteed share)
+- **Investment SBT** (capital via cohorts)
+
+#### **Token 3: CommunityToken – Merit-Based Pay**
+
+**Salary System**:
+
+Per pay period (e.g., monthly):
+
+1. Community generates revenue
+2. Salary pool calculated (e.g., % to workers)
+3. Members claim proportional to SBT/WorkerPoints
+4. Token is minted 1:1 backed by USDC
+5. Usable immediately
+
+**Why It’s Fair**:
+
+- **Meritocratic**: Pay reflects verified contribution
+- **Transparent**: Everyone sees how salaries are calculated
+- **Flexible**: Contribute to multiple communities; claim from each
+- **Real**: Not speculative—real money for real work
+
+### **ValuableAction Registry: The Core Value Engine**
+
+**How communities define value**:
+
+1. Members propose Valuable Actions (types of work)
+2. Community votes on inclusion and reward levels
+3. Verification criteria set (required evidence)
+4. System activates; members complete actions and earn rewards
+
+**Examples**:
+
+- **Dev Community**: “Senior Dev” (50 Membership + 50 CommunityToken per sprint), “Code Review” (10/10), “Documentation” (20/20)
+- **Local Cooperative**: “Event Coordination” (30/100), “Community Education” (25/75), “Resource Management” (40/120)
+
+**Democratic Power**: Communities fully control what is valued and by how much.
+
+### **Founder Verification: Bootstrapping Democracy**
+
+Problem: New communities need initial Valuable Actions but need MembershipTokens to vote on them.
+
+Solution: **Founder Verification**
+
+1. Founders get pre-approved initial Valuable Actions
+2. They can create work and earn MembershipTokens without prior votes
+3. Once enough members hold tokens, governance transfers to the community
+4. Founders keep earned tokens but lose special privileges
+
+Safeguards: time limits, token caps, community oversight.
+
+---
+
+## Technical Architecture: Building Democracy at Scale
+
+### **System Overview: From Coordination to Execution**
+
+Shift runs a full pipeline: **Community Coordination → Work Verification → Governance Execution** with on-chain transparency and incentive alignment.
+
+### **Layer 1: Community Coordination Infrastructure**
+
+Components: CommunityRegistry, RequestHub, DraftsManager, ParamController  
+Flow: Community Need → Discussion → Collaborative Draft → Formal Proposal → Governance Vote → Execution
+
+### **Layer 2: Democratic Governance Engine**
+
+Components: ShiftGovernor (multi-choice), CountingMultiChoice, TimelockController, MembershipTokenERC20Votes
+
+### **Layer 3: Work Verification & Merit**
+
+Components: ValuableActionRegistry, VerifierPowerToken1155, VerifierElection, VerifierManager  
+**Engagements (verified commitments)**: submission + M-of-N juror verification + appeals  
+ValuableActionSBT: soulbound tokens minted on approved engagements; WorkerPoints with EMA tracking
+
+### **Layer 4: Tokens & Revenue Distribution**
+
+Components: CommunityToken (1:1 USDC), RevenueRouter (cohort-based cascades with target ROI), Marketplace, ProjectFactory
+
+### **Layer 5: Community Infrastructure Modules**
+
+Components: HousingManager, TreasuryAdapter, Cross-Chain Bridge (as needed)
+
+### **Community Bootstrap System**
+
+CommunityFactory, Founder Verification, Initial MembershipToken distribution
+
+---
+
+## For Investors: A New Class of Opportunity
+
+**Shift DeSoc is infrastructure for a fundamental economic transition**—from extractive hierarchies to democratic, generative communities.
+
+**Investment Value Proposition**:
+
+1. **Massive Market Problem**: Organizational legitimacy crisis; workers demand autonomy; consumers seek aligned values; investors want impact + returns.
+2. **Defensible Network Effects**: Portable reputation data compounds value with each new community.
+3. **Multiple Scalable Revenue Streams**: Transaction fees, premium services, consulting, ecosystem revenue sharing.
+4. **Cohort Model with Guaranteed Target ROI**: Transparent, mathematical, spillover rules; workers prioritized.
+
+**Cohort Types** (illustrative):
+
+- **Conservative**: ROI 110–115%, low weight, longer duration
+- **Balanced**: ROI 120–130%, medium weight, mid duration
+- **Growth**: ROI 150–200%, high weight, shorter duration
+
+---
+
+## Risk Assessment and Mitigation
+
+- **Smart Contract Security**: Multiple audits, gradual deployment, timelock governance
+- **Scalability**: Layer 2 on Base; multi-chain fallback
+- **Adoption**: Focus on high-value use cases; consulting + incentives
+- **Competition**: Interoperability-first; defendable network effects via portable reputation
+- **Regulation**: Utility governance tokens; USDC-backed CommunityToken; optional compliance tooling
+- **Organizational**: Documentation, multi-dev coverage, community-governed continuity; anti-plutocracy mechanisms
+
+---
+
+## Implementation Roadmap: From MVP to Adoption
+
+### **Phase 1: Core Infrastructure (Months 1–6)**
+
+**Deliverables**:
+
+- Core contracts on Base Sepolia (testnet)
+- Basic Engagements + ValuableActionRegistry + VPT system
+- Web interface for community management and work verification
+- Full technical documentation
+
+**Success Metrics**: 3–5 pilot communities; 100+ ValuableActionSBTs; 1,000+ verifications
+
+### **Phase 2: Governance Tools (Months 4–9)**
+
+- ShiftGovernor + CountingMultiChoice
+- RequestHub → DraftsManager → Governance integration
+- MembershipToken with delegation
+- TimelockController with emergency controls
+
+### **Phase 3: Community Economy (Months 7–12)**
+
+- CommunityToken (1:1 USDC)
+- RevenueRouter (cohort-based, target ROI)
+- Merit-based salary claims; basic marketplace
+
+### **Phase 4: Ecosystem & Scale (Months 10–18)**
+
+- CommunityFactory for easy launches
+- Portable reputation across communities
+- Analytics for community managers
+- Integrations (Discord, GitHub, etc.)
+
+### **Phase 5: Mainstream Adoption (Months 15–24)**
+
+- Enterprise tools and consulting
+- HR/accounting integrations
+- Network of interoperable communities
+
+---
+
+## How to Get Started: From Idea to Thriving Community Node
+
+**Immediate Steps**:
+
+1. **Join the Community**: Apply as a pilot; contribute to protocol; shape standards.
+2. **Build Your Reputation**: Start verifying work and earning SBT credentials; document your work with our evidence standards.
+3. **Invest in the Future**: InvestorSBTs available for seed/institutional investors; multiple vehicles for size/timeline; direct participation in ecosystem growth.
+
+**Resources & Links**
+
+- **Website**: [shift-desoc.org](https://landing.shift-desoc.org)
+- **Technical Docs**: [docs.shift-desoc.org](https://docs.shift-desoc.org)
+- **Source Code**: [github.com/shift-org/shift-desoc](https://github.com/shift-org/shift-desoc) (MIT License)
+- **Live Demo**: [demo.shift-desoc.org](https://demo.shift-desoc.org) (Testnet)
+
+**Community & Communication**
+
+- **Discord**: [shift-desoc](https://discord.gg/shift-desoc)
+- **Telegram**: [@ShiftDeSoc](https://t.me/ShiftDeSoc)
+- **Twitter/X**: [@ShiftDeSoc](https://twitter.com/ShiftDeSoc)
+- **LinkedIn**: [Shift DeSoc](https://linkedin.com/company/shift-desoc)
+
+**Contact**
+
+- Communities: hello@shift-desoc.org
+- Investors: investors@shift-desoc.org
+- Developers: developers@shift-desoc.org
+- Partnerships: partnerships@shift-desoc.org
+- Media: press@shift-desoc.org
+
+---
+
+_The future of human organization isn’t predetermined. We can build systems that serve people, not capital. The tools for real democracy, abundant cooperation, and fair distribution already exist. All that’s left is the collective will to implement them._
+
+_Shift DeSoc provides the infrastructure. You provide the vision. Together we build the world we want._
+
+_The revolution won’t be televised—it will be verified, voted, and distributed democratically._
+
+**Technical Documentation**: [GitHub Repository](https://github.com/Nevtep/shift-desoc)  
+**Investment Deck**: [Available on request]
+# Shift DeSoc: Governance Technology for Human Potential
+
 ## Whitepaper for Investors, Community Founders & Organizations
 
 _Building the organizational tools that unlock human cooperation: Where communities coordinate abundant resources, make wise collective decisions, and share the value they create together_
