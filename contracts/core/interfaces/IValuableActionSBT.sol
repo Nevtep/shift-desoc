@@ -19,7 +19,7 @@ interface IValuableActionSBT {
         uint256 communityId;
         bytes32 actionTypeId;
         bytes32 roleTypeId;
-        bytes32 cohortId;
+        uint256 cohortId;
         uint32 points;
         uint32 weight;
         uint64 issuedAt;
@@ -66,7 +66,7 @@ interface IValuableActionSBT {
     function mintInvestment(
         address to,
         uint256 communityId,
-        bytes32 cohortId,
+        uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
     ) external returns (uint256 tokenId);

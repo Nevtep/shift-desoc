@@ -32,7 +32,7 @@ contract ValuableActionRegistry {
     event PositionIssued(address indexed to, uint256 indexed tokenId, bytes32 indexed positionTypeId, uint32 points);
 
     /// @notice Emitted when an investment SBT is issued
-    event InvestmentIssued(address indexed to, uint256 indexed tokenId, bytes32 indexed cohortId, uint32 weight);
+    event InvestmentIssued(address indexed to, uint256 indexed tokenId, uint256 indexed cohortId, uint32 weight);
 
     /// @notice Emitted when a role record is issued from a closed position
     event RoleIssued(address indexed to, uint256 indexed tokenId, bytes32 indexed roleTypeId, uint32 points, uint64 issuedAt, uint64 endedAt, uint8 closeOutcome);
@@ -311,13 +311,13 @@ contract ValuableActionRegistry {
     function issueInvestment(
         uint256 communityId,
         address to,
-        bytes32 cohortId,
+        uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
     ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (to == address(0)) revert Errors.ZeroAddress();
-        if (cohortId == bytes32(0)) revert Errors.InvalidInput("Missing cohortId");
+        if (cohortId == 0) revert Errors.InvalidInput("Missing cohortId");
         if (weight == 0) revert Errors.InvalidInput("Weight cannot be zero");
 
         tokenId = IValuableActionSBT(valuableActionSBT).mintInvestment(to, communityId, cohortId, weight, metadata);

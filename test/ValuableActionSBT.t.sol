@@ -60,7 +60,7 @@ contract ValuableActionSBTTest is Test {
         assertEq(data.communityId, 1);
         assertEq(data.actionTypeId, bytes32("ACTION1"));
         assertEq(data.roleTypeId, bytes32(0));
-        assertEq(data.cohortId, bytes32(0));
+        assertEq(data.cohortId, 0);
         assertEq(data.points, 0);
         assertEq(data.weight, 0);
         assertEq(data.endedAt, 0);
@@ -127,23 +127,23 @@ contract ValuableActionSBTTest is Test {
     //////////////////////////////////////////////////////////////*/
     function testMintInvestmentStoresData() public {
         vm.prank(manager);
-        uint256 tokenId = valuableActionSBT.mintInvestment(bob, 4, bytes32("COHORT"), 100, bytes("invest"));
+        uint256 tokenId = valuableActionSBT.mintInvestment(bob, 4, 1, 100, bytes("invest"));
 
         ValuableActionSBT.TokenData memory data = valuableActionSBT.getTokenData(tokenId);
         assertEq(uint256(data.kind), uint256(ValuableActionSBT.TokenKind.INVESTMENT));
         assertEq(data.communityId, 4);
-        assertEq(data.cohortId, bytes32("COHORT"));
+        assertEq(data.cohortId, 1);
         assertEq(data.weight, 100);
     }
 
     function testMintInvestmentInvalidInputsRevert() public {
         vm.prank(manager);
         vm.expectRevert();
-        valuableActionSBT.mintInvestment(bob, 0, bytes32("COHORT"), 1, "");
+        valuableActionSBT.mintInvestment(bob, 0, 1, 1, "");
 
         vm.prank(manager);
         vm.expectRevert();
-        valuableActionSBT.mintInvestment(bob, 1, bytes32(0), 1, "");
+        valuableActionSBT.mintInvestment(bob, 1, 1, 1, "");
     }
 
     /*//////////////////////////////////////////////////////////////

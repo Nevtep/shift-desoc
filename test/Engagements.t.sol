@@ -68,12 +68,12 @@ contract MockValuableActionSBT {
     function mintInvestment(
         address to,
         uint256,
-        bytes32 cohortId,
+        uint256 cohortId,
         uint32,
         bytes calldata metadata
     ) external returns (uint256 tokenId) {
         tokenId = 1;
-        emit TokenMinted(to, Types.EngagementSubtype.WORK, cohortId, metadata);
+        emit TokenMinted(to, Types.EngagementSubtype.WORK, bytes32(cohortId), metadata);
     }
 }
 

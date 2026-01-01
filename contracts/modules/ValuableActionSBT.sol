@@ -44,7 +44,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
         uint256 communityId;
         bytes32 actionTypeId;
         bytes32 roleTypeId;
-        bytes32 cohortId;
+        uint256 cohortId;
         uint32 points;
         uint32 weight;
         uint64 issuedAt;
@@ -98,7 +98,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
                 communityId: communityId,
                 actionTypeId: kind == TokenKind.ROLE ? bytes32(0) : actionTypeId,
                 roleTypeId: kind == TokenKind.ROLE ? actionTypeId : bytes32(0),
-                cohortId: bytes32(0),
+                cohortId: 0,
                 points: 0,
                 weight: 0,
                 issuedAt: uint64(block.timestamp),
@@ -130,7 +130,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
                 communityId: communityId,
                 actionTypeId: bytes32(0),
                 roleTypeId: positionTypeId,
-                cohortId: bytes32(0),
+                cohortId: 0,
                 points: points,
                 weight: 0,
                 issuedAt: uint64(block.timestamp),
@@ -167,7 +167,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
                 communityId: communityId,
                 actionTypeId: bytes32(0),
                 roleTypeId: roleTypeId,
-                cohortId: bytes32(0),
+                cohortId: 0,
                 points: points,
                 weight: 0,
                 issuedAt: issuedAt,
@@ -184,13 +184,13 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
     function mintInvestment(
         address to,
         uint256 communityId,
-        bytes32 cohortId,
+        uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
     ) external onlyRole(MANAGER_ROLE) returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
-        if (cohortId == bytes32(0)) revert Errors.InvalidInput("Invalid cohortId");
+        if (cohortId == 0) revert Errors.InvalidInput("Invalid cohortId");
 
         tokenId = _mintTypedToken(
             to,

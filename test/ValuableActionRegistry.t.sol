@@ -481,7 +481,7 @@ contract ValuableActionRegistryTest is Test {
     }
 
     function testIssueInvestmentMintsAndEmits() public {
-        bytes32 cohortId = bytes32("cohort-1");
+        uint256 cohortId = 1;
         bytes memory metadata = hex"deadbeef";
         vm.expectEmit(true, true, true, true);
         emit ValuableActionRegistry.InvestmentIssued(user, 1, cohortId, 5);
