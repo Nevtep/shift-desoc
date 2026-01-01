@@ -22,20 +22,20 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 
 **Key Achievements:**
 
-- **Complete Contract Suite**: All 22 contracts deployed and verified on Base Sepolia
+- **Complete Contract Suite**: All 24 contracts deployed and verified on Base Sepolia
 - **API-Based Community Creation**: Scalable deployment system with JSON address management (~$0.19 per community vs $9,600 on Ethereum)
 - **Real Deployments Verified**: Community ID 1 successfully operating on Base Sepolia with full configuration
-- **Comprehensive Documentation**: 20 contracts fully documented with technical architecture and business value
+- **Comprehensive Documentation**: 24 contracts fully documented with technical architecture and business value
 - **Automated Address Management**: Deployment addresses auto-saved to deployments/{network}.json files
 - **Production-Ready Infrastructure**: Complete deployment scripts, verification tools, and Base mainnet optimization (0.05 gwei gas)
 
 **Target Networks:** Base (primary - optimized), Ethereum (secondary), with Base Sepolia for testing
 
-**Deployed Contract Suite (22 contracts):**
+**Deployed Contract Suite (24 contracts):**
 - **Core Infrastructure**: CommunityRegistry, ParamController
 - **Governance System**: ShiftGovernor, TimelockController, CountingMultiChoice, MembershipTokenERC20Votes
-- **Work Verification**: VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionRegistry, Claims, ValuableActionSBT
-- **Economic Layer**: CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter
+- **Work Verification**: VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionRegistry, Engagements, ValuableActionSBT, CredentialManager, PositionManager
+- **Economic Layer**: CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter, InvestmentCohortManager
 - **Community Modules**: RequestHub, DraftsManager, CommerceDisputes, Marketplace, HousingManager, ProjectFactory
 
 ## 🔗 Complete System Architecture
@@ -111,7 +111,7 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 │                              VERIFICATION LAYER                                            │
 ├─────────────────────────────────────────────────────────────────────────────────────────────┤
 │ ┌──────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │
-│ │ValuableActionReg │◄─┤     Claims      ├──┤ VerifierManager ├──┤  ValuableActionSBT     │ │
+│ │ValuableActionReg │◄─┤   Engagements   ├──┤ VerifierManager ├──┤  ValuableActionSBT     │ │
 │ │- Work Categories │  │- Submissions    │  │- VPT Elections  │  │- Contribution Record   │ │
 │ │- Evidence Specs  │  │- M-of-N Panels  │  │- Power Tokens   │  │- Reputation Score     │ │
 │ │- Reward Params   │  │- Verification   │  │- Fraud Detect   │  │- Governance Multiplier│ │
@@ -124,21 +124,25 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 
 **Core Components**:
 - **ValuableActionRegistry**: Community-defined work categories with verification parameters
-- **Claims**: Work submission and M-of-N verification workflow
+- **Engagements**: One-shot engagement submission and M-of-N verification workflow
+- **CredentialManager**: Course-scoped credential applications with verifier approval
+- **PositionManager**: Position definitions, applications, assignments, and closures
 - **VerifierPowerToken1155**: Democratic verifier selection via VPT tokens
 - **VerifierElection**: Election management and fraud detection
 - **VerifierManager**: M-of-N juror selection and performance tracking
-- **ValuableActionSBT**: Soulbound reputation tokens with WorkerPoints
+- **ValuableActionSBT**: Soulbound reputation tokens with WorkerPoints (5 types: WORK, ROLE, CREDENTIAL, POSITION, INVESTMENT)
 
 📖 **Detailed Documentation**:
 - [ValuableActionRegistry](./contracts/ValuableActionRegistry.md) - Work category definitions
-- [Claims](./contracts/Claims.md) - Verification workflow and appeals
+- [Engagements](./contracts/Engagements.md) - Verification workflow and appeals
+- [CredentialManager](./contracts/CredentialManager.md) - Credential application system
+- [PositionManager](./contracts/PositionManager.md) - Position lifecycle management
 - [VerifierPowerToken1155](./contracts/VerifierPowerToken1155.md) - Democratic verifier system
 - [VerifierElection](./contracts/VerifierElection.md) - Election and fraud management
 - [VerifierManager](./contracts/VerifierManager.md) - Juror selection mechanics
 - [ValuableActionSBT](./contracts/ValuableActionSBT.md) - Reputation and merit tracking
 
-**Key Workflow**: `Work Definition → Claim Submission → Verifier Selection → M-of-N Voting → SBT Minting → Rewards`
+**Key Workflow**: `Work Definition → Engagement Submission → Verifier Selection → M-of-N Voting → SBT Minting → Rewards`
 
 **Verifier Power System (VPS)**: Replaces traditional economic bonding with democratic elections - see detailed VPS architecture below.
 
@@ -249,10 +253,10 @@ contract VerifierElection {
 │ └──────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────────────┘ │
 │                                     ▲                                                     │
 │ ┌──────────────────┐                │                    ┌─────────────────────────────────┐ │
-│ │   WorkerSBT      │────────────────┘                    │    ParamController         │ │
+│ │ValuableActionSBT │────────────────┘                    │    ParamController         │ │
 │ │- Investment SBTs │                                      │- Revenue Policy Control   │ │
 │ │- Cohort Metadata │                                      │- Governance Parameters    │ │
-│ │- Verification    │                                      │- Dynamic Configuration    │ │
+│ │- 5 Token Types   │                                      │- Dynamic Configuration    │ │
 │ │- Merit Tracking  │                                      │- Community-Specific Rules │ │
 │ └──────────────────┘                                      └─────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -343,7 +347,7 @@ contract CohortRegistry {
     // Access control - community governance controls cohort creation
     address public timelock;           // Community governance (via TimelockController)
     address public revenueRouter;      // Revenue distribution executor
-    address public valuableActionSBT;  // Investment SBT minting integration (formerly WorkerSBT)
+    address public valuableActionSBT;  // Investment SBT minting integration
 
     function createCohort(
         uint256 communityId,
