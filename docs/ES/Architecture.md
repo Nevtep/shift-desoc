@@ -2,6 +2,8 @@
 
 Este documento proporciona una visión general de alto nivel de la arquitectura del sistema Shift DeSoc, interacciones de componentes y patrones de flujo de datos tanto para stakeholders técnicos como de negocio.
 
+> **Suite de 24 Contratos**: El sistema completo incluye 24 contratos Solidity (excluyendo librerías e interfaces). Para referencia detallada de cada capa, ver [Layers.md](Layers.md). Para economía de tokens, ver [Tokenomics.md](Tokenomics.md).
+
 ## 🏗️ Visión General del Sistema
 
 **Shift DeSoc es tecnología de meta-gobernanza** - una infraestructura flexible que permite a las comunidades modelar cualquier estructura organizacional que elijan. En lugar de imponer un modelo de gobernanza específico, Shift proporciona los bloques de construcción (protocolos de gobernanza, sistemas de verificación de trabajo y mecanismos económicos) que las comunidades pueden configurar para implementar sus procesos únicos de toma de decisiones, definiciones de valor y patrones de coordinación.
@@ -67,12 +69,12 @@ Sistema resistente a Sybil para validar contribuciones y construir reputación:
 │                           VERIFICACIÓN DE TRABAJO & MÉRITO                              │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
 │ ┌─────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌─────────────────────┐ │
-│ │ValuableActionReg │ │     Claims     │  │ Sistema VPS    │  │ ValuableActionSBT   │ │
-│ │- Tipos Trabajo  │  │- Envío Trabajo │  │- Registro M-de-N│  │- Tokens Soulbound  │ │
+│ │ValuableActionReg │ │  Engagements   │  │ Sistema VPS    │  │ ValuableActionSBT   │ │
+│ │- Tipos Trabajo  │  │- Compromisos   │  │- Registro M-de-N│  │- Tokens Soulbound  │ │
 │ │- Params Verific │  │- Selec Jurados │  │- Elecciones VPT│  │- WorkerPoints EMA  │ │
 │ │- Recompensas    │  │- Votac M-de-N  │  │- Reputa/Select │  │- Cross-Community   │ │
 │ │- Cooldowns      │  │- Apelaciones   │  │- Slashing      │  │- Poder Gobernanza │ │
-│ │- Spec Evidencia │  │- Estado Claims │  │- Pool Activo   │  │- Anti-Gaming      │ │
+│ │- Spec Evidencia │  │- Gestores SBT  │  │- Pool Activo   │  │- Anti-Gaming      │ │
 │ └─────────────────┘  └────────────────┘  └────────────────┘  └─────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -263,7 +265,7 @@ graph TD
 
 ```mermaid
 graph TD
-    A[Worker Submits Claim] --> B[System Selects M-of-N Jurors]
+    A[Worker Submits Engagement] --> B[System Selects M-of-N Jurors]
     B --> C[Jurors Review Evidence & Vote]
     C --> D[Automatic Resolution Based on Threshold]
     D --> E[Approved: Mint ValuableActionSBT & Points]
@@ -321,8 +323,8 @@ mapping(uint256 => uint256) totalSupplyHistory; // Snapshots de supply de tokens
 #### Estado de Verificación
 
 ```solidity
-// Ciclo de vida de claims
-mapping(uint256 => Claim) claims;               // Todos los claims enviados
+// Ciclo de vida de compromisos (engagements)
+mapping(uint256 => Engagement) engagements;     // Todos los compromisos enviados
 mapping(uint256 => Appeal) appeals;             // Seguimiento de apelaciones
 mapping(address => mapping(uint256 => uint64)) workerCooldowns; // Rate limiting
 
@@ -583,10 +585,10 @@ event ProposalExecuted(uint256 indexed proposalId);
 #### Eventos de Verificación
 
 ```solidity
-event ClaimSubmitted(uint256 indexed claimId, address indexed worker, uint256 typeId);
-event JurorsAssigned(uint256 indexed claimId, address[] jurors);
-event ClaimVerified(uint256 indexed claimId, address indexed verifier, bool approve);
-event ClaimResolved(uint256 indexed claimId, uint8 status, uint32 approvals, uint32 rejections);
+event EngagementSubmitted(uint256 indexed engagementId, address indexed worker, uint256 typeId);
+event JurorsAssigned(uint256 indexed engagementId, address[] jurors);
+event EngagementVerified(uint256 indexed engagementId, address indexed verifier, bool approve);
+event EngagementResolved(uint256 indexed engagementId, uint8 status, uint32 approvals, uint32 rejections);
 event ReputationUpdated(address indexed verifier, uint256 oldRep, uint256 newRep);
 ```
 
@@ -674,14 +676,14 @@ event FeesDistributed(uint256 totalFees, uint256 treasuryShare, uint256 verifier
 #### Métricas de Throughput
 
 - **Gobernanza**: 1000+ votos por propuesta sin degradación de performance
-- **Verificación**: 100+ claims concurrentes con selección automatizada de jurados
+- **Verificación**: 100+ compromisos concurrentes con selección automatizada de jurados
 - **Operaciones de Token**: Características de performance ERC-20/ERC-721 estándar
 
 #### Objetivos de Latencia
 
 - **Casting de Votos**: <5 segundo tiempos de confirmación
-- **Envío de Claims**: <10 segundo procesamiento incluyendo selección de jurados
-- **Updates de Reputación**: Updates en tiempo real en resolución de claims
+- **Envío de Compromisos**: <10 segundo procesamiento incluyendo selección de jurados
+- **Updates de Reputación**: Updates en tiempo real en resolución de compromisos
 
 ## 🔮 Evolución Futura de Arquitectura
 
@@ -808,12 +810,12 @@ contract GitHubIntegration {
         // Permite onboarding seamless de desarrolladores
     }
 
-    function submitClaimFromPR(
+    function submitEngagementFromPR(
         uint256 valuableActionId,
         string calldata pullRequestUrl,
         bytes32 evidenceHash
-    ) external returns (uint256 claimId) {
-        // Envía claims de trabajo directamente desde GitHub PR
+    ) external returns (uint256 engagementId) {
+        // Envía compromisos de trabajo directamente desde GitHub PR
         // Vincula contribución de código con sistema de reputación
     }
 }
@@ -1003,7 +1005,7 @@ contract CommunityRegistry {
         address timelock;
         address requestHub;
         address draftsManager;
-        address claimsManager;
+        address engagementsManager;
         address valuableActionRegistry;
         address verifierElection;
         address verifierPowerToken1155;
@@ -1026,26 +1028,26 @@ contract CommunityRegistry {
 }
 ```
 
-**Claims Contract**
+**Engagements Contract (Compromisos)**
 
 ```solidity
-contract Claims {
-    struct Claim {
+contract Engagements {
+    struct Engagement {
         uint256 valuableActionId;
-        address claimant;
+        address worker;
         string evidenceCID;
         uint64 submittedAt;
-        ClaimStatus status;
+        EngagementStatus status;
         uint256[] selectedJurors;
         mapping(address => Vote) votes;
         uint64 resolvedAt;
         bool appealed;
     }
 
-    function submitClaim(uint256 valuableActionId, string calldata evidenceCID) external returns (uint256 claimId);
-    function vote(uint256 claimId, bool approve, string calldata reason) external;
-    function resolve(uint256 claimId) external;
-    function appeal(uint256 claimId) external payable;
+    function submit(uint256 valuableActionId, string calldata evidenceCID) external returns (uint256 engagementId);
+    function vote(uint256 engagementId, bool approve, string calldata reason) external;
+    function resolve(uint256 engagementId) external;
+    function appeal(uint256 engagementId) external payable;
 }
 ```
 
@@ -1098,8 +1100,8 @@ struct PackedVote {
 }
 
 // Arquitectura dirigida por eventos para indexado off-chain
-event ClaimSubmitted(uint256 indexed claimId, address indexed claimant, uint256 indexed valuableActionId);
-event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
+event EngagementSubmitted(uint256 indexed engagementId, address indexed worker, uint256 indexed valuableActionId);
+event VoteCast(uint256 indexed engagementId, address indexed voter, bool approved);
 ```
 
 ### Implementación de Seguridad
@@ -1150,7 +1152,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 **Entregables Técnicos:**
 
 - ✅ ShiftGovernor con votación multi-opción (completado)
-- ✅ Claims + ValuableActionRegistry + Sistema VPS (completado)
+- ✅ Engagements + ValuableActionRegistry + Sistema VPS (completado)
 - ✅ ValuableActionSBT acumulación básica de puntos (completado)
 - ✅ CommunityToken sistema de salario basado en mérito (completado)
 - 🔄 Scripts mejorados de despliegue y onboarding comunitario
@@ -1159,7 +1161,7 @@ event VoteCast(uint256 indexed claimId, address indexed voter, bool approved);
 **Foco de Arquitectura:**
 
 - Despliegues de comunidades individuales
-- Validación de workflow core: request → draft → proposal → execution → claims → verification
+- Validación de workflow core: request → draft → proposal → execution → engagements → verification
 - Optimización de experiencia de usuario para gestores comunitarios no técnicos
 
 ### **Fase 2: Tokenomics Avanzadas (Mes 3-8)**
@@ -1254,7 +1256,7 @@ _Esto no es sólo una plataforma de gobernanza - es infraestructura para la tran
 - ✅ **ShiftGovernor**: Votación multi-opción con integración OpenZeppelin
 - ✅ **CountingMultiChoice**: Lógica de distribución de votación ponderada
 - ✅ **ValuableActionRegistry**: Parámetros configurables de verificación de trabajo
-- ✅ **Claims**: Verificación M-de-N con proceso de apelaciones
+- ✅ **Engagements**: Verificación M-de-N con proceso de apelaciones
 - ✅ **VerifierManager**: Sistema de verificadores elegido por gobernanza con tokens VPT1155
 
 #### **En Desarrollo**
@@ -1267,22 +1269,22 @@ _Esto no es sólo una plataforma de gobernanza - es infraestructura para la tran
 
 ```javascript
 // Ejemplo estructura de test
-describe("Claims Verification Flow", () => {
+describe("Engagements Verification Flow", () => {
   it("should complete M-of-N verification", async () => {
-    // Enviar claim
-    const claimId = await claims.submitClaim(valuableActionId, evidenceCID);
+    // Enviar compromiso
+    const engagementId = await engagements.submit(valuableActionId, evidenceCID);
 
     // Seleccionar jurados
-    const jurors = await verifierManager.selectJurors(claimId, communityId, seed);
+    const jurors = await verifierManager.selectJurors(engagementId, communityId, seed);
 
     // Emitir votos
     for (const juror of jurors.slice(0, MIN_APPROVALS)) {
-      await claims.connect(juror).vote(claimId, true, "Good work");
+      await engagements.connect(juror).vote(engagementId, true, "Good work");
     }
 
     // Verificar resolución
-    await claims.resolve(claimId);
-    expect(await claims.getStatus(claimId)).to.equal(ClaimStatus.Approved);
+    await engagements.resolve(engagementId);
+    expect(await engagements.getStatus(engagementId)).to.equal(EngagementStatus.Approved);
   });
 });
 ```
@@ -1684,18 +1686,18 @@ contract FounderVerificationSystem {
 - **Decaimiento**: Degradación gradual de reputación sin actividad
 - **Poder VPT**: Tokens que otorgan autoridad de verificación durante el mandato
 
-### Claims
+### Engagements (Compromisos)
 
-**Propósito**: Sistema integral de envío y verificación de reclamos de trabajo
+**Propósito**: Sistema integral de envío y verificación de compromisos de trabajo
 
 **Características Clave**:
 
-- Estados de reclamo con flujo de trabajo definido (Pending → Verified/Rejected)
-- Proceso de apelación para reclamos disputados
+- Estados de compromiso con flujo de trabajo definido (Pending → Verified/Rejected)
+- Proceso de apelación para compromisos disputados
 - Integración con Sistema VPS para selección democrática de jurados
 - Prevención de spam a través de cooldowns y validación
 
-**Flujo de Estados de Claims**:
+**Flujo de Estados de Compromisos**:
 
 ```
 PENDING → VERIFYING → VERIFIED/REJECTED
@@ -1703,7 +1705,7 @@ PENDING → VERIFYING → VERIFIED/REJECTED
 COOLDOWN   APPEAL     SBT_MINTED
 ```
 
-### WorkerSBT
+### ValuableActionSBT
 
 **Propósito**: Tokens soulbound para reputación permanente de trabajadores
 

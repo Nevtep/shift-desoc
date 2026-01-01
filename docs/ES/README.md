@@ -1,139 +1,152 @@
-# Documentación Shift DeSoc
+# Centro de Documentación Shift DeSoc
 
-Esta documentación cubre la arquitectura de contratos inteligentes y detalles de implementación de la plataforma Shift DeSoc - un sistema descentralizado de gobernanza y verificación de trabajo.
+**Bienvenido a la documentación de Shift DeSoc.** Este centro proporciona documentación técnica y empresarial completa para la plataforma de meta-gobernanza Shift.
 
-## 📚 Estructura de Documentación
+## 🎯 Navegación Rápida
 
-### Documentación Técnica Central
-
-- **[ValuableActionRegistry](./contracts/ValuableActionRegistry.md)** - Tipos de trabajo definidos por comunidad con parámetros de verificación
-- **[Claims](./contracts/Claims.md)** - Sistema de envío de reclamos de trabajo y verificación M-de-N
-- **[VerifierElection](./contracts/VerifierElection.md)** - Gestión democrática de conjuntos de verificadores con gobernanza timelock
-- **[VerifierPowerToken1155](./contracts/VerifierPowerToken1155.md)** - Tokens de poder de verificador por comunidad con arquitectura VPS
-- **[VerifierManager](./contracts/VerifierManager.md)** - Selección de jurado M-de-N y sistema de reporte de fraude
-- **[ShiftGovernor](./contracts/ShiftGovernor.md)** - Gobernanza multi-opción con ejecución timelock
-- **[CountingMultiChoice](./contracts/CountingMultiChoice.md)** - Mecanismo de votación multi-opción ponderado
-
-### Documentación de Coordinación Comunitaria
-
-- **[RequestHub](./contracts/RequestHub.md)** - Foro de discusión descentralizado y coordinación comunitaria
-- **[DraftsManager](./contracts/DraftsManager.md)** - Desarrollo colaborativo de propuestas y revisión
-- **[CommunityRegistry](./contracts/CommunityRegistry.md)** - Metadatos comunitarios y gestión de módulos
-
-### Documentación del Sistema Económico
-
-- **[RevenueRouter](./contracts/RevenueRouter.md)** - Distribución de ingresos basada en cohortes con asignación en cascada
-- **[CommunityToken](./contracts/CommunityToken.md)** - Moneda comunitaria respaldada 1:1 por USDC
-- **[MembershipTokenERC20Votes](./contracts/MembershipTokenERC20Votes.md)** - Tokens de gobernanza basados en mérito
-- **[ValuableActionSBT](./contracts/ValuableActionSBT.md)** - Tokens de reputación soulbound con WorkerPoints
-
-### Documentación de Gestión y Operaciones
-
-- **[Sistema de Gestión de Cohortes](./COHORT_MANAGEMENT.md)** - Guía completa para operaciones de cohortes de inversión
-
-### Documentación No Técnica
-
-- **[Whitepaper](./Whitepaper.md)** - Visión de inversión para stakeholders no técnicos
-- **[Arquitectura del Sistema](./Architecture.md)** - Diseño de sistema de alto nivel y flujo de trabajo
-
-## 🏗️ Visión General del Sistema
-
-Shift DeSoc implementa una plataforma de gobernanza completamente on-chain para trabajo comunitario descentralizado con los siguientes componentes centrales:
-
-### Capa de Gobernanza
-
-- **Votación multi-opción** para toma de decisiones matizada
-- **Ejecución timelock** para seguridad y transparencia
-- **Participación basada en tokens** con soporte de delegación
-
-### Capa de Verificación de Trabajo
-
-- **Tipos de acción configurables** con parámetros de verificación personalizados
-- **Verificación de jurado M-de-N** con incentivos económicos
-- **Selección de verificadores basada en reputación** usando algoritmos pseudo-aleatorios
-- **Proceso de apelaciones** para reclamos disputados
-
-### Economía de Tokens
-
-- **Tokens soulbound (SBTs)** para reputación no transferible
-- **Sistema WorkerPoints** con seguimiento de promedio móvil exponencial
-- **Mecanismos de bonding** para participación de verificadores
-- **Compartición de ingresos** a través de divisiones configurables
-
-## 🔧 Estado de Implementación
-
-### ✅ MVP LISTO PARA PRODUCCIÓN (Noviembre 2025)
-
-| Contrato                               | Cobertura | Estado        | Características                                                          |
-| -------------------------------------- | --------- | ------------- | ------------------------------------------------------------------------ |
-| **Gobernanza Central**                 |
-| ShiftGovernor                          | 86%+      | ✅ Producción | Votación multi-opción, integración timelock, escalación de borradores    |
-| CountingMultiChoice                    | 100%      | ✅ Producción | Votación ponderada, soporte snapshot, características empresariales      |
-| **Coordinación Comunitaria**           |
-| RequestHub                             | 95%+      | ✅ Producción | Foro de discusión, moderación, integración RequestHub→Claims             |
-| DraftsManager                          | 98%+      | ✅ Producción | Desarrollo multi-contribuidor, versionado, ciclos de revisión            |
-| CommunityRegistry                      | 96%+      | ✅ Producción | Gestión de metadatos, direcciones de módulos, enlaces inter-comunitarios |
-| **Sistema de Verificación de Trabajo** |
-| ValuableActionRegistry                 | 96%+      | ✅ Producción | Tipos de trabajo definidos por comunidad, integración con gobernanza     |
-| Claims                                 | 98%+      | ✅ Producción | Verificación M-de-N, apelaciones, bounties RequestHub                    |
-| VerifierElection                       | 98%+      | ✅ Producción | Gestión democrática de verificadores, gobernanza timelock                |
-| VerifierPowerToken1155                 | 96%+      | ✅ Producción | Tokens VPT por comunidad, sistema de poder no transferible              |
-| VerifierManager                        | 95%+      | ✅ Producción | Selección M-de-N, integración VPS, reporte de fraude                    |
-| ValuableActionSBT                      | 94%+      | ✅ Producción | Seguimiento EMA WorkerPoints, integración con gobernanza                 |
-| **Módulos Económicos**                 |
-| RevenueRouter                          | 92%+      | ✅ Producción | Cascada basada en cohortes, distribución de ROI objetivo garantizado     |
-| CommunityToken                         | 100%      | ✅ Producción | Respaldo 1:1 USDC, gestión de tesorería                                  |
-| MembershipTokenERC20Votes              | 98%+      | ✅ Producción | Tokens de gobernanza basados en mérito, anti-plutocracia                 |
-| TreasuryAdapter                        | 90%+      | ✅ Producción | Integración de parámetros CommunityRegistry                              |
-
-**Estado de Despliegue**: ✅ Comunidad ID 3 operacional en Base Sepolia con 28 transacciones exitosas
-
-## 🎯 Innovaciones Clave
-
-1. **Tecnología Meta-Gobernanza**: Infraestructura flexible que permite a las comunidades modelar cualquier estructura organizacional en lugar de imponer modelos de gobernanza específicos
-2. **Pipeline de Coordinación Completo**: `solicitudes → borradores → propuestas → ejecución timelock` con discusión integrada, colaboración y verificación
-3. **Gobernanza Multi-Opción**: Votación multi-opción ponderada que permite toma de decisiones matizada más allá de opciones binarias sí/no
-4. **Creación Comunitaria Basada en API**: Sistema de despliegue escalable (~$0.19 por comunidad en Base vs $9,600 en Ethereum)
-5. **Distribución de Ingresos Basada en ROI**: La participación de ingresos de inversores decrece automáticamente cuando los retornos se acercan al objetivo, asegurando economía sostenible
-6. **Poder de Gobernanza Basado en Mérito**: Sistema puro trabajo-a-token-de-gobernanza donde la participación comunitaria se traduce directamente en poder de voto
-
-## 🔐 Características de Seguridad
-
-- **Ejecución timelock** previene ataques de gobernanza inmediatos
-- **Requisitos de bonding** aseguran compromiso del verificador
-- **Decaimiento de reputación** remueve verificadores inactivos o de bajo rendimiento
-- **Mecanismos de apelación** proporcionan recurso para decisiones disputadas
-- **Patrones multi-firma** para funciones críticas del sistema
-
-## 📈 Pruebas y Cobertura
-
-Todos los contratos mantienen ≥86% de cobertura de pruebas con testing integral de casos extremos:
-
-- **Pruebas unitarias** para funcionalidad individual de contratos
-- **Pruebas de integración** para interacciones entre contratos
-- **Pruebas fuzz** para validación de entrada y casos extremos
-- **Optimización de gas** con 200 corridas de optimizador
-
-## 🚀 Estado Actual de Despliegue
-
-**✅ DESPLEGADO EN PRODUCCIÓN**: Ecosistema completo desplegado exitosamente y verificado en Base Sepolia con operaciones comunitarias reales.
-
-**Estado de Redes:**
-
-1. **Base Sepolia** (testnet) - ✅ **OPERACIONAL** - Comunidad ID 3 con 28 transacciones exitosas
-2. **Base** (mainnet) - **Listo para Lanzamiento en Producción** - Objetivo de despliegue de ultra-bajo costo (~$0.19 por comunidad)
-3. **Ethereum Sepolia** (testnet) - Objetivo secundario después del éxito en Base
-4. **Ethereum** (mainnet) - Despliegue final después del éxito probado en Base
-
-**Análisis de Costos**: ~$0.19 USD por despliegue de comunidad en Base vs ~$9,600 en Ethereum mainnet
-
-## 📊 Métricas de Rendimiento
-
-- **Eficiencia de Gas**: Optimizado para despliegue Layer 2 en Base
-- **Escalabilidad**: Diseñado para alto throughput de transacciones
-- **Modularidad**: Los contratos pueden ser actualizados independientemente a través de gobernanza
-- **Interoperabilidad**: Interfaces ERC estándar para compatibilidad de ecosistema
+| Documento | Propósito |
+|-----------|-----------|
+| [**Whitepaper**](./Whitepaper.md) | Visión, modelo de negocio y caso de inversión |
+| [**Arquitectura**](./Architecture.md) | Diseño del sistema y relaciones entre 24 contratos |
+| [**Capas**](./Layers.md) | Referencia unificada de arquitectura de 5 capas |
+| [**Tokenomics**](./Tokenomics.md) | Economía de tokens, distribución de ingresos y cohortes |
+| [**Contratos**](./contracts/) | Documentación individual de contratos (24 contratos) |
+| [**Guías**](./guides/) | Guías operativas para gestión de comunidades |
 
 ---
 
-_Para detalles de implementación técnica, consulta la documentación específica de contratos. Para visión de inversión y negocio, ve el [Whitepaper](./Whitepaper.md)._
+## 📚 Estructura de Documentación
+
+### Documentos Principales
+
+| Documento | Descripción |
+|-----------|-------------|
+| [Whitepaper.md](./Whitepaper.md) | Visión ejecutiva, modelo de negocio, oportunidad de mercado, caso de inversión |
+| [Architecture.md](./Architecture.md) | Diseño del sistema, arquitectura de 5 capas, relaciones entre componentes, modelo de seguridad |
+| [Layers.md](./Layers.md) | Referencia unificada de capas: coordinación, gobernanza, verificación, económica, comercio |
+| [Tokenomics.md](./Tokenomics.md) | MembershipToken, CommunityToken, ValuableActionSBT (5 tipos), cascada de ingresos, cohortes |
+
+### Documentación de Contratos (24 Contratos)
+
+#### Capa 1: Coordinación Comunitaria (4 contratos)
+- [CommunityRegistry.md](./contracts/CommunityRegistry.md) — Metadatos de comunidad y coordinación de módulos
+- [RequestHub.md](./contracts/RequestHub.md) — Foro de discusión y coordinación de ideas
+- [DraftsManager.md](./contracts/DraftsManager.md) — Desarrollo colaborativo de propuestas
+- [ParamController.md](./contracts/ParamController.md) — Gestión dinámica de parámetros
+
+#### Capa 2: Gobernanza Democrática (4 contratos)
+- [ShiftGovernor.md](./contracts/ShiftGovernor.md) — Motor de gobernanza multi-opción
+- [CountingMultiChoice.md](./contracts/CountingMultiChoice.md) — Mecanismo de votación ponderada
+- [MembershipTokenERC20Votes.md](./contracts/MembershipTokenERC20Votes.md) — Tokens de gobernanza basados en mérito
+- TimelockController (OpenZeppelin) — Retrasos de ejecución y protección
+
+#### Capa 3: Verificación de Trabajo (9 contratos)
+- [ValuableActionRegistry.md](./contracts/ValuableActionRegistry.md) — Tipos de compromisos definidos por la comunidad
+- [Engagements.md](./contracts/Engagements.md) — Flujo de verificación de compromisos de trabajo
+- [VerifierPowerToken1155.md](./contracts/VerifierPowerToken1155.md) — Selección democrática de verificadores
+- [VerifierElection.md](./contracts/VerifierElection.md) — Gobernanza y elecciones de verificadores
+- [VerifierManager.md](./contracts/VerifierManager.md) — Selección de jurados M-de-N
+- [ValuableActionSBT.md](./contracts/ValuableActionSBT.md) — Tokens Soulbound multi-tipo (5 tipos)
+- [CredentialManager.md](./contracts/CredentialManager.md) — Emisión de certificaciones de cursos
+- [PositionManager.md](./contracts/PositionManager.md) — Ciclo de vida de posiciones
+- [InvestmentCohortManager.md](./contracts/InvestmentCohortManager.md) — Coordinación de cohortes de inversión
+
+#### Capa 4: Motor Económico (4 contratos)
+- [CommunityToken.md](./contracts/CommunityToken.md) — Moneda comunitaria respaldada 1:1 con USDC
+- [CohortRegistry.md](./contracts/CohortRegistry.md) — Almacenamiento y seguimiento de cohortes de inversión
+- [RevenueRouter.md](./contracts/RevenueRouter.md) — Cascada de distribución de ingresos automatizada
+- [TreasuryAdapter.md](./contracts/TreasuryAdapter.md) — Controles de gasto de tesorería
+
+#### Capa 5: Módulos Comunitarios (3 contratos)
+- [Marketplace.md](./contracts/Marketplace.md) — Mercado de servicios descentralizado
+- [CommerceDisputes.md](./contracts/CommerceDisputes.md) — Resolución de disputas comerciales
+- [HousingManager.md](./contracts/HousingManager.md) — Coordinación de co-vivienda
+
+### Guías
+
+| Guía | Propósito |
+|------|-----------|
+| [Gestión de Cohortes](./guides/COHORT_MANAGEMENT.md) | Operaciones de cohortes de inversión |
+
+---
+
+## 🗺️ Documentación por Caso de Uso
+
+### Entendiendo el Sistema
+1. **Inicio**: [Architecture.md](./Architecture.md) — Visión general del sistema
+2. **Profundización**: [Layers.md](./Layers.md) — Referencia capa por capa
+3. **Economía**: [Tokenomics.md](./Tokenomics.md) — Mecánicas de tokens e ingresos
+4. **Negocio**: [Whitepaper.md](./Whitepaper.md) — Visión y caso de inversión
+
+### Implementando Gobernanza
+1. [ShiftGovernor.md](./contracts/ShiftGovernor.md) — Motor de gobernanza principal
+2. [CountingMultiChoice.md](./contracts/CountingMultiChoice.md) — Mecanismo de votación
+3. [MembershipTokenERC20Votes.md](./contracts/MembershipTokenERC20Votes.md) — Tokens de gobernanza
+
+### Construyendo Verificación de Trabajo
+1. [ValuableActionRegistry.md](./contracts/ValuableActionRegistry.md) — Definiciones de tipos de trabajo
+2. [Engagements.md](./contracts/Engagements.md) — Flujo de verificación de compromisos
+3. [VerifierManager.md](./contracts/VerifierManager.md) — Selección de jurados
+4. [ValuableActionSBT.md](./contracts/ValuableActionSBT.md) — Emisión de SBT (5 tipos)
+
+### Gestionando Certificaciones y Posiciones
+1. [CredentialManager.md](./contracts/CredentialManager.md) — Flujo de certificaciones de cursos
+2. [PositionManager.md](./contracts/PositionManager.md) — Ciclo de vida de posiciones
+3. [InvestmentCohortManager.md](./contracts/InvestmentCohortManager.md) — Coordinación de inversiones
+
+### Configurando Distribución de Ingresos
+1. [Tokenomics.md](./Tokenomics.md) — Explicación de cascada de ingresos
+2. [RevenueRouter.md](./contracts/RevenueRouter.md) — Implementación de distribución
+3. [CohortRegistry.md](./contracts/CohortRegistry.md) — Seguimiento de cohortes
+
+---
+
+## 📊 Estado Actual (Enero 2026)
+
+**✅ MVP Listo para Producción**
+- 24 contratos desplegados en Base Sepolia
+- Cobertura de documentación completa
+- Community ID 1 operacional
+- Despliegue en Base mainnet listo (~$10 de costo)
+
+### Suite de Contratos (24 contratos)
+
+| Capa | Contratos |
+|------|-----------|
+| **Coordinación** | CommunityRegistry, RequestHub, DraftsManager, ParamController |
+| **Gobernanza** | ShiftGovernor, CountingMultiChoice, MembershipTokenERC20Votes, TimelockController |
+| **Verificación** | ValuableActionRegistry, Engagements, VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionSBT, CredentialManager, PositionManager, InvestmentCohortManager |
+| **Económica** | CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter |
+| **Comercio** | Marketplace, CommerceDisputes, HousingManager |
+
+### Tipos de SBT (vía ValuableActionSBT)
+
+| Tipo | Emitido Por | Propósito |
+|------|-------------|-----------|
+| WORK | Engagements | Compromisos de trabajo completados |
+| ROLE | PositionManager | Posiciones completadas exitosamente |
+| CREDENTIAL | CredentialManager | Certificaciones de cursos/formación |
+| POSITION | PositionManager | Roles activos en curso |
+| INVESTMENT | InvestmentCohortManager | Participación en inversiones |
+
+---
+
+## 🔐 Características de Seguridad
+
+- **Ejecución con Timelock** previene ataques de gobernanza inmediatos
+- **Elecciones democráticas de verificadores** aseguran responsabilidad comunitaria
+- **Verificación M-de-N** para validación de trabajo
+- **Mecanismos de apelación** para decisiones disputadas
+- **Protecciones de TreasuryAdapter** (1 gasto/semana, límite 10%, lista de stablecoins)
+
+## 📈 Pruebas y Cobertura
+
+Todos los contratos mantienen ≥86% de cobertura de pruebas:
+- **Pruebas unitarias** para funcionalidad individual de contratos
+- **Pruebas de integración** para interacciones entre contratos
+- **Pruebas fuzz** para validación de entrada
+- **Umbral de cobertura** aplicado en CI/CD
+
+---
+
+_Para flujo de trabajo de desarrollo, ver [.github/copilot-instructions.md](../../.github/copilot-instructions.md)._
