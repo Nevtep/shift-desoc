@@ -16,27 +16,24 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 4. **Scalability**: Layer 2 deployment with efficient gas usage patterns
 5. **Transparency**: All operations verifiable on-chain with rich event logs
 
-## 🎯 Current Status: Production-Ready MVP (December 2025)
+## 🎯 Stage & Roadmap
 
-**✅ PRODUCTION DEPLOYED**: Complete ecosystem successfully deployed and verified on Base Sepolia with operational community.
+- **Current stage (staging/test)**: Active on Base Sepolia; Base mainnet is the launch target. All privileged operations remain timelock-gated; ParamController is the policy source; no staking for verifiers; TreasuryAdapter guardrails stay intact.
+- **Achieved milestones**:
+    - **Q3 2025**: Alpha contract suite and research completed; staging deployment to Base Sepolia.
+    - **Q4 2025**: Marketing site live and basic admin tool shipped.
+- **Upcoming milestones**:
+    - **Q1 2026**: MVP on Base mainnet with contract infrastructure deployed, admin web tool in place, and Shift community formed to steer app development through Q2–Q3 2026.
+    - **Q4 2026**: Integrate first early adopters and expand app workstreams guided by the Shift community.
 
-**Key Achievements:**
-
-- **Complete Contract Suite**: All 24 contracts deployed and verified on Base Sepolia
-- **API-Based Community Creation**: Scalable deployment system with JSON address management (~$0.19 per community vs $9,600 on Ethereum)
-- **Real Deployments Verified**: Community ID 1 successfully operating on Base Sepolia with full configuration
-- **Comprehensive Documentation**: 24 contracts fully documented with technical architecture and business value
-- **Automated Address Management**: Deployment addresses auto-saved to deployments/{network}.json files
-- **Production-Ready Infrastructure**: Complete deployment scripts, verification tools, and Base mainnet optimization (0.05 gwei gas)
-
-**Target Networks:** Base (primary - optimized), Ethereum (secondary), with Base Sepolia for testing
-
-**Deployed Contract Suite (24 contracts):**
+**Contract suite (24 contracts, libraries/interfaces excluded):**
 - **Core Infrastructure**: CommunityRegistry, ParamController
-- **Governance System**: ShiftGovernor, TimelockController, CountingMultiChoice, MembershipTokenERC20Votes
-- **Work Verification**: VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionRegistry, Engagements, ValuableActionSBT, CredentialManager, PositionManager
+- **Governance**: ShiftGovernor, TimelockController, CountingMultiChoice, MembershipTokenERC20Votes
+- **Verification & Reputation**: VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionRegistry, Engagements, ValuableActionSBT, CredentialManager, PositionManager
 - **Economic Layer**: CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter, InvestmentCohortManager
-- **Community Modules**: RequestHub, DraftsManager, CommerceDisputes, Marketplace, HousingManager, ProjectFactory
+- **Commerce & Coordination Modules**: RequestHub, DraftsManager, CommerceDisputes, Marketplace, HousingManager, ProjectFactory
+
+For step-by-step lifecycle walkthroughs, see [docs/EN/Flows.md](docs/EN/Flows.md).
 
 ## 🔗 Complete System Architecture
 
@@ -98,226 +95,18 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 
 📖 **Detailed Documentation**:
 - [ShiftGovernor](./contracts/ShiftGovernor.md) - Governance engine specification
-- [CountingMultiChoice](./contracts/CountingMultiChoice.md) - Multi-choice voting mechanics
-- [MembershipTokenERC20Votes](./contracts/MembershipTokenERC20Votes.md) - Token economics and minting
-- OpenZeppelin TimelockController - Standard timelock implementation
+### **Multi-Community Architecture (Forward-Looking)**
 
-**Key Workflow**: `Draft Escalation → Proposal Creation → Voting Period → Timelock Delay → Execution`
+These phases describe possible community/federation evolution. They are conceptual and not yet deployed; any shared services must stay governance-controlled and respect timelock/ParamController authority.
 
-### **Layer 3: Work Verification & Merit System**
+- **Phase 1: Isolated communities (current staging)** — Each community runs its own full contract suite with no cross-community dependencies. Simpler operations and clearer blast radius.
+- **Phase 2: Federated coordination (future concept)** — Optional shared discovery, lightweight reputation bridging, and inter-community marketplaces. Execution remains community-scoped; any shared indexers or hubs are read-only aids, not control planes.
+- **Phase 3: Ecosystem network (future concept)** — Optional regional hubs and shared services (e.g., cross-community reputation views, resource exchanges) gated by governance. No shared execution-layer treasury or verifier control without explicit, timelocked decisions.
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                              VERIFICATION LAYER                                            │
-├─────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌──────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │
-│ │ValuableActionReg │◄─┤   Engagements   ├──┤ VerifierManager ├──┤  ValuableActionSBT     │ │
-│ │- Work Categories │  │- Submissions    │  │- VPT Elections  │  │- Contribution Record   │ │
-│ │- Evidence Specs  │  │- M-of-N Panels  │  │- Power Tokens   │  │- Reputation Score     │ │
-│ │- Reward Params   │  │- Verification   │  │- Fraud Detect   │  │- Governance Multiplier│ │
-│ │- Economic Model  │  │- Appeals        │  │- Term Limits    │  │- Revenue Weight       │ │
-│ └──────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Purpose**: Democratic work verification replacing economic bonding with community-elected verifiers.
-
-**Core Components**:
-- **ValuableActionRegistry**: Community-defined work categories with verification parameters
-- **Engagements**: One-shot engagement submission and M-of-N verification workflow
-- **CredentialManager**: Course-scoped credential applications with verifier approval
-- **PositionManager**: Position definitions, applications, assignments, and closures
-- **VerifierPowerToken1155**: Democratic verifier selection via VPT tokens
-- **VerifierElection**: Election management and fraud detection
-- **VerifierManager**: M-of-N juror selection and performance tracking
-- **ValuableActionSBT**: Soulbound reputation tokens with WorkerPoints (5 types: WORK, ROLE, CREDENTIAL, POSITION, INVESTMENT)
-
-📖 **Detailed Documentation**:
-- [ValuableActionRegistry](./contracts/ValuableActionRegistry.md) - Work category definitions
-- [Engagements](./contracts/Engagements.md) - Verification workflow and appeals
-- [CredentialManager](./contracts/CredentialManager.md) - Credential application system
-- [PositionManager](./contracts/PositionManager.md) - Position lifecycle management
-- [VerifierPowerToken1155](./contracts/VerifierPowerToken1155.md) - Democratic verifier system
-- [VerifierElection](./contracts/VerifierElection.md) - Election and fraud management
-- [VerifierManager](./contracts/VerifierManager.md) - Juror selection mechanics
-- [ValuableActionSBT](./contracts/ValuableActionSBT.md) - Reputation and merit tracking
-
-**Key Workflow**: `Work Definition → Engagement Submission → Verifier Selection → M-of-N Voting → SBT Minting → Rewards`
-
-**Verifier Power System (VPS)**: Replaces traditional economic bonding with democratic elections - see detailed VPS architecture below.
-
-### **Layer 4: Cohort-Based Economic Engine**
-
-The VPT system replaces traditional economic bonding with community-controlled democratic elections. Each community can elect their own verifiers through transparent governance processes.
-
-#### **Core VPT Architecture**
-
-```solidity
-contract VerifierPowerToken1155 {
-    // Each community has its own token type for verifiers
-    mapping(uint256 => CommunityVPTConfig) public communityConfigs;
-    mapping(uint256 => mapping(address => uint256)) public verifierPowerBalances;
-
-    struct CommunityVPTConfig {
-        uint256 maxVerifiers;           // Maximum number of active verifiers
-        uint256 termLength;             // How long verifiers serve (in seconds)
-        uint256 minVotesToWin;          // Minimum votes needed to become verifier
-        bool electionsActive;           // Whether community is currently accepting elections
-        uint256 currentElectionId;      // Active election ID
-    }
-
-    function createVerifierElection(
-        uint256 communityId,
-        uint256 seats,
-        uint64 termLength,
-        string[] calldata candidateRequirements
-    ) external returns (uint256 electionId);
-
-    function applyForVerifier(
-        uint256 electionId,
-        string calldata platform,
-        string calldata qualifications
-    ) external;
-
-    function voteInElection(
-        uint256 electionId,
-        address[] calldata preferredCandidates
-    ) external;
-
-    function finalizeElection(uint256 electionId) external;
-
-    function mintVerifierTokens(
-        address[] calldata winners,
-        uint256 communityId,
-        uint256[] calldata powerAmounts
-    ) external;
-}
-```
-
-#### **Democratic Election Process**
-
-1. **Election Creation**: Community governance creates verifier elections with specific parameters
-2. **Candidate Applications**: Community members apply with qualifications and platforms
-3. **Community Voting**: All eligible community members vote for their preferred candidates
-4. **Result Finalization**: Winners receive VPT1155 tokens granting verifier privileges
-5. **Term Service**: Elected verifiers serve for the specified term length
-6. **Performance Monitoring**: Community can monitor and potentially remove underperforming verifiers
-7. **Re-election**: Regular elections ensure ongoing community trust
-
-#### **Fraud Detection & Accountability**
-
-```solidity
-contract VerifierElection {
-    struct FraudReport {
-        address reporter;
-        address accused;
-        uint256 claimId;            // Claim where fraud allegedly occurred
-        string evidenceURI;         // IPFS evidence
-        uint256 reportTime;
-        bool resolved;
-        bool fraudConfirmed;
-    }
-
-    function reportVerifierFraud(
-        address verifier,
-        uint256 claimId,
-        string calldata evidenceURI
-    ) external returns (uint256 reportId);
-
-    function investigateFraud(
-        uint256 reportId,
-        bool fraudConfirmed,
-        string calldata resolution
-    ) external onlyGovernance;
-
-    function removeVerifier(
-        uint256 communityId,
-        address verifier,
-        string calldata reason
-    ) external onlyGovernance;
-}
-```
-
-### **Layer 4: Cohort-Based Economic Engine**
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                ECONOMIC LAYER                                              │
-├─────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌──────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │
-│ │  CohortRegistry  │◄─┤ RevenueRouter   ├──┤TreasuryAdapter  ├──┤   CommunityToken       │ │
-│ │- Investment      │  │- Waterfall Dist │  │- Treasury Mgmt  │  │- 1:1 USDC Backing     │ │
-│ │  Cohorts         │  │- Cohort Weights │  │- Spending Limits│  │- Revenue Settlement   │ │
-│ │- Target ROI      │  │- Spillover Logic│  │- Multi-sig      │  │- Multi-Token Support  │ │
-│ │- Auto Completion │  │- Worker Min Prot│  │- Audit Trail    │  │- Cross-Community     │ │
-│ └──────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────────────┘ │
-│                                     ▲                                                     │
-│ ┌──────────────────┐                │                    ┌─────────────────────────────────┐ │
-│ │ValuableActionSBT │────────────────┘                    │    ParamController         │ │
-│ │- Investment SBTs │                                      │- Revenue Policy Control   │ │
-│ │- Cohort Metadata │                                      │- Governance Parameters    │ │
-│ │- 5 Token Types   │                                      │- Dynamic Configuration    │ │
-│ │- Merit Tracking  │                                      │- Community-Specific Rules │ │
-│ └──────────────────┘                                      └─────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Purpose**: Cohort-based revenue distribution with ROI guarantees and automated waterfall mechanics.
-
-**Core Components**:
-- **CohortRegistry**: Investment cohort tracking with Target ROI and automatic completion
-- **RevenueRouter**: Waterfall distribution engine with cohort-weighted allocation
-- **CommunityToken**: 1:1 USDC-backed programmable currency for payments
-- **TreasuryAdapter**: Spending controls and multi-sig treasury management
-- **ValuableActionSBT**: Investment SBT integration with cohort membership
-
-📖 **Detailed Documentation**:
-- [CohortRegistry](./contracts/CohortRegistry.md) - Cohort management and ROI tracking
-- [RevenueRouter](./contracts/RevenueRouter.md) - Distribution mechanics and waterfall logic
-- [CommunityToken](./contracts/CommunityToken.md) - USDC backing and salary system
-- [TreasuryAdapter](./contracts/TreasuryAdapter.md) - Treasury controls and governance
-- [TreasuryAdapter-Spec-v1.md](./TreasuryAdapter-Spec-v1.md) - Complete treasury specification
-- [COHORT_MANAGEMENT.md](./COHORT_MANAGEMENT.md) - **Operations guide for managing cohorts**
-
-**Key Workflow**: `Revenue Generation → Worker Pool (40%) → Treasury Reserve (25%) → Cohort Distribution (35%) → ROI Tracking → Auto-Completion`
-
-### **Layer 5: Utility & Project Infrastructure**
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                UTILITY LAYER                                               │
-├─────────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌──────────────────┐  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐ │
-│ │  ProjectFactory  │◄─┤  Marketplace    ├──┤ HousingManager  ├──┤   TreasuryAdapter      │ │
-│ │- ERC-1155 Tokens │  │- Service Trade  │  │- Co-housing     │  │- Treasury Interface    │ │
-│ │- Crowdfunding    │  │- Quality Verify │  │- Reservations   │  │- Spending Limits      │ │
-│ │- Milestone Gates │  │- Reputation     │  │- Revenue Gen    │  │- Multi-sig Support    │ │
-│ │- Investor Protct │  │- Cross-Community│  │- Worker Discts  │  │- Audit Trails        │ │
-│ └──────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Purpose**: Community-specific applications including marketplace, co-housing, and project crowdfunding.
-
-**Core Components**:
-- **Marketplace**: Decentralized commerce with escrow and dispute resolution
-- **CommerceDisputes**: Dedicated dispute system for commercial transactions
-- **HousingManager**: Co-housing coordination with reservations and pricing
-- **ProjectFactory**: ERC-1155 crowdfunding with milestone validation
-- **TreasuryAdapter**: Treasury interface for community spending
-
-📖 **Detailed Documentation**:
-- [Marketplace](./contracts/Marketplace.md) - Implementation details
-- [Marketplace-Spec-v1.md](./Marketplace-Spec-v1.md) - **Complete marketplace specification**
-- [CommerceDisputes](./contracts/CommerceDisputes.md) - Dispute resolution system
-- [ARN-Disputes-Architecture.md](./ARN-Disputes-Architecture.md) - **Dispute system design**
-- [HousingManager](./contracts/HousingManager.md) - Implementation details
-- [HousingManager-Spec-v1.md](./HousingManager-Spec-v1.md) - **Complete housing specification**
-- [ProjectFactory](./contracts/ProjectFactory.md) - Crowdfunding mechanics
-
-**Key Workflows**:
-- **Commerce**: `Offer Creation → Purchase → Escrow → Fulfillment → Settlement/Dispute`
-- **Housing**: `Unit Listing → Reservation → Check-in → Stay → Check-out → Settlement`
+**Guidelines for future federation:**
+- Keep work verification, treasury control, and parameter changes community-local unless a timelocked governance action delegates specific powers.
+- Prefer shared data planes (indexers, reputation views) over shared execution. If shared execution emerges, document authority boundaries and timelock flows.
+- Maintain ParamController as the single source of policy per community; avoid shadow config in shared layers.
 - **Projects**: `Project Creation → Fundraising → Milestone Completion → Investor Returns`
 
 ## **CohortRegistry: Investment Cohort Management**
@@ -2614,46 +2403,6 @@ event VoteCast(uint256 indexed engagementId, address indexed voter, bool approve
        _;
    }
    ```
-
-### Development Status & Testing
-
-#### **Completed Components (86%+ Test Coverage)**
-
-- ✅ **ShiftGovernor**: Multi-choice voting with OpenZeppelin integration
-- ✅ **CountingMultiChoice**: Weighted voting distribution logic
-- ✅ **ValuableActionRegistry**: Community-configured value definition system
-- ✅ **Engagements**: M-of-N verification with appeals process
-- ✅ **VerifierManager**: Governance-elected verifier system with VPT1155 tokens
-
-#### **In Development**
-
-- 🔄 **ValuableActionSBT**: Soulbound token minting and reputation tracking
-- 🔄 **CommunityToken**: 1:1 stablecoin backing with governance controls
-- 🔄 **RevenueRouter**: Automated revenue distribution system
-
-#### **Testing Strategy**
-
-```javascript
-// Example test structure
-describe("Engagements Verification Flow", () => {
-  it("should complete M-of-N verification", async () => {
-    // Submit engagement
-    const engagementId = await engagements.submitEngagement(actionTypeId, evidenceCID);
-
-    // Select jurors
-    const jurors = await verifierManager.selectJurors(engagementId, communityId, seed);
-
-    // Cast votes
-    for (const juror of jurors.slice(0, MIN_APPROVALS)) {
-      await engagements.connect(juror).vote(engagementId, true, "Good work");
-    }
-
-    // Verify resolution
-    await engagements.resolve(engagementId);
-    expect(await engagements.getStatus(engagementId)).to.equal(EngagementStatus.Approved);
-  });
-});
-```
 
 This architecture provides a robust foundation for democratic community governance while maintaining the flexibility to evolve with user needs and technological advances. The modular design ensures that individual components can be upgraded or replaced without disrupting the broader system, while the comprehensive security model protects against both technical and economic attacks.
 

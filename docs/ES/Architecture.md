@@ -1,78 +1,5 @@
-# Arquitectura del Sistema Shift DeSoc
+Para recorridos paso a paso de los ciclos, ver [docs/ES/Flows.md](docs/ES/Flows.md).
 
-Este documento proporciona una visión general de alto nivel de la arquitectura del sistema Shift DeSoc, interacciones de componentes y patrones de flujo de datos tanto para stakeholders técnicos como de negocio.
-
-> **Suite de 24 Contratos**: El sistema completo incluye 24 contratos Solidity (excluyendo librerías e interfaces). Para referencia detallada de cada capa, ver [Layers.md](Layers.md). Para economía de tokens, ver [Tokenomics.md](Tokenomics.md).
-
-## 🏗️ Visión General del Sistema
-
-**Shift DeSoc es tecnología de meta-gobernanza** - una infraestructura flexible que permite a las comunidades modelar cualquier estructura organizacional que elijan. En lugar de imponer un modelo de gobernanza específico, Shift proporciona los bloques de construcción (protocolos de gobernanza, sistemas de verificación de trabajo y mecanismos económicos) que las comunidades pueden configurar para implementar sus procesos únicos de toma de decisiones, definiciones de valor y patrones de coordinación.
-
-Shift implementa una **arquitectura modular, nativa de blockchain** diseñada para escalabilidad, seguridad y capacidad de actualización. La plataforma consiste en contratos inteligentes interconectados que gestionan gobernanza, verificación de trabajo e incentivos económicos.
-
-### Principios de Diseño Central
-
-1. **Modularidad**: Contratos independientes que pueden ser actualizados por separado
-2. **Composabilidad**: Interfaces estándar permiten integración de ecosistema
-3. **Seguridad**: Seguridad multi-capa con incentivos económicos y protección timelock
-4. **Escalabilidad**: Despliegue Layer 2 con patrones eficientes de uso de gas
-5. **Transparencia**: Todas las operaciones verificables on-chain con logs de eventos ricos
-
-## 🏛️ Arquitectura de 5 Capas
-
-Shift DeSoc está construido como una pila tecnológica de 5 capas que proporciona funcionalidad completa de sociedad descentralizada:
-
-### **Capa 1: Infraestructura de Coordinación Comunitaria**
-
-La base para discusión democrática y desarrollo colaborativo de propuestas:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                          INFRAESTRUCTURA DE COORDINACIÓN COMUNITARIA                    │
-├─────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌─────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌─────────────────────┐ │
-│ │CommunityRegistry│  │   RequestHub   │  │ DraftsManager  │  │  ParamController    │ │
-│ │- Metadata       │  │- Discusión     │  │- Colaboración  │  │- Params Dinámicos   │ │
-│ │- Parámetros     │  │- Moderación    │  │- Versionado    │  │- Timelock Config    │ │
-│ │- Módulos        │  │- Etiquetas     │  │- Revisión      │  │- Elegibilidad      │ │
-│ │- Roles          │  │- Flujo Eventos │  │- Escalación    │  │- División Ingresos  │ │
-│ │- Cross-Community│  │- Stream Eventos│  │- Escalación    │  │- Soporte Migración │ │
-│ └─────────────────┘  └────────────────┘  └────────────────┘  └─────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### **Capa 2: Gobernanza Democrática**
-
-Sistema de votación multi-opción con poder de voto mejorado por mérito:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                                GOBERNANZA DEMOCRÁTICA                                   │
-├─────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌─────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌─────────────────────┐ │
-│ │  ShiftGovernor  │  │CountingMulti   │  │MembershipToken │  │  TimelockController │ │
-│ │- Propuestas     │  │- Multi-Opción  │  │- Poder Voto    │  │- Retrasos Ejecución│ │
-│ │- Multi-Choice   │  │- Pesos Voters  │  │- SBT Enhanced  │  │- Roles Admin       │ │
-│ │- Timelock Integ │  │- Snapshots     │  │- Delegación    │  │- Queue Operations   │ │
-│ │- Hooks & Events │  │- Conteo Votos  │  │- Concentración │  │- Gestión Roles     │ │
-│ │- Hub Integración│  │- Eventos/Logs  │  │- Historial Voto│  │- Gestión Roles     │ │
-│ └─────────────────┘  └────────────────┘  └────────────────┘  └─────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### **Capa 3: Verificación de Trabajo & Mérito**
-
-Sistema resistente a Sybil para validar contribuciones y construir reputación:
-
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                           VERIFICACIÓN DE TRABAJO & MÉRITO                              │
-├─────────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌─────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌─────────────────────┐ │
-│ │ValuableActionReg │ │  Engagements   │  │ Sistema VPS    │  │ ValuableActionSBT   │ │
-│ │- Tipos Trabajo  │  │- Compromisos   │  │- Registro M-de-N│  │- Tokens Soulbound  │ │
-│ │- Params Verific │  │- Selec Jurados │  │- Elecciones VPT│  │- WorkerPoints EMA  │ │
-│ │- Recompensas    │  │- Votac M-de-N  │  │- Reputa/Select │  │- Cross-Community   │ │
 │ │- Cooldowns      │  │- Apelaciones   │  │- Slashing      │  │- Poder Gobernanza │ │
 │ │- Spec Evidencia │  │- Gestores SBT  │  │- Pool Activo   │  │- Anti-Gaming      │ │
 │ └─────────────────┘  └────────────────┘  └────────────────┘  └─────────────────────┘ │
@@ -307,72 +234,18 @@ graph TD
 
 ### **Mapas de Estado del Sistema**
 
-#### Estado de Gobernanza
+## 🌐 Comunidad y Federación (Visión Futura)
 
-```solidity
-// Seguimiento de propuestas
-mapping(uint256 => ProposalCore) proposals;
-mapping(uint256 => uint8) numOptions;           // Configuración multi-opción
-mapping(uint256 => ProposalVote) proposalVotes; // Conteo de votos
+Estas fases describen cómo podría evolucionar la coordinación entre comunidades. Son conceptuales y no están desplegadas; cualquier servicio compartido debe respetar timelock y ParamController.
 
-// Snapshots de poder de voto
-mapping(address => Checkpoint[]) checkpoints;   // Poder de voto histórico
-mapping(uint256 => uint256) totalSupplyHistory; // Snapshots de supply de tokens
-```
+- **Fase 1: Comunidades aisladas (estado actual en staging)** — Cada comunidad opera su suite completa sin dependencias cross-community; menor riesgo y operación clara.
+- **Fase 2: Coordinación federada (concepto futuro)** — Descubrimiento compartido, vistas ligeras de reputación y marketplaces inter-comunidad. La ejecución y control de tesorería/verificadores sigue siendo local a cada comunidad.
+- **Fase 3: Red de ecosistema (concepto futuro)** — Hubs opcionales con servicios compartidos (p. ej., vistas de reputación o intercambio de recursos) siempre bajo decisiones de gobernanza con timelock. Sin control compartido de tesorería ni verificación sin mandato explícito.
 
-#### Estado de Verificación
-
-```solidity
-// Ciclo de vida de compromisos (engagements)
-mapping(uint256 => Engagement) engagements;     // Todos los compromisos enviados
-mapping(uint256 => Appeal) appeals;             // Seguimiento de apelaciones
-mapping(address => mapping(uint256 => uint64)) workerCooldowns; // Rate limiting
-
-// Gestión de verificadores
-mapping(address => Verifier) verifiers;         // Perfiles de verificadores
-address[] activeVerifiers;                      // Pool de selección
-mapping(uint256 => JurorSelection) selections;  // Asignaciones de panel
-```
-
-#### Estado Económico
-
-```solidity
-// Estado de Arquitectura Triple-Token
-mapping(address => uint256) membershipBalances;      // Elegibilidad de voto base
-mapping(address => WorkerProfile) workerProfiles;    // Datos de mérito y contribución
-mapping(address => InvestorProfile) investorProfiles; // Datos de capital y time-decay
-
-// Estado de Distribución Dinámica de Ingresos
-struct DistributionSnapshot {
-    uint256 timestamp;                          // Tiempo de cálculo
-    uint256 rawWorkerWeight;                    // Peso base matemático
-    uint256 rawInvestorWeight;                  // Peso base matemático
-    uint256 treasuryWeight;                     // Peso basado en runway
-    uint256 performanceModW;                    // Multiplicador performance worker
-    uint256 performanceModI;                    // Multiplicador performance investor
-    uint256 totalNormalization;                 // Suma para cálculo porcentaje
-}
-mapping(uint256 => DistributionSnapshot) distributionHistory; // Cálculos históricos
-
-// Estado de Reputación Cross-Community
-mapping(address => mapping(uint256 => uint256)) crossCommunityReputation; // [user][communityId] = reputation
-mapping(uint256 => CommunityEconomicParams) communityParameters;          // Config económica por comunidad
-mapping(address => uint256[]) userCommunities;                            // Comunidades donde participa el usuario
-```
-
-## 🏗️ Arquitectura Económica Avanzada
-
-### **Sistema de Cohortes de Inversión con Distribución por Cascada**
-
-El nuevo sistema organiza a los inversores en **cohortes** con términos de ROI garantizado y distribución automática por cascada que prioriza a los trabajadores y garantiza retornos de inversión:
-
-```solidity
-// CohortRegistry: Gestión de cohortes de inversión
-contract CohortRegistry {
-    struct Cohort {
-        uint256 communityId;           // Comunidad que creó esta cohorte
-        uint16 targetROIBps;           // ROI objetivo en puntos base (12000 = 120%)
-        uint16 priorityWeight;         // Peso de distribución de ingresos
+**Lineamientos para cualquier federación futura:**
+- Mantener verificación de trabajo, tesorería y parámetros bajo gobernanza local salvo delegación explícita y timelock.
+- Priorizar planos de datos compartidos (indexers, vistas de reputación) sobre ejecución compartida.
+- ParamController sigue siendo la fuente de política por comunidad; evitar configuraciones paralelas en capas compartidas.
         uint32 maxInvestors;           // Máximo número de inversores permitidos
         uint256 minInvestment;         // Inversión mínima por persona (USDC)
         uint256 maxTotalRaise;         // Inversión máxima total (USDC)
@@ -1249,50 +1122,6 @@ event VoteCast(uint256 indexed engagementId, address indexed voter, bool approve
 
 _Esto no es sólo una plataforma de gobernanza - es infraestructura para la transición desde empleo basado en escasez hacia contribución basada en abundancia._
 
-### Estado de Desarrollo & Testing
-
-#### **Componentes Completados (86%+ Cobertura de Tests)**
-
-- ✅ **ShiftGovernor**: Votación multi-opción con integración OpenZeppelin
-- ✅ **CountingMultiChoice**: Lógica de distribución de votación ponderada
-- ✅ **ValuableActionRegistry**: Parámetros configurables de verificación de trabajo
-- ✅ **Engagements**: Verificación M-de-N con proceso de apelaciones
-- ✅ **VerifierManager**: Sistema de verificadores elegido por gobernanza con tokens VPT1155
-
-#### **En Desarrollo**
-
-- 🔄 **ValuableActionSBT**: Minting de tokens soulbound y seguimiento de reputación
-- 🔄 **CommunityToken**: Sistema de salario periódico basado en mérito con reclamos SBT-ponderados
-- 🔄 **RevenueRouter**: Sistema automatizado de distribución de ingresos
-
-#### **Estrategia de Testing**
-
-```javascript
-// Ejemplo estructura de test
-describe("Engagements Verification Flow", () => {
-  it("should complete M-of-N verification", async () => {
-    // Enviar compromiso
-    const engagementId = await engagements.submit(valuableActionId, evidenceCID);
-
-    // Seleccionar jurados
-    const jurors = await verifierManager.selectJurors(engagementId, communityId, seed);
-
-    // Emitir votos
-    for (const juror of jurors.slice(0, MIN_APPROVALS)) {
-      await engagements.connect(juror).vote(engagementId, true, "Good work");
-    }
-
-    // Verificar resolución
-    await engagements.resolve(engagementId);
-    expect(await engagements.getStatus(engagementId)).to.equal(EngagementStatus.Approved);
-  });
-});
-```
-
-Esta arquitectura proporciona una fundación robusta para gobernanza comunitaria democrática mientras mantiene flexibilidad para evolucionar con necesidades de usuarios y avances tecnológicos. El diseño modular asegura que componentes individuales puedan ser actualizados o reemplazados sin disrumpir el sistema más amplio, mientras el modelo comprensivo de seguridad protege contra ataques tanto técnicos como económicos.
-
-La combinación de infraestructura blockchain probada, mecanismos innovadores de gobernanza y modelos económicos sostenibles crea una plataforma capaz de soportar comunidades que van desde DAOs pequeñas a organizaciones empresariales grandes, todo mientras mantiene transparencia, accountability y participación democrática.
-
 ## 🚀 Cronograma de Despliegue
 
 ### Fase 1: Testnet Deployment (Q4 2024)
@@ -2077,54 +1906,6 @@ contract CommunityTokenTreasury {
 
 - **Mitigación**: Cooldowns, tarifas de envío, rate limiting
 - **Prevención**: Requisitos mínimos de reputación para participation
-
-## 📊 Estado de Desarrollo y Cobertura de Pruebas
-
-### Cobertura de Pruebas por Contrato
-
-| Contrato               | Cobertura Líneas | Cobertura Funciones | Cobertura Ramas | Estado           |
-| ---------------------- | ---------------- | ------------------- | --------------- | ---------------- |
-| ShiftGovernor          | 86%+             | 95%+                | 80%+            | ✅ Completado    |
-| CountingMultiChoice    | 100%             | 100%                | 100%            | ✅ Completado    |
-| ValuableActionRegistry | 96%+             | 98%+                | 92%+            | ✅ Completado    |
-| Engagements            | 98%+             | 100%                | 95%+            | ✅ Completado    |
-| VerifierElection       | 98%+             | 98%+                | 95%+            | ✅ Completado    |
-| VerifierPowerToken1155 | 96%+             | 96%+                | 90%+            | ✅ Completado    |
-| VerifierManager        | 95%+             | 97%+                | 88%+            | ✅ Completado    |
-| ValuableActionSBT      | 85%+             | 90%+                | 80%+            | 🚧 En Desarrollo |
-
-### Estrategias de Testing
-
-**Pruebas Unitarias**:
-
-- Cobertura de todas las funciones públicas y paths de ejecución
-- Testing de edge cases y condiciones de error
-- Validación de emisión de eventos y cambios de estado
-- Pruebas de optimización de gas y límites
-
-**Pruebas de Integración**:
-
-- Flujos de trabajo end-to-end a través de múltiples contratos
-- Interacciones entre sistemas de gobernanza y verificación
-- Escenarios de distribución económica y tokenomics
-- Testing de upgrade y migración de contratos
-
-**Pruebas Fuzz**:
-
-- Input aleatorio para descubrir edge cases no anticipados
-- Fuzzing de parámetros de gobernanza y verificación
-- Testing de resistencia bajo condiciones adversas
-- Validación de invariantes del sistema bajo stress
-
-### Pipeline de Integración Continua
-
-```bash
-# Comandos de testing automatizados
-pnpm forge:test      # Ejecutar todas las pruebas unitarias
-pnpm forge:cov       # Generar reporte de cobertura
-pnpm cov:gate        # Enforcer umbral ≥86% cobertura
-pnpm fmt             # Formatear código según estándares
-```
 
 ## 🚀 Cronograma de Despliegue
 
