@@ -460,3 +460,318 @@ sequenceDiagram
 ```
 
 - References: [Architecture](docs/EN/Architecture.md), [CommunityRegistry](docs/EN/contracts/CommunityRegistry.md), [ParamController](docs/EN/contracts/ParamController.md), [Deployments Guide](deployments/README.md), [Deploy Script](scripts/deploy-complete.ts).
+
+---
+
+## Defining ValuableAction Types: Establishing What Work the Community Values
+
+Before workers can submit contributions for verification, the community must define what types of work it recognizes and rewards. This is done through ValuableAction type definitions—governance-approved templates that specify everything about a category of contribution.
+
+**Why Governance Controls This**: ValuableAction types directly determine how governance tokens are minted. Since governance power flows from verified work, controlling what counts as valuable work is one of the most important powers a community has. No individual—not even administrators—can create new action types without community approval.
+
+**Crafting the Proposal**: A community member identifies a type of contribution that should be recognized—perhaps "Code Review," "Community Event Organization," or "Translation Services." They create a governance proposal specifying all the parameters: what evidence workers must submit, how many verifiers review submissions, what the M-of-N approval threshold is, how long the review window lasts, what rewards (MembershipTokens, CommunityTokens) successful completion earns, and any cooldown periods between submissions.
+
+**The Approval Process**: The proposal follows the standard governance flow: discussion in RequestHub, formalization in DraftsManager, voting through ShiftGovernor, and execution through the Timelock. This ensures the entire community has input on what work gets recognized.
+
+**Activation and Use**: Once the Timelock executes the proposal, the new ValuableAction type is registered in ValuableActionRegistry and becomes available for workers to claim. From this point forward, anyone can submit evidence of completing this type of work and receive verification and rewards if approved.
+
+**Modifying or Deprecating Actions**: Communities evolve, and so do their needs. Existing ValuableAction types can be modified or deprecated through the same governance process. This might involve adjusting reward amounts, changing verification requirements, or retiring action types that are no longer relevant.
+
+```mermaid
+sequenceDiagram
+    participant M as Member
+    participant RH as RequestHub
+    participant DM as DraftsManager
+    participant SG as ShiftGovernor
+    participant TL as Timelock
+    participant VAR as ValuableActionRegistry
+    participant W as Workers
+
+    M->>RH: createRequest("Add Code Review action type")
+    Note over M,RH: Community discusses parameters
+    M->>DM: createDraft(requestId, defineAction calldata)
+    Note over DM: Includes: evidence spec, panel size,<br/>M-of-N threshold, rewards, cooldowns
+    M->>DM: escalateToProposal(draftId)
+    DM->>SG: propose(VAR.defineAction, params)
+    
+    loop Voting Period
+        M->>SG: castVote(proposalId, support)
+    end
+    
+    SG->>TL: queue(proposalId)
+    Note over TL: Delay period
+    TL->>VAR: defineAction(actionId, params, rewards)
+    
+    Note over VAR,W: Action type now available
+    W->>VAR: getActionDetails(actionId)
+    W->>W: Submit work via Engagements
+```
+
+- References: [ValuableActionRegistry](docs/EN/contracts/ValuableActionRegistry.md), [ShiftGovernor](docs/EN/contracts/ShiftGovernor.md), [Engagements](docs/EN/contracts/Engagements.md).
+
+---
+
+## Creating Investment Cohorts: Structuring Community Funding Rounds
+
+When a community wants to accept investment, it creates cohorts—structured funding rounds with clear terms. Each cohort defines the conditions under which investors participate and when their returns are complete.
+
+**Planning the Cohort**: Before proposing a cohort, community members typically discuss the funding need: How much capital is required? What target ROI is fair given the risk? Should there be investment caps per participant? What terms govern early exit or special circumstances? These discussions happen in RequestHub before formalization.
+
+**The Governance Proposal**: A member creates a proposal to establish the cohort through CohortRegistry. The proposal specifies the target ROI (the return at which investors stop receiving revenue share), investment caps (minimum and maximum per investor), the cohort's opening and closing dates, and any special terms. This goes through the full governance process.
+
+**Timelock Execution**: Once approved and executed, the cohort is created in CohortRegistry and linked to InvestmentCohortManager. The cohort moves to "open" status, accepting investments during its defined window.
+
+**Investor Onboarding**: With an open cohort, investors can participate by depositing funds through InvestmentCohortManager. Their investment is recorded, they receive documentation (potentially an Investment SBT), and they begin receiving their share of community revenue proportional to their investment and the cohort's current allocation.
+
+**Cohort Lifecycle**: As revenue flows in, the cohort tracks progress toward its target ROI. When the cohort reaches its target, it's marked complete and stops receiving new revenue allocations. Governance can also modify or close cohorts early if circumstances require, though this requires community approval.
+
+```mermaid
+sequenceDiagram
+    participant M as Member
+    participant RH as RequestHub
+    participant DM as DraftsManager
+    participant SG as ShiftGovernor
+    participant TL as Timelock
+    participant CR as CohortRegistry
+    participant ICM as InvestmentCohortManager
+    participant I as Investors
+
+    M->>RH: createRequest("Create Series A cohort")
+    Note over M,RH: Discuss: target ROI, caps, terms
+    M->>DM: createDraft(requestId, createCohort calldata)
+    M->>DM: escalateToProposal(draftId)
+    DM->>SG: propose(CR.createCohort, params)
+    
+    loop Voting Period
+        M->>SG: castVote(proposalId, support)
+    end
+    
+    SG->>TL: queue(proposalId)
+    TL->>CR: createCohort(targetROI, minCap, maxCap, terms)
+    CR->>ICM: registerCohort(cohortId)
+    
+    Note over CR,I: Cohort now open for investment
+    
+    loop Investment Window
+        I->>ICM: invest(cohortId, amount)
+        ICM->>CR: recordInvestment(cohortId, investor, amount)
+    end
+    
+    Note over CR: Cohort closes, revenue sharing begins
+```
+
+- References: [CohortRegistry](docs/EN/contracts/CohortRegistry.md), [InvestmentCohortManager](docs/EN/contracts/InvestmentCohortManager.md), [RevenueRouter](docs/EN/contracts/RevenueRouter.md), [Tokenomics](docs/EN/Tokenomics.md).
+
+---
+
+## Publishing Courses and Credentials: Building a Learning Ecosystem
+
+Communities can create structured learning paths where members earn credentials by completing courses and passing verification. This section covers how instructors and administrators publish credential programs.
+
+**Designing the Credential Program**: An instructor or curriculum designer identifies knowledge or skills that should be certifiable within the community. They define what the credential represents, what evidence demonstrates competency, and who is qualified to verify submissions. This might be a safety certification, a technical skill badge, or completion of a training program.
+
+**The Publication Process**: Depending on community configuration, publishing a credential may require governance approval (for high-stakes certifications) or may be delegated to authorized curriculum administrators. The proposal includes the credential's metadata (name, description, validity period), evidence requirements, and designated verifiers.
+
+**Verifier Assignment**: Unlike general work verification which uses elected verifier panels, credential programs often have designated verifiers—perhaps the course instructor, certified assessors, or a specialized review committee. These verifiers are specified when the credential is created.
+
+**Making the Credential Available**: Once published, the credential appears in CredentialManager and becomes available for applicants. The community can promote the credential, and interested members can begin working toward it.
+
+**The Certification Flow**: Applicants complete the required learning or demonstrate the required skills, then submit their evidence through CredentialManager. The designated verifiers review the submission and approve or reject it. Approved applicants receive a CREDENTIAL-type SBT documenting their achievement.
+
+```mermaid
+sequenceDiagram
+    participant I as Instructor/Admin
+    participant SG as ShiftGovernor
+    participant TL as Timelock
+    participant CM as CredentialManager
+    participant V as Designated Verifiers
+    participant A as Applicants
+    participant SBT as ValuableActionSBT
+
+    alt Governance-Controlled Credentials
+        I->>SG: propose(createCredential, params)
+        SG->>TL: queue(proposal)
+        TL->>CM: createCredential(name, requirements, verifiers[])
+    else Delegated to Curriculum Admin
+        I->>CM: createCredential(name, requirements, verifiers[])
+    end
+    
+    Note over CM: Credential now published
+    
+    A->>CM: getCredentialRequirements(credentialId)
+    Note over A: Complete course/training
+    A->>CM: submitEvidence(credentialId, evidenceCID)
+    
+    loop Verification
+        V->>CM: reviewSubmission(submissionId)
+        V->>CM: approve/reject(submissionId, reason)
+    end
+    
+    alt Approved
+        CM->>SBT: mint(applicant, CREDENTIAL, credentialId)
+        Note over A,SBT: Applicant now certified
+    else Rejected
+        CM->>A: feedback(reason)
+        Note over A: May reapply after cooldown
+    end
+```
+
+- References: [CredentialManager](docs/EN/contracts/CredentialManager.md), [ValuableActionSBT](docs/EN/contracts/ValuableActionSBT.md), [PositionManager](docs/EN/contracts/PositionManager.md).
+
+---
+
+## Creating Position Types: Defining Organizational Roles
+
+Before anyone can apply for a position like "Community Moderator" or "Technical Lead," the community must first define what that position entails. This governance-controlled process ensures role definitions reflect community consensus.
+
+**Why Positions Need Governance**: Positions often come with special permissions, access, or responsibilities. Creating a new position type is a significant decision that affects community structure. By requiring governance approval, communities ensure that role definitions are discussed openly and reflect collective agreement.
+
+**Designing the Position**: A community member identifies an organizational need—perhaps the community needs moderators, project leads, or specialized coordinators. They craft a position definition that includes the role's title, responsibilities, required qualifications, term length (if applicable), and any special permissions or access the position grants.
+
+**The Governance Proposal**: The position definition is submitted as a governance proposal through the standard flow: RequestHub discussion, DraftsManager formalization, ShiftGovernor voting, and Timelock execution. Community members can debate the role's scope, requirements, and associated powers.
+
+**Registration and Availability**: Once approved, the position type is registered in PositionManager. The community can then open applications for this position type, either immediately or at a later time. Multiple instances of the same position type can exist (e.g., multiple moderators).
+
+**Position Instances vs Types**: It's important to distinguish between position types (the template) and position instances (actual appointments). Creating a position type doesn't automatically fill the role—it just makes the role available for the application process described in the Positions and Credentials section.
+
+```mermaid
+sequenceDiagram
+    participant M as Member
+    participant RH as RequestHub
+    participant DM as DraftsManager
+    participant SG as ShiftGovernor
+    participant TL as Timelock
+    participant PM as PositionManager
+    participant A as Applicants
+
+    M->>RH: createRequest("Create Moderator position type")
+    Note over M,RH: Discuss: responsibilities, qualifications,<br/>term length, permissions
+    M->>DM: createDraft(requestId, createPositionType calldata)
+    M->>DM: escalateToProposal(draftId)
+    DM->>SG: propose(PM.createPositionType, params)
+    
+    loop Voting Period
+        M->>SG: castVote(proposalId, support)
+    end
+    
+    SG->>TL: queue(proposalId)
+    TL->>PM: createPositionType(title, description, qualifications, term)
+    
+    Note over PM: Position type now defined
+    
+    opt Open Applications
+        PM->>PM: openApplications(positionTypeId, slots)
+        A->>PM: apply(positionTypeId, qualifications)
+        Note over A,PM: Review and selection process
+    end
+```
+
+- References: [PositionManager](docs/EN/contracts/PositionManager.md), [ValuableActionSBT](docs/EN/contracts/ValuableActionSBT.md), [ShiftGovernor](docs/EN/contracts/ShiftGovernor.md).
+
+---
+
+## Community Configuration: Adjusting Parameters Through Governance
+
+After a community is created, all configuration changes must flow through governance. This section explains how communities modify their operational parameters—voting durations, economic splits, eligibility rules, and more.
+
+**What Can Be Configured**: ParamController stores a wide range of community parameters: governance timing (proposal duration, voting period, timelock delay), eligibility rules (minimum tenure, SBT requirements for various actions), economic parameters (revenue split percentages, fee rates), and module-specific settings. Each parameter affects how the community operates.
+
+**Proposing Changes**: A community member identifies a parameter that should be adjusted—perhaps voting periods are too short for thoughtful deliberation, or the treasury allocation should increase to fund new initiatives. They create a governance proposal specifying the parameter key, the new value, and justification for the change.
+
+**Impact Assessment**: During the discussion and voting period, the community considers the implications. Changing voting duration affects all future proposals. Adjusting revenue splits affects worker compensation and investor returns. These discussions ensure changes are made thoughtfully.
+
+**Execution and Effect**: Once approved and executed through the Timelock, ParamController updates the parameter. The change takes effect immediately for most parameters, though some changes (like governance timing) may only apply to proposals created after the change.
+
+**Emergency vs Standard Changes**: Some parameters may have different governance requirements. Critical security parameters might require supermajority approval or longer timelock delays. The community can configure these meta-governance rules during setup or modify them through governance later.
+
+**Audit Trail**: Every parameter change is recorded on-chain with the proposal that authorized it. This creates a complete history of how the community's rules have evolved, enabling accountability and learning from past decisions.
+
+```mermaid
+sequenceDiagram
+    participant M as Member
+    participant RH as RequestHub
+    participant DM as DraftsManager
+    participant SG as ShiftGovernor
+    participant TL as Timelock
+    participant PC as ParamController
+    participant Modules as Affected Modules
+
+    M->>RH: createRequest("Increase voting period to 7 days")
+    Note over M,RH: Discuss implications
+    M->>DM: createDraft(requestId, setParam calldata)
+    M->>DM: escalateToProposal(draftId)
+    DM->>SG: propose(PC.setParam, key, newValue)
+    
+    loop Voting Period
+        M->>SG: castVote(proposalId, support)
+    end
+    
+    SG->>TL: queue(proposalId)
+    Note over TL: Current timelock delay applies
+    TL->>PC: setParam(VOTING_PERIOD, 7 days)
+    
+    Note over PC,Modules: Parameter updated
+    Modules->>PC: getParam(VOTING_PERIOD)
+    PC-->>Modules: 7 days
+    
+    Note over SG: Future proposals use new duration
+```
+
+- References: [ParamController](docs/EN/contracts/ParamController.md), [ShiftGovernor](docs/EN/contracts/ShiftGovernor.md), [Architecture](docs/EN/Architecture.md).
+
+---
+
+## Creating Marketplace Offers: Becoming a Seller
+
+The Marketplace allows community members to offer goods and services to other members. This section explains who can become a seller, how to create offers, and what happens when offers go live.
+
+**Seller Eligibility**: Depending on community configuration, seller eligibility may be open to all members, restricted to those with certain credentials or SBTs, or require minimum community tenure. These rules are configured in the Marketplace module and can be adjusted through governance.
+
+**Creating an Offer**: A seller defines their offer with several key components: the product or service description, pricing (in CommunityToken or other accepted tokens), delivery terms, and the dispute window duration. The dispute window is particularly important—it determines how long buyers have to raise issues after the seller marks an order fulfilled.
+
+**Offer Visibility**: Once created, offers become visible to potential buyers. The Marketplace may support categories, search, and filtering to help buyers find relevant offers. Sellers can update their offers (adjusting price, terms, or availability) as long as no active orders are affected.
+
+**Active Offer Management**: Sellers manage their active offers, responding to purchases, fulfilling orders, and maintaining their reputation. The Marketplace tracks seller history, which can inform buyer decisions.
+
+**Offer Lifecycle**: Offers can be active (accepting purchases), paused (temporarily unavailable), or closed (permanently discontinued). Sellers control their offer status, though governance can intervene in cases of fraud or policy violations.
+
+**Fees and Revenue**: When sales complete, the Marketplace may apply platform fees configured by governance. These fees flow to the community treasury through RevenueRouter, funding community operations while enabling peer-to-peer commerce.
+
+```mermaid
+sequenceDiagram
+    participant S as Seller
+    participant M as Marketplace
+    participant PC as ParamController
+    participant B as Buyers
+    participant RR as RevenueRouter
+
+    S->>M: checkSellerEligibility(seller)
+    M->>PC: getParam(SELLER_REQUIREMENTS)
+    PC-->>M: requirements (SBT, tenure, etc.)
+    M-->>S: eligible / not eligible
+    
+    alt Eligible
+        S->>M: createOffer(description, price, terms, disputeWindow)
+        M->>M: validateOffer(params)
+        M->>M: storeOffer(offerId, seller, params)
+        Note over M: Offer now live
+        
+        B->>M: browseOffers(category, filters)
+        M-->>B: matchingOffers[]
+        
+        opt Update Offer
+            S->>M: updateOffer(offerId, newPrice)
+        end
+        
+        opt Pause/Close Offer
+            S->>M: setOfferStatus(offerId, PAUSED)
+        end
+        
+        Note over M,RR: On successful sale, fees apply
+        M->>RR: routeFees(saleAmount, platformFee)
+    else Not Eligible
+        S->>S: Earn required credentials/tenure
+    end
+```
+
+- References: [Marketplace](docs/EN/contracts/Marketplace.md), [Marketplace Spec](docs/EN/Marketplace-Spec-v1.md), [RevenueRouter](docs/EN/contracts/RevenueRouter.md), [ParamController](docs/EN/contracts/ParamController.md).
