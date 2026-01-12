@@ -221,20 +221,8 @@ contract CommunityRegistry is AccessControl {
     function initializeDefaultParameters(uint256 communityId) external {
         _requireValidCommunity(communityId);
         _requireCommunityAdmin(communityId);
-        
-        // Set default governance parameters (7 day debate, 3 day vote, 2 day execution delay)
-        paramController.setGovernanceParams(communityId, 7 days, 3 days, 2 days);
-        
-        // Set default eligibility rules (no restrictions by default)
-        paramController.setEligibilityParams(communityId, 0, 0, 1e18);
-        
-        // Set default revenue policy (25% treasury minimum, 25% positions minimum, spillover to treasury)
-        // Using basis points: 2500 = 25%
-        paramController.setRevenuePolicy(communityId, 2500, 2500, 1, 0);
-        
-        // Set default backing assets (empty by default)
-        address[] memory emptyAssets = new address[](0);
-        paramController.setAddressArray(communityId, paramController.BACKING_ASSETS(), emptyAssets);
+
+        paramController.initializeDefaultParameters(communityId, msg.sender);
     }
     
 
@@ -500,6 +488,14 @@ contract CommunityRegistry is AccessControl {
         _requireValidCommunity(communityId);
         return communities[communityId];
     }
+
+    /// @notice Get timelock address for a community
+    /// @param communityId Community ID
+    /// @return Timelock address
+    function getTimelock(uint256 communityId) external view returns (address) {
+        _requireValidCommunity(communityId);
+        return communities[communityId].timelock;
+    }
     
     /// @notice Get community governance parameters
     /// @param communityId Community ID
@@ -550,46 +546,6 @@ contract CommunityRegistry is AccessControl {
             paramController.getRevenuePolicy(communityId);
         feeOnWithdraw = paramController.getUint256(communityId, paramController.FEE_ON_WITHDRAW());
         backingAssets = paramController.getAddressArray(communityId, paramController.BACKING_ASSETS());
-    }
-    
-    /// @notice Get all module addresses for a community
-    /// @param communityId Community ID
-    /// @return governor Governor contract address
-    /// @return timelock Timelock contract address
-    /// @return requestHub RequestHub contract address
-    /// @return draftsManager DraftsManager contract address
-    /// @return engagementsManager Engagements contract address
-    /// @return valuableActionRegistry ValuableActionRegistry contract address
-    /// @return valuableActionSBT ValuableActionSBT contract address
-    /// @return treasuryVault Treasury vault (Safe) address
-    /// @return treasuryAdapter TreasuryAdapter contract address
-    /// @return communityToken CommunityToken contract address
-    function getModuleAddresses(uint256 communityId) external view returns (
-        address governor,
-        address timelock,
-        address requestHub,
-        address draftsManager,
-        address engagementsManager,
-        address valuableActionRegistry,
-        address valuableActionSBT,
-        address treasuryVault,
-        address treasuryAdapter,
-        address communityToken
-    ) {
-        _requireValidCommunity(communityId);
-        Community storage community = communities[communityId];
-        return (
-            community.governor,
-            community.timelock,
-            community.requestHub,
-            community.draftsManager,
-            community.engagementsManager,
-            community.valuableActionRegistry,
-            community.valuableActionSBT,
-            community.treasuryVault,
-            community.treasuryAdapter,
-            community.communityToken
-        );
     }
     
     /// @notice Check if user has a specific role in a community

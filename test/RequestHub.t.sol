@@ -120,6 +120,7 @@ contract RequestHubTest is Test {
         // Deploy contracts
         ParamController paramController = new ParamController(admin);
         communityRegistry = new CommunityRegistry(admin, address(paramController));
+        paramController.setCommunityRegistry(address(communityRegistry));
         valuableActionRegistry = new ValuableActionRegistryMock();
         token = new MockERC20();
 
@@ -636,32 +637,30 @@ contract RequestHubTest is Test {
     }
 
     function testCompleteEngagementRequiresOneShotCategory() public {
-        uint256 requestId = _createLinkedRequest();
-
+        // Configure action as non-one-shot before linking to fail fast at link time
         Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(ACTION_ID);
         action.category = Types.ActionCategory.CREDENTIAL;
         valuableActionRegistry.setAction(ACTION_ID, action, true);
 
-        vm.prank(moderator);
-        requestHub.setApprovedWinner(requestId, user2);
+        vm.prank(user1);
+        uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
 
-        vm.prank(user2);
+        vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Not a one-shot action"));
-        requestHub.completeEngagement(requestId, bytes("evidence"));
+        requestHub.linkValuableAction(requestId, ACTION_ID);
     }
 
     function testCompleteEngagementRequiresActiveAction() public {
-        uint256 requestId = _createLinkedRequest();
-
+        // Deactivate action before linking to ensure link fails
         Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(ACTION_ID);
         valuableActionRegistry.setAction(ACTION_ID, action, false);
 
-        vm.prank(moderator);
-        requestHub.setApprovedWinner(requestId, user2);
+        vm.prank(user1);
+        uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
 
-        vm.prank(user2);
+        vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidValuableAction.selector, ACTION_ID));
-        requestHub.completeEngagement(requestId, bytes("evidence"));
+        requestHub.linkValuableAction(requestId, ACTION_ID);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -671,33 +670,36 @@ contract RequestHubTest is Test {
     function testLinkValuableActionAsAuthor() public {
         vm.prank(user1);
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
-        
+
+        // Configure action 123 as active one-shot to allow linking
+        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(ACTION_ID);
+        valuableActionRegistry.setAction(123, action, true);
+
         vm.startPrank(user1);
-        
         vm.expectEmit(true, true, true, false);
         emit RequestHub.ValuableActionLinking(requestId, 123, user1);
-        
         requestHub.linkValuableAction(requestId, 123);
-        
+        vm.stopPrank();
+
         RequestHub.Request memory request = requestHub.getRequest(requestId);
         assertEq(request.linkedValuableAction, 123);
-        
-        vm.stopPrank();
     }
     
     function testLinkValuableActionAsCommunityAdmin() public {
         vm.prank(user1);
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
         
+        // Configure action 456 as active one-shot to allow linking
+        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(ACTION_ID);
+        valuableActionRegistry.setAction(456, action, true);
+
         // Admin can link ValuableAction even if not author
         vm.startPrank(admin);
-        
         requestHub.linkValuableAction(requestId, 456);
-        
+        vm.stopPrank();
+
         RequestHub.Request memory request = requestHub.getRequest(requestId);
         assertEq(request.linkedValuableAction, 456);
-        
-        vm.stopPrank();
     }
     
     function testLinkValuableActionUnauthorized() public {

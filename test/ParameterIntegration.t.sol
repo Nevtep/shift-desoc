@@ -17,6 +17,7 @@ contract ParameterIntegrationTest is Test {
         vm.startPrank(admin);
         paramController = new ParamController(admin);
         registry = new CommunityRegistry(admin, address(paramController));
+        paramController.setCommunityRegistry(address(registry));
         vm.stopPrank();
     }
     
@@ -29,6 +30,10 @@ contract ParameterIntegrationTest is Test {
             "ipfs://metadata", 
             0
         );
+
+        // bootstrap timelock to admin so governance writes can proceed
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         
         // Set governance parameters via ParamController
         vm.prank(admin);
@@ -87,6 +92,9 @@ contract ParameterIntegrationTest is Test {
             "ipfs://metadata", 
             0
         );
+
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         
         // Guarantees cannot exceed 100%
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Guarantees exceed 100%"));
@@ -115,6 +123,11 @@ contract ParameterIntegrationTest is Test {
         
         vm.prank(user1);
         uint256 communityId2 = registry.registerCommunity("Community 2", "Desc2", "ipfs://2", 0);
+
+        vm.startPrank(user1);
+        registry.setModuleAddress(communityId1, keccak256("timelock"), admin);
+        registry.setModuleAddress(communityId2, keccak256("timelock"), admin);
+        vm.stopPrank();
         
         // Set different parameters for each community
         vm.startPrank(admin);
@@ -152,6 +165,9 @@ contract ParameterIntegrationTest is Test {
     function testParameterManagementViaParamController() public {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Desc", "ipfs://metadata", 0);
+
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         
         // Verify that parameter management now happens through ParamController
         vm.prank(admin);

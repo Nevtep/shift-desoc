@@ -76,7 +76,10 @@ function createDraft(
 - **Action Definition**: Specifies exact governance actions to execute
 - **Version Tracking**: Immutable IPFS content versioning
 
-**🚧 Validation Status**: Currently accepts any communityId and requestId without validation. Community and request existence checks are planned for future implementation.
+**Validation**:
+- Fetches module addresses via `CommunityRegistry.getCommunityModules`, reverting if the community does not exist or RequestHub is unset.
+- If `requestId > 0`, requires the RequestHub to recognize the request (bubbling `Request does not exist`).
+- Recomputes `actionsHash` to guard against tampering.
 
 ### Collaborative Features
 
@@ -152,11 +155,10 @@ modifier onlyAuthorOrContributor(uint256 draftId) {
 - **Review Restrictions**: Contributors cannot review their own drafts
 - **Status Gates**: Operations restricted by current workflow stage
 
-**⚠️ Admin Access Control Gap**:
+**Timelock governance control**:
 
-- `updateGovernor()` and `updateConfiguration()` functions currently lack proper governance authorization
-- `updateProposalOutcome()` needs authorization from governance or proposal outcome oracle
-- These functions are marked with TODOs for future security implementation
+- **Outcome updates**: `updateProposalOutcome()` allows the author, contributors, or the community timelock fetched from `CommunityRegistry`; reverts if the timelock is unset or caller is unauthorized.
+- **Admin mutators**: `updateGovernor()` and `updateConfiguration()` are gated by a contract-level `timelock` address to ensure governance-only updates.
 
 ### Consensus Validation
 
@@ -230,7 +232,7 @@ if (multiChoice) {
 - **Proposal Tracking**: Bidirectional ID linking
 - **Outcome Updates**: Success/failure status tracking
 
-**⚠️ Implementation Note**: Proposal outcome updates currently lack proper authorization checks and should only be callable by governance or authorized systems.
+**Outcome authorization**: Proposal outcomes can only be updated by the draft author, a contributor, or the community timelock, ensuring governance-controlled final states.
 
 ### CommunityRegistry Integration
 
@@ -240,8 +242,7 @@ if (multiChoice) {
 - **Permission Inheritance**: Uses community role system
 - **Configuration Binding**: Community-specific thresholds
 - **Cross-Community Coordination**: Supports alliance workflows
-
-**🚧 Development Status**: Community and request validation are not yet implemented but are planned for future versions.
+**Validation**: Community existence and RequestHub configuration are enforced via `CommunityRegistry.getCommunityModules`, and optional request linkage is validated via `RequestHub.getRequest`.
 
 ## 📊 Economic Model
 
@@ -306,35 +307,22 @@ uint256 proposalId = draftsManager.escalateToProposal(draftId, false, 0, descrip
 draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 ```
 
-## � Current Implementation Status
+## Current Implementation Status
 
 ### Completed Features ✅
 
-- **Draft Creation & Management**: Full collaborative editing system
-- **Version Control**: Immutable IPFS-based versioning
-- **Review System**: Complete consensus-building mechanism
-- **Governance Escalation**: Direct integration with ShiftGovernor
-- **Multi-Choice Support**: Complex proposal types
-- **Access Control**: Author/contributor permission system
+- **Draft Creation & Management** with community/request validation via `CommunityRegistry` and `RequestHub`
+- **Version Control** using IPFS-backed snapshots
+- **Review System** with configurable support thresholds and minimum reviews
+- **Governance Escalation** to ShiftGovernor (binary and multi-choice)
+- **Outcome Authorization** restricted to author/contributors or community timelock
+- **Admin Controls** gated by contract-level timelock with `GovernorUpdated` and `ConfigurationUpdated` events
 
-### Pending Implementation 🔄
+### Pending / Future Enhancements 🔄
 
-- **Authorization System**: Admin functions lack governance checks
-- **Community Validation**: Registry integration not implemented
-- **Request Validation**: RequestHub linking validation missing
-- **Event System**: Missing governance and configuration update events
-- **Advanced Security**: Additional authorization layers needed
-
-### Technical Debt 📋
-
-```solidity
-// Current TODOs in contract:
-// 1. updateProposalOutcome: Add proper authorization check
-// 2. updateGovernor: Add governance authorization + emit events
-// 3. updateConfiguration: Add governance authorization + emit events
-// 4. createDraft: Validate community exists via CommunityRegistry
-// 5. createDraft: Validate request exists if requestId > 0
-```
+- **Analytics & Insights** for review quality and contributor impact
+- **Automation Hooks** (e.g., simulations, off-chain scoring) to assist finalization decisions
+- **Extended Integrations** with cross-community coordination workflows
 
 ## �🚀 Advanced Features
 
@@ -374,31 +362,41 @@ draftsManager.updateProposalOutcome(draftId, DraftStatus.WON);
 - **Review Quality**: Feedback effectiveness measurement
 - **Community Health**: Engagement and consensus indicators
 
-### Administrative Functions (⚠️ Incomplete)
+### Administrative Functions (Governance-Gated)
 
-**Current admin functions lack proper authorization:**
+**Timelock-controlled updates:**
 
 ```solidity
-function updateGovernor(address newGovernor) external {
-    // TODO: Add governance authorization
-    // TODO: Emit GovernanceUpdated event with oldGovernor
+modifier onlyTimelock() {
+    if (msg.sender != timelock) revert NotAuthorized(msg.sender);
+    _;
+}
+
+function updateGovernor(address newGovernor) external onlyTimelock {
+    if (newGovernor == address(0)) revert Errors.ZeroAddress();
+    address oldGovernor = governor;
+    governor = newGovernor;
+    emit GovernorUpdated(oldGovernor, newGovernor);
 }
 
 function updateConfiguration(
     uint256 newReviewPeriod,
     uint256 newMinReviews,
     uint256 newSupportThreshold
-) external {
-    // TODO: Add governance authorization
-    // TODO: Emit configuration updated event
+) external onlyTimelock {
+    if (newSupportThreshold > 10000) revert Errors.InvalidInput("Support threshold cannot exceed 100%");
+    reviewPeriod = newReviewPeriod;
+    minReviewsForEscalation = newMinReviews;
+    supportThresholdBps = newSupportThreshold;
+    emit ConfigurationUpdated(newReviewPeriod, newMinReviews, newSupportThreshold);
 }
 ```
 
-**Security Implications**:
+**Security Properties**:
 
-- Functions are currently callable by anyone
-- No event emissions for governance changes
-- Missing proper access control integration
+- Timelock (via governance) is the sole authority for admin mutations
+- Emits events for traceability of governance/control changes
+- Input validation prevents invalid configuration states
 
 ### Future Enhancements
 

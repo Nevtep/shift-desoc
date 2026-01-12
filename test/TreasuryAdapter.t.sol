@@ -17,27 +17,44 @@ contract TestToken is ERC20 {
 contract CommunityRegistryMock {
     address public treasuryVault;
 
+    struct ModuleAddresses {
+        address governor;
+        address timelock;
+        address requestHub;
+        address draftsManager;
+        address engagementsManager;
+        address valuableActionRegistry;
+        address verifierPowerToken;
+        address verifierElection;
+        address verifierManager;
+        address valuableActionSBT;
+        address treasuryVault;
+        address treasuryAdapter;
+        address communityToken;
+        address paramController;
+    }
+
     function setTreasuryVault(address vault) external {
         treasuryVault = vault;
     }
 
-    function getModuleAddresses(uint256)
-        external
-        view
-        returns (
-            address,
-            address,
-            address,
-            address,
-            address,
-            address,
-            address,
-            address,
-            address,
-            address
-        )
-    {
-        return (address(0), address(0), address(0), address(0), address(0), address(0), address(0), treasuryVault, address(0), address(0));
+    function getCommunityModules(uint256) external view returns (ModuleAddresses memory) {
+        return ModuleAddresses({
+            governor: address(0),
+            timelock: address(0),
+            requestHub: address(0),
+            draftsManager: address(0),
+            engagementsManager: address(0),
+            valuableActionRegistry: address(0),
+            verifierPowerToken: address(0),
+            verifierElection: address(0),
+            verifierManager: address(0),
+            valuableActionSBT: address(0),
+            treasuryVault: treasuryVault,
+            treasuryAdapter: address(0),
+            communityToken: address(0),
+            paramController: address(0)
+        });
     }
 }
 

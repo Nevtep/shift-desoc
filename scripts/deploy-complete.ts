@@ -239,6 +239,13 @@ class ShiftDeSocDeployer {
     console.log(
       `   ✅ CommunityRegistry: ${await this.contracts.communityRegistry.getAddress()}`,
     );
+
+    // Wire ParamController to CommunityRegistry (one-time)
+    await (
+      await this.contracts.paramController.setCommunityRegistry(
+        await this.contracts.communityRegistry.getAddress(),
+      )
+    ).wait();
   }
 
   private async deployGovernanceSystem(): Promise<void> {
@@ -531,6 +538,7 @@ class ShiftDeSocDeployer {
       DraftsManager,
       await this.contracts.communityRegistry.getAddress(),
       await this.contracts.governor.getAddress(), // governor, not requestHub
+      await this.contracts.timelock.getAddress(),
     );
     console.log(
       `   ✅ DraftsManager: ${await this.contracts.draftsManager.getAddress()}`,

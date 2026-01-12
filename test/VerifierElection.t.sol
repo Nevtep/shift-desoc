@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {VerifierElection} from "../contracts/modules/VerifierElection.sol";
-import {VerifierPowerToken1155} from "../contracts/modules/VerifierPowerToken1155.sol";
+import {VerifierPowerToken1155} from "../contracts/tokens/VerifierPowerToken1155.sol";
 import {Errors} from "../contracts/libs/Errors.sol";
 
 contract VerifierElectionTest is Test {

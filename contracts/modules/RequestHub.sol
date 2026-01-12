@@ -4,21 +4,10 @@ pragma solidity ^0.8.24;
 import {Errors} from "../libs/Errors.sol";
 import {Types} from "../libs/Types.sol";
 import {CommunityRegistry} from "./CommunityRegistry.sol";
+import {IValuableActionRegistry} from "./interfaces/IValuableActionRegistry.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
-interface IValuableActionRegistry {
-    function getValuableAction(uint256 id) external view returns (Types.ValuableAction memory action);
-    function isValuableActionActive(uint256 id) external view returns (bool);
-    function issueEngagement(
-        uint256 communityId,
-        address to,
-        Types.EngagementSubtype subtype,
-        bytes32 actionTypeId,
-        bytes calldata metadata
-    ) external returns (uint256 tokenId);
-}
 
 /// @title RequestHub
 /// @notice Decentralized discussion forum for community needs and collaborative solution development
@@ -375,6 +364,15 @@ contract RequestHub is ReentrancyGuard {
             _requireCommunityAdmin(request.communityId, msg.sender);
         }
         
+        // Validate ValuableAction before linking to prevent broken payouts later
+        if (!valuableActionRegistry.isValuableActionActive(valuableActionId)) {
+            revert Errors.InvalidValuableAction(valuableActionId);
+        }
+        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(valuableActionId);
+        if (action.category != Types.ActionCategory.ENGAGEMENT_ONE_SHOT) {
+            revert Errors.InvalidInput("Not a one-shot action");
+        }
+        
         request.linkedValuableAction = valuableActionId;
         emit ValuableActionLinking(requestId, valuableActionId, msg.sender);
     }
@@ -410,14 +408,6 @@ contract RequestHub is ReentrancyGuard {
         if (winner == address(0)) revert Errors.InvalidInput("Winner not approved");
         if (request.consumed) revert Errors.InvalidInput("Request already consumed");
         if (msg.sender != winner) revert Errors.NotAuthorized(msg.sender);
-
-        if (!valuableActionRegistry.isValuableActionActive(request.linkedValuableAction)) {
-            revert Errors.InvalidValuableAction(request.linkedValuableAction);
-        }
-        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(request.linkedValuableAction);
-        if (action.category != Types.ActionCategory.ENGAGEMENT_ONE_SHOT) {
-            revert Errors.InvalidInput("Not a one-shot action");
-        }
 
         // Mark consumed before external calls to prevent replays
         request.consumed = true;

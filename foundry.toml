@@ -13,3 +13,8 @@ tab_width = 4
 
 [fuzz]
 runs = 256
+
+[profile.coverage]
+optimizer = true
+optimizer_runs = 200
+via_ir = true

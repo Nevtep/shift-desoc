@@ -4,15 +4,17 @@ pragma solidity ^0.8.24;
 import {Test, console} from "forge-std/Test.sol";
 import {VerifierManager} from "../contracts/modules/VerifierManager.sol";
 import {VerifierElection} from "../contracts/modules/VerifierElection.sol";
-import {VerifierPowerToken1155} from "../contracts/modules/VerifierPowerToken1155.sol";
+import {VerifierPowerToken1155} from "../contracts/tokens/VerifierPowerToken1155.sol";
 import {ParamController} from "../contracts/modules/ParamController.sol";
 import {Errors} from "../contracts/libs/Errors.sol";
+import {MockCommunityRegistry} from "./mocks/MockCommunityRegistry.sol";
 
 contract VerifierManagerTest is Test {
     VerifierManager public verifierManager;
     VerifierElection public verifierElection;
     VerifierPowerToken1155 public vpt;
     ParamController public paramController;
+    MockCommunityRegistry public registry;
     
     address public timelock = makeAddr("timelock");
     address public governance = makeAddr("governance");
@@ -50,7 +52,12 @@ contract VerifierManagerTest is Test {
         // Deploy contracts
         vpt = new VerifierPowerToken1155(timelock, BASE_URI);
         verifierElection = new VerifierElection(timelock, address(vpt));
+        registry = new MockCommunityRegistry();
         paramController = new ParamController(governance);
+        vm.prank(governance);
+        paramController.setCommunityRegistry(address(registry));
+        registry.setTimelock(COMMUNITY_ID_1, governance);
+        registry.setTimelock(COMMUNITY_ID_2, governance);
         verifierManager = new VerifierManager(
             address(verifierElection),
             address(paramController),

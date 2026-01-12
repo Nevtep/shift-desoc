@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import {IGovernorLike} from "contracts/core/interfaces/IGovernorLike.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {ICommunityRegistry} from "./interfaces/ICommunityRegistry.sol";
+import {IRequestHub} from "./interfaces/IRequestHub.sol";
 
 /**
  * @title DraftsManager
@@ -10,7 +12,6 @@ import {Errors} from "contracts/libs/Errors.sol";
  * @dev Multi-contributor system enabling community collaboration on governance proposals
  */
 contract DraftsManager {
-    using Errors for *;
 
     /* ======== ENUMS ======== */
     
@@ -75,6 +76,7 @@ contract DraftsManager {
     /* ======== STATE VARIABLES ======== */
 
     address public immutable communityRegistry;
+    address public immutable timelock;
     address public governor;
     
     // Draft storage
@@ -153,6 +155,10 @@ contract DraftsManager {
         DraftStatus outcome
     );
 
+    event GovernorUpdated(address indexed oldGovernor, address indexed newGovernor);
+
+    event ConfigurationUpdated(uint256 reviewPeriod, uint256 minReviewsForEscalation, uint256 supportThresholdBps);
+
     /* ======== ERRORS ======== */
 
     error DraftNotFound(uint256 draftId);
@@ -180,6 +186,32 @@ contract DraftsManager {
         _;
     }
 
+    modifier onlyOutcomeUpdater(uint256 draftId) {
+        Draft storage draft = _drafts[draftId];
+        if (msg.sender == draft.author || draft.isContributor[msg.sender]) {
+            _;
+            return;
+        }
+
+        address communityTimelock = ICommunityRegistry(communityRegistry)
+            .getCommunityModules(draft.communityId)
+            .timelock;
+        if (communityTimelock == address(0)) {
+            revert Errors.InvalidInput("Timelock not set");
+        }
+        if (msg.sender != communityTimelock) {
+            revert NotAuthorized(msg.sender);
+        }
+        _;
+    }
+
+    modifier onlyTimelock() {
+        if (msg.sender != timelock) {
+            revert NotAuthorized(msg.sender);
+        }
+        _;
+    }
+
     modifier onlyInStatus(uint256 draftId, DraftStatus requiredStatus) {
         DraftStatus currentStatus = _drafts[draftId].status;
         if (currentStatus != requiredStatus) {
@@ -199,14 +231,24 @@ contract DraftsManager {
         return keccak256(abi.encode(actions.targets, actions.values, actions.calldatas));
     }
 
+    function _getRequestHub(uint256 communityId) internal view returns (address requestHub) {
+        ICommunityRegistry.ModuleAddresses memory modules = ICommunityRegistry(communityRegistry)
+            .getCommunityModules(communityId);
+        requestHub = modules.requestHub;
+        if (requestHub == address(0)) {
+            revert Errors.InvalidInput("RequestHub not set");
+        }
+    }
+
     /* ======== CONSTRUCTOR ======== */
 
-    constructor(address _communityRegistry, address _governor) {
-        if (_communityRegistry == address(0) || _governor == address(0)) {
+    constructor(address _communityRegistry, address _governor, address _timelock) {
+        if (_communityRegistry == address(0) || _governor == address(0) || _timelock == address(0)) {
             revert Errors.ZeroAddress();
         }
         communityRegistry = _communityRegistry;
         governor = _governor;
+        timelock = _timelock;
     }
 
     /* ======== CORE FUNCTIONS ======== */
@@ -229,10 +271,13 @@ contract DraftsManager {
             revert Errors.InvalidInput("Version CID cannot be empty");
         }
 
-        bytes32 actionsHash = _validateAndHashActions(actions);
+        address requestHub = _getRequestHub(communityId);
 
-        // TODO: Validate community exists via CommunityRegistry
-        // TODO: Validate request exists if requestId > 0
+        if (requestId > 0) {
+            IRequestHub(requestHub).getRequest(requestId);
+        }
+
+        bytes32 actionsHash = _validateAndHashActions(actions);
 
         draftId = _drafts.length;
         
@@ -526,8 +571,7 @@ contract DraftsManager {
     function updateProposalOutcome(
         uint256 draftId,
         DraftStatus outcome
-    ) external draftExists(draftId) onlyInStatus(draftId, DraftStatus.ESCALATED) {
-        // TODO: Add proper authorization check (governance or authorized updater)
+    ) external draftExists(draftId) onlyInStatus(draftId, DraftStatus.ESCALATED) onlyOutcomeUpdater(draftId) {
         if (outcome != DraftStatus.WON && outcome != DraftStatus.LOST) {
             revert Errors.InvalidInput("Outcome must be WON or LOST");
         }
@@ -675,13 +719,13 @@ contract DraftsManager {
      * @notice Update governor address (governance only)
      * @param newGovernor New governor address
      */
-    function updateGovernor(address newGovernor) external {
-        // TODO: Add governance authorization
+    function updateGovernor(address newGovernor) external onlyTimelock {
         if (newGovernor == address(0)) {
             revert Errors.ZeroAddress();
         }
+        address oldGovernor = governor;
         governor = newGovernor;
-        // TODO: Emit GovernanceUpdated event with oldGovernor
+        emit GovernorUpdated(oldGovernor, newGovernor);
     }
 
     /**
@@ -694,8 +738,7 @@ contract DraftsManager {
         uint256 newReviewPeriod,
         uint256 newMinReviews,
         uint256 newSupportThreshold
-    ) external {
-        // TODO: Add governance authorization
+    ) external onlyTimelock {
         if (newSupportThreshold > 10000) {
             revert Errors.InvalidInput("Support threshold cannot exceed 100%");
         }
@@ -704,6 +747,6 @@ contract DraftsManager {
         minReviewsForEscalation = newMinReviews;
         supportThresholdBps = newSupportThreshold;
         
-        // TODO: Emit configuration updated event
+        emit ConfigurationUpdated(newReviewPeriod, newMinReviews, newSupportThreshold);
     }
 }

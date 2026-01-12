@@ -187,8 +187,7 @@ contract TreasuryAdapter {
     //////////////////////////////////////////////////////////////*/
 
     function _getTreasuryVault(uint256 communityId) internal view returns (address) {
-        (,,,,,,, address treasuryVault,,) = communityRegistry.getModuleAddresses(communityId);
-        return treasuryVault;
+        return communityRegistry.getCommunityModules(communityId).treasuryVault;
     }
 
     function _validateAdapter(uint256 communityId, address adapter) internal view {

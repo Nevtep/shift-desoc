@@ -89,6 +89,7 @@ contract WiringTest is Test {
 
         paramController = new ParamController(governance);
         communityRegistry = new CommunityRegistry(governance, address(paramController));
+        paramController.setCommunityRegistry(address(communityRegistry));
         valuableActionRegistry = new ValuableActionRegistry(governance, address(communityRegistry));
         sbt = new ValuableActionSBT(governance, governance, governance);
         cohortRegistry = new CohortRegistry(governance);

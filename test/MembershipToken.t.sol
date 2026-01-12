@@ -111,7 +111,7 @@ contract MembershipTokenTest is Test {
         string memory reason = "ValuableAction completion";
         
         vm.expectEmit(true, true, false, true);
-        emit MembershipTokenERC20Votes.TokensMintedForWork(worker1, mintAmount, claimsContract, reason);
+        emit MembershipTokenERC20Votes.MembershipTokenMinted(worker1, mintAmount, claimsContract, reason);
         
         token.mint(worker1, mintAmount, reason);
         

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Errors} from "contracts/libs/Errors.sol";
+import {ICommunityRegistry} from "contracts/modules/interfaces/ICommunityRegistry.sol";
 
 /// @title ParamController
 /// @notice Manages community parameters including verification settings and fee schedules
@@ -14,8 +15,14 @@ contract ParamController {
         uint32 bps; 
     }
     
-    /// @notice Governance address
-    address public governance;
+    /// @notice Community registry reference (set once post-deploy)
+    ICommunityRegistry public communityRegistry;
+
+    /// @notice System admin allowed to wire the registry one-time
+    address public immutable systemAdmin;
+
+    /// @notice Tracks whether registry has been wired
+    bool public registrySet;
     
     /// @notice Fee schedule storage
     mapping(uint256 => FeePeriod[]) internal _periods;
@@ -60,26 +67,53 @@ contract ParamController {
     event UintParamSet(uint256 indexed communityId, bytes32 indexed key, uint256 value);
     event BoolParamSet(uint256 indexed communityId, bytes32 indexed key, bool value);
     event AddressArrayParamSet(uint256 indexed communityId, bytes32 indexed key, address[] value);
-    event GovernanceUpdated(address oldGov, address newGov);
-    
-    /// @notice Access control modifier
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
+    event CommunityRegistrySet(address registry);
     
     /// @notice Constructor
-    /// @param _governance Governance contract address
-    constructor(address _governance) {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
-        governance = _governance;
-        emit GovernanceUpdated(address(0), _governance);
+    /// @param _systemAdmin Address allowed to set the registry once
+    constructor(address _systemAdmin) {
+        if (_systemAdmin == address(0)) revert Errors.ZeroAddress();
+        systemAdmin = _systemAdmin;
+    }
+
+    /// @notice Set the community registry (one-time wiring)
+    /// @param registry CommunityRegistry address
+    function setCommunityRegistry(address registry) external {
+        if (msg.sender != systemAdmin) revert Errors.NotAuthorized(msg.sender);
+        if (registry == address(0)) revert Errors.ZeroAddress();
+        if (registrySet) revert Errors.InvalidInput("Registry already set");
+
+        communityRegistry = ICommunityRegistry(registry);
+        registrySet = true;
+        emit CommunityRegistrySet(registry);
+    }
+
+    /// @notice Restrict writes to the community timelock or bootstrap admin when timelock is unset
+    modifier onlyAuthorized(uint256 communityId) {
+        if (!registrySet) revert Errors.InvalidInput("Registry not set");
+        address timelock = communityRegistry.getTimelock(communityId);
+
+        if (timelock == address(0)) {
+            // Bootstrap path: community admin before timelock is wired
+            if (!communityRegistry.communityAdmins(communityId, msg.sender)) {
+                revert Errors.NotAuthorized(msg.sender);
+            }
+        } else {
+            if (msg.sender != timelock) revert Errors.NotAuthorized(msg.sender);
+        }
+        _;
+    }
+
+    /// @notice Restrict to the registry for initialization helpers
+    modifier onlyCommunityRegistry() {
+        if (msg.sender != address(communityRegistry)) revert Errors.NotAuthorized(msg.sender);
+        _;
     }
     
     /// @notice Schedule a fee change for a community
     /// @param communityId Community identifier
     /// @param p Fee period configuration
-    function scheduleFeeChange(uint256 communityId, FeePeriod calldata p) external onlyGovernance {
+    function scheduleFeeChange(uint256 communityId, FeePeriod calldata p) external onlyAuthorized(communityId) {
         if (p.start >= p.end) revert Errors.InvalidInput("Invalid time period");
         if (p.bps > 10000) revert Errors.InvalidInput("Fee too high");
         
@@ -106,7 +140,7 @@ contract ParamController {
     /// @param communityId Community identifier
     /// @param key Parameter key
     /// @param value Parameter value
-    function setUint256(uint256 communityId, bytes32 key, uint256 value) external onlyGovernance {
+    function setUint256(uint256 communityId, bytes32 key, uint256 value) external onlyAuthorized(communityId) {
         uintParams[communityId][key] = value;
         emit UintParamSet(communityId, key, value);
     }
@@ -115,7 +149,7 @@ contract ParamController {
     /// @param communityId Community identifier
     /// @param key Parameter key
     /// @param value Parameter value
-    function setBool(uint256 communityId, bytes32 key, bool value) external onlyGovernance {
+    function setBool(uint256 communityId, bytes32 key, bool value) external onlyAuthorized(communityId) {
         boolParams[communityId][key] = value;
         emit BoolParamSet(communityId, key, value);
     }
@@ -140,7 +174,7 @@ contract ParamController {
     /// @param communityId Community identifier
     /// @param key Parameter key
     /// @param value Parameter value
-    function setAddressArray(uint256 communityId, bytes32 key, address[] calldata value) external onlyGovernance {
+    function setAddressArray(uint256 communityId, bytes32 key, address[] calldata value) external onlyAuthorized(communityId) {
         addressArrayParams[communityId][key] = value;
         emit AddressArrayParamSet(communityId, key, value);
     }
@@ -169,7 +203,7 @@ contract ParamController {
         bool useVPTWeighting,
         uint256 maxWeightPerVerifier,
         uint256 cooldownAfterFraud
-    ) external onlyGovernance {
+    ) external onlyAuthorized(communityId) {
         if (verifierMin > verifierPanelSize) revert Errors.InvalidInput("Min cannot exceed panel size");
         if (verifierPanelSize == 0) revert Errors.InvalidInput("Panel size cannot be zero");
         
@@ -222,7 +256,7 @@ contract ParamController {
         uint256 debateWindow,
         uint256 voteWindow,
         uint256 executionDelay
-    ) external onlyGovernance {
+    ) external onlyAuthorized(communityId) {
         uintParams[communityId][DEBATE_WINDOW] = debateWindow;
         uintParams[communityId][VOTE_WINDOW] = voteWindow;
         uintParams[communityId][EXECUTION_DELAY] = executionDelay;
@@ -257,7 +291,7 @@ contract ParamController {
         uint256 minSeniority,
         uint256 minSBTs,
         uint256 proposalThreshold
-    ) external onlyGovernance {
+    ) external onlyAuthorized(communityId) {
         uintParams[communityId][MIN_SENIORITY] = minSeniority;
         uintParams[communityId][MIN_SBTS] = minSBTs;
         uintParams[communityId][PROPOSAL_THRESHOLD] = proposalThreshold;
@@ -298,7 +332,7 @@ contract ParamController {
         uint16 minPositionsBps,
         uint8 spilloverTarget,
         uint16 spilloverSplitBpsToTreasury
-    ) external onlyGovernance {
+    ) external onlyAuthorized(communityId) {
         if (minTreasuryBps + minPositionsBps > 10000) {
             revert Errors.InvalidInput("Guarantees exceed 100%");
         }
@@ -346,7 +380,7 @@ contract ParamController {
         uint256 communityId,
         uint256 maxActiveCohortsLimit,
         uint8 priorityScheme
-    ) external onlyGovernance {
+    ) external onlyAuthorized(communityId) {
         if (maxActiveCohortsLimit == 0) {
             revert Errors.InvalidInput("Max cohorts must be greater than 0");
         }
@@ -373,12 +407,46 @@ contract ParamController {
         priorityScheme = uint8(uintParams[communityId][COHORT_PRIORITY_SCHEME]);
     }
     
-    /// @notice Update governance address
-    /// @param _governance New governance address
-    function updateGovernance(address _governance) external onlyGovernance {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
-        address oldGov = governance;
-        governance = _governance;
-        emit GovernanceUpdated(oldGov, _governance);
+    /// @notice Initialize default parameters during community bootstrap (registry-only)
+    /// @param communityId Community identifier
+    /// @param deployerAdmin Expected community admin performing bootstrap
+    function initializeDefaultParameters(uint256 communityId, address deployerAdmin) external onlyCommunityRegistry {
+        address timelock = communityRegistry.getTimelock(communityId);
+        if (timelock != address(0)) revert Errors.InvalidInput("Timelock already set");
+        if (!communityRegistry.communityAdmins(communityId, deployerAdmin)) revert Errors.NotAuthorized(deployerAdmin);
+
+        // Set default governance parameters (7 day debate, 3 day vote, 2 day execution delay)
+        uintParams[communityId][DEBATE_WINDOW] = 7 days;
+        uintParams[communityId][VOTE_WINDOW] = 3 days;
+        uintParams[communityId][EXECUTION_DELAY] = 2 days;
+
+        emit UintParamSet(communityId, DEBATE_WINDOW, 7 days);
+        emit UintParamSet(communityId, VOTE_WINDOW, 3 days);
+        emit UintParamSet(communityId, EXECUTION_DELAY, 2 days);
+
+        // Default eligibility rules (no restrictions by default)
+        uintParams[communityId][MIN_SENIORITY] = 0;
+        uintParams[communityId][MIN_SBTS] = 0;
+        uintParams[communityId][PROPOSAL_THRESHOLD] = 1e18;
+
+        emit UintParamSet(communityId, MIN_SENIORITY, 0);
+        emit UintParamSet(communityId, MIN_SBTS, 0);
+        emit UintParamSet(communityId, PROPOSAL_THRESHOLD, 1e18);
+
+        // Default revenue policy (25% treasury, 25% positions, spillover to treasury)
+        uintParams[communityId][MIN_TREASURY_BPS] = 2500;
+        uintParams[communityId][MIN_POSITIONS_BPS] = 2500;
+        uintParams[communityId][SPILLOVER_TARGET] = 1; // treasury
+        uintParams[communityId][SPILLOVER_SPLIT_BPS_TREASURY] = 0;
+
+        emit UintParamSet(communityId, MIN_TREASURY_BPS, 2500);
+        emit UintParamSet(communityId, MIN_POSITIONS_BPS, 2500);
+        emit UintParamSet(communityId, SPILLOVER_TARGET, 1);
+        emit UintParamSet(communityId, SPILLOVER_SPLIT_BPS_TREASURY, 0);
+
+        // Default backing assets empty
+        address[] memory emptyAssets = new address[](0);
+        addressArrayParams[communityId][BACKING_ASSETS] = emptyAssets;
+        emit AddressArrayParamSet(communityId, BACKING_ASSETS, emptyAssets);
     }
 }

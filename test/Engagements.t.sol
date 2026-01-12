@@ -5,7 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {Engagements} from "../contracts/modules/Engagements.sol";
 import {VerifierManager} from "../contracts/modules/VerifierManager.sol";
 import {VerifierElection} from "../contracts/modules/VerifierElection.sol";
-import {VerifierPowerToken1155} from "../contracts/modules/VerifierPowerToken1155.sol";
+import {VerifierPowerToken1155} from "../contracts/tokens/VerifierPowerToken1155.sol";
 import {ParamController} from "../contracts/modules/ParamController.sol";
 import {ValuableActionRegistry} from "../contracts/modules/ValuableActionRegistry.sol";
 import {MembershipTokenERC20Votes} from "../contracts/tokens/MembershipTokenERC20Votes.sol";
@@ -31,13 +31,26 @@ contract CommunityRegistryMock {
     }
 
     mapping(uint256 => ModuleAddresses) internal modulesByCommunity;
+    mapping(uint256 => mapping(address => bool)) internal admins;
 
     function setModuleAddresses(uint256 communityId, ModuleAddresses calldata modules) external {
         modulesByCommunity[communityId] = modules;
     }
 
+    function setCommunityAdmin(uint256 communityId, address admin, bool isAdmin) external {
+        admins[communityId][admin] = isAdmin;
+    }
+
     function getCommunityModules(uint256 communityId) external view returns (ModuleAddresses memory) {
         return modulesByCommunity[communityId];
+    }
+
+    function getTimelock(uint256 communityId) external view returns (address) {
+        return modulesByCommunity[communityId].timelock;
+    }
+
+    function communityAdmins(uint256 communityId, address account) external view returns (bool) {
+        return admins[communityId][account];
     }
 }
 
@@ -139,6 +152,9 @@ contract EngagementsTest is Test {
         actionRegistry = new ValuableActionRegistry(governance, address(communityRegistry));
         membershipToken = new MembershipTokenERC20Votes("Test Community Token", "TCT", COMMUNITY_ID, governance);
         valuableActionSBT = new MockValuableActionSBT();
+
+        vm.prank(governance);
+        paramController.setCommunityRegistry(address(communityRegistry));
 
         // Deploy Engagements contract
         engagements = new Engagements(

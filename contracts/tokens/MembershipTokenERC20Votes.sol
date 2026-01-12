@@ -41,7 +41,7 @@ contract MembershipTokenERC20Votes is ERC20, ERC20Permit, ERC20Votes, AccessCont
     //////////////////////////////////////////////////////////////*/
     
     /// @notice Emitted when tokens are minted for ValuableAction completion
-    event TokensMintedForWork(
+    event MembershipTokenMinted(
         address indexed recipient,
         uint256 amount,
         address indexed minter,
@@ -120,7 +120,7 @@ contract MembershipTokenERC20Votes is ERC20, ERC20Permit, ERC20Votes, AccessCont
         
         _mint(to, amount);
         
-        emit TokensMintedForWork(to, amount, msg.sender, reason);
+        emit MembershipTokenMinted(to, amount, msg.sender, reason);
     }
     
     /// @notice Batch mint tokens for multiple recipients
@@ -158,7 +158,7 @@ contract MembershipTokenERC20Votes is ERC20, ERC20Permit, ERC20Votes, AccessCont
             
             _mint(recipients[i], amounts[i]);
             
-            emit TokensMintedForWork(recipients[i], amounts[i], msg.sender, reason);
+            emit MembershipTokenMinted(recipients[i], amounts[i], msg.sender, reason);
         }
     }
     
