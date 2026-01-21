@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 /// @title CohortRegistry
 /// @notice Manages investment cohorts with immutable terms and Target ROI tracking
 /// @dev Investment cohorts guarantee Target ROI returns with priority weighting and spillover mechanics
-contract CohortRegistry {
+contract CohortRegistry is AccessManaged {
     /// @notice Cohort data structure with immutable terms
     struct Cohort {
         uint256 id;                 // Unique cohort identifier
@@ -22,12 +24,7 @@ contract CohortRegistry {
         bytes32 termsHash;          // Immutable hash of cohort terms
     }
     
-    /// @notice Access control addresses
-    address public timelock;           // Timelock for cohort creation and config
-    address public revenueRouter;      // Only RevenueRouter can mark recovery
-    address public valuableActionSBT;  // SBT contract for investment recording
-    address public investmentManager;  // Optional manager (e.g., InvestmentCohortManager) allowed to create/update/record
-    
+
     /// @notice Cohort storage
     mapping(uint256 => Cohort) public cohorts;
     mapping(uint256 => mapping(address => uint256)) public investedBy; // [cohortId][investor] = amount
@@ -61,34 +58,13 @@ contract CohortRegistry {
         uint256 indexed cohortId,
         uint256 finalRecoveredTotal
     );
-    event TimelockUpdated(address oldTimelock, address newTimelock);
     event RevenueRouterUpdated(address oldRouter, address newRouter);
     event ValuableActionSBTUpdated(address oldSBT, address newSBT);
-    
-    /// @notice Access control modifiers
-    modifier onlyTimelock() {
-        if (msg.sender != timelock) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-    
-    modifier onlyRevenueRouter() {
-        if (msg.sender != revenueRouter) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-    
-    modifier onlyInvestmentRecorder() {
-        if (msg.sender != valuableActionSBT && msg.sender != investmentManager) {
-            revert Errors.NotAuthorized(msg.sender);
-        }
-        _;
-    }
-    
+
     /// @notice Constructor
-    /// @param _timelock Timelock contract address
-    constructor(address _timelock) {
-        if (_timelock == address(0)) revert Errors.ZeroAddress();
-        timelock = _timelock;
-        emit TimelockUpdated(address(0), _timelock);
+    /// @param manager AccessManager address for governance-controlled operations
+    constructor(address manager) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
     }
     
     /// @notice Create a new investment cohort with immutable terms
@@ -105,8 +81,7 @@ contract CohortRegistry {
         uint64 startAt,
         uint64 endAt,
         bool active
-    ) external returns (uint256 cohortId) {
-        if (msg.sender != timelock && msg.sender != investmentManager) revert Errors.NotAuthorized(msg.sender);
+    ) external restricted returns (uint256 cohortId) {
         if (communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
         if (targetRoiBps < 10000) revert Errors.InvalidInput("Target ROI must be >= 100%");
         if (priorityWeight == 0) revert Errors.InvalidInput("Priority weight must be > 0");
@@ -145,7 +120,7 @@ contract CohortRegistry {
         address investor,
         uint256 amount,
         uint256 tokenId
-    ) external onlyInvestmentRecorder {
+    ) external restricted {
         if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
         if (investor == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidInput("Investment amount must be > 0");
@@ -169,7 +144,7 @@ contract CohortRegistry {
     /// @notice Mark revenue as recovered by a cohort (called by RevenueRouter)
     /// @param cohortId Cohort identifier
     /// @param amount Amount recovered
-    function markRecovered(uint256 cohortId, uint256 amount) external onlyRevenueRouter {
+    function markRecovered(uint256 cohortId, uint256 amount) external restricted {
         if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
         if (amount == 0) return; // No-op if no amount
         
@@ -192,8 +167,7 @@ contract CohortRegistry {
     /// @notice Manually toggle cohort active status
     /// @param cohortId Cohort identifier
     /// @param active New active status
-    function setCohortActive(uint256 cohortId, bool active) external {
-        if (msg.sender != timelock && msg.sender != investmentManager) revert Errors.NotAuthorized(msg.sender);
+    function setCohortActive(uint256 cohortId, bool active) external restricted {
         if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
         Cohort storage cohort = cohorts[cohortId];
         if (cohort.active == active) return;
@@ -299,39 +273,6 @@ contract CohortRegistry {
         if (targetTotal == 0) return 0;
         
         return (cohort.recoveredTotal * 10000) / targetTotal;
-    }
-    
-    /// @notice Set RevenueRouter address
-    /// @param _revenueRouter New RevenueRouter address
-    function setRevenueRouter(address _revenueRouter) external onlyTimelock {
-        if (_revenueRouter == address(0)) revert Errors.ZeroAddress();
-        address oldRouter = revenueRouter;
-        revenueRouter = _revenueRouter;
-        emit RevenueRouterUpdated(oldRouter, _revenueRouter);
-    }
-    
-    /// @notice Set ValuableActionSBT address
-    /// @param _valuableActionSBT New ValuableActionSBT address
-    function setValuableActionSBT(address _valuableActionSBT) external onlyTimelock {
-        if (_valuableActionSBT == address(0)) revert Errors.ZeroAddress();
-        address oldSBT = valuableActionSBT;
-        valuableActionSBT = _valuableActionSBT;
-        emit ValuableActionSBTUpdated(oldSBT, _valuableActionSBT);
-    }
-
-    /// @notice Set investment manager address (e.g., InvestmentCohortManager)
-    function setInvestmentManager(address _investmentManager) external onlyTimelock {
-        if (_investmentManager == address(0)) revert Errors.ZeroAddress();
-        investmentManager = _investmentManager;
-    }
-    
-    /// @notice Update timelock address
-    /// @param _timelock New timelock address
-    function updateTimelock(address _timelock) external onlyTimelock {
-        if (_timelock == address(0)) revert Errors.ZeroAddress();
-        address oldTimelock = timelock;
-        timelock = _timelock;
-        emit TimelockUpdated(oldTimelock, _timelock);
     }
     
     /// @notice Remove cohort from active list (internal helper)

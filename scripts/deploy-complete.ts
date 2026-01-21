@@ -9,6 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const hre = require("hardhat");
 const { ethers } = hre;
+const { Roles } = require("./roles");
 
 type DeploymentConfig = {
   network: string;
@@ -196,13 +197,16 @@ class ShiftDeSocDeployer {
     await this.deployCommunityModules();
     await this.sleep(2000);
 
-    // 7. Configure System Integration
+    // 7. Configure AccessManager roles
+    await this.configureAccessManager();
+
+    // 8. Configure System Integration
     await this.configureSystemIntegration();
 
-    // 8. Bootstrap Initial Community
+    // 9. Bootstrap Initial Community
     await this.bootstrapInitialCommunity();
 
-    // 9. Verify Deployment
+    // 10. Verify Deployment
     const checks = await this.verifyDeployment();
 
     const report = await this.buildDeploymentReport(checks);
@@ -282,13 +286,27 @@ class ShiftDeSocDeployer {
       `   ✅ TimelockController: ${await this.contracts.timelock.getAddress()}`,
     );
 
+    // Deploy AccessManager with timelock (or deployer in dev) as initial admin
+    console.log("   🔑 Deploying AccessManager...");
+    const AccessManager = await ethers.getContractFactory("AccessManager");
+    // Bootstrap with deployer as admin so we can wire roles, then hand off to timelock
+    const accessAdmin = this.deployer.address;
+    this.contracts.accessManager = await this.deployContract(
+      AccessManager,
+      accessAdmin,
+    );
+    console.log(
+      `   ✅ AccessManager: ${await this.contracts.accessManager.getAddress()}`,
+    );
+
     // Deploy ShiftGovernor
     console.log("   🗳️  Deploying ShiftGovernor...");
     const ShiftGovernor = await ethers.getContractFactory("ShiftGovernor");
     this.contracts.governor = await this.deployContract(
       ShiftGovernor,
       await this.contracts.membershipToken.getAddress(),
-      await this.contracts.timelock.getAddress(),
+      await this.contracts.accessManager.getAddress(),
+      this.config.executionDelay,
     );
     console.log(
       `   ✅ ShiftGovernor: ${await this.contracts.governor.getAddress()}`,
@@ -334,7 +352,7 @@ class ShiftDeSocDeployer {
       await ethers.getContractFactory("VerifierElection");
     this.contracts.verifierElection = await this.deployContract(
       VerifierElection,
-      await this.contracts.timelock.getAddress(),
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.verifierPowerToken.getAddress(),
     );
     console.log(
@@ -346,9 +364,9 @@ class ShiftDeSocDeployer {
     const VerifierManager = await ethers.getContractFactory("VerifierManager");
     this.contracts.verifierManager = await this.deployContract(
       VerifierManager,
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.verifierElection.getAddress(),
       await this.contracts.paramController.getAddress(),
-      await this.contracts.timelock.getAddress(), // governance
     );
     console.log(
       `   ✅ VerifierManager: ${await this.contracts.verifierManager.getAddress()}`,
@@ -369,8 +387,9 @@ class ShiftDeSocDeployer {
     );
     this.contracts.valuableActionRegistry = await this.deployContract(
       ValuableActionRegistry,
-      governanceAddr,
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.communityRegistry.getAddress(), // community registry for module validation
+      governanceAddr, // initial moderator
     );
     console.log(
       `   ✅ ValuableActionRegistry: ${await this.contracts.valuableActionRegistry.getAddress()}`,
@@ -395,7 +414,7 @@ class ShiftDeSocDeployer {
     const Engagements = await ethers.getContractFactory("Engagements");
     this.contracts.engagements = await this.deployContract(
       Engagements,
-      governanceAddr,
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.valuableActionRegistry.getAddress(),
       await this.contracts.verifierManager.getAddress(),
       await this.contracts.valuableActionSBT.getAddress(),
@@ -409,7 +428,7 @@ class ShiftDeSocDeployer {
     const PositionManager = await ethers.getContractFactory("PositionManager");
     this.contracts.positionManager = await this.deployContract(
       PositionManager,
-      governanceAddr,
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.valuableActionRegistry.getAddress(),
       await this.contracts.valuableActionSBT.getAddress(),
     );
@@ -424,7 +443,7 @@ class ShiftDeSocDeployer {
     );
     this.contracts.credentialManager = await this.deployContract(
       CredentialManager,
-      governanceAddr,
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.valuableActionRegistry.getAddress(),
       await this.contracts.valuableActionSBT.getAddress(),
     );
@@ -441,7 +460,7 @@ class ShiftDeSocDeployer {
     const CohortRegistry = await ethers.getContractFactory("CohortRegistry");
     this.contracts.cohortRegistry = await this.deployContract(
       CohortRegistry,
-      await this.contracts.timelock.getAddress(),
+      await this.contracts.accessManager.getAddress(),
     );
     console.log(
       `   ✅ CohortRegistry: ${await this.contracts.cohortRegistry.getAddress()}`,
@@ -469,12 +488,9 @@ class ShiftDeSocDeployer {
     const InvestmentCohortManager = await ethers.getContractFactory(
       "InvestmentCohortManager",
     );
-    const invGovernance = this.config.devMode
-      ? this.deployer.address
-      : await this.contracts.timelock.getAddress();
     this.contracts.investmentCohortManager = await this.deployContract(
       InvestmentCohortManager,
-      invGovernance,
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.cohortRegistry.getAddress(),
       await this.contracts.valuableActionRegistry.getAddress(),
       await this.contracts.valuableActionSBT.getAddress(),
@@ -503,12 +519,9 @@ class ShiftDeSocDeployer {
     // Deploy TreasuryAdapter
     console.log("   🏦 Deploying TreasuryAdapter...");
     const TreasuryAdapter = await ethers.getContractFactory("TreasuryAdapter");
-    const treasuryGov = this.config.devMode
-      ? this.deployer.address
-      : await this.contracts.timelock.getAddress();
     this.contracts.treasuryAdapter = await this.deployContract(
       TreasuryAdapter,
-      treasuryGov,
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.communityRegistry.getAddress(),
     );
     console.log(
@@ -538,7 +551,7 @@ class ShiftDeSocDeployer {
       DraftsManager,
       await this.contracts.communityRegistry.getAddress(),
       await this.contracts.governor.getAddress(), // governor, not requestHub
-      await this.contracts.timelock.getAddress(),
+      await this.contracts.accessManager.getAddress(),
     );
     console.log(
       `   ✅ DraftsManager: ${await this.contracts.draftsManager.getAddress()}`,
@@ -547,12 +560,9 @@ class ShiftDeSocDeployer {
     // Deploy CommerceDisputes (needed by Marketplace)
     console.log("   ⚖️  Deploying CommerceDisputes...");
     const CommerceDisputes = await ethers.getContractFactory("CommerceDisputes");
-    const commerceOwner = this.config.devMode
-      ? this.deployer.address
-      : await this.contracts.timelock.getAddress();
     this.contracts.commerceDisputes = await this.deployContract(
       CommerceDisputes,
-      commerceOwner,
+      await this.contracts.accessManager.getAddress(),
     );
     console.log(
       `   ✅ CommerceDisputes: ${await this.contracts.commerceDisputes.getAddress()}`,
@@ -561,12 +571,9 @@ class ShiftDeSocDeployer {
     // Deploy Marketplace (depends on CommerceDisputes and RevenueRouter)
     console.log("   🛍️  Deploying Marketplace...");
     const Marketplace = await ethers.getContractFactory("Marketplace");
-    const marketplaceOwner = this.config.devMode
-      ? this.deployer.address
-      : await this.contracts.timelock.getAddress();
     this.contracts.marketplace = await this.deployContract(
       Marketplace,
-      marketplaceOwner,
+      await this.contracts.accessManager.getAddress(),
       await this.contracts.commerceDisputes.getAddress(),
       await this.contracts.revenueRouter.getAddress(),
     );
@@ -577,13 +584,9 @@ class ShiftDeSocDeployer {
     // Deploy HousingManager (depends on Marketplace)
     console.log("   🏠 Deploying HousingManager...");
     const HousingManager = await ethers.getContractFactory("HousingManager");
-    const housingOwner = this.config.devMode
-      ? this.deployer.address
-      : await this.contracts.timelock.getAddress();
     this.contracts.housingManager = await this.deployContract(
       HousingManager,
-      housingOwner,
-      await this.contracts.marketplace.getAddress(),
+      await this.contracts.accessManager.getAddress(),
       this.config.treasuryStableToken,
     );
     console.log(
@@ -605,7 +608,7 @@ class ShiftDeSocDeployer {
     const timelockAddress = await this.contracts.timelock.getAddress();
     const governorAddress = await this.contracts.governor.getAddress();
 
-    // Grant timelock roles to governor
+    // Grant timelock roles to governor so proposals can schedule timelock-gated ops (e.g., VPT mint/burn)
     const proposerRole = await this.contracts.timelock.PROPOSER_ROLE();
     const executorRole = await this.contracts.timelock.EXECUTOR_ROLE();
     const cancellerRole = await this.contracts.timelock.CANCELLER_ROLE();
@@ -633,8 +636,327 @@ class ShiftDeSocDeployer {
     console.log("   ✅ Deployer renounced timelock admin role");
   }
 
+  private async configureAccessManager(): Promise<void> {
+    console.log("\n🔒 7. Configuring AccessManager roles...");
+
+    const accessManager = this.contracts.accessManager;
+    const adminRole = await accessManager.ADMIN_ROLE();
+    const issuerRole = Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE;
+    const timelockAddress = await this.contracts.timelock.getAddress();
+
+    // Ensure timelock holds admin permissions for post-deploy governance
+    if (!(await accessManager.hasRole(adminRole, timelockAddress))) {
+      await accessManager.grantRole(adminRole, timelockAddress, 0, this.gasSettings);
+      await this.sleep(1000);
+      console.log("   ✅ Granted AccessManager admin role to timelock");
+    }
+
+    const setRole = async (target: any, selectors: string[], label: string) => {
+      await accessManager.setTargetFunctionRole(
+        await target.getAddress(),
+        selectors,
+        adminRole,
+        this.gasSettings,
+      );
+      await this.sleep(250);
+      console.log(`   ✅ ${label}`);
+    };
+
+    const setRoleCustom = async (target: any, selectors: string[], roleId: bigint, label: string) => {
+      await accessManager.setTargetFunctionRole(
+        await target.getAddress(),
+        selectors,
+        roleId,
+        this.gasSettings,
+      );
+      await this.sleep(250);
+      console.log(`   ✅ ${label}`);
+    };
+
+    const grantIssuer = async (target: any, label: string) => {
+      const targetAddress = await target.getAddress();
+      if (!(await accessManager.hasRole(issuerRole, targetAddress))) {
+        await accessManager.grantRole(issuerRole, targetAddress, 0, this.gasSettings);
+        await this.sleep(250);
+      }
+      console.log(`   ✅ ${label}`);
+    };
+
+    await setRole(
+      this.contracts.valuableActionRegistry,
+      [
+        this.contracts.valuableActionRegistry.interface.getFunction("setValuableActionSBT").selector,
+        this.contracts.valuableActionRegistry.interface.getFunction("setIssuancePaused").selector,
+        this.contracts.valuableActionRegistry.interface.getFunction("setIssuanceModule").selector,
+        this.contracts.valuableActionRegistry.interface.getFunction("setCommunityNarrowing").selector,
+        this.contracts.valuableActionRegistry.interface.getFunction("setCommunityIssuanceModule").selector,
+        this.contracts.valuableActionRegistry.interface.getFunction("setModerator").selector,
+        this.contracts.valuableActionRegistry.interface.getFunction("addFounder").selector,
+        this.contracts.valuableActionRegistry.interface.getFunction("proposeValuableAction").selector,
+        this.contracts.valuableActionRegistry.interface.getFunction("activateFromGovernance").selector,
+      ],
+      "ValuableActionRegistry admin selectors wired",
+    );
+
+    await setRole(
+      this.contracts.engagements,
+      [
+        this.contracts.engagements.interface.getFunction("revoke").selector,
+        this.contracts.engagements.interface.getFunction("updateContracts").selector,
+      ],
+      "Engagements admin selectors wired",
+    );
+
+    await setRole(
+      this.contracts.verifierElection,
+      [
+        this.contracts.verifierElection.interface.getFunction("setVerifierSet").selector,
+        this.contracts.verifierElection.interface.getFunction("banVerifiers").selector,
+        this.contracts.verifierElection.interface.getFunction("unbanVerifier").selector,
+        this.contracts.verifierElection.interface.getFunction("adjustVerifierPower").selector,
+      ],
+      "VerifierElection admin selectors wired",
+    );
+
+    await setRoleCustom(
+      this.contracts.verifierManager,
+      [
+        this.contracts.verifierManager.interface.getFunction("selectJurors").selector,
+        this.contracts.verifierManager.interface.getFunction("reportFraud").selector,
+      ],
+      Roles.VERIFIER_MANAGER_CALLER_ROLE,
+      "VerifierManager engagements selectors wired",
+    );
+
+    const engagementsAddress = await this.contracts.engagements.getAddress();
+    if (!(await accessManager.hasRole(Roles.VERIFIER_MANAGER_CALLER_ROLE, engagementsAddress))) {
+      await accessManager.grantRole(
+        Roles.VERIFIER_MANAGER_CALLER_ROLE,
+        engagementsAddress,
+        0,
+        this.gasSettings,
+      );
+      await this.sleep(250);
+    }
+    console.log("   ✅ VerifierManager caller role granted to Engagements");
+
+    await setRole(
+      this.contracts.cohortRegistry,
+      [
+        this.contracts.cohortRegistry.interface.getFunction("setValuableActionSBT").selector,
+        this.contracts.cohortRegistry.interface.getFunction("setInvestmentManager").selector,
+        this.contracts.cohortRegistry.interface.getFunction("setRevenueRouter").selector,
+        this.contracts.cohortRegistry.interface.getFunction("createCohort").selector,
+        this.contracts.cohortRegistry.interface.getFunction("setCohortActive").selector,
+      ],
+      "CohortRegistry admin selectors wired",
+    );
+
+    const cohortRevenueRouterRole = await this.contracts.cohortRegistry.REVENUE_ROUTER_ROLE();
+    const cohortInvestmentRecorderRole = await this.contracts.cohortRegistry.INVESTMENT_RECORDER_ROLE();
+    await accessManager.setTargetFunctionRole(
+      await this.contracts.cohortRegistry.getAddress(),
+      [this.contracts.cohortRegistry.interface.getFunction("markRecovered").selector],
+      cohortRevenueRouterRole,
+      this.gasSettings,
+    );
+    await this.sleep(250);
+    console.log("   ✅ CohortRegistry revenue router selector wired");
+
+    await accessManager.setTargetFunctionRole(
+      await this.contracts.cohortRegistry.getAddress(),
+      [this.contracts.cohortRegistry.interface.getFunction("addInvestment").selector],
+      cohortInvestmentRecorderRole,
+      this.gasSettings,
+    );
+    await this.sleep(250);
+    console.log("   ✅ CohortRegistry investment recorder selector wired");
+
+    await setRole(
+      this.contracts.investmentCohortManager,
+      [
+        this.contracts.investmentCohortManager.interface.getFunction("createCohort").selector,
+        this.contracts.investmentCohortManager.interface.getFunction("setCohortActive").selector,
+        this.contracts.investmentCohortManager.interface.getFunction("issueInvestment").selector,
+      ],
+      "InvestmentCohortManager admin selectors wired",
+    );
+
+    const revenueRouterAddress = await this.contracts.revenueRouter.getAddress();
+    if (!(await accessManager.hasRole(cohortRevenueRouterRole, revenueRouterAddress))) {
+      await accessManager.grantRole(cohortRevenueRouterRole, revenueRouterAddress, 0, this.gasSettings);
+      await this.sleep(250);
+    }
+    console.log("   ✅ CohortRegistry revenue router role granted");
+
+    const valuableActionSBTAddress = await this.contracts.valuableActionSBT.getAddress();
+    if (!(await accessManager.hasRole(cohortInvestmentRecorderRole, valuableActionSBTAddress))) {
+      await accessManager.grantRole(cohortInvestmentRecorderRole, valuableActionSBTAddress, 0, this.gasSettings);
+      await this.sleep(250);
+    }
+
+    const investmentManagerAddress = await this.contracts.investmentCohortManager.getAddress();
+    if (!(await accessManager.hasRole(cohortInvestmentRecorderRole, investmentManagerAddress))) {
+      await accessManager.grantRole(cohortInvestmentRecorderRole, investmentManagerAddress, 0, this.gasSettings);
+      await this.sleep(250);
+    }
+    console.log("   ✅ CohortRegistry investment recorder role granted to SBT and InvestmentCohortManager");
+
+    await setRole(
+      this.contracts.positionManager,
+      [
+        this.contracts.positionManager.interface.getFunction("setRevenueRouter").selector,
+        this.contracts.positionManager.interface.getFunction("definePositionType").selector,
+        this.contracts.positionManager.interface.getFunction("approveApplication").selector,
+        this.contracts.positionManager.interface.getFunction("closePosition").selector,
+      ],
+      "PositionManager admin selectors wired",
+    );
+
+    await setRole(
+      this.contracts.credentialManager,
+      [
+        this.contracts.credentialManager.interface.getFunction("defineCourse").selector,
+        this.contracts.credentialManager.interface.getFunction("setCourseActive").selector,
+        this.contracts.credentialManager.interface.getFunction("approveApplication").selector,
+        this.contracts.credentialManager.interface.getFunction("revokeCredential").selector,
+      ],
+      "CredentialManager admin selectors wired",
+    );
+
+    await setRole(
+      this.contracts.treasuryAdapter,
+      [
+        this.contracts.treasuryAdapter.interface.getFunction("setTokenAllowed").selector,
+        this.contracts.treasuryAdapter.interface.getFunction("setDestinationAllowed").selector,
+        this.contracts.treasuryAdapter.interface.getFunction("setVaultAdapterAllowed").selector,
+        this.contracts.treasuryAdapter.interface.getFunction("setCapBps").selector,
+      ],
+      "TreasuryAdapter admin selectors wired",
+    );
+
+    await setRole(
+      this.contracts.marketplace,
+      [
+        this.contracts.marketplace.interface.getFunction("setCommunityActive").selector,
+        this.contracts.marketplace.interface.getFunction("setCommunityToken").selector,
+        this.contracts.marketplace.interface.getFunction("setCommerceDisputes").selector,
+        this.contracts.marketplace.interface.getFunction("setRevenueRouter").selector,
+      ],
+      "Marketplace admin selectors wired",
+    );
+
+    await setRole(
+      this.contracts.housingManager,
+      [
+        this.contracts.housingManager.interface.getFunction("createUnit").selector,
+      ],
+      "HousingManager admin selectors wired",
+    );
+
+    await setRoleCustom(
+      this.contracts.housingManager,
+      [
+        this.contracts.housingManager.interface.getFunction("consume").selector,
+        this.contracts.housingManager.interface.getFunction("onOrderSettled").selector,
+      ],
+      Roles.HOUSING_MARKETPLACE_CALLER_ROLE,
+      "HousingManager marketplace selectors wired",
+    );
+
+    await setRole(
+      this.contracts.draftsManager,
+      [
+        this.contracts.draftsManager.interface.getFunction("updateGovernor").selector,
+        this.contracts.draftsManager.interface.getFunction("updateConfiguration").selector,
+      ],
+      "DraftsManager admin selectors wired",
+    );
+
+    await setRole(
+      this.contracts.commerceDisputes,
+      [
+        this.contracts.commerceDisputes.interface.getFunction("setDisputeReceiver").selector,
+      ],
+      "CommerceDisputes admin selectors wired",
+    );
+
+    await setRoleCustom(
+      this.contracts.commerceDisputes,
+      [this.contracts.commerceDisputes.interface.getFunction("openDispute").selector],
+      Roles.COMMERCE_DISPUTES_CALLER_ROLE,
+      "CommerceDisputes openDispute selectors wired",
+    );
+
+    // MembershipToken role wiring
+    const membershipMinterRole = await this.contracts.membershipToken.MINTER_ROLE();
+    const membershipGovRole = await this.contracts.membershipToken.GOVERNANCE_ROLE();
+    await setRoleCustom(
+      this.contracts.membershipToken,
+      [
+        this.contracts.membershipToken.interface.getFunction("mint").selector,
+        this.contracts.membershipToken.interface.getFunction("batchMint").selector,
+      ],
+      membershipMinterRole,
+      "MembershipToken minter selectors wired",
+    );
+    await setRoleCustom(
+      this.contracts.membershipToken,
+      [this.contracts.membershipToken.interface.getFunction("emergencyBurn").selector],
+      membershipGovRole,
+      "MembershipToken governance selectors wired",
+    );
+    await accessManager.grantRole(
+      membershipMinterRole,
+      await this.contracts.engagements.getAddress(),
+      0,
+      this.gasSettings,
+    );
+    console.log("   ✅ MINTER_ROLE granted to Engagements via AccessManager");
+
+    // ValuableActionSBT role wiring
+    const sbtManagerRole = Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE;
+    await setRoleCustom(
+      this.contracts.valuableActionSBT,
+      [
+        this.contracts.valuableActionSBT.interface.getFunction("mintEngagement").selector,
+        this.contracts.valuableActionSBT.interface.getFunction("mintPosition").selector,
+        this.contracts.valuableActionSBT.interface.getFunction("mintRoleFromPosition").selector,
+        this.contracts.valuableActionSBT.interface.getFunction("mintInvestment").selector,
+        this.contracts.valuableActionSBT.interface.getFunction("setEndedAt").selector,
+        this.contracts.valuableActionSBT.interface.getFunction("closePositionToken").selector,
+        this.contracts.valuableActionSBT.interface.getFunction("updateTokenURI").selector,
+      ],
+      sbtManagerRole,
+      "ValuableActionSBT manager selectors wired",
+    );
+    const sbtManagers = [
+      this.contracts.engagements,
+      this.contracts.positionManager,
+      this.contracts.investmentCohortManager,
+      this.contracts.credentialManager,
+    ];
+    for (const mgr of sbtManagers) {
+      await accessManager.grantRole(sbtManagerRole, await mgr.getAddress(), 0, this.gasSettings);
+      await this.sleep(250);
+    }
+    console.log("   ✅ MANAGER_ROLE granted to SBT managers via AccessManager");
+
+    await grantIssuer(this.contracts.requestHub, "ISSUER_ROLE granted to RequestHub");
+    await grantIssuer(this.contracts.credentialManager, "ISSUER_ROLE granted to CredentialManager");
+    await grantIssuer(this.contracts.positionManager, "ISSUER_ROLE granted to PositionManager");
+    await grantIssuer(this.contracts.investmentCohortManager, "ISSUER_ROLE granted to InvestmentCohortManager");
+
+    // Hand off AccessManager admin to timelock in non-dev mode
+    if (!this.config.devMode && (await accessManager.hasRole(adminRole, this.deployer.address))) {
+      await accessManager.revokeRole(adminRole, this.deployer.address, this.gasSettings);
+      await this.sleep(1000);
+      console.log("   ✅ Revoked AccessManager admin role from deployer");
+    }
+  }
+
   private async configureSystemIntegration(): Promise<void> {
-    console.log("\n🔗 7. Configuring System Integration...");
+    console.log("\n🔗 8. Configuring System Integration...");
 
     // This is where we would register all module addresses in the CommunityRegistry
     // and set up cross-contract permissions and integrations
@@ -698,10 +1020,11 @@ class ShiftDeSocDeployer {
           this.gasSettings,
         );
       }
-      const positionRole = await this.contracts.revenueRouter.POSITION_MANAGER_ROLE();
-      await this.contracts.revenueRouter.grantRole(
+      const positionRole = Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE;
+      await this.contracts.accessManager.grantRole(
         positionRole,
         await this.contracts.positionManager.getAddress(),
+        0,
         this.gasSettings,
       );
       await this.contracts.positionManager.setRevenueRouter(
@@ -724,56 +1047,8 @@ class ShiftDeSocDeployer {
       console.warn("   ⚠️ setValuableActionSBT requires governance (timelock)");
     }
 
-    // Grant GOVERNANCE_ROLE to deployer temporarily for configuration
-    const governanceRole = await this.contracts.valuableActionSBT.GOVERNANCE_ROLE();
-    await this.contracts.valuableActionSBT.grantRole(
-      governanceRole,
-      this.deployer.address,
-      this.gasSettings,
-    );
-    await this.sleep(2000);
-    console.log("   ✅ Granted temporary GOVERNANCE_ROLE to deployer");
-
-    // Set CohortRegistry in ValuableActionSBT for Investment SBT minting
-    await this.contracts.valuableActionSBT.setCohortRegistry(
-      await this.contracts.cohortRegistry.getAddress(),
-      this.gasSettings,
-    );
-    await this.sleep(2000);
-    console.log("   ✅ CohortRegistry set in ValuableActionSBT");
-
-    // Revoke temporary GOVERNANCE_ROLE from deployer
-    await this.contracts.valuableActionSBT.revokeRole(
-      governanceRole,
-      this.deployer.address,
-      this.gasSettings,
-    );
-    await this.sleep(2000);
-    console.log("   ✅ Revoked GOVERNANCE_ROLE from deployer");
-
-    // Grant necessary roles and permissions
-    const minterRole = await this.contracts.membershipToken.MINTER_ROLE();
-    await this.contracts.membershipToken.grantRole(
-      minterRole,
-      await this.contracts.engagements.getAddress(),
-      this.gasSettings,
-    );
-    await this.sleep(2000);
-    console.log("   ✅ Granted MINTER_ROLE to Engagements contract");
-
-    // Wire VerifierManager
-    try {
-      await this.contracts.verifierManager.setEngagementsContract(
-        await this.contracts.engagements.getAddress(),
-        this.gasSettings,
-      );
-      console.log("   ✅ VerifierManager engagements contract set");
-    } catch (error) {
-      console.warn("   ⚠️ VerifierManager.setEngagementsContract requires governance");
-    }
-
-    // ValuableActionSBT manager roles
-    const managerRole = await this.contracts.valuableActionSBT.MANAGER_ROLE();
+    // ValuableActionSBT manager roles (handled via AccessManager)
+    const managerRole = Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE;
     const sbtManagers = [
       this.contracts.engagements,
       this.contracts.positionManager,
@@ -781,21 +1056,10 @@ class ShiftDeSocDeployer {
       this.contracts.credentialManager,
     ];
     for (const mgr of sbtManagers) {
-      await this.contracts.valuableActionSBT.grantRole(
+      await this.contracts.accessManager.grantRole(
         managerRole,
         await mgr.getAddress(),
-        this.gasSettings,
-      );
-    }
-    if (!this.config.devMode) {
-      await this.contracts.valuableActionSBT.grantRole(
-        await this.contracts.valuableActionSBT.DEFAULT_ADMIN_ROLE(),
-        await this.contracts.timelock.getAddress(),
-        this.gasSettings,
-      );
-      await this.contracts.valuableActionSBT.revokeRole(
-        await this.contracts.valuableActionSBT.DEFAULT_ADMIN_ROLE(),
-        this.deployer.address,
+        0,
         this.gasSettings,
       );
     }
@@ -804,14 +1068,24 @@ class ShiftDeSocDeployer {
     console.log("   🛍️  Configuring commerce module integrations...");
 
     if (this.config.devMode) {
-      // Authorize Marketplace to use CommerceDisputes
-      await this.contracts.commerceDisputes.setAuthorizedCaller(
+      // Grant dispute caller role to Marketplace via AccessManager
+      await this.contracts.accessManager.grantRole(
+        Roles.COMMERCE_DISPUTES_CALLER_ROLE,
         await this.contracts.marketplace.getAddress(),
-        true,
+        0,
         this.gasSettings,
       );
       await this.sleep(2000);
-      console.log("   ✅ Authorized Marketplace to open disputes");
+      console.log("   ✅ Granted CommerceDisputes caller role to Marketplace");
+
+      await this.contracts.accessManager.grantRole(
+        Roles.HOUSING_MARKETPLACE_CALLER_ROLE,
+        await this.contracts.marketplace.getAddress(),
+        0,
+        this.gasSettings,
+      );
+      await this.sleep(2000);
+      console.log("   ✅ Granted HousingManager marketplace role to Marketplace");
 
       // Set Marketplace as dispute receiver
       await this.contracts.commerceDisputes.setDisputeReceiver(
@@ -822,10 +1096,11 @@ class ShiftDeSocDeployer {
       console.log("   ✅ Set Marketplace as dispute receiver");
 
       // Grant DISTRIBUTOR_ROLE to Marketplace on RevenueRouter
-      const distributorRole = await this.contracts.revenueRouter.DISTRIBUTOR_ROLE();
-      await this.contracts.revenueRouter.grantRole(
+      const distributorRole = Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE;
+      await this.contracts.accessManager.grantRole(
         distributorRole,
         await this.contracts.marketplace.getAddress(),
+        0,
         this.gasSettings,
       );
       await this.sleep(2000);
@@ -890,7 +1165,7 @@ class ShiftDeSocDeployer {
   }
 
   private async bootstrapInitialCommunity(): Promise<void> {
-    console.log("\n🌱 8. Bootstrapping Initial Community...");
+    console.log("\n🌱 9. Bootstrapping Initial Community...");
 
     // Register the initial community
     console.log("   🏘️  Registering initial community...");
@@ -939,9 +1214,10 @@ class ShiftDeSocDeployer {
 
     if (this.config.initialMembershipTokens > 0) {
       const minterRole = await this.contracts.membershipToken.MINTER_ROLE();
-      await this.contracts.membershipToken.grantRole(
+      await this.contracts.accessManager.grantRole(
         minterRole,
         this.deployer.address,
+        0,
         this.gasSettings,
       );
       await this.sleep(1000);
@@ -958,13 +1234,9 @@ class ShiftDeSocDeployer {
         `   ✅ Minted ${this.config.initialMembershipTokens} governance tokens to founder`,
       );
 
-      await this.contracts.membershipToken.revokeRole(
-        minterRole,
-        this.deployer.address,
-        this.gasSettings,
-      );
+      await this.contracts.accessManager.revokeRole(minterRole, this.deployer.address, this.gasSettings);
       await this.sleep(1000);
-      console.log("   ✅ Revoked MINTER_ROLE from deployer");
+      console.log("   ✅ Revoked MINTER_ROLE from deployer via AccessManager");
     }
 
     // Note: VPT tokens require timelock role to mint
@@ -982,7 +1254,7 @@ class ShiftDeSocDeployer {
   }
 
   private async verifyDeployment(): Promise<PostDeployChecks> {
-    console.log("\n🔍 9. Verifying Deployment...");
+    console.log("\n🔍 10. Verifying Deployment...");
 
     // Test governance token functionality
     const founderBalance = await this.contracts.membershipToken.balanceOf(
@@ -1029,6 +1301,7 @@ class ShiftDeSocDeployer {
       timelock: await this.contracts.timelock.getAddress(),
       governor: await this.contracts.governor.getAddress(),
       countingMultiChoice: await this.contracts.countingMultiChoice.getAddress(),
+      accessManager: await this.contracts.accessManager.getAddress(),
 
       // VPT System
       verifierPowerToken: await this.contracts.verifierPowerToken.getAddress(),
@@ -1123,6 +1396,7 @@ class ShiftDeSocDeployer {
     console.log(`   TimelockController: ${report.addresses.timelock}`);
     console.log(`   ShiftGovernor: ${report.addresses.governor}`);
     console.log(`   CountingMultiChoice: ${report.addresses.countingMultiChoice}`);
+    console.log(`   AccessManager: ${report.addresses.accessManager}`);
 
     console.log("\n👥 VPT SYSTEM:");
     console.log(`   VerifierPowerToken1155: ${report.addresses.verifierPowerToken}`);

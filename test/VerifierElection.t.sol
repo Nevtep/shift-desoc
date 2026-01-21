@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {VerifierElection} from "../contracts/modules/VerifierElection.sol";
 import {VerifierPowerToken1155} from "../contracts/tokens/VerifierPowerToken1155.sol";
 import {Errors} from "../contracts/libs/Errors.sol";
@@ -9,6 +11,7 @@ import {Errors} from "../contracts/libs/Errors.sol";
 contract VerifierElectionTest is Test {
     VerifierElection public verifierElection;
     VerifierPowerToken1155 public vpt;
+    AccessManager public accessManager;
     
     address public timelock = makeAddr("timelock");
     address public verifier1 = makeAddr("verifier1");
@@ -28,15 +31,33 @@ contract VerifierElectionTest is Test {
     event VerifierPowerAdjusted(uint256 indexed communityId, address indexed verifier, uint256 oldPower, uint256 newPower, string reasonCID);
     
     function setUp() public {
-        vpt = new VerifierPowerToken1155(timelock, BASE_URI);
-        verifierElection = new VerifierElection(timelock, address(vpt));
+        accessManager = new AccessManager(verifier1); // temporary admin; updated below
+        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI);
+        verifierElection = new VerifierElection(address(accessManager), address(vpt));
         
-        // Grant VerifierElection contract the TIMELOCK_ROLE so it can mint/burn tokens
-        vm.startPrank(timelock);
-        bytes32 TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
-        vpt.grantRole(TIMELOCK_ROLE, address(verifierElection));
-        
+        vm.startPrank(verifier1);
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), timelock, 0);
+        bytes4[] memory selectors = new bytes4[](4);
+        selectors[0] = verifierElection.setVerifierSet.selector;
+        selectors[1] = verifierElection.banVerifiers.selector;
+        selectors[2] = verifierElection.unbanVerifier.selector;
+        selectors[3] = verifierElection.adjustVerifierPower.selector;
+        accessManager.setTargetFunctionRole(address(verifierElection), selectors, accessManager.ADMIN_ROLE());
+
+        // Configure VPT function roles
+        bytes4[] memory vptSelectors = new bytes4[](6);
+        vptSelectors[0] = vpt.initializeCommunity.selector;
+        vptSelectors[1] = vpt.mint.selector;
+        vptSelectors[2] = vpt.burn.selector;
+        vptSelectors[3] = vpt.batchMint.selector;
+        vptSelectors[4] = vpt.batchBurn.selector;
+        vptSelectors[5] = vpt.adminTransfer.selector;
+        accessManager.setTargetFunctionRole(address(vpt), vptSelectors, accessManager.ADMIN_ROLE());
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), address(verifierElection), 0);
+        vm.stopPrank();
+
         // Initialize communities
+        vm.startPrank(timelock);
         vpt.initializeCommunity(COMMUNITY_ID_1, "metadata1");
         vpt.initializeCommunity(COMMUNITY_ID_2, "metadata2");
         vm.stopPrank();
@@ -47,7 +68,6 @@ contract VerifierElectionTest is Test {
     //////////////////////////////////////////////////////////////*/
     
     function testConstructor() public view {
-        assertEq(verifierElection.timelock(), timelock);
         assertEq(address(verifierElection.vpt()), address(vpt));
     }
     
@@ -58,7 +78,7 @@ contract VerifierElectionTest is Test {
     
     function testConstructorZeroVPTReverts() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new VerifierElection(timelock, address(0));
+        new VerifierElection(address(accessManager), address(0));
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -110,7 +130,7 @@ contract VerifierElectionTest is Test {
         uint256[] memory weights = new uint256[](1);
         weights[0] = 100;
         
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
         verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
     }
@@ -261,7 +281,7 @@ contract VerifierElectionTest is Test {
         address[] memory offenders = new address[](1);
         offenders[0] = verifier1;
         
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
         verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
     }

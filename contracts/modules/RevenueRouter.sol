@@ -1,53 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Errors} from "../libs/Errors.sol";
+import {Roles} from "../libs/Roles.sol";
 import {IValuableActionSBT} from "../core/interfaces/IValuableActionSBT.sol";
-
-interface IParamController {
-    function getRevenuePolicy(uint256 communityId)
-        external
-        view
-        returns (uint16 minTreasuryBps, uint16 minPositionsBps, uint8 spilloverTarget, uint16 spilloverSplitBpsToTreasury);
-}
-
-interface ICohortRegistry {
-    struct Cohort {
-        uint256 id;
-        uint256 communityId;
-        uint16 targetRoiBps;
-        uint64 createdAt;
-        uint64 startAt;
-        uint64 endAt;
-        uint32 priorityWeight;
-        uint256 investedTotal;
-        uint256 recoveredTotal;
-        bool active;
-        bytes32 termsHash;
-    }
-
-    function getActiveCohorts(uint256 communityId) external view returns (uint256[] memory);
-    function getCohort(uint256 cohortId) external view returns (Cohort memory);
-    function isCohortActive(uint256 cohortId) external view returns (bool);
-    function getCohortCommunity(uint256 cohortId) external view returns (uint256);
-    function getInvestmentAmountByToken(uint256 tokenId) external view returns (uint256);
-}
+import {IParamController} from "./interfaces/IParamController.sol";
+import {ICohortRegistry} from "./interfaces/ICohortRegistry.sol";
 
 /// @title RevenueRouter
 /// @notice Deterministic revenue splitter with minimum guarantees and spillover, using pull-based indices
 /// @dev No minting or lifecycle management; relies on external managers to register active positions
-contract RevenueRouter is AccessControl, ReentrancyGuard {
+contract RevenueRouter is AccessManaged, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 public constant MAX_BPS = 10_000;
     uint256 private constant INDEX_SCALE = 1e18;
 
-    bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
-    bytes32 public constant POSITION_MANAGER_ROLE = keccak256("POSITION_MANAGER_ROLE");
 
     IParamController public paramController;
     ICohortRegistry public cohortRegistry;
@@ -82,43 +54,39 @@ contract RevenueRouter is AccessControl, ReentrancyGuard {
     event PositionRegistered(uint256 indexed tokenId, uint256 indexed communityId, uint32 points);
     event PositionUnregistered(uint256 indexed tokenId, uint256 indexed communityId, uint32 points);
 
-    constructor(address _paramController, address _cohortRegistry, address _sbt, address _admin) {
-        if (_paramController == address(0) || _cohortRegistry == address(0) || _sbt == address(0) || _admin == address(0)) {
+    constructor(address manager, address _paramController, address _cohortRegistry, address _sbt) AccessManaged(manager) {
+        if (_paramController == address(0) || _cohortRegistry == address(0) || _sbt == address(0) || manager == address(0)) {
             revert Errors.ZeroAddress();
         }
         paramController = IParamController(_paramController);
         cohortRegistry = ICohortRegistry(_cohortRegistry);
         valuableActionSBT = IValuableActionSBT(_sbt);
-
-        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
-        _grantRole(DISTRIBUTOR_ROLE, _admin);
-        _grantRole(POSITION_MANAGER_ROLE, _admin);
     }
 
     /*//////////////////////////////////////////////////////////////
                                     ADMIN ACTIONS
     //////////////////////////////////////////////////////////////*/
-    function setCommunityTreasury(uint256 communityId, address treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setCommunityTreasury(uint256 communityId, address treasury) external restricted {
         if (treasury == address(0)) revert Errors.ZeroAddress();
         address old = communityTreasuries[communityId];
         communityTreasuries[communityId] = treasury;
         emit CommunityTreasuryUpdated(communityId, old, treasury);
     }
 
-    function setSupportedToken(uint256 communityId, address token, bool supported) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setSupportedToken(uint256 communityId, address token, bool supported) external restricted {
         if (token == address(0)) revert Errors.ZeroAddress();
         supportedTokens[communityId][token] = supported;
         emit TokenSupportUpdated(communityId, token, supported);
     }
 
-    function setParamController(address newController) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setParamController(address newController) external restricted {
         if (newController == address(0)) revert Errors.ZeroAddress();
         address old = address(paramController);
         paramController = IParamController(newController);
         emit ParamControllerUpdated(old, newController);
     }
 
-    function setCohortRegistry(address newRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setCohortRegistry(address newRegistry) external restricted {
         if (newRegistry == address(0)) revert Errors.ZeroAddress();
         address old = address(cohortRegistry);
         cohortRegistry = ICohortRegistry(newRegistry);
@@ -128,7 +96,7 @@ contract RevenueRouter is AccessControl, ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                                 POSITION REGISTRATION
     //////////////////////////////////////////////////////////////*/
-    function registerPosition(uint256 tokenId) external onlyRole(POSITION_MANAGER_ROLE) {
+    function registerPosition(uint256 tokenId) external restricted {
         if (positionRegistered[tokenId]) revert Errors.InvalidInput("Already registered");
         IValuableActionSBT.TokenData memory data = valuableActionSBT.getTokenData(tokenId);
         if (data.kind != IValuableActionSBT.TokenKind.POSITION) revert Errors.InvalidInput("Not position token");
@@ -144,7 +112,7 @@ contract RevenueRouter is AccessControl, ReentrancyGuard {
         emit PositionRegistered(tokenId, data.communityId, data.points);
     }
 
-    function unregisterPosition(uint256 tokenId) external onlyRole(POSITION_MANAGER_ROLE) {
+    function unregisterPosition(uint256 tokenId) external restricted {
         if (!positionRegistered[tokenId]) revert Errors.InvalidInput("Not registered");
         uint256 communityId = positionCommunity[tokenId];
         uint32 points = positionPoints[tokenId];
@@ -164,7 +132,7 @@ contract RevenueRouter is AccessControl, ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
     function routeRevenue(uint256 communityId, address token, uint256 amount)
         external
-        onlyRole(DISTRIBUTOR_ROLE)
+        restricted
         nonReentrant
     {
         if (amount == 0) revert Errors.InvalidInput("Zero amount");
@@ -333,7 +301,7 @@ contract RevenueRouter is AccessControl, ReentrancyGuard {
         if (to == address(0)) revert Errors.ZeroAddress();
         address treasury = communityTreasuries[communityId];
         if (treasury == address(0)) revert Errors.ZeroAddress();
-        if (msg.sender != treasury && !hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert Errors.NotAuthorized(msg.sender);
+        if (msg.sender != treasury) revert Errors.NotAuthorized(msg.sender);
         if (amount == 0) revert Errors.InvalidInput("Zero amount");
         if (treasuryAccrual[communityId][token] < amount) {
             revert Errors.InsufficientBalance(address(this), amount, treasuryAccrual[communityId][token]);

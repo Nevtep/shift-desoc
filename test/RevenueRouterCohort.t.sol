@@ -2,8 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {RevenueRouter} from "contracts/modules/RevenueRouter.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 import {IValuableActionSBT} from "contracts/core/interfaces/IValuableActionSBT.sol";
 import {Types} from "contracts/libs/Types.sol";
 
@@ -146,6 +148,7 @@ contract SBTMock is IValuableActionSBT {
 
 contract RevenueRouterCohortTest is Test {
     RevenueRouter public router;
+    AccessManager public accessManager;
     ParamControllerMock2 public paramController;
     CohortRegistryMock2 public cohorts;
     SBTMock public sbt;
@@ -165,10 +168,33 @@ contract RevenueRouterCohortTest is Test {
         sbt = new SBTMock();
         token = new ERC20Simple();
 
-        router = new RevenueRouter(address(paramController), address(cohorts), address(sbt), admin);
+        accessManager = new AccessManager(admin);
+        router = new RevenueRouter(address(accessManager), address(paramController), address(cohorts), address(sbt));
+
+        vm.startPrank(admin, admin);
+        bytes4[] memory adminSelectors = new bytes4[](4);
+        adminSelectors[0] = router.setCommunityTreasury.selector;
+        adminSelectors[1] = router.setSupportedToken.selector;
+        adminSelectors[2] = router.setParamController.selector;
+        adminSelectors[3] = router.setCohortRegistry.selector;
+        accessManager.setTargetFunctionRole(address(router), adminSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory distributorSelectors = new bytes4[](1);
+        distributorSelectors[0] = router.routeRevenue.selector;
+        accessManager.setTargetFunctionRole(address(router), distributorSelectors, Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE);
+
+        bytes4[] memory positionSelectors = new bytes4[](2);
+        positionSelectors[0] = router.registerPosition.selector;
+        positionSelectors[1] = router.unregisterPosition.selector;
+        accessManager.setTargetFunctionRole(address(router), positionSelectors, Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE);
+
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), admin, 0);
+        accessManager.grantRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, distributor, 0);
+        accessManager.grantRole(Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE, admin, 0);
+        vm.stopPrank();
+
         router.setCommunityTreasury(COMMUNITY_ID, treasury);
         router.setSupportedToken(COMMUNITY_ID, address(token), true);
-        router.grantRole(router.DISTRIBUTOR_ROLE(), distributor);
     }
 
     function testDistributeToCohortsProRata() public {
@@ -184,7 +210,7 @@ contract RevenueRouterCohortTest is Test {
         cohorts.setInvestmentWeight(investment2, 3000e18);
 
         token.mint(distributor, 1_000e18);
-        vm.startPrank(distributor);
+            vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
         vm.stopPrank();
@@ -210,10 +236,11 @@ contract RevenueRouterCohortTest is Test {
 
     function testUnsupportedTokenReverts() public {
         paramController.setRevenuePolicy(COMMUNITY_ID, 1000, 0, 1, 0);
-        vm.prank(distributor);
+            vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Unsupported token"));
         router.routeRevenue(COMMUNITY_ID, address(0xDEAD), 1);
+        vm.stopPrank();
     }
 
     function testInactiveCohortsDoNotReceiveRevenue() public {
@@ -227,7 +254,7 @@ contract RevenueRouterCohortTest is Test {
         cohorts.setInvestmentWeight(investment, 1_000e18);
 
         token.mint(distributor, 500e18);
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(COMMUNITY_ID, address(token), 500e18);
         vm.stopPrank();
@@ -246,7 +273,7 @@ contract RevenueRouterCohortTest is Test {
         cohorts.setInvestmentWeight(investment, 1_000e18);
 
         token.mint(distributor, 100e18);
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(COMMUNITY_ID, address(token), 100e18);
         vm.stopPrank();

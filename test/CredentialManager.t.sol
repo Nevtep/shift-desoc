@@ -2,10 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {CredentialManager} from "contracts/modules/CredentialManager.sol";
 import {ValuableActionRegistry} from "contracts/modules/ValuableActionRegistry.sol";
 import {ValuableActionSBT} from "contracts/modules/ValuableActionSBT.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 contract CommunityRegistryMock {
     struct ModuleAddresses {
@@ -40,10 +43,10 @@ contract CredentialManagerTest is Test {
     ValuableActionRegistry registry;
     ValuableActionSBT sbt;
     CredentialManager manager;
+    AccessManager accessManager;
     CommunityRegistryMock communityRegistry;
 
     address governance = makeAddr("governance");
-    address moderator = makeAddr("moderator");
     address verifier = makeAddr("verifier");
     address user = makeAddr("user");
 
@@ -52,9 +55,10 @@ contract CredentialManagerTest is Test {
 
     function setUp() public {
         communityRegistry = new CommunityRegistryMock();
-        registry = new ValuableActionRegistry(governance, address(communityRegistry));
-        sbt = new ValuableActionSBT(governance, governance, governance);
-        manager = new CredentialManager(governance, address(registry), address(sbt));
+        accessManager = new AccessManager(governance);
+        registry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance);
+        sbt = new ValuableActionSBT(address(accessManager));
+        manager = new CredentialManager(address(accessManager), address(registry), address(sbt));
 
         communityRegistry.setModuleAddresses(
             COMMUNITY_ID,
@@ -78,10 +82,20 @@ contract CredentialManagerTest is Test {
 
         vm.startPrank(governance);
         registry.setValuableActionSBT(address(sbt));
-        sbt.grantRole(sbt.MANAGER_ROLE(), address(registry));
-        sbt.grantRole(sbt.MANAGER_ROLE(), address(manager));
+        // Wire SBT manager selectors to MANAGER_ROLE
+        bytes4[] memory sbtManagerSelectors = new bytes4[](6);
+        sbtManagerSelectors[0] = sbt.mintEngagement.selector;
+        sbtManagerSelectors[1] = sbt.mintPosition.selector;
+        sbtManagerSelectors[2] = sbt.mintRoleFromPosition.selector;
+        sbtManagerSelectors[3] = sbt.mintInvestment.selector;
+        sbtManagerSelectors[4] = sbt.setEndedAt.selector;
+        sbtManagerSelectors[5] = sbt.closePositionToken.selector;
+        accessManager.setTargetFunctionRole(address(sbt), sbtManagerSelectors, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
+
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(registry), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(manager), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(manager), 0);
         registry.setIssuanceModule(address(manager), true);
-        manager.setModerator(moderator, true);
         manager.defineCourse(COURSE_ID, COMMUNITY_ID, verifier, true);
         vm.stopPrank();
     }
@@ -109,7 +123,7 @@ contract CredentialManagerTest is Test {
         vm.prank(user);
         uint256 appId = manager.applyForCredential(COURSE_ID, "");
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
         vm.prank(user);
         manager.approveApplication(appId);
 
@@ -195,14 +209,4 @@ contract CredentialManagerTest is Test {
         manager.revokeCredential(tokenId, bytes32("other"), "bad");
     }
 
-    function testGovernanceUpdatePropagatesModerator() public {
-        address newGov = makeAddr("newGov");
-
-        vm.prank(governance);
-        manager.updateGovernance(newGov);
-
-        assertTrue(manager.isModerator(newGov));
-        vm.prank(newGov);
-        manager.setModerator(address(0x1234), true);
-    }
 }

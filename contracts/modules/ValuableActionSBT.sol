@@ -4,13 +4,14 @@ pragma solidity ^0.8.24;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "../libs/Errors.sol";
 import {Types} from "../libs/Types.sol";
+import {Roles} from "../libs/Roles.sol";
 
 /// @title ValuableActionSBT
 /// @notice Single typed soulbound SBT for work, role, credential, position, and investment records
-contract ValuableActionSBT is ERC721URIStorage, AccessControl {
+contract ValuableActionSBT is ERC721URIStorage, AccessManaged {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -22,11 +23,6 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
     //////////////////////////////////////////////////////////////*/
     event TokenIssued(uint256 indexed tokenId, TokenKind kind, uint256 indexed communityId, address indexed subject);
 
-    /*//////////////////////////////////////////////////////////////
-                                CONSTANTS
-    //////////////////////////////////////////////////////////////*/
-    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 
     /*//////////////////////////////////////////////////////////////
                                  TYPES
@@ -64,14 +60,8 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address admin, address manager, address governance) ERC721("Shift ValuableAction SBT", "SHIFT-SBT") {
-        if (admin == address(0)) revert Errors.ZeroAddress();
-        if (manager == address(0)) revert Errors.ZeroAddress();
-        if (governance == address(0)) revert Errors.ZeroAddress();
-
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(MANAGER_ROLE, manager);
-        _grantRole(GOVERNANCE_ROLE, governance);
+    constructor(address accessManager) ERC721("Shift ValuableAction SBT", "SHIFT-SBT") AccessManaged(accessManager) {
+        if (accessManager == address(0)) revert Errors.ZeroAddress();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -85,7 +75,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
         Types.EngagementSubtype subtype,
         bytes32 actionTypeId,
         bytes calldata metadata
-    ) external onlyRole(MANAGER_ROLE) returns (uint256 tokenId) {
+    ) external restricted returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (actionTypeId == bytes32(0)) revert Errors.InvalidInput("Invalid actionTypeId");
@@ -118,7 +108,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
         bytes32 positionTypeId,
         uint32 points,
         bytes calldata metadata
-    ) external onlyRole(MANAGER_ROLE) returns (uint256 tokenId) {
+    ) external restricted returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (positionTypeId == bytes32(0)) revert Errors.InvalidInput("Invalid positionTypeId");
@@ -153,7 +143,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
         uint64 endedAt,
         uint8 closeOutcome,
         bytes calldata metadata
-    ) external onlyRole(MANAGER_ROLE) returns (uint256 tokenId) {
+    ) external restricted returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (roleTypeId == bytes32(0)) revert Errors.InvalidInput("Invalid roleTypeId");
@@ -187,7 +177,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
         uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
-    ) external onlyRole(MANAGER_ROLE) returns (uint256 tokenId) {
+    ) external restricted returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (cohortId == 0) revert Errors.InvalidInput("Invalid cohortId");
@@ -213,13 +203,13 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
     }
 
     /// @notice Update the endedAt timestamp for a token (e.g., closing a position)
-    function setEndedAt(uint256 tokenId, uint64 endedAt) external onlyRole(MANAGER_ROLE) {
+    function setEndedAt(uint256 tokenId, uint64 endedAt) external restricted {
         if (_ownerOf(tokenId) == address(0)) revert TokenNotExists(tokenId);
         _tokenData[tokenId].endedAt = endedAt;
     }
 
     /// @notice Close a position token by stamping end time and outcome
-    function closePositionToken(uint256 tokenId, uint8 outcome) external onlyRole(MANAGER_ROLE) {
+    function closePositionToken(uint256 tokenId, uint8 outcome) external restricted {
         if (_ownerOf(tokenId) == address(0)) revert TokenNotExists(tokenId);
         TokenData storage data = _tokenData[tokenId];
         if (data.kind != TokenKind.POSITION) revert Errors.InvalidInput("Not a position token");
@@ -230,7 +220,7 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
     }
 
     /// @notice Update metadata URI (optional)
-    function updateTokenURI(uint256 tokenId, string calldata newURI) external onlyRole(MANAGER_ROLE) {
+    function updateTokenURI(uint256 tokenId, string calldata newURI) external restricted {
         if (_ownerOf(tokenId) == address(0)) revert TokenNotExists(tokenId);
         _setTokenURI(tokenId, newURI);
     }
@@ -277,7 +267,8 @@ contract ValuableActionSBT is ERC721URIStorage, AccessControl {
         return _tokenData[tokenId];
     }
 
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721URIStorage, AccessControl) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721URIStorage) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
+
 }

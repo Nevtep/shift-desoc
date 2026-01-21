@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import "contracts/tokens/CommunityToken.sol";
 import "contracts/modules/ParamController.sol";
 import "contracts/libs/Errors.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 
 contract MockUSDC is ERC20 {
     constructor() ERC20("Mock USDC", "USDC") {
@@ -36,6 +38,7 @@ contract CommunityTokenTest is Test {
     CommunityToken public communityToken;
     MockUSDC public usdc;
     MockParamController public paramController;
+    AccessManager public accessManager;
     
     address public admin = address(0x1001);
     address public minter = address(0x1002); 
@@ -62,8 +65,9 @@ contract CommunityTokenTest is Test {
     function setUp() public {
         usdc = new MockUSDC();
         paramController = new MockParamController();
-        
-        vm.prank(admin);
+        accessManager = new AccessManager(admin);
+
+        vm.startPrank(admin, admin);
         communityToken = new CommunityToken(
             address(usdc),
             COMMUNITY_ID,
@@ -71,14 +75,31 @@ contract CommunityTokenTest is Test {
             "TCT",
             treasury,
             MAX_SUPPLY,
-            address(paramController)
+            address(paramController),
+            address(accessManager)
         );
 
-        // Grant roles
-        vm.startPrank(admin);
-        communityToken.grantRole(communityToken.MINTER_ROLE(), minter);
-        communityToken.grantRole(communityToken.TREASURY_ROLE(), treasury);
-        communityToken.grantRole(communityToken.EMERGENCY_ROLE(), emergencyRole);
+        // Configure AccessManager selectors
+        bytes4[] memory minterSelectors = new bytes4[](1);
+        minterSelectors[0] = communityToken.mintTo.selector;
+        accessManager.setTargetFunctionRole(address(communityToken), minterSelectors, communityToken.MINTER_ROLE());
+
+        bytes4[] memory treasurySelectors = new bytes4[](2);
+        treasurySelectors[0] = communityToken.withdrawFromTreasury.selector;
+        treasurySelectors[1] = communityToken.setTreasury.selector;
+        accessManager.setTargetFunctionRole(address(communityToken), treasurySelectors, communityToken.TREASURY_ROLE());
+
+        bytes4[] memory emergencySelectors = new bytes4[](4);
+        emergencySelectors[0] = communityToken.requestEmergencyWithdrawal.selector;
+        emergencySelectors[1] = communityToken.executeEmergencyWithdrawal.selector;
+        emergencySelectors[2] = communityToken.pause.selector;
+        emergencySelectors[3] = communityToken.unpause.selector;
+        accessManager.setTargetFunctionRole(address(communityToken), emergencySelectors, communityToken.EMERGENCY_ROLE());
+
+        // Grant roles via AccessManager
+        accessManager.grantRole(communityToken.MINTER_ROLE(), minter, 0);
+        accessManager.grantRole(communityToken.TREASURY_ROLE(), treasury, 0);
+        accessManager.grantRole(communityToken.EMERGENCY_ROLE(), emergencyRole, 0);
         vm.stopPrank();
 
         // Give users USDC
@@ -101,12 +122,6 @@ contract CommunityTokenTest is Test {
         assertEq(communityToken.symbol(), "TCT");
         assertEq(communityToken.treasury(), treasury);
         assertEq(communityToken.maxSupply(), MAX_SUPPLY);
-        
-        // Check roles
-        assertTrue(communityToken.hasRole(communityToken.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(communityToken.hasRole(communityToken.MINTER_ROLE(), admin));
-        assertTrue(communityToken.hasRole(communityToken.TREASURY_ROLE(), admin));
-        assertTrue(communityToken.hasRole(communityToken.EMERGENCY_ROLE(), admin));
     }
 
     function testConstructorZeroUSDCReverts() public {
@@ -118,7 +133,8 @@ contract CommunityTokenTest is Test {
             "TCT",
             treasury,
             MAX_SUPPLY,
-            address(paramController)
+            address(paramController),
+            address(accessManager)
         );
     }
 
@@ -131,7 +147,8 @@ contract CommunityTokenTest is Test {
             "TCT",
             address(0),
             MAX_SUPPLY,
-            address(paramController)
+            address(paramController),
+            address(accessManager)
         );
     }
     
@@ -144,7 +161,8 @@ contract CommunityTokenTest is Test {
             "TCT",
             treasury,
             MAX_SUPPLY,
-            address(0)
+            address(0),
+            address(accessManager)
         );
     }
 
@@ -157,7 +175,8 @@ contract CommunityTokenTest is Test {
             "TCT",
             treasury,
             MAX_SUPPLY,
-            address(paramController)
+            address(paramController),
+            address(accessManager)
         );
     }
 
@@ -170,7 +189,8 @@ contract CommunityTokenTest is Test {
             "TCT",
             treasury,
             0,
-            address(paramController)
+            address(paramController),
+            address(accessManager)
         );
     }
 
@@ -179,7 +199,7 @@ contract CommunityTokenTest is Test {
     function testMint() public {
         uint256 usdcAmount = 1000e18;
         
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), usdcAmount);
         
         vm.expectEmit(true, true, true, true);
@@ -205,7 +225,7 @@ contract CommunityTokenTest is Test {
         
         usdc.mint(user1, exceedsAmount);
         
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), exceedsAmount);
         
         vm.expectRevert(abi.encodeWithSelector(
@@ -237,8 +257,8 @@ contract CommunityTokenTest is Test {
     }
 
     function testMintToOnlyMinterRole() public {
-        vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        vm.prank(user1, user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
         communityToken.mintTo(user2, 1000e18);
     }
 
@@ -253,10 +273,10 @@ contract CommunityTokenTest is Test {
     }
 
     function testMintWhenPausedReverts() public {
-        vm.prank(emergencyRole);
+        vm.prank(emergencyRole, emergencyRole);
         communityToken.pause();
 
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 1000e18);
         vm.expectRevert(abi.encodeWithSelector(Pausable.EnforcedPause.selector));
         communityToken.mint(1000e18);
@@ -268,7 +288,7 @@ contract CommunityTokenTest is Test {
     function testRedeem() public {
         // First mint some tokens
         uint256 usdcAmount = 2000e18;
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), usdcAmount);
         communityToken.mint(usdcAmount);
         
@@ -294,7 +314,7 @@ contract CommunityTokenTest is Test {
         
         // First mint some tokens
         uint256 usdcAmount = 2000e18;
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), usdcAmount);
         communityToken.mint(usdcAmount);
         
@@ -335,13 +355,13 @@ contract CommunityTokenTest is Test {
 
     function testRedeemInsufficientUSDCReservesReverts() public {
         // Mint tokens first
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 1000e18);
         communityToken.mint(1000e18);
         vm.stopPrank();
 
         // Artificially drain USDC reserves
-        vm.startPrank(emergencyRole);
+        vm.startPrank(emergencyRole, emergencyRole);
         communityToken.requestEmergencyWithdrawal(1000e18);
         vm.warp(block.timestamp + 7 days + 1);
         communityToken.executeEmergencyWithdrawal(0, emergencyRole);
@@ -362,7 +382,7 @@ contract CommunityTokenTest is Test {
     function testDepositToTreasury() public {
         uint256 depositAmount = 5000e18;
         
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), depositAmount);
         
         vm.expectEmit(true, true, true, true);
@@ -380,7 +400,7 @@ contract CommunityTokenTest is Test {
         uint256 mintAmount = 2000e18;
         
         // Deposit to treasury 
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), treasuryDeposit);
         communityToken.depositToTreasury(treasuryDeposit);
         
@@ -403,7 +423,7 @@ contract CommunityTokenTest is Test {
 
     function testWithdrawFromTreasuryInsufficientReservesReverts() public {
         // Mint tokens first
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 2000e18);
         communityToken.mint(2000e18);
         vm.stopPrank();
@@ -419,8 +439,8 @@ contract CommunityTokenTest is Test {
     }
 
     function testWithdrawFromTreasuryOnlyTreasuryRole() public {
-        vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        vm.prank(user1, user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
         communityToken.withdrawFromTreasury(user2, 1000e18, "Test");
     }
 
@@ -445,28 +465,28 @@ contract CommunityTokenTest is Test {
     }
 
     function testRequestEmergencyWithdrawalOnlyEmergencyRole() public {
-        vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        vm.prank(user1, user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
         communityToken.requestEmergencyWithdrawal(1000e18);
     }
 
     function testExecuteEmergencyWithdrawal() public {
         // First deposit USDC
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 2000e18);
         communityToken.depositToTreasury(2000e18);
         vm.stopPrank();
 
         // Request emergency withdrawal
         uint256 withdrawAmount = 1000e18;
-        vm.prank(emergencyRole);
+        vm.prank(emergencyRole, emergencyRole);
         communityToken.requestEmergencyWithdrawal(withdrawAmount);
 
         // Advance time past delay
         vm.warp(block.timestamp + 7 days + 1);
 
         // Execute withdrawal
-        vm.prank(emergencyRole);
+        vm.prank(emergencyRole, emergencyRole);
         vm.expectEmit(true, true, true, true);
         emit EmergencyWithdrawalExecuted(0, withdrawAmount, user3);
         
@@ -479,10 +499,10 @@ contract CommunityTokenTest is Test {
     }
 
     function testExecuteEmergencyWithdrawalBeforeDelayReverts() public {
-        vm.prank(emergencyRole);
+        vm.prank(emergencyRole, emergencyRole);
         communityToken.requestEmergencyWithdrawal(1000e18);
 
-        vm.prank(emergencyRole);
+        vm.prank(emergencyRole, emergencyRole);
         vm.expectRevert(abi.encodeWithSelector(
             CommunityToken.EmergencyWithdrawalNotReady.selector,
             block.timestamp,
@@ -493,13 +513,13 @@ contract CommunityTokenTest is Test {
 
     function testPauseAndUnpause() public {
         // Pause
-        vm.prank(emergencyRole);
+        vm.startPrank(emergencyRole, emergencyRole);
         communityToken.pause();
         assertTrue(communityToken.paused());
 
         // Unpause
-        vm.prank(admin);
         communityToken.unpause();
+        vm.stopPrank();
         assertFalse(communityToken.paused());
     }
 
@@ -514,7 +534,7 @@ contract CommunityTokenTest is Test {
         // Test that redemption uses the ParamController fee
         uint256 mintAmount = 1000e18;
         
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), mintAmount);
         communityToken.mint(mintAmount);
         
@@ -535,7 +555,7 @@ contract CommunityTokenTest is Test {
         
         uint256 mintAmount = 1000e18;
         
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), mintAmount);
         communityToken.mint(mintAmount);
         
@@ -560,7 +580,7 @@ contract CommunityTokenTest is Test {
         
         // Test redemption with ParamController fee
         uint256 usdcAmount = 1000e18;
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), usdcAmount);
         communityToken.mint(usdcAmount);
         
@@ -577,7 +597,7 @@ contract CommunityTokenTest is Test {
     function testSetTreasury() public {
         address newTreasury = address(0x9999);
         
-        vm.prank(admin);
+        vm.prank(treasury, treasury);
         vm.expectEmit(true, true, true, true);
         emit TreasuryUpdated(treasury, newTreasury);
         
@@ -588,7 +608,7 @@ contract CommunityTokenTest is Test {
     function testSetMaxSupply() public {
         uint256 newMaxSupply = MAX_SUPPLY * 2;
         
-        vm.prank(admin);
+        vm.prank(admin, admin);
         vm.expectEmit(true, true, true, true);
         emit MaxSupplyUpdated(MAX_SUPPLY, newMaxSupply);
         
@@ -598,12 +618,12 @@ contract CommunityTokenTest is Test {
 
     function testSetMaxSupplyBelowCurrentSupplyReverts() public {
         // Mint some tokens first
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 5000e18);
         communityToken.mint(5000e18);
         vm.stopPrank();
 
-        vm.prank(admin);
+        vm.prank(admin, admin);
         vm.expectRevert(abi.encodeWithSelector(
             Errors.InvalidInput.selector,
             "Max supply cannot be less than current supply"
@@ -618,7 +638,7 @@ contract CommunityTokenTest is Test {
         assertEq(communityToken.getBackingRatio(), 10000); // 100%
 
         // Mint tokens with 1:1 backing
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 1000e18);
         communityToken.mint(1000e18);
         vm.stopPrank();
@@ -626,7 +646,7 @@ contract CommunityTokenTest is Test {
         assertEq(communityToken.getBackingRatio(), 10000); // 100%
 
         // Add extra reserves
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 500e18);
         communityToken.depositToTreasury(500e18);
         vm.stopPrank();
@@ -652,7 +672,7 @@ contract CommunityTokenTest is Test {
         assertEq(communityToken.getAvailableTreasuryBalance(), 0);
 
         // Mint tokens (creates backing requirement)
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 1000e18);
         communityToken.mint(1000e18);
         vm.stopPrank();
@@ -661,7 +681,7 @@ contract CommunityTokenTest is Test {
         assertEq(communityToken.getAvailableTreasuryBalance(), 0);
 
         // Add extra reserves
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 500e18);
         communityToken.depositToTreasury(500e18);
         vm.stopPrank();
@@ -691,14 +711,14 @@ contract CommunityTokenTest is Test {
     function testEndToEndTokenLifecycle() public {
         // 1. User mints tokens
         uint256 mintAmount = 5000e18;
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), mintAmount);
         communityToken.mint(mintAmount);
         vm.stopPrank();
 
         // 2. Community deposits extra treasury funds
         uint256 treasuryAmount = 2000e18;
-        vm.startPrank(user2);
+        vm.startPrank(user2, user2);
         usdc.approve(address(communityToken), treasuryAmount);
         communityToken.depositToTreasury(treasuryAmount);
         vm.stopPrank();
@@ -731,24 +751,23 @@ contract CommunityTokenTest is Test {
         // Test each role can only do what they're supposed to
         
         // Only minter can mintTo
-        vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        vm.prank(user1, user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
         communityToken.mintTo(user2, 1000e18);
 
         // Only treasury can withdraw
-        vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        vm.prank(user1, user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
         communityToken.withdrawFromTreasury(user2, 100e18, "test");
 
         // Only emergency can pause
-        vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        vm.prank(user1, user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
         communityToken.pause();
 
         // Only admin can set parameters
-        // Test that only authorized users can pause
-        vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
-        communityToken.pause();
+        vm.prank(user1, user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
+        communityToken.setMaxSupply(MAX_SUPPLY + 1);
     }
 }

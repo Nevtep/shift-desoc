@@ -2,16 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
 /// @title VerifierPowerToken1155
-/// @notice Per-community verifier power token using ERC-1155 with timelock-only control
-/// @dev Token ID represents communityId, only timelock can mint/burn/transfer tokens
-contract VerifierPowerToken1155 is ERC1155, AccessControl {
-    /// @notice Role identifier for timelock contract
-    bytes32 public constant TIMELOCK_ROLE = keccak256("TIMELOCK_ROLE");
-    
+/// @notice Per-community verifier power token using ERC-1155 with AccessManager authority
+/// @dev Token ID represents communityId; AccessManager binds which roles can mint/burn/transfer
+contract VerifierPowerToken1155 is ERC1155, AccessManaged {
     /// @notice Total supply per community for tracking
     mapping(uint256 => uint256) public totalSupply;
     
@@ -30,16 +27,10 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
     error InsufficientBalance(address account, uint256 communityId, uint256 required, uint256 available);
     
     /// @notice Constructor
-    /// @param timelock Address of the timelock controller
+    /// @param manager Address of the AccessManager authority
     /// @param uri Base metadata URI for the tokens
-    constructor(address timelock, string memory uri) ERC1155(uri) {
-        if (timelock == address(0)) revert Errors.ZeroAddress();
-        
-        _grantRole(DEFAULT_ADMIN_ROLE, timelock);
-        _grantRole(TIMELOCK_ROLE, timelock);
-        
-        // Revoke admin role from deployer for security
-        _revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    constructor(address manager, string memory uri) ERC1155(uri) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
     }
     
     /// @notice Initialize a new community with metadata
@@ -48,7 +39,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
     function initializeCommunity(
         uint256 communityId, 
         string calldata metadataURI
-    ) external onlyRole(TIMELOCK_ROLE) {
+    ) external restricted {
         if (communityInitialized[communityId]) {
             revert Errors.InvalidInput("Community already initialized");
         }
@@ -57,7 +48,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         emit CommunityInitialized(communityId, metadataURI);
     }
     
-    /// @notice Mint verifier power tokens (timelock only)
+    /// @notice Mint verifier power tokens (AccessManager-authorized)
     /// @param to Address to mint tokens to
     /// @param communityId Community identifier (token ID)
     /// @param amount Amount of verifier power to mint
@@ -67,7 +58,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         uint256 communityId, 
         uint256 amount, 
         string calldata reasonCID
-    ) external onlyRole(TIMELOCK_ROLE) {
+    ) external restricted {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert InvalidAmount(amount);
         if (!communityInitialized[communityId]) revert CommunityNotInitialized(communityId);
@@ -78,7 +69,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         emit VerifierGranted(to, communityId, amount, reasonCID);
     }
     
-    /// @notice Burn verifier power tokens (timelock only)
+    /// @notice Burn verifier power tokens (AccessManager-authorized)
     /// @param from Address to burn tokens from
     /// @param communityId Community identifier (token ID)
     /// @param amount Amount of verifier power to burn
@@ -88,7 +79,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         uint256 communityId, 
         uint256 amount,
         string calldata reasonCID
-    ) external onlyRole(TIMELOCK_ROLE) {
+    ) external restricted {
         if (from == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert InvalidAmount(amount);
         
@@ -103,7 +94,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         emit VerifierRevoked(from, communityId, amount, reasonCID);
     }
     
-    /// @notice Batch mint to multiple addresses (timelock only)
+    /// @notice Batch mint to multiple addresses (AccessManager-authorized)
     /// @param to Array of addresses to mint to
     /// @param communityId Community identifier
     /// @param amounts Array of amounts to mint
@@ -113,7 +104,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         uint256 communityId,
         uint256[] calldata amounts,
         string calldata reasonCID
-    ) external onlyRole(TIMELOCK_ROLE) {
+    ) external restricted {
         if (to.length != amounts.length) revert Errors.InvalidInput("Array length mismatch");
         if (!communityInitialized[communityId]) revert CommunityNotInitialized(communityId);
         
@@ -131,7 +122,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         totalSupply[communityId] += totalAmount;
     }
     
-    /// @notice Batch burn from multiple addresses (timelock only)
+    /// @notice Batch burn from multiple addresses (AccessManager-authorized)
     /// @param from Array of addresses to burn from
     /// @param communityId Community identifier
     /// @param amounts Array of amounts to burn
@@ -141,7 +132,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         uint256 communityId,
         uint256[] calldata amounts,
         string calldata reasonCID
-    ) external onlyRole(TIMELOCK_ROLE) {
+    ) external restricted {
         if (from.length != amounts.length) revert Errors.InvalidInput("Array length mismatch");
         
         uint256 totalAmount = 0;
@@ -163,7 +154,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         totalSupply[communityId] -= totalAmount;
     }
     
-    /// @notice Disable regular transfers - only timelock can move tokens
+    /// @notice Disable regular transfers - only AccessManager-authorized transfers allowed via adminTransfer
     /// @dev All transfer functions revert to prevent trading of verifier power
     function safeTransferFrom(
         address, 
@@ -175,7 +166,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         revert TransfersDisabled();
     }
     
-    /// @notice Disable batch transfers - only timelock can move tokens
+    /// @notice Disable batch transfers - only AccessManager-authorized transfers allowed via adminTransfer
     /// @dev Batch transfer function also reverts
     function safeBatchTransferFrom(
         address, 
@@ -187,7 +178,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         revert TransfersDisabled();
     }
     
-    /// @notice Administrative transfer by timelock (for governance decisions)
+    /// @notice Administrative transfer by authorized governance (for governance decisions)
     /// @param from Source address
     /// @param to Destination address  
     /// @param communityId Community identifier
@@ -199,7 +190,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
         uint256 communityId,
         uint256 amount,
         string calldata reasonCID
-    ) external onlyRole(TIMELOCK_ROLE) {
+    ) external restricted {
         if (from == address(0) || to == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert InvalidAmount(amount);
         
@@ -269,14 +260,8 @@ contract VerifierPowerToken1155 is ERC1155, AccessControl {
     
     /// @notice Update the base URI for token metadata
     /// @param newURI New base URI
-    function setURI(string calldata newURI) external onlyRole(TIMELOCK_ROLE) {
+    function setURI(string calldata newURI) external restricted {
         _setURI(newURI);
     }
     
-    /// @notice Check interface support
-    /// @param interfaceId Interface identifier
-    /// @return True if interface is supported
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, AccessControl) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
 }

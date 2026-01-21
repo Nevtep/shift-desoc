@@ -57,7 +57,6 @@ uint256 public nextDisputeId;
 
 // Access control
 address public owner;
-mapping(address => bool) public authorizedCallers;  // Modules that can open disputes
 address public disputeReceiver;                      // Marketplace or receiver contract
 
 // Prevent duplicate disputes
@@ -77,11 +76,11 @@ function openDispute(
     address seller,
     uint256 amount,
     string calldata evidenceURI
-) external onlyAuthorized returns (uint256 disputeId)
+) external restricted returns (uint256 disputeId)
 ```
 
 **Process:**
-1. Verify caller is authorized module (Marketplace, HousingManager)
+1. AccessManager enforces caller role (Marketplace, HousingManager)
 2. Check no duplicate dispute exists for this resource
 3. Create new dispute with OPEN status
 4. Track as active dispute for the resource
@@ -267,8 +266,12 @@ Buyer Purchase → Escrow Held → Dispute Opened
 const disputes = await CommerceDisputes.deploy(governanceAddress);
 
 // Authorize Marketplace to open disputes
-await disputes.setAuthorizedCaller(marketplaceAddress, true);
-await disputes.setAuthorizedCaller(housingManagerAddress, true);
+// AccessManager
+bytes4[] memory disputeCaller = new bytes4[](1);
+disputeCaller[0] = disputes.openDispute.selector;
+accessManager.setTargetFunctionRole(address(disputes), disputeCaller, Roles.COMMERCE_DISPUTES_CALLER_ROLE);
+accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, marketplaceAddress, 0);
+accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, housingManagerAddress, 0);
 
 // Set Marketplace as dispute receiver
 await disputes.setDisputeReceiver(marketplaceAddress);

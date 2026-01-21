@@ -2,11 +2,14 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {VerifierPowerToken1155} from "../contracts/tokens/VerifierPowerToken1155.sol";
 import {Errors} from "../contracts/libs/Errors.sol";
 
 contract VerifierPowerToken1155Test is Test {
     VerifierPowerToken1155 public vpt;
+    AccessManager public accessManager;
     
     address public timelock = makeAddr("timelock");
     address public user1 = makeAddr("user1");
@@ -24,7 +27,19 @@ contract VerifierPowerToken1155Test is Test {
     event CommunityInitialized(uint256 indexed communityId, string metadataURI);
     
     function setUp() public {
-        vpt = new VerifierPowerToken1155(timelock, BASE_URI);
+        accessManager = new AccessManager(timelock);
+        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI);
+
+        vm.startPrank(timelock);
+        bytes4[] memory selectors = new bytes4[](6);
+        selectors[0] = vpt.initializeCommunity.selector;
+        selectors[1] = vpt.mint.selector;
+        selectors[2] = vpt.burn.selector;
+        selectors[3] = vpt.batchMint.selector;
+        selectors[4] = vpt.batchBurn.selector;
+        selectors[5] = vpt.adminTransfer.selector;
+        accessManager.setTargetFunctionRole(address(vpt), selectors, accessManager.ADMIN_ROLE());
+        vm.stopPrank();
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -32,8 +47,8 @@ contract VerifierPowerToken1155Test is Test {
     //////////////////////////////////////////////////////////////*/
     
     function testConstructor() public view {
-        assertTrue(vpt.hasRole(vpt.TIMELOCK_ROLE(), timelock));
-        assertTrue(vpt.hasRole(vpt.DEFAULT_ADMIN_ROLE(), timelock));
+        (bool isAdmin,) = accessManager.hasRole(accessManager.ADMIN_ROLE(), timelock);
+        assertTrue(isAdmin);
         assertEq(vpt.uri(0), BASE_URI);
     }
     
@@ -59,7 +74,7 @@ contract VerifierPowerToken1155Test is Test {
     }
     
     function testInitializeCommunityNonTimelockReverts() public {
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
         vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
     }
@@ -99,7 +114,7 @@ contract VerifierPowerToken1155Test is Test {
         vm.prank(timelock);
         vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
         
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
         vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
     }
@@ -187,7 +202,7 @@ contract VerifierPowerToken1155Test is Test {
         vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
         vm.stopPrank();
         
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
         vpt.burn(user1, COMMUNITY_ID_1, 50, REASON_CID);
     }
@@ -393,8 +408,8 @@ contract VerifierPowerToken1155Test is Test {
     function testSupportsInterface() public view {
         // ERC1155 interface
         assertTrue(vpt.supportsInterface(0xd9b67a26));
-        // AccessControl interface
-        assertTrue(vpt.supportsInterface(0x7965db0b));
+        // AccessControl interface (no longer supported post-AccessManager migration)
+        assertFalse(vpt.supportsInterface(0x7965db0b));
         // ERC165 interface
         assertTrue(vpt.supportsInterface(0x01ffc9a7));
     }

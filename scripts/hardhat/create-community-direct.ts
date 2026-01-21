@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { Roles } from "../roles";
 
 /**
  * Create Community Directly (without CommunityFactory)
@@ -47,6 +48,15 @@ async function main() {
   const addresses = loadAddresses();
   console.log("📁 Loaded infrastructure addresses");
 
+  const accessManagerAddress = addresses.accessManager ?? process.env.ACCESS_MANAGER ?? "";
+  if (!accessManagerAddress) {
+    throw new Error("AccessManager address missing (add to deployed-addresses.json or set ACCESS_MANAGER)");
+  }
+  const accessManager = await ethers.getContractAt(
+    "AccessManager",
+    accessManagerAddress,
+  );
+
   // External contracts
   const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
@@ -75,7 +85,7 @@ async function main() {
     `${COMMUNITY_CONFIG.name} Membership`,
     "SHIFT-MEMBER-1",
     1, // communityId will be updated after registry
-    deployer.address,
+    accessManagerAddress,
   );
   await membershipToken.waitForDeployment();
   const membershipTokenAddress = await membershipToken.getAddress();
@@ -338,13 +348,13 @@ async function main() {
   // Grant minter role to claims contract
   console.log("\n🪙 Setting up token minting permissions...");
   const MINTER_ROLE = await membershipToken.MINTER_ROLE();
-  await membershipToken.grantRole(MINTER_ROLE, claimsAddress);
-  console.log("✅ Claims contract granted minter role");
+  await accessManager.grantRole(MINTER_ROLE, claimsAddress, 0);
+  console.log("✅ Claims contract granted minter role via AccessManager");
 
   // Update WorkerSBT manager to Claims
-  const MANAGER_ROLE = await workerSBT.MANAGER_ROLE();
-  await workerSBT.grantRole(MANAGER_ROLE, claimsAddress);
-  console.log("✅ Claims contract granted WorkerSBT manager role");
+  const MANAGER_ROLE = Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE;
+  await accessManager.grantRole(MANAGER_ROLE, claimsAddress, 0);
+  console.log("✅ Claims contract granted WorkerSBT manager role via AccessManager");
 
   // Set VerifierPool claims contract
   await verifierPool.setClaimsContract(claimsAddress);

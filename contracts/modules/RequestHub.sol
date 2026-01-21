@@ -513,8 +513,7 @@ contract RequestHub is ReentrancyGuard {
     /// @param user User to check
     function _requireModerator(uint256 communityId, address user) internal view {
         if (!communityRegistry.hasRole(communityId, user, communityRegistry.MODERATOR_ROLE()) &&
-            !communityRegistry.communityAdmins(communityId, user) &&
-            !communityRegistry.hasRole(communityRegistry.DEFAULT_ADMIN_ROLE(), user)) {
+            !communityRegistry.communityAdmins(communityId, user)) {
             revert Errors.NotAuthorized(user);
         }
     }
@@ -523,8 +522,7 @@ contract RequestHub is ReentrancyGuard {
     /// @param communityId Community ID
     /// @param user User to check
     function _requireCommunityAdmin(uint256 communityId, address user) internal view {
-        if (!communityRegistry.communityAdmins(communityId, user) &&
-            !communityRegistry.hasRole(communityRegistry.DEFAULT_ADMIN_ROLE(), user)) {
+        if (!communityRegistry.communityAdmins(communityId, user)) {
             revert Errors.NotAuthorized(user);
         }
     }

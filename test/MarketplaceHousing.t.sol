@@ -2,10 +2,12 @@
 pragma solidity ^0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {Marketplace} from "../contracts/modules/Marketplace.sol";
-import {HousingManager} from "../contracts/modules/HousingManager.sol";
-import {CommerceDisputes} from "../contracts/modules/CommerceDisputes.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {Marketplace} from "contracts/modules/Marketplace.sol";
+import {HousingManager} from "contracts/modules/HousingManager.sol";
+import {CommerceDisputes} from "contracts/modules/CommerceDisputes.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 /**
  * @title MarketplaceHousing Integration Test
@@ -25,6 +27,7 @@ contract MarketplaceHousingTest is Test {
     Marketplace public marketplace;
     HousingManager public housing;
     CommerceDisputes public disputes;
+    AccessManager public accessManager;
 
     ERC20Mock public usdc;
 
@@ -57,12 +60,42 @@ contract MarketplaceHousingTest is Test {
         usdc = new ERC20Mock();
 
         // Deploy system contracts
-        disputes = new CommerceDisputes(owner);
-        marketplace = new Marketplace(owner, address(disputes), address(0));
-        housing = new HousingManager(owner, address(marketplace), address(usdc));
+        accessManager = new AccessManager(owner);
+        disputes = new CommerceDisputes(address(accessManager));
+        marketplace = new Marketplace(address(accessManager), address(disputes), address(0));
+        housing = new HousingManager(address(accessManager), address(usdc));
+
+        bytes4[] memory marketplaceAdmin = new bytes4[](4);
+        marketplaceAdmin[0] = marketplace.setCommunityActive.selector;
+        marketplaceAdmin[1] = marketplace.setCommunityToken.selector;
+        marketplaceAdmin[2] = marketplace.setCommerceDisputes.selector;
+        marketplaceAdmin[3] = marketplace.setRevenueRouter.selector;
+        accessManager.setTargetFunctionRole(address(marketplace), marketplaceAdmin, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory housingAdmin = new bytes4[](1);
+        housingAdmin[0] = housing.createUnit.selector;
+        accessManager.setTargetFunctionRole(address(housing), housingAdmin, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory housingMarketplaceSelectors = new bytes4[](2);
+        housingMarketplaceSelectors[0] = housing.consume.selector;
+        housingMarketplaceSelectors[1] = housing.onOrderSettled.selector;
+        accessManager.setTargetFunctionRole(
+            address(housing),
+            housingMarketplaceSelectors,
+            Roles.HOUSING_MARKETPLACE_CALLER_ROLE
+        );
+        accessManager.grantRole(Roles.HOUSING_MARKETPLACE_CALLER_ROLE, address(marketplace), 0);
+
+        bytes4[] memory disputesAdmin = new bytes4[](1);
+        disputesAdmin[0] = disputes.setDisputeReceiver.selector;
+        accessManager.setTargetFunctionRole(address(disputes), disputesAdmin, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory disputeCaller = new bytes4[](1);
+        disputeCaller[0] = disputes.openDispute.selector;
+        accessManager.setTargetFunctionRole(address(disputes), disputeCaller, Roles.COMMERCE_DISPUTES_CALLER_ROLE);
 
         // Configure disputes system
-        disputes.setAuthorizedCaller(address(marketplace), true);
+        accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, address(marketplace), 0);
         disputes.setDisputeReceiver(address(marketplace));
 
         // Configure marketplace

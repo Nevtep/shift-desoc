@@ -26,8 +26,6 @@ mapping(uint256 => JurorSelection) public selections; // engagementId => detalle
 contract VerifierManager {
     IVerifierElection public immutable verifierElection;    // Gestión de poder de verificador
     IParamController public immutable paramController;      // Configuración de comunidad
-    address public immutable governance;                    // Contrato de gobernanza
-    address public engagementsContract;                    // Contrato de procesamiento de compromisos
 }
 ```
 
@@ -41,11 +39,10 @@ contract VerifierManager {
 function selectJurors(
     uint256 engagementId,
     uint256 communityId,
-    uint256 seed
-) external onlyEngagements returns (
-    address[] memory selectedJurors,
-    uint256[] memory selectedPowers
-)
+    uint256 panelSize,
+    uint256 seed,
+    bool useWeighting
+) external restricted returns (address[] memory selectedJurors)
 ```
 
 **Algoritmo de Selección**:
@@ -80,7 +77,7 @@ function reportFraud(
     uint256 communityId,
     address[] calldata offenders,
     string calldata evidenceCID
-) external onlyEngagements
+) external restricted
 ```
 
 **Proceso de Reporte de Fraude**:
@@ -118,8 +115,7 @@ function _getCommunityParams(uint256 communityId) private view returns (
 
 | Rol | Funciones | Propósito |
 |-----|-----------|-----------|
-| **Contrato Compromisos** | `selectJurors()`, `reportFraud()` | Integración de flujo de trabajo de verificación |
-| **Gobernanza** | `setEngagementsContract()` | Administración del sistema |
+| **Rol AccessManager `VERIFIER_MANAGER_CALLER_ROLE`** | `selectJurors()`, `reportFraud()` | Integración de flujo de trabajo de verificación (caller Engagements) |
 | **Público** | Funciones de vista | Transparencia y analíticas |
 
 ### Mecanismos de Integridad de Selección

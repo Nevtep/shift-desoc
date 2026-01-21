@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { Roles } from "../roles";
 
 /**
  * Continue Community Setup - Complete the setup that failed
@@ -11,6 +12,16 @@ async function main() {
     readFileSync(join(__dirname, "deployed-addresses.json"), "utf8"),
   );
   const [deployer] = await ethers.getSigners();
+
+  const accessManagerAddress =
+    addresses.accessManager ?? process.env.ACCESS_MANAGER ?? "";
+  if (!accessManagerAddress) {
+    throw new Error("AccessManager address missing (add to deployed-addresses.json or set ACCESS_MANAGER)");
+  }
+  const accessManager = await ethers.getContractAt(
+    "AccessManager",
+    accessManagerAddress,
+  );
 
   console.log("🔧 Continuing Community Setup...");
   console.log("Deployer:", deployer.address);
@@ -59,6 +70,8 @@ async function main() {
     "WorkerSBT",
     communityAddresses.workerSBT,
   );
+  const accessManagerAddressForLog = await accessManager.getAddress();
+  console.log("AccessManager:", accessManagerAddressForLog);
 
   console.log("✅ Connected to all contracts");
 
@@ -160,14 +173,15 @@ async function main() {
     console.log("\n🪙 Setting up token minting permissions...");
     const MINTER_ROLE = await membershipToken.MINTER_ROLE();
 
-    const hasMinterRole = await membershipToken.hasRole(
+    const hasMinterRole = await accessManager.hasRole(
       MINTER_ROLE,
       communityAddresses.engagements,
     );
     if (!hasMinterRole) {
-      await membershipToken.grantRole(
+      await accessManager.grantRole(
         MINTER_ROLE,
         communityAddresses.engagements,
+        0,
       );
       console.log("✅ Engagements contract granted minter role");
     } else {
@@ -180,16 +194,17 @@ async function main() {
   try {
     // Update WorkerSBT manager to Engagements
     console.log("\n🎖️ Setting up WorkerSBT permissions...");
-    const MANAGER_ROLE = await workerSBT.MANAGER_ROLE();
+    const MANAGER_ROLE = Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE;
 
-    const hasManagerRole = await workerSBT.hasRole(
+    const hasManagerRole = await accessManager.hasRole(
       MANAGER_ROLE,
       communityAddresses.engagements,
     );
     if (!hasManagerRole) {
-      await workerSBT.grantRole(
+      await accessManager.grantRole(
         MANAGER_ROLE,
         communityAddresses.engagements,
+        0,
       );
       console.log("✅ Engagements contract granted WorkerSBT manager role");
     } else {

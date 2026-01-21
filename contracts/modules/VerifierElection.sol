@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
 /// @notice Interface for VerifierPowerToken1155 contract
@@ -16,10 +17,7 @@ interface IVPT1155 {
 /// @title VerifierElection
 /// @notice Manages verifier election and governance for per-community verifier power tokens
 /// @dev Only timelock can execute verifier management functions
-contract VerifierElection {
-    /// @notice Immutable timelock controller address
-    address public immutable timelock;
-    
+contract VerifierElection is AccessManaged {
     /// @notice Verifier power token contract
     IVPT1155 public immutable vpt;
     
@@ -66,20 +64,13 @@ contract VerifierElection {
         string reasonCID
     );
     
-    /// @notice Access control modifier
-    modifier onlyTimelock() {
-        if (msg.sender != timelock) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-    
     /// @notice Constructor
-    /// @param _timelock Timelock controller address
+    /// @param manager AccessManager authority
     /// @param _vpt VerifierPowerToken1155 contract address
-    constructor(address _timelock, address _vpt) {
-        if (_timelock == address(0)) revert Errors.ZeroAddress();
+    constructor(address manager, address _vpt) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_vpt == address(0)) revert Errors.ZeroAddress();
         
-        timelock = _timelock;
         vpt = IVPT1155(_vpt);
     }
     
@@ -94,7 +85,7 @@ contract VerifierElection {
         address[] calldata addrs,
         uint256[] calldata weights,
         string calldata reasonCID
-    ) external onlyTimelock {
+    ) external restricted {
         if (addrs.length != weights.length) {
             revert Errors.InvalidInput("Array length mismatch");
         }
@@ -174,7 +165,7 @@ contract VerifierElection {
         uint256 communityId,
         address[] calldata offenders,
         string calldata reasonCID
-    ) external onlyTimelock {
+    ) external restricted {
         if (offenders.length == 0) revert Errors.InvalidInput("No offenders provided");
         
         for (uint256 i = 0; i < offenders.length; i++) {
@@ -208,7 +199,7 @@ contract VerifierElection {
         uint256 communityId,
         address verifier,
         string calldata reasonCID
-    ) external onlyTimelock {
+    ) external restricted {
         if (verifier == address(0)) revert Errors.ZeroAddress();
         if (!bannedVerifiers[communityId][verifier]) {
             revert Errors.InvalidInput("Verifier not banned");
@@ -230,7 +221,7 @@ contract VerifierElection {
         address verifier,
         uint256 newPower,
         string calldata reasonCID
-    ) external onlyTimelock {
+    ) external restricted {
         if (verifier == address(0)) revert Errors.ZeroAddress();
         if (bannedVerifiers[communityId][verifier]) {
             revert Errors.InvalidInput("Cannot adjust power of banned verifier");

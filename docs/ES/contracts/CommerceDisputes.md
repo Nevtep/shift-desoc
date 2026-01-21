@@ -57,7 +57,6 @@ uint256 public nextDisputeId;
 
 // Control de acceso
 address public owner;
-mapping(address => bool) public authorizedCallers;  // Módulos que pueden abrir disputas
 address public disputeReceiver;                      // Marketplace o contrato receptor
 
 // Prevenir disputas duplicadas
@@ -77,11 +76,11 @@ function openDispute(
     address seller,
     uint256 amount,
     string calldata evidenceURI
-) external onlyAuthorized returns (uint256 disputeId)
+) external restricted returns (uint256 disputeId)
 ```
 
 **Proceso:**
-1. Verificar que el llamador es un módulo autorizado (Marketplace, HousingManager)
+1. AccessManager aplica el rol de llamador (Marketplace, HousingManager)
 2. Verificar que no existe disputa duplicada para este recurso
 3. Crear nueva disputa con estado OPEN
 4. Rastrear como disputa activa para el recurso
@@ -267,8 +266,12 @@ Compra del Comprador → Escrow Retenido → Disputa Abierta
 const disputes = await CommerceDisputes.deploy(governanceAddress);
 
 // Autorizar Marketplace para abrir disputas
-await disputes.setAuthorizedCaller(marketplaceAddress, true);
-await disputes.setAuthorizedCaller(housingManagerAddress, true);
+// AccessManager
+bytes4[] memory disputeCaller = new bytes4[](1);
+disputeCaller[0] = disputes.openDispute.selector;
+accessManager.setTargetFunctionRole(address(disputes), disputeCaller, Roles.COMMERCE_DISPUTES_CALLER_ROLE);
+accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, marketplaceAddress, 0);
+accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, housingManagerAddress, 0);
 
 // Establecer Marketplace como receptor de disputas
 await disputes.setDisputeReceiver(marketplaceAddress);

@@ -2,8 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {RevenueRouter} from "contracts/modules/RevenueRouter.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 import {IValuableActionSBT} from "contracts/core/interfaces/IValuableActionSBT.sol";
 import {Types} from "contracts/libs/Types.sol";
 
@@ -201,6 +203,7 @@ contract ValuableActionSBTMock is IValuableActionSBT {
 
 contract MarketplaceRevenueRouterTest is Test {
     RevenueRouter public router;
+    AccessManager public accessManager;
     ParamControllerMock public paramController;
     CohortRegistryMock public cohortRegistry;
     ValuableActionSBTMock public sbt;
@@ -219,10 +222,33 @@ contract MarketplaceRevenueRouterTest is Test {
         sbt = new ValuableActionSBTMock();
         token = new MockERC20();
 
-        router = new RevenueRouter(address(paramController), address(cohortRegistry), address(sbt), admin);
+        accessManager = new AccessManager(admin);
+        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt));
+
+        vm.startPrank(admin, admin);
+        bytes4[] memory adminSelectors = new bytes4[](4);
+        adminSelectors[0] = router.setCommunityTreasury.selector;
+        adminSelectors[1] = router.setSupportedToken.selector;
+        adminSelectors[2] = router.setParamController.selector;
+        adminSelectors[3] = router.setCohortRegistry.selector;
+        accessManager.setTargetFunctionRole(address(router), adminSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory distributorSelectors = new bytes4[](1);
+        distributorSelectors[0] = router.routeRevenue.selector;
+        accessManager.setTargetFunctionRole(address(router), distributorSelectors, Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE);
+
+        bytes4[] memory positionSelectors = new bytes4[](2);
+        positionSelectors[0] = router.registerPosition.selector;
+        positionSelectors[1] = router.unregisterPosition.selector;
+        accessManager.setTargetFunctionRole(address(router), positionSelectors, Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE);
+
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), admin, 0); // ensure admin can call setup
+        accessManager.grantRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, distributor, 0);
+        accessManager.grantRole(Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE, admin, 0);
+        vm.stopPrank();
+
         router.setCommunityTreasury(COMMUNITY_ID, treasury);
         router.setSupportedToken(COMMUNITY_ID, address(token), true);
-        router.grantRole(router.DISTRIBUTOR_ROLE(), distributor);
 
         token.mint(distributor, 1_000e18);
     }
@@ -231,10 +257,9 @@ contract MarketplaceRevenueRouterTest is Test {
         paramController.setRevenuePolicy(COMMUNITY_ID, 2000, 3000, 0, 0); // 20% treasury, 30% positions, spill to positions
 
         uint256 positionId = sbt.mintPosition(positionHolder, COMMUNITY_ID, 100);
-        router.grantRole(router.POSITION_MANAGER_ROLE(), admin);
         router.registerPosition(positionId);
 
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
         vm.stopPrank();
@@ -253,7 +278,6 @@ contract MarketplaceRevenueRouterTest is Test {
         uint256 positionId = sbt.mintPosition(positionHolder, COMMUNITY_ID, 100);
         sbt.setEndedAtMock(positionId, 1);
 
-        router.grantRole(router.POSITION_MANAGER_ROLE(), admin);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Position ended"));
         router.registerPosition(positionId);
     }
@@ -262,10 +286,9 @@ contract MarketplaceRevenueRouterTest is Test {
         paramController.setRevenuePolicy(COMMUNITY_ID, 0, 3000, 1, 0);
 
         uint256 positionId = sbt.mintPosition(positionHolder, COMMUNITY_ID, 100);
-        router.grantRole(router.POSITION_MANAGER_ROLE(), admin);
         router.registerPosition(positionId);
 
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
         vm.stopPrank();
@@ -288,7 +311,7 @@ contract MarketplaceRevenueRouterTest is Test {
     function testSpilloverToTreasuryWhenNoPositions() public {
         paramController.setRevenuePolicy(COMMUNITY_ID, 0, 3000, 1, 0); // min positions with treasury spillover
 
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
         vm.stopPrank();
@@ -299,7 +322,7 @@ contract MarketplaceRevenueRouterTest is Test {
     function testWithdrawTreasuryAuthAndBalance() public {
         paramController.setRevenuePolicy(COMMUNITY_ID, 1000, 0, 1, 0);
 
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
         vm.stopPrank();
@@ -320,10 +343,9 @@ contract MarketplaceRevenueRouterTest is Test {
         paramController.setRevenuePolicy(COMMUNITY_ID, 1000, 0, 2, 0); // split with default 50/50
 
         uint256 positionId = sbt.mintPosition(positionHolder, COMMUNITY_ID, 100);
-        router.grantRole(router.POSITION_MANAGER_ROLE(), admin);
         router.registerPosition(positionId);
 
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
         vm.stopPrank();
@@ -338,9 +360,10 @@ contract MarketplaceRevenueRouterTest is Test {
 
     function testRouteRevenueZeroAmountReverts() public {
         paramController.setRevenuePolicy(COMMUNITY_ID, 2000, 0, 1, 0);
-        vm.prank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Zero amount"));
         router.routeRevenue(COMMUNITY_ID, address(token), 0);
+        vm.stopPrank();
     }
 }

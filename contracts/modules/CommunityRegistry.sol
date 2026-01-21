@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "../libs/Errors.sol";
+import {Roles} from "../libs/Roles.sol";
 import {ParamController} from "./ParamController.sol";
 
 /// @title CommunityRegistry
 /// @notice Central registry for community metadata, parameters, and module addresses
 /// @dev Single source of truth for community coordination and configuration
-contract CommunityRegistry is AccessControl {
+contract CommunityRegistry is AccessManaged {
     
     /*//////////////////////////////////////////////////////////////
                                STRUCTS
@@ -67,13 +68,13 @@ contract CommunityRegistry is AccessControl {
                                 ROLES
     //////////////////////////////////////////////////////////////*/    
     /// @notice Role for governance operations
-    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 public constant GOVERNANCE_ROLE = Roles.COMMUNITY_GOVERNANCE_ROLE;
     
     /// @notice Role for community moderators
-    bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
+    bytes32 public constant MODERATOR_ROLE = Roles.COMMUNITY_MODERATOR_ROLE;
     
     /// @notice Role for community curators
-    bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
+    bytes32 public constant CURATOR_ROLE = Roles.COMMUNITY_CURATOR_ROLE;
     
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -153,12 +154,11 @@ contract CommunityRegistry is AccessControl {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
     
-    /// @param initialAdmin Address that will have DEFAULT_ADMIN_ROLE
+    /// @param manager AccessManager authority
     /// @param _paramController ParamController contract address
-    constructor(address initialAdmin, address _paramController) {
-        if (initialAdmin == address(0)) revert Errors.ZeroAddress();
+    constructor(address manager, address _paramController) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_paramController == address(0)) revert Errors.ZeroAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
         paramController = ParamController(_paramController);
     }
     
@@ -202,7 +202,6 @@ contract CommunityRegistry is AccessControl {
         // Parameters are set separately via initializeDefaultParameters() or ParamController directly
         
         // Grant creator admin role for this community
-        communityRoles[communityId][msg.sender][DEFAULT_ADMIN_ROLE] = true;
         communityAdmins[communityId][msg.sender] = true;
         
         // Increment active community count
@@ -639,13 +638,8 @@ contract CommunityRegistry is AccessControl {
         if (communityAdmins[communityId][caller]) {
             return; // Authorized
         }
-        
-        // Check if caller has global admin role
-        if (hasRole(DEFAULT_ADMIN_ROLE, caller)) {
-            return; // Authorized
-        }
-        
-        // If neither condition is met, revert
+
+        // If not an admin, revert
         revert Errors.NotAuthorized(caller);
     }
     

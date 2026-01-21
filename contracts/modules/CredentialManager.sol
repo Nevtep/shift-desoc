@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {Errors} from "../libs/Errors.sol";
 import {Types} from "../libs/Types.sol";
 import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
@@ -8,7 +11,7 @@ import {ValuableActionSBT} from "./ValuableActionSBT.sol";
 
 /// @title CredentialManager
 /// @notice Manages course-scoped credential applications with verifier approval and governance-only revocation
-contract CredentialManager {
+contract CredentialManager is AccessManaged {
     /*//////////////////////////////////////////////////////////////
                                     EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -49,9 +52,6 @@ contract CredentialManager {
     uint8 private constant STATUS_APPROVED = 2;
     uint8 private constant STATUS_REVOKED = 3;
 
-    address public governance;
-    mapping(address => bool) public isModerator;
-
     ValuableActionRegistry public immutable valuableActionRegistry;
     ValuableActionSBT public immutable sbt;
 
@@ -66,45 +66,15 @@ contract CredentialManager {
     uint256 public nextAppId = 1;
 
     /*//////////////////////////////////////////////////////////////
-                                  MODIFIERS
-    //////////////////////////////////////////////////////////////*/
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
-    modifier onlyGovOrModerator() {
-        if (msg.sender != governance && !isModerator[msg.sender]) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
-    /*//////////////////////////////////////////////////////////////
                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _governance, address _valuableActionRegistry, address _sbt) {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
+    constructor(address manager, address _valuableActionRegistry, address _sbt) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_sbt == address(0)) revert Errors.ZeroAddress();
 
-        governance = _governance;
         valuableActionRegistry = ValuableActionRegistry(_valuableActionRegistry);
         sbt = ValuableActionSBT(_sbt);
-
-        isModerator[_governance] = true;
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                                ADMIN CONTROLS
-    //////////////////////////////////////////////////////////////*/
-    function setModerator(address account, bool status) external onlyGovernance {
-        if (account == address(0)) revert Errors.ZeroAddress();
-        isModerator[account] = status;
-    }
-
-    function updateGovernance(address newGovernance) external onlyGovernance {
-        if (newGovernance == address(0)) revert Errors.ZeroAddress();
-        governance = newGovernance;
-        isModerator[newGovernance] = true;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -112,7 +82,7 @@ contract CredentialManager {
     //////////////////////////////////////////////////////////////*/
     function defineCourse(bytes32 courseId, uint256 communityId, address verifier, bool active)
         external
-        onlyGovOrModerator
+        restricted
     {
         if (courseId == bytes32(0)) revert Errors.InvalidInput("Missing courseId");
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
@@ -124,7 +94,7 @@ contract CredentialManager {
         emit CourseDefined(courseId, communityId, verifier, active);
     }
 
-    function setCourseActive(bytes32 courseId, bool active) external onlyGovOrModerator {
+    function setCourseActive(bytes32 courseId, bool active) external restricted {
         Course storage course = courses[courseId];
         if (!course.exists) revert Errors.InvalidInput("Unknown courseId");
         course.active = active;
@@ -161,8 +131,8 @@ contract CredentialManager {
         if (application.applicant == address(0)) revert Errors.InvalidInput("Application not found");
 
         Course memory course = courses[application.courseId];
-        if (msg.sender != course.verifier && msg.sender != governance) {
-            revert Errors.NotAuthorized(msg.sender);
+        if (msg.sender != course.verifier) {
+            _requireAuthorized(this.approveApplication.selector);
         }
         if (!course.active) revert Errors.InvalidInput("Course inactive");
         if (hasCredential[application.courseId][application.applicant]) {
@@ -191,7 +161,7 @@ contract CredentialManager {
     /*//////////////////////////////////////////////////////////////
                                  REVOCATION
     //////////////////////////////////////////////////////////////*/
-    function revokeCredential(uint256 tokenId, bytes32 courseId, bytes calldata reason) external onlyGovernance {
+    function revokeCredential(uint256 tokenId, bytes32 courseId, bytes calldata reason) external restricted {
         ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
         if (data.kind != ValuableActionSBT.TokenKind.CREDENTIAL) revert Errors.InvalidInput("Not a credential token");
         if (data.actionTypeId != courseId) revert Errors.InvalidInput("Course mismatch");
@@ -220,5 +190,15 @@ contract CredentialManager {
 
     function getApplication(uint256 appId) external view returns (CredentialApplication memory) {
         return applications[appId];
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                               INTERNALS
+    //////////////////////////////////////////////////////////////*/
+    function _requireAuthorized(bytes4 selector) internal view {
+        (bool immediate,) = IAccessManager(authority()).canCall(msg.sender, address(this), selector);
+        if (!immediate) {
+            revert IAccessManaged.AccessManagedUnauthorized(msg.sender);
+        }
     }
 }

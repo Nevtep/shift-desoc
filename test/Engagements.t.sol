@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {Engagements} from "../contracts/modules/Engagements.sol";
 import {VerifierManager} from "../contracts/modules/VerifierManager.sol";
 import {VerifierElection} from "../contracts/modules/VerifierElection.sol";
@@ -11,6 +13,7 @@ import {ValuableActionRegistry} from "../contracts/modules/ValuableActionRegistr
 import {MembershipTokenERC20Votes} from "../contracts/tokens/MembershipTokenERC20Votes.sol";
 import {Types} from "../contracts/libs/Types.sol";
 import {Errors} from "../contracts/libs/Errors.sol";
+import {Roles} from "../contracts/libs/Roles.sol";
 
 contract CommunityRegistryMock {
     struct ModuleAddresses {
@@ -95,6 +98,7 @@ contract MockValuableActionSBT {
 /// @notice Tests Engagements contract with VerifierManager and ValuableActionRegistry wiring
 contract EngagementsTest is Test {
     Engagements public engagements;
+    AccessManager public accessManager;
     VerifierManager public verifierManager;
     VerifierElection public verifierElection;
     VerifierPowerToken1155 public vpt;
@@ -138,33 +142,89 @@ contract EngagementsTest is Test {
 
     function setUp() public {
         // Deploy core VPT infrastructure
-        vpt = new VerifierPowerToken1155(governance, BASE_URI);
-        verifierElection = new VerifierElection(governance, address(vpt));
+        accessManager = new AccessManager(governance);
+        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI);
+        verifierElection = new VerifierElection(address(accessManager), address(vpt));
         paramController = new ParamController(governance);
         verifierManager = new VerifierManager(
+            address(accessManager),
             address(verifierElection),
-            address(paramController),
-            governance
+            address(paramController)
         );
 
         // Deploy action registry and membership token
         communityRegistry = new CommunityRegistryMock();
-        actionRegistry = new ValuableActionRegistry(governance, address(communityRegistry));
-        membershipToken = new MembershipTokenERC20Votes("Test Community Token", "TCT", COMMUNITY_ID, governance);
+        actionRegistry = new ValuableActionRegistry(
+            address(accessManager),
+            address(communityRegistry),
+            governance
+        );
+        membershipToken = new MembershipTokenERC20Votes("Test Community Token", "TCT", COMMUNITY_ID, address(accessManager));
         valuableActionSBT = new MockValuableActionSBT();
 
         vm.prank(governance);
         paramController.setCommunityRegistry(address(communityRegistry));
 
+        // Allow governance (AccessManager admin) to call registry admin functions
+        vm.startPrank(governance);
+        bytes4[] memory registryAdminSelectors = new bytes4[](7);
+        registryAdminSelectors[0] = actionRegistry.setValuableActionSBT.selector;
+        registryAdminSelectors[1] = actionRegistry.setIssuanceModule.selector;
+        registryAdminSelectors[2] = actionRegistry.setCommunityNarrowing.selector;
+        registryAdminSelectors[3] = actionRegistry.setCommunityIssuanceModule.selector;
+        registryAdminSelectors[4] = actionRegistry.setModerator.selector;
+        registryAdminSelectors[5] = actionRegistry.addFounder.selector;
+        registryAdminSelectors[6] = actionRegistry.setIssuancePaused.selector;
+        accessManager.setTargetFunctionRole(address(actionRegistry), registryAdminSelectors, accessManager.ADMIN_ROLE());
+
+        // Allow governance to manage verifier contracts
+        bytes4[] memory electionSelectors = new bytes4[](4);
+        electionSelectors[0] = verifierElection.setVerifierSet.selector;
+        electionSelectors[1] = verifierElection.banVerifiers.selector;
+        electionSelectors[2] = verifierElection.unbanVerifier.selector;
+        electionSelectors[3] = verifierElection.adjustVerifierPower.selector;
+        accessManager.setTargetFunctionRole(address(verifierElection), electionSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory managerCallerSelectors = new bytes4[](2);
+        managerCallerSelectors[0] = verifierManager.selectJurors.selector;
+        managerCallerSelectors[1] = verifierManager.reportFraud.selector;
+        accessManager.setTargetFunctionRole(
+            address(verifierManager),
+            managerCallerSelectors,
+            Roles.VERIFIER_MANAGER_CALLER_ROLE
+        );
+
+        // Configure VPT selectors (default admin role sufficient)
+        bytes4[] memory vptSelectors = new bytes4[](3);
+        vptSelectors[0] = vpt.initializeCommunity.selector;
+        vptSelectors[1] = vpt.mint.selector;
+        vptSelectors[2] = vpt.burn.selector;
+        accessManager.setTargetFunctionRole(address(vpt), vptSelectors, accessManager.ADMIN_ROLE());
+
+        // Configure membership token minter selectors and grant role to engagements later
+        bytes4[] memory membershipMinterSelectors = new bytes4[](2);
+        membershipMinterSelectors[0] = membershipToken.mint.selector;
+        membershipMinterSelectors[1] = membershipToken.batchMint.selector;
+        accessManager.setTargetFunctionRole(address(membershipToken), membershipMinterSelectors, membershipToken.MINTER_ROLE());
+        vm.stopPrank();
+
         // Deploy Engagements contract
         engagements = new Engagements(
-            governance,
+            address(accessManager),
             address(actionRegistry),
             address(verifierManager),
             address(valuableActionSBT),
             address(membershipToken),
             COMMUNITY_ID
         );
+
+        vm.startPrank(governance);
+        bytes4[] memory adminSelectors = new bytes4[](2);
+        adminSelectors[0] = engagements.revoke.selector;
+        adminSelectors[1] = engagements.updateContracts.selector;
+        accessManager.setTargetFunctionRole(address(engagements), adminSelectors, accessManager.ADMIN_ROLE());
+        accessManager.grantRole(Roles.VERIFIER_MANAGER_CALLER_ROLE, address(engagements), 0);
+        vm.stopPrank();
 
         communityRegistry.setModuleAddresses(
             COMMUNITY_ID,
@@ -189,7 +249,7 @@ contract EngagementsTest is Test {
         // Initialize VPT system
         vm.startPrank(governance);
         vpt.initializeCommunity(COMMUNITY_ID, "metadata");
-        vpt.grantRole(vpt.TIMELOCK_ROLE(), address(verifierElection));
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), address(verifierElection), 0);
 
         // Set up verifiers with power tokens
         address[] memory verifiers = new address[](5);
@@ -208,16 +268,13 @@ contract EngagementsTest is Test {
 
         verifierElection.setVerifierSet(COMMUNITY_ID, verifiers, weights, REASON_CID);
 
-        // Wire Engagements into VerifierManager
-        verifierManager.setEngagementsContract(address(engagements));
-
         // Configure verification params
         paramController.setUint256(COMMUNITY_ID, verifierManager.VERIFIER_PANEL_SIZE(), 3);
         paramController.setUint256(COMMUNITY_ID, verifierManager.VERIFIER_MIN(), 2);
         paramController.setBool(COMMUNITY_ID, verifierManager.USE_VPT_WEIGHTING(), false);
 
         // Initialize membership token minter role
-        membershipToken.grantRole(membershipToken.MINTER_ROLE(), address(engagements));
+        accessManager.grantRole(membershipToken.MINTER_ROLE(), address(engagements), 0);
 
         // Create test ValuableActions
         Types.ValuableAction memory action1 = Types.ValuableAction({
@@ -288,7 +345,6 @@ contract EngagementsTest is Test {
         assertEq(address(engagements.actionRegistry()), address(actionRegistry));
         assertEq(engagements.verifierManager(), address(verifierManager));
         assertEq(engagements.valuableActionSBT(), address(valuableActionSBT));
-        assertEq(engagements.governance(), governance);
         assertEq(engagements.membershipToken(), address(membershipToken));
         assertEq(engagements.getCommunityId(), COMMUNITY_ID);
     }

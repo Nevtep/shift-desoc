@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "../libs/Errors.sol";
 import {CohortRegistry} from "./CohortRegistry.sol";
 import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
@@ -8,7 +9,7 @@ import {ValuableActionSBT} from "./ValuableActionSBT.sol";
 
 /// @title InvestmentCohortManager
 /// @notice Coordinates cohort lifecycle and investment issuance scoped to cohorts
-contract InvestmentCohortManager {
+contract InvestmentCohortManager is AccessManaged {
     /*//////////////////////////////////////////////////////////////
                                     EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -25,55 +26,24 @@ contract InvestmentCohortManager {
     /*//////////////////////////////////////////////////////////////
                                    STORAGE
     //////////////////////////////////////////////////////////////*/
-    address public governance;
-    mapping(address => bool) public isModerator;
-
     CohortRegistry public immutable cohortRegistry;
     ValuableActionRegistry public immutable valuableActionRegistry;
     ValuableActionSBT public immutable sbt;
 
     /*//////////////////////////////////////////////////////////////
-                                   MODIFIERS
-    //////////////////////////////////////////////////////////////*/
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
-    modifier onlyGovOrModerator() {
-        if (msg.sender != governance && !isModerator[msg.sender]) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
-    /*//////////////////////////////////////////////////////////////
                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _governance, address _cohortRegistry, address _valuableActionRegistry, address _sbt) {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
+    constructor(address manager, address _cohortRegistry, address _valuableActionRegistry, address _sbt)
+        AccessManaged(manager)
+    {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_cohortRegistry == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_sbt == address(0)) revert Errors.ZeroAddress();
 
-        governance = _governance;
         cohortRegistry = CohortRegistry(_cohortRegistry);
         valuableActionRegistry = ValuableActionRegistry(_valuableActionRegistry);
         sbt = ValuableActionSBT(_sbt);
-
-        isModerator[_governance] = true;
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                                ADMIN CONTROLS
-    //////////////////////////////////////////////////////////////*/
-    function setModerator(address account, bool status) external onlyGovernance {
-        if (account == address(0)) revert Errors.ZeroAddress();
-        isModerator[account] = status;
-    }
-
-    function updateGovernance(address newGovernance) external onlyGovernance {
-        if (newGovernance == address(0)) revert Errors.ZeroAddress();
-        governance = newGovernance;
-        isModerator[newGovernance] = true;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -87,12 +57,12 @@ contract InvestmentCohortManager {
         uint64 startAt,
         uint64 endAt,
         bool active
-    ) external onlyGovOrModerator returns (uint256 cohortId) {
+    ) external restricted returns (uint256 cohortId) {
         cohortId = cohortRegistry.createCohort(communityId, targetRoiBps, priorityWeight, termsHash, startAt, endAt, active);
         emit CohortCreated(cohortId, communityId, active);
     }
 
-    function setCohortActive(uint256 cohortId, bool active) external onlyGovOrModerator {
+    function setCohortActive(uint256 cohortId, bool active) external restricted {
         cohortRegistry.setCohortActive(cohortId, active);
         emit CohortActivationUpdated(cohortId, active);
     }
@@ -105,7 +75,7 @@ contract InvestmentCohortManager {
         uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
-    ) external onlyGovOrModerator returns (uint256 tokenId) {
+    ) external restricted returns (uint256 tokenId) {
         CohortRegistry.Cohort memory cohort = cohortRegistry.getCohort(cohortId);
         if (!cohort.active) revert Errors.InvalidInput("Cohort inactive");
         if (cohort.endAt != 0 && block.timestamp > cohort.endAt) {

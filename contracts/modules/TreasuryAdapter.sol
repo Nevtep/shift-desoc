@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Errors} from "../libs/Errors.sol";
 import {CommunityRegistry} from "./CommunityRegistry.sol";
@@ -8,7 +9,7 @@ import {CommunityRegistry} from "./CommunityRegistry.sol";
 /// @title TreasuryAdapter
 /// @notice Policy + Safe transaction builder for community treasuries
 /// @dev Does not custody funds or execute transfers; returns Safe-ready payloads only
-contract TreasuryAdapter {
+contract TreasuryAdapter is AccessManaged {
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -39,7 +40,6 @@ contract TreasuryAdapter {
                                STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    address public immutable governance;
     CommunityRegistry public immutable communityRegistry;
 
     mapping(uint256 => mapping(address => bool)) public tokenAllowed;
@@ -48,22 +48,12 @@ contract TreasuryAdapter {
     mapping(uint256 => mapping(address => uint16)) public capBps; // 0 = disabled
 
     /*//////////////////////////////////////////////////////////////
-                               MODIFIERS
-    //////////////////////////////////////////////////////////////*/
-
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
-    /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _governance, address _communityRegistry) {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
+    constructor(address manager, address _communityRegistry) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_communityRegistry == address(0)) revert Errors.ZeroAddress();
-        governance = _governance;
         communityRegistry = CommunityRegistry(_communityRegistry);
     }
 
@@ -71,25 +61,25 @@ contract TreasuryAdapter {
                              ADMIN ACTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function setTokenAllowed(uint256 communityId, address token, bool allowed) external onlyGovernance {
+    function setTokenAllowed(uint256 communityId, address token, bool allowed) external restricted {
         if (token == address(0)) revert Errors.ZeroAddress();
         tokenAllowed[communityId][token] = allowed;
         emit PolicyUpdated(communityId, bytes32("TOKEN"), token, allowed ? 1 : 0);
     }
 
-    function setDestinationAllowed(uint256 communityId, address target, bool allowed) external onlyGovernance {
+    function setDestinationAllowed(uint256 communityId, address target, bool allowed) external restricted {
         if (target == address(0)) revert Errors.ZeroAddress();
         destinationAllowed[communityId][target] = allowed;
         emit PolicyUpdated(communityId, bytes32("DEST"), target, allowed ? 1 : 0);
     }
 
-    function setVaultAdapterAllowed(uint256 communityId, address adapter, bool allowed) external onlyGovernance {
+    function setVaultAdapterAllowed(uint256 communityId, address adapter, bool allowed) external restricted {
         if (adapter == address(0)) revert Errors.ZeroAddress();
         vaultAdapterAllowed[communityId][adapter] = allowed;
         emit PolicyUpdated(communityId, bytes32("ADAPTER"), adapter, allowed ? 1 : 0);
     }
 
-    function setCapBps(uint256 communityId, address token, uint16 capBpsValue) external onlyGovernance {
+    function setCapBps(uint256 communityId, address token, uint16 capBpsValue) external restricted {
         if (token == address(0)) revert Errors.ZeroAddress();
         if (capBpsValue > 10_000) revert Errors.InvalidInput("cap too high");
         capBps[communityId][token] = capBpsValue;

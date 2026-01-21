@@ -13,6 +13,8 @@ import {InvestmentCohortManager} from "contracts/modules/InvestmentCohortManager
 import {RequestHub} from "contracts/modules/RequestHub.sol";
 import {CredentialManager} from "contracts/modules/CredentialManager.sol";
 import {Types} from "contracts/libs/Types.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 contract ERC20Mock {
     string public name = "Mock";
@@ -66,6 +68,7 @@ contract WiringTest is Test {
     InvestmentCohortManager investmentManager;
     RequestHub requestHub;
     CredentialManager credentialManager;
+    AccessManager accessManager;
 
     ERC20Mock token;
 
@@ -90,19 +93,24 @@ contract WiringTest is Test {
         paramController = new ParamController(governance);
         communityRegistry = new CommunityRegistry(governance, address(paramController));
         paramController.setCommunityRegistry(address(communityRegistry));
-        valuableActionRegistry = new ValuableActionRegistry(governance, address(communityRegistry));
-        sbt = new ValuableActionSBT(governance, governance, governance);
-        cohortRegistry = new CohortRegistry(governance);
-        router = new RevenueRouter(address(paramController), address(cohortRegistry), address(sbt), governance);
-        positionManager = new PositionManager(governance, address(valuableActionRegistry), address(sbt));
+        accessManager = new AccessManager(governance);
+        valuableActionRegistry = new ValuableActionRegistry(
+            address(accessManager),
+            address(communityRegistry),
+            governance
+        );
+        sbt = new ValuableActionSBT(address(accessManager));
+        cohortRegistry = new CohortRegistry(address(accessManager));
+        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt));
+        positionManager = new PositionManager(address(accessManager), address(valuableActionRegistry), address(sbt));
         investmentManager = new InvestmentCohortManager(
-            governance,
+            address(accessManager),
             address(cohortRegistry),
             address(valuableActionRegistry),
             address(sbt)
         );
         requestHub = new RequestHub(address(communityRegistry), address(valuableActionRegistry));
-        credentialManager = new CredentialManager(governance, address(valuableActionRegistry), address(sbt));
+        credentialManager = new CredentialManager(address(accessManager), address(valuableActionRegistry), address(sbt));
 
         communityId = communityRegistry.registerCommunity("Comm", "Desc", "ipfs://meta", 0);
 
@@ -112,10 +120,92 @@ contract WiringTest is Test {
         communityRegistry.setModuleAddress(communityId, keccak256("treasuryVault"), treasury);
 
         // Wire SBT manager + issuance allowlists
-        vm.startPrank(governance);
+        vm.startPrank(governance, governance);
+        bytes4[] memory registryAdminSelectors = new bytes4[](7);
+        registryAdminSelectors[0] = valuableActionRegistry.setValuableActionSBT.selector;
+        registryAdminSelectors[1] = valuableActionRegistry.setIssuanceModule.selector;
+        registryAdminSelectors[2] = valuableActionRegistry.setCommunityNarrowing.selector;
+        registryAdminSelectors[3] = valuableActionRegistry.setCommunityIssuanceModule.selector;
+        registryAdminSelectors[4] = valuableActionRegistry.setModerator.selector;
+        registryAdminSelectors[5] = valuableActionRegistry.addFounder.selector;
+        registryAdminSelectors[6] = valuableActionRegistry.setIssuancePaused.selector;
+        accessManager.setTargetFunctionRole(address(valuableActionRegistry), registryAdminSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory cohortAdminSelectors = new bytes4[](2);
+        cohortAdminSelectors[0] = cohortRegistry.createCohort.selector;
+        cohortAdminSelectors[1] = cohortRegistry.setCohortActive.selector;
+        accessManager.setTargetFunctionRole(address(cohortRegistry), cohortAdminSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory cohortRecorderSelectors = new bytes4[](1);
+        cohortRecorderSelectors[0] = cohortRegistry.addInvestment.selector;
+        accessManager.setTargetFunctionRole(address(cohortRegistry), cohortRecorderSelectors, Roles.COHORT_INVESTMENT_RECORDER_ROLE);
+
+        bytes4[] memory cohortRouterSelectors = new bytes4[](1);
+        cohortRouterSelectors[0] = cohortRegistry.markRecovered.selector;
+        accessManager.setTargetFunctionRole(address(cohortRegistry), cohortRouterSelectors, Roles.COHORT_REVENUE_ROUTER_ROLE);
+
+        // Allow governance to manage position and investment managers
+        bytes4[] memory positionSelectors = new bytes4[](4);
+        positionSelectors[0] = positionManager.setRevenueRouter.selector;
+        positionSelectors[1] = positionManager.definePositionType.selector;
+        positionSelectors[2] = positionManager.approveApplication.selector;
+        positionSelectors[3] = positionManager.closePosition.selector;
+        accessManager.setTargetFunctionRole(address(positionManager), positionSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory investmentSelectors = new bytes4[](3);
+        investmentSelectors[0] = investmentManager.createCohort.selector;
+        investmentSelectors[1] = investmentManager.setCohortActive.selector;
+        investmentSelectors[2] = investmentManager.issueInvestment.selector;
+        accessManager.setTargetFunctionRole(address(investmentManager), investmentSelectors, accessManager.ADMIN_ROLE());
+
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), address(investmentManager), 0);
+
+        accessManager.grantRole(Roles.COHORT_INVESTMENT_RECORDER_ROLE, address(investmentManager), 0);
+        accessManager.grantRole(Roles.COHORT_REVENUE_ROUTER_ROLE, address(router), 0);
+
+        bytes4[] memory credentialSelectors = new bytes4[](3);
+        credentialSelectors[0] = credentialManager.defineCourse.selector;
+        credentialSelectors[1] = credentialManager.setCourseActive.selector;
+        credentialSelectors[2] = credentialManager.revokeCredential.selector;
+        accessManager.setTargetFunctionRole(address(credentialManager), credentialSelectors, accessManager.ADMIN_ROLE());
+
+        // Router roles
+        bytes4[] memory routerAdminSelectors = new bytes4[](4);
+        routerAdminSelectors[0] = router.setCommunityTreasury.selector;
+        routerAdminSelectors[1] = router.setSupportedToken.selector;
+        routerAdminSelectors[2] = router.setParamController.selector;
+        routerAdminSelectors[3] = router.setCohortRegistry.selector;
+        accessManager.setTargetFunctionRole(address(router), routerAdminSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory routerDistributorSelectors = new bytes4[](1);
+        routerDistributorSelectors[0] = router.routeRevenue.selector;
+        accessManager.setTargetFunctionRole(address(router), routerDistributorSelectors, Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE);
+
+        bytes4[] memory routerPositionSelectors = new bytes4[](2);
+        routerPositionSelectors[0] = router.registerPosition.selector;
+        routerPositionSelectors[1] = router.unregisterPosition.selector;
+        accessManager.setTargetFunctionRole(address(router), routerPositionSelectors, Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE);
+
+        // Configure SBT selectors and grant manager roles to modules
+        bytes4[] memory sbtSelectors = new bytes4[](7);
+        sbtSelectors[0] = sbt.mintEngagement.selector;
+        sbtSelectors[1] = sbt.mintPosition.selector;
+        sbtSelectors[2] = sbt.mintInvestment.selector;
+        sbtSelectors[3] = sbt.setEndedAt.selector;
+        sbtSelectors[4] = sbt.closePositionToken.selector;
+        sbtSelectors[5] = sbt.mintRoleFromPosition.selector;
+        sbtSelectors[6] = sbt.updateTokenURI.selector;
+        accessManager.setTargetFunctionRole(address(sbt), sbtSelectors, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
+
         valuableActionRegistry.setValuableActionSBT(address(sbt));
-        sbt.grantRole(sbt.MANAGER_ROLE(), address(valuableActionRegistry));
-        sbt.grantRole(sbt.MANAGER_ROLE(), address(credentialManager));
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(valuableActionRegistry), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(credentialManager), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(positionManager), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(investmentManager), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(requestHub), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(credentialManager), 0);
+        accessManager.grantRole(Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE, address(positionManager), 0);
+        accessManager.grantRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, distributor, 0);
         valuableActionRegistry.setIssuanceModule(address(positionManager), true);
         valuableActionRegistry.setIssuanceModule(address(investmentManager), true);
         valuableActionRegistry.setIssuanceModule(address(requestHub), true);
@@ -127,14 +217,7 @@ contract WiringTest is Test {
         paramController.setRevenuePolicy(communityId, 1000, 0, 0, 0); // 10% treasury, spillover to positions
         router.setCommunityTreasury(communityId, treasury);
         router.setSupportedToken(communityId, address(token), true);
-        router.grantRole(router.POSITION_MANAGER_ROLE(), address(positionManager));
-        router.grantRole(router.DISTRIBUTOR_ROLE(), distributor);
         positionManager.setRevenueRouter(address(router));
-
-        // Cohort registry wiring
-        cohortRegistry.setRevenueRouter(address(router));
-        cohortRegistry.setValuableActionSBT(address(sbt));
-        cohortRegistry.setInvestmentManager(address(investmentManager));
 
         // Position type setup
         vm.prank(governance);
@@ -168,7 +251,7 @@ contract WiringTest is Test {
             deprecationWarning: 0
         });
 
-        vm.startPrank(governance);
+        vm.startPrank(governance, governance);
         valuableActionId = valuableActionRegistry.proposeValuableAction(communityId, action, PROPOSAL_REF);
         valuableActionRegistry.activateFromGovernance(valuableActionId, PROPOSAL_REF);
         communityRegistry.grantCommunityRole(communityId, governance, communityRegistry.MODERATOR_ROLE());
@@ -184,7 +267,7 @@ contract WiringTest is Test {
         uint256 positionTokenId = positionManager.approveApplication(appId, bytes("metadata"));
 
         token.mint(distributor, 1_000e18);
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(communityId, address(token), 1_000e18);
         vm.stopPrank();
@@ -223,7 +306,7 @@ contract WiringTest is Test {
         uint256 investmentTokenId = investmentManager.issueInvestment(investor, cohortId, 1_000, bytes("meta"));
 
         token.mint(distributor, 1_000e18);
-        vm.startPrank(distributor);
+        vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         router.routeRevenue(communityId, address(token), 1_000e18);
         vm.stopPrank();
@@ -237,7 +320,7 @@ contract WiringTest is Test {
 
         // ---- RequestHub one-shot ----
         token.mint(governance, 100e18);
-        vm.startPrank(governance);
+        vm.startPrank(governance, governance);
         uint256 requestId = requestHub.createRequest(communityId, "title", "cid", new string[](0));
         requestHub.linkValuableAction(requestId, valuableActionId);
         token.approve(address(requestHub), type(uint256).max);

@@ -6,6 +6,8 @@ import {DraftsManager} from "contracts/modules/DraftsManager.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {ICommunityRegistry} from "contracts/modules/interfaces/ICommunityRegistry.sol";
 import {IRequestHub} from "contracts/modules/interfaces/IRequestHub.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 
 contract MockCommunityRegistry {
     mapping(uint256 => bool) public communities;
@@ -86,6 +88,7 @@ contract DraftsManagerTest is Test {
     MockCommunityRegistry public communityRegistry;
     MockGovernor public governor;
     MockRequestHub public requestHub;
+        AccessManager public accessManager;
     
     // Test addresses
     address public user1 = address(0x101);
@@ -175,9 +178,16 @@ contract DraftsManagerTest is Test {
         communityRegistry = new MockCommunityRegistry();
         requestHub = new MockRequestHub();
         governor = new MockGovernor();
+        accessManager = new AccessManager(address(this));
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), timelock, 0);
         
         // Deploy DraftsManager
-        draftsManager = new DraftsManager(address(communityRegistry), address(governor), timelock);
+        draftsManager = new DraftsManager(address(communityRegistry), address(governor), address(accessManager));
+
+        bytes4[] memory adminSelectors = new bytes4[](2);
+        adminSelectors[0] = DraftsManager.updateGovernor.selector;
+        adminSelectors[1] = DraftsManager.updateConfiguration.selector;
+        accessManager.setTargetFunctionRole(address(draftsManager), adminSelectors, accessManager.ADMIN_ROLE());
         
         // Setup test community
         _addCommunity(COMMUNITY_ID);
@@ -234,10 +244,10 @@ contract DraftsManagerTest is Test {
     
     function testConstructorZeroAddressReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new DraftsManager(address(0), address(governor), timelock);
+        new DraftsManager(address(0), address(governor), address(accessManager));
         
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new DraftsManager(address(communityRegistry), address(0), timelock);
+        new DraftsManager(address(communityRegistry), address(0), address(accessManager));
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
         new DraftsManager(address(communityRegistry), address(governor), address(0));
@@ -986,7 +996,7 @@ contract DraftsManagerTest is Test {
 
     function testUpdateGovernorUnauthorizedReverts() public {
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(DraftsManager.NotAuthorized.selector, user1));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
         draftsManager.updateGovernor(user2);
     }
 
@@ -1009,7 +1019,7 @@ contract DraftsManagerTest is Test {
 
     function testUpdateConfigurationUnauthorizedReverts() public {
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(DraftsManager.NotAuthorized.selector, user1));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
         draftsManager.updateConfiguration(1 days, 5, 7000);
     }
 

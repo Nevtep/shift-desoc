@@ -2,14 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {GovernorVotes} from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 // solhint-disable-next-line max-line-length
 import {GovernorVotesQuorumFraction as Quorum} from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
-import {GovernorTimelockControl} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
+import {GovernorTimelockAccess} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockAccess.sol";
 import {ICountingMultiChoice} from "contracts/core/interfaces/ICountingMultiChoice.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
@@ -18,7 +17,7 @@ import {Errors} from "contracts/libs/Errors.sol";
 /// @dev Extends OpenZeppelin Governor with custom multi-choice voting capability
 contract ShiftGovernor is
     Governor, GovernorSettings, GovernorCountingSimple,
-    GovernorVotes, Quorum, GovernorTimelockControl
+    GovernorVotes, Quorum, GovernorTimelockAccess
 {
     /// @notice Tracks number of options for multi-choice proposals
     mapping(uint256 => uint8) private _numOptions;
@@ -46,12 +45,12 @@ contract ShiftGovernor is
         string reason
     );
 
-    constructor(address token, address timelock)
+    constructor(address token, address accessManager, uint32 baseDelaySeconds)
         Governor("ShiftGovernor")
         GovernorSettings(1 days, 5 days, 0)  // 1 day voting delay, 5 days voting period, 0 proposal threshold
         GovernorVotes(IVotes(token))
         Quorum(4)  // 4% quorum
-        GovernorTimelockControl(TimelockController(payable(timelock))) 
+        GovernorTimelockAccess(accessManager, baseDelaySeconds) 
     {}
 
     /// @notice Set the multi-choice counting contract
@@ -62,9 +61,19 @@ contract ShiftGovernor is
         emit MultiCounterUpdated(oldCounter, counter);
     }
 
+    // Resolve diamond inheritance between Governor and GovernorTimelockAccess
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override(Governor, GovernorTimelockAccess) returns (uint256) {
+        return super.propose(targets, values, calldatas, description);
+    }
+
     /// @notice Initialize multi-choice counter (admin only, for setup)
     /// @param counter Address of the CountingMultiChoice contract
-    function initCountingMulti(address counter) external {
+    function initCountingMulti(address counter) external onlyGovernance {
         require(multiCounter == address(0), "Already initialized");
         multiCounter = counter;
         emit MultiCounterUpdated(address(0), counter);
@@ -156,7 +165,7 @@ contract ShiftGovernor is
         return super.quorum(blockNumber);
     }
     
-    function state(uint256 proposalId) public view override(Governor, GovernorTimelockControl) returns (ProposalState) {
+    function state(uint256 proposalId) public view override(Governor) returns (ProposalState) {
         return super.state(proposalId);
     }
     
@@ -167,7 +176,7 @@ contract ShiftGovernor is
     function proposalNeedsQueuing(uint256 proposalId) 
         public 
         view 
-        override(Governor, GovernorTimelockControl) 
+        override(Governor, GovernorTimelockAccess) 
         returns (bool) 
     {
         return super.proposalNeedsQueuing(proposalId);
@@ -183,7 +192,7 @@ contract ShiftGovernor is
         uint256[] memory values, 
         bytes[] memory calldatas, 
         bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) returns (uint48) {
+    ) internal override(Governor, GovernorTimelockAccess) returns (uint48) {
         return super._queueOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
     
@@ -193,7 +202,7 @@ contract ShiftGovernor is
         uint256[] memory values, 
         bytes[] memory calldatas, 
         bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) {
+    ) internal override(Governor, GovernorTimelockAccess) {
         super._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
     
@@ -202,11 +211,11 @@ contract ShiftGovernor is
         uint256[] memory values, 
         bytes[] memory calldatas, 
         bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
+    ) internal override(Governor, GovernorTimelockAccess) returns (uint256) {
         return super._cancel(targets, values, calldatas, descriptionHash);
     }
     
-    function _executor() internal view override(Governor, GovernorTimelockControl) returns (address) {
+    function _executor() internal view override(Governor) returns (address) {
         return super._executor();
     }
 }

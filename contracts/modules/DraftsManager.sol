@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IGovernorLike} from "contracts/core/interfaces/IGovernorLike.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {ICommunityRegistry} from "./interfaces/ICommunityRegistry.sol";
@@ -11,7 +12,7 @@ import {IRequestHub} from "./interfaces/IRequestHub.sol";
  * @notice Collaborative proposal development with versioning, review cycles, and escalation workflows
  * @dev Multi-contributor system enabling community collaboration on governance proposals
  */
-contract DraftsManager {
+contract DraftsManager is AccessManaged {
 
     /* ======== ENUMS ======== */
     
@@ -76,7 +77,6 @@ contract DraftsManager {
     /* ======== STATE VARIABLES ======== */
 
     address public immutable communityRegistry;
-    address public immutable timelock;
     address public governor;
     
     // Draft storage
@@ -205,13 +205,6 @@ contract DraftsManager {
         _;
     }
 
-    modifier onlyTimelock() {
-        if (msg.sender != timelock) {
-            revert NotAuthorized(msg.sender);
-        }
-        _;
-    }
-
     modifier onlyInStatus(uint256 draftId, DraftStatus requiredStatus) {
         DraftStatus currentStatus = _drafts[draftId].status;
         if (currentStatus != requiredStatus) {
@@ -242,13 +235,12 @@ contract DraftsManager {
 
     /* ======== CONSTRUCTOR ======== */
 
-    constructor(address _communityRegistry, address _governor, address _timelock) {
-        if (_communityRegistry == address(0) || _governor == address(0) || _timelock == address(0)) {
+    constructor(address _communityRegistry, address _governor, address manager) AccessManaged(manager) {
+        if (_communityRegistry == address(0) || _governor == address(0) || manager == address(0)) {
             revert Errors.ZeroAddress();
         }
         communityRegistry = _communityRegistry;
         governor = _governor;
-        timelock = _timelock;
     }
 
     /* ======== CORE FUNCTIONS ======== */
@@ -719,7 +711,7 @@ contract DraftsManager {
      * @notice Update governor address (governance only)
      * @param newGovernor New governor address
      */
-    function updateGovernor(address newGovernor) external onlyTimelock {
+    function updateGovernor(address newGovernor) external restricted {
         if (newGovernor == address(0)) {
             revert Errors.ZeroAddress();
         }
@@ -738,7 +730,7 @@ contract DraftsManager {
         uint256 newReviewPeriod,
         uint256 newMinReviews,
         uint256 newSupportThreshold
-    ) external onlyTimelock {
+    ) external restricted {
         if (newSupportThreshold > 10000) {
             revert Errors.InvalidInput("Support threshold cannot exceed 100%");
         }

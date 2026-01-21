@@ -2,10 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {ValuableActionRegistry} from "contracts/modules/ValuableActionRegistry.sol";
 import {ValuableActionSBT} from "contracts/modules/ValuableActionSBT.sol";
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 contract CommunityRegistryMock {
     struct ModuleAddresses {
@@ -40,6 +43,7 @@ contract ValuableActionRegistryTest is Test {
     ValuableActionRegistry registry;
     CommunityRegistryMock communityRegistry;
     ValuableActionSBT sbt;
+    AccessManager accessManager;
     
     address governance = makeAddr("governance");
     address moderator = makeAddr("moderator");
@@ -59,8 +63,13 @@ contract ValuableActionRegistryTest is Test {
     
     function setUp() public {
         communityRegistry = new CommunityRegistryMock();
-        registry = new ValuableActionRegistry(governance, address(communityRegistry));
-        sbt = new ValuableActionSBT(governance, governance, governance);
+        accessManager = new AccessManager(governance);
+        registry = new ValuableActionRegistry(
+            address(accessManager),
+            address(communityRegistry),
+            governance
+        );
+        sbt = new ValuableActionSBT(address(accessManager));
 
         communityRegistry.setModuleAddresses(
             COMMUNITY_ID,
@@ -83,8 +92,17 @@ contract ValuableActionRegistryTest is Test {
         );
 
         vm.startPrank(governance);
+        bytes4[] memory sbtSelectors = new bytes4[](6);
+        sbtSelectors[0] = sbt.mintEngagement.selector;
+        sbtSelectors[1] = sbt.mintPosition.selector;
+        sbtSelectors[2] = sbt.mintInvestment.selector;
+        sbtSelectors[3] = sbt.setEndedAt.selector;
+        sbtSelectors[4] = sbt.closePositionToken.selector;
+        sbtSelectors[5] = sbt.updateTokenURI.selector;
+        accessManager.setTargetFunctionRole(address(sbt), sbtSelectors, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
         registry.setValuableActionSBT(address(sbt));
-        sbt.grantRole(sbt.MANAGER_ROLE(), address(registry));
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(registry), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, requestHubModule, 0);
         registry.setIssuanceModule(requestHubModule, true);
         vm.stopPrank();
         
@@ -125,17 +143,19 @@ contract ValuableActionRegistryTest is Test {
     }
     
     function testConstructor() public view {
-        assertEq(registry.governance(), governance);
         assertTrue(registry.isModerator(governance)); // Governance is initial moderator
         assertEq(registry.lastId(), 0);
     }
     
     function testConstructorZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new ValuableActionRegistry(address(0), address(communityRegistry));
+        new ValuableActionRegistry(address(0), address(communityRegistry), governance);
 
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new ValuableActionRegistry(governance, address(0));
+        new ValuableActionRegistry(address(accessManager), address(0), governance);
+
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new ValuableActionRegistry(address(accessManager), address(communityRegistry), address(0));
     }
     
     function testSetModerator() public {
@@ -158,7 +178,7 @@ contract ValuableActionRegistryTest is Test {
     
     function testSetModeratorUnauthorized() public {
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
         registry.setModerator(moderator, true);
         vm.stopPrank();
     }
@@ -438,7 +458,7 @@ contract ValuableActionRegistryTest is Test {
 
     function testProposeValuableActionUnauthorized() public {
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
         registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
@@ -503,7 +523,7 @@ contract ValuableActionRegistryTest is Test {
         uint256 tokenId = registry.issuePosition(COMMUNITY_ID, user, bytes32("pos"), 10, hex"00");
 
         vm.startPrank(governance);
-        sbt.grantRole(sbt.MANAGER_ROLE(), governance);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, governance, 0);
         vm.stopPrank();
 
         vm.prank(governance);
@@ -546,22 +566,6 @@ contract ValuableActionRegistryTest is Test {
         ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
         assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.POSITION));
         assertEq(data.points, 1);
-    }
-    
-    function testUpdateGovernance() public {
-        address newGovernance = makeAddr("newGovernance");
-        
-        vm.startPrank(governance);
-        registry.updateGovernance(newGovernance);
-        assertEq(registry.governance(), newGovernance);
-        vm.stopPrank();
-    }
-    
-    function testUpdateGovernanceZeroAddress() public {
-        vm.startPrank(governance);
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        registry.updateGovernance(address(0));
-        vm.stopPrank();
     }
     
     function testGetValuableActionNonexistent() public {

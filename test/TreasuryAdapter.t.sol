@@ -2,9 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {TreasuryAdapter, RequestHubLike, IInvestmentVaultAdapter} from "contracts/modules/TreasuryAdapter.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Errors} from "contracts/libs/Errors.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract TestToken is ERC20 {
@@ -81,6 +82,7 @@ contract VaultAdapterMock is IInvestmentVaultAdapter {
 }
 
 contract TreasuryAdapterTest is Test {
+    AccessManager manager;
     TreasuryAdapter adapter;
     CommunityRegistryMock registry;
     TestToken token;
@@ -97,7 +99,8 @@ contract TreasuryAdapterTest is Test {
         token = new TestToken();
         requestHub = new RequestHubMock();
         vaultAdapter = new VaultAdapterMock();
-        adapter = new TreasuryAdapter(governance, address(registry));
+        manager = new AccessManager(governance);
+        adapter = new TreasuryAdapter(address(manager), address(registry));
 
         registry.setTreasuryVault(vault);
         token.mint(vault, 1_000 ether);
@@ -113,7 +116,7 @@ contract TreasuryAdapterTest is Test {
     function testPolicySettersGovernanceOnly() public {
         address attacker = address(0xBAD);
         vm.prank(attacker);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, attacker));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, attacker));
         adapter.setTokenAllowed(COMMUNITY_ID, address(token), false);
     }
 

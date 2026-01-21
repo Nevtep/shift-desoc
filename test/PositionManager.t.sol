@@ -2,11 +2,14 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {ValuableActionRegistry} from "contracts/modules/ValuableActionRegistry.sol";
 import {ValuableActionSBT} from "contracts/modules/ValuableActionSBT.sol";
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {PositionManager} from "contracts/modules/PositionManager.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 contract CommunityRegistryMock {
     struct ModuleAddresses {
@@ -54,6 +57,7 @@ contract PositionManagerTest is Test {
     ValuableActionRegistry registry;
     ValuableActionSBT sbt;
     PositionManager manager;
+    AccessManager accessManager;
     CommunityRegistryMock communityRegistry;
     RevenueRouterMock router;
 
@@ -63,12 +67,14 @@ contract PositionManagerTest is Test {
 
     uint256 constant COMMUNITY_ID = 1;
     bytes32 constant ROLE_TYPE = bytes32("role:ops");
+    uint64 constant MOD_ROLE = 1;
 
     function setUp() public {
         communityRegistry = new CommunityRegistryMock();
-        registry = new ValuableActionRegistry(governance, address(communityRegistry));
-        sbt = new ValuableActionSBT(governance, governance, governance);
-        manager = new PositionManager(governance, address(registry), address(sbt));
+        accessManager = new AccessManager(governance);
+        registry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance);
+        sbt = new ValuableActionSBT(address(accessManager));
+        manager = new PositionManager(address(accessManager), address(registry), address(sbt));
         router = new RevenueRouterMock();
 
         communityRegistry.setModuleAddresses(
@@ -91,13 +97,31 @@ contract PositionManagerTest is Test {
             })
         );
 
-        vm.startPrank(governance);
+        vm.startPrank(governance, governance);
+        bytes4[] memory sbtSelectors = new bytes4[](6);
+        sbtSelectors[0] = sbt.mintEngagement.selector;
+        sbtSelectors[1] = sbt.mintPosition.selector;
+        sbtSelectors[2] = sbt.mintInvestment.selector;
+        sbtSelectors[3] = sbt.setEndedAt.selector;
+        sbtSelectors[4] = sbt.closePositionToken.selector;
+        sbtSelectors[5] = sbt.mintRoleFromPosition.selector;
+        accessManager.setTargetFunctionRole(address(sbt), sbtSelectors, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
         registry.setValuableActionSBT(address(sbt));
-        sbt.grantRole(sbt.MANAGER_ROLE(), address(registry));
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(registry), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(manager), 0);
         registry.setIssuanceModule(address(manager), true);
         manager.setRevenueRouter(address(router));
-        manager.setModerator(moderator, true);
         manager.definePositionType(ROLE_TYPE, COMMUNITY_ID, 10, true);
+        vm.stopPrank();
+
+        vm.startPrank(governance, governance);
+        accessManager.grantRole(MOD_ROLE, moderator, 0);
+        accessManager.grantRole(MOD_ROLE, governance, 0);
+        bytes4[] memory selectors = new bytes4[](3);
+        selectors[0] = manager.definePositionType.selector;
+        selectors[1] = manager.approveApplication.selector;
+        selectors[2] = manager.closePosition.selector;
+        accessManager.setTargetFunctionRole(address(manager), selectors, MOD_ROLE);
         vm.stopPrank();
     }
 
@@ -192,19 +216,19 @@ contract PositionManagerTest is Test {
     }
 
     function testUnauthorizedActionsRevert() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
         vm.prank(user);
         manager.definePositionType(bytes32("x"), COMMUNITY_ID, 1, true);
 
         vm.prank(user);
         uint256 appId = manager.applyForPosition(ROLE_TYPE, bytes("evidence"));
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
         vm.prank(user);
         manager.approveApplication(appId, "");
 
         vm.prank(governance);
         uint256 positionTokenId = manager.approveApplication(appId, "meta");
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
         vm.prank(user);
         manager.closePosition(positionTokenId, PositionManager.CloseOutcome.SUCCESS, "");
     }

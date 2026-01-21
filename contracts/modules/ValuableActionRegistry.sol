@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {Types} from "../libs/Types.sol";
 import {Errors} from "../libs/Errors.sol";
+import {Roles} from "../libs/Roles.sol";
 import {CommunityRegistry} from "./CommunityRegistry.sol";
 import {IValuableActionSBT} from "../core/interfaces/IValuableActionSBT.sol";
 
 /// @title ValuableActionRegistry
 /// @notice Registry for configurable valuable actions with verification parameters
 /// @dev Manages work verification rules for the Engagements system with enhanced governance integration
-contract ValuableActionRegistry {
+contract ValuableActionRegistry is AccessManaged {
+
     /// @notice Emitted when a new valuable action is created
     event ValuableActionCreated(uint256 indexed id, Types.ValuableAction valuableAction, address indexed creator);
     
@@ -73,9 +77,6 @@ contract ValuableActionRegistry {
     /// @notice ValuableActionSBT contract used for minting typed SBTs
     address public valuableActionSBT;
     
-    /// @notice Address that can manage moderators (typically governance)
-    address public governance;
-
     /// @notice CommunityRegistry for resolving per-community module addresses
     CommunityRegistry public immutable communityRegistry;
     
@@ -89,15 +90,12 @@ contract ValuableActionRegistry {
         _; 
     }
     
-    /// @notice Only governance can call this function
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
     /// @notice Only modules allowed to issue SBTs
-    modifier onlyIssuanceModule(uint256 communityId) {
-        if (!isIssuanceModule[msg.sender]) revert Errors.NotAuthorized(msg.sender);
+    modifier onlyIssuer(uint256 communityId) {
+        (bool hasRole,) = IAccessManager(authority()).hasRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, msg.sender);
+        if (!hasRole) {
+            revert Errors.NotAuthorized(msg.sender);
+        }
         if (communityNarrowingEnabled[communityId] && !isCommunityIssuanceModule[communityId][msg.sender]) {
             revert Errors.NotAuthorized(msg.sender);
         }
@@ -112,36 +110,37 @@ contract ValuableActionRegistry {
     }
 
     /// @notice Initialize the registry
-    /// @param _governance Address that can manage moderators
+    /// @param manager AccessManager authority
     /// @param _communityRegistry CommunityRegistry contract address
-    constructor(address _governance, address _communityRegistry) {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
+    /// @param initialModerator Address to seed as initial moderator
+    constructor(address manager, address _communityRegistry, address initialModerator) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_communityRegistry == address(0)) revert Errors.ZeroAddress();
-        governance = _governance;
+        if (initialModerator == address(0)) revert Errors.ZeroAddress();
         communityRegistry = CommunityRegistry(_communityRegistry);
         
-        // Make governance the initial moderator
-        isModerator[_governance] = true;
-        emit ModeratorUpdated(_governance, true, msg.sender);
+        // Seed first moderator so updates can be performed via AccessManager.execute
+        isModerator[initialModerator] = true;
+        emit ModeratorUpdated(initialModerator, true, msg.sender);
     }
 
     /// @notice Set the ValuableActionSBT contract address
     /// @param sbt Address of the SBT contract
-    function setValuableActionSBT(address sbt) external onlyGovernance {
+    function setValuableActionSBT(address sbt) external restricted {
         if (sbt == address(0)) revert Errors.ZeroAddress();
         valuableActionSBT = sbt;
     }
 
     /// @notice Set issuance pause state
     /// @param paused Whether issuance should be paused
-    function setIssuancePaused(bool paused) external onlyGovernance {
+    function setIssuancePaused(bool paused) external restricted {
         issuancePaused = paused;
     }
 
     /// @notice Allow or disallow a module globally for issuance
     /// @param module Module address
     /// @param allowed Whether the module is allowed
-    function setIssuanceModule(address module, bool allowed) external onlyGovernance {
+    function setIssuanceModule(address module, bool allowed) external restricted {
         if (module == address(0)) revert Errors.ZeroAddress();
         isIssuanceModule[module] = allowed;
     }
@@ -149,7 +148,7 @@ contract ValuableActionRegistry {
     /// @notice Toggle community-level narrowing for issuance modules
     /// @param communityId Community identifier
     /// @param enabled Whether narrowing is enabled
-    function setCommunityNarrowing(uint256 communityId, bool enabled) external onlyGovernance {
+    function setCommunityNarrowing(uint256 communityId, bool enabled) external restricted {
         communityNarrowingEnabled[communityId] = enabled;
     }
 
@@ -157,7 +156,7 @@ contract ValuableActionRegistry {
     /// @param communityId Community identifier
     /// @param module Module address
     /// @param allowed Whether the module is allowed
-    function setCommunityIssuanceModule(uint256 communityId, address module, bool allowed) external onlyGovernance {
+    function setCommunityIssuanceModule(uint256 communityId, address module, bool allowed) external restricted {
         if (module == address(0)) revert Errors.ZeroAddress();
         isCommunityIssuanceModule[communityId][module] = allowed;
     }
@@ -165,7 +164,7 @@ contract ValuableActionRegistry {
     /// @notice Set moderator status for an address
     /// @param who Address to set moderator status for
     /// @param status Whether the address should be a moderator
-    function setModerator(address who, bool status) external onlyGovernance {
+    function setModerator(address who, bool status) external restricted {
         if (who == address(0)) revert Errors.ZeroAddress();
         
         isModerator[who] = status;
@@ -175,7 +174,7 @@ contract ValuableActionRegistry {
     /// @notice Add founder to whitelist for community bootstrap
     /// @param founder Address to add as founder
     /// @param communityId Community ID to grant founder privileges for
-    function addFounder(address founder, uint256 communityId) external onlyGovernance {
+    function addFounder(address founder, uint256 communityId) external restricted {
         if (founder == address(0)) revert Errors.ZeroAddress();
         
         if (!founderWhitelist[founder][communityId]) {
@@ -193,7 +192,7 @@ contract ValuableActionRegistry {
         uint256 communityId,
         Types.ValuableAction calldata params,
         bytes32 proposalRef
-    ) external payable returns (uint256 valuableActionId) {
+    ) external payable restricted returns (uint256 valuableActionId) {
         CommunityRegistry.ModuleAddresses memory modules = communityRegistry.getCommunityModules(communityId);
         if (modules.timelock == address(0) || modules.governor == address(0)) {
             revert Errors.InvalidInput("Community not configured");
@@ -201,7 +200,6 @@ contract ValuableActionRegistry {
         if (modules.valuableActionRegistry != address(this)) {
             revert Errors.InvalidInput("Registry mismatch");
         }
-        if (msg.sender != modules.timelock) revert Errors.NotAuthorized(msg.sender);
 
         if (proposalRef == bytes32(0)) revert Errors.InvalidInput("Missing proposal ref");
         if (proposalRefUsed[proposalRef]) revert Errors.InvalidInput("Proposal ref already used");
@@ -221,15 +219,12 @@ contract ValuableActionRegistry {
     /// @notice Activate valuable action after governance approval
     /// @param valuableActionId ID of the valuable action
     /// @param proposalRef Reference used when the action was proposed
-    function activateFromGovernance(uint256 valuableActionId, bytes32 proposalRef) external {
+    function activateFromGovernance(uint256 valuableActionId, bytes32 proposalRef) external restricted {
         if (!_exists(valuableActionId)) revert Errors.InvalidValuableAction(valuableActionId);
         if (proposalRef == bytes32(0)) revert Errors.InvalidInput("Missing proposal ref");
         if (pendingValuableActions[valuableActionId] != proposalRef) {
             revert Errors.InvalidInput("Proposal ref mismatch");
         }
-        uint256 communityId = communityByActionId[valuableActionId];
-        CommunityRegistry.ModuleAddresses memory modules = communityRegistry.getCommunityModules(communityId);
-        if (msg.sender != modules.timelock) revert Errors.NotAuthorized(msg.sender);
         
         isActive[valuableActionId] = true;
         
@@ -273,7 +268,7 @@ contract ValuableActionRegistry {
         Types.EngagementSubtype subtype,
         bytes32 actionTypeId,
         bytes calldata metadata
-    ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
+    ) external issuanceEnabled onlyIssuer(communityId) returns (uint256 tokenId) {
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (to == address(0)) revert Errors.ZeroAddress();
         if (actionTypeId == bytes32(0)) revert Errors.InvalidInput("Missing actionTypeId");
@@ -293,7 +288,7 @@ contract ValuableActionRegistry {
         bytes32 positionTypeId,
         uint32 points,
         bytes calldata metadata
-    ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
+    ) external issuanceEnabled onlyIssuer(communityId) returns (uint256 tokenId) {
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (to == address(0)) revert Errors.ZeroAddress();
         if (positionTypeId == bytes32(0)) revert Errors.InvalidInput("Missing positionTypeId");
@@ -314,7 +309,7 @@ contract ValuableActionRegistry {
         uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
-    ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
+    ) external issuanceEnabled onlyIssuer(communityId) returns (uint256 tokenId) {
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (to == address(0)) revert Errors.ZeroAddress();
         if (cohortId == 0) revert Errors.InvalidInput("Missing cohortId");
@@ -329,7 +324,7 @@ contract ValuableActionRegistry {
         uint256 communityId,
         uint256 positionTokenId,
         uint8 outcome
-    ) external issuanceEnabled onlyIssuanceModule(communityId) {
+    ) external issuanceEnabled onlyIssuer(communityId) {
         IValuableActionSBT.TokenData memory data = IValuableActionSBT(valuableActionSBT).getTokenData(positionTokenId);
         if (data.kind != IValuableActionSBT.TokenKind.POSITION) revert Errors.InvalidInput("Not a position token");
         if (data.communityId != communityId) revert Errors.InvalidInput("Community mismatch");
@@ -348,7 +343,7 @@ contract ValuableActionRegistry {
         uint64 endedAt,
         uint8 closeOutcome,
         bytes calldata metadata
-    ) external issuanceEnabled onlyIssuanceModule(communityId) returns (uint256 tokenId) {
+    ) external issuanceEnabled onlyIssuer(communityId) returns (uint256 tokenId) {
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (to == address(0)) revert Errors.ZeroAddress();
         if (roleTypeId == bytes32(0)) revert Errors.InvalidInput("Missing roleTypeId");
@@ -409,13 +404,6 @@ contract ValuableActionRegistry {
     /// @return founders Array of founder addresses
     function getCommunityFounders(uint256 communityId) external view returns (address[] memory founders) {
         return communityFounders[communityId];
-    }
-
-    /// @notice Update governance address
-    /// @param newGovernance New governance address
-    function updateGovernance(address newGovernance) external onlyGovernance {
-        if (newGovernance == address(0)) revert Errors.ZeroAddress();
-        governance = newGovernance;
     }
 
     /// @dev Validate valuable action configuration

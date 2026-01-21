@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Jan 2026)
+# Shift DeSoc Status Review (Jan 21, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -60,6 +60,11 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-01-21: Removed MembershipTokenERC20Votes `initialize` placeholder and `initialized` flag; tests updated.
+- 2026-01-21: Removed VerifierManager `engagementsContract` state and `setEngagementsContract`; AccessManager caller role remains for Engagements; deploy/test/docs updated.
+- 2026-01-21: VerifierManager `selectJurors`/`reportFraud` now AccessManager-gated via `VERIFIER_MANAGER_CALLER_ROLE`; deploy wiring and tests updated; docs aligned.
+- 2026-01-19: HousingManager marketplace callbacks now AccessManager-gated (new `HOUSING_MARKETPLACE_CALLER_ROLE`); deploy-complete wiring updated; HousingManager docs aligned.
+- 2026-01-15: Deploy script now boots AccessManager with per-module selector roles (timelock admin) covering verification, economic, and commerce modules; docs updated.
 - 2026-01-11: DraftsManager constructor now requires timelock; admin/config updates are timelock-gated with events; deployment script needs timelock param; docs aligned.
 - 2026-01-03: Terminology alignment (Engagements replace Claims for work verification), added InvestmentCohortManager/PositionManager/CredentialManager pointers; clarified commerce separation wording.
 - 2025-12-22: Marked as living doc; remove outdated deployment guides; staging-only context.

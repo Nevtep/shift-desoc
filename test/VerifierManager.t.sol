@@ -2,11 +2,14 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {VerifierManager} from "../contracts/modules/VerifierManager.sol";
 import {VerifierElection} from "../contracts/modules/VerifierElection.sol";
 import {VerifierPowerToken1155} from "../contracts/tokens/VerifierPowerToken1155.sol";
 import {ParamController} from "../contracts/modules/ParamController.sol";
 import {Errors} from "../contracts/libs/Errors.sol";
+import {Roles} from "../contracts/libs/Roles.sol";
 import {MockCommunityRegistry} from "./mocks/MockCommunityRegistry.sol";
 
 contract VerifierManagerTest is Test {
@@ -15,6 +18,7 @@ contract VerifierManagerTest is Test {
     VerifierPowerToken1155 public vpt;
     ParamController public paramController;
     MockCommunityRegistry public registry;
+    AccessManager public accessManager;
     
     address public timelock = makeAddr("timelock");
     address public governance = makeAddr("governance");
@@ -47,11 +51,12 @@ contract VerifierManagerTest is Test {
         address[] offenders,
         string evidenceCID
     );
-    
+
     function setUp() public {
         // Deploy contracts
-        vpt = new VerifierPowerToken1155(timelock, BASE_URI);
-        verifierElection = new VerifierElection(timelock, address(vpt));
+        accessManager = new AccessManager(governance);
+        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI);
+        verifierElection = new VerifierElection(address(accessManager), address(vpt));
         registry = new MockCommunityRegistry();
         paramController = new ParamController(governance);
         vm.prank(governance);
@@ -59,20 +64,41 @@ contract VerifierManagerTest is Test {
         registry.setTimelock(COMMUNITY_ID_1, governance);
         registry.setTimelock(COMMUNITY_ID_2, governance);
         verifierManager = new VerifierManager(
+            address(accessManager),
             address(verifierElection),
-            address(paramController),
-            governance
+            address(paramController)
         );
-        
-        // Set engagements contract
-        vm.prank(governance);
-        verifierManager.setEngagementsContract(engagementsContract);
-        
-        // Grant VerifierElection the TIMELOCK_ROLE to mint/burn VPT tokens
-        vm.startPrank(timelock);
-        vpt.grantRole(vpt.TIMELOCK_ROLE(), address(verifierElection));
+
+        vm.startPrank(governance);
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), timelock, 0);
+        bytes4[] memory managerSelectors = new bytes4[](2);
+        managerSelectors[0] = verifierManager.selectJurors.selector;
+        managerSelectors[1] = verifierManager.reportFraud.selector;
+        accessManager.setTargetFunctionRole(
+            address(verifierManager),
+            managerSelectors,
+            Roles.VERIFIER_MANAGER_CALLER_ROLE
+        );
+        accessManager.grantRole(Roles.VERIFIER_MANAGER_CALLER_ROLE, engagementsContract, 0);
+        bytes4[] memory electionSelectors = new bytes4[](4);
+        electionSelectors[0] = verifierElection.setVerifierSet.selector;
+        electionSelectors[1] = verifierElection.banVerifiers.selector;
+        electionSelectors[2] = verifierElection.unbanVerifier.selector;
+        electionSelectors[3] = verifierElection.adjustVerifierPower.selector;
+        accessManager.setTargetFunctionRole(address(verifierElection), electionSelectors, accessManager.ADMIN_ROLE());
+        bytes4[] memory vptSelectors = new bytes4[](6);
+        vptSelectors[0] = vpt.initializeCommunity.selector;
+        vptSelectors[1] = vpt.mint.selector;
+        vptSelectors[2] = vpt.burn.selector;
+        vptSelectors[3] = vpt.batchMint.selector;
+        vptSelectors[4] = vpt.batchBurn.selector;
+        vptSelectors[5] = vpt.adminTransfer.selector;
+        accessManager.setTargetFunctionRole(address(vpt), vptSelectors, accessManager.ADMIN_ROLE());
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), address(verifierElection), 0);
+        vm.stopPrank();
         
         // Initialize communities and set up verifiers
+        vm.startPrank(timelock);
         vpt.initializeCommunity(COMMUNITY_ID_1, "metadata1");
         vpt.initializeCommunity(COMMUNITY_ID_2, "metadata2");
         
@@ -110,7 +136,6 @@ contract VerifierManagerTest is Test {
     function testConstructor() public view {
         assertEq(address(verifierManager.verifierElection()), address(verifierElection));
         assertEq(address(verifierManager.paramController()), address(paramController));
-        assertEq(verifierManager.governance(), governance);
     }
     
     function testConstructorZeroAddressesRevert() public {
@@ -122,31 +147,6 @@ contract VerifierManagerTest is Test {
         
         vm.expectRevert(Errors.ZeroAddress.selector);
         new VerifierManager(address(verifierElection), address(paramController), address(0));
-    }
-    
-    /*//////////////////////////////////////////////////////////////
-                        ENGAGEMENTS CONTRACT MANAGEMENT
-    //////////////////////////////////////////////////////////////*/
-
-    function testSetEngagementsContract() public {
-        address newEngagements = makeAddr("newEngagements");
-        
-        vm.prank(governance);
-        verifierManager.setEngagementsContract(newEngagements);
-        
-        assertEq(verifierManager.engagementsContract(), newEngagements);
-    }
-    
-    function testSetEngagementsContractNonGovernanceReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
-        vm.prank(unauthorizedUser);
-        verifierManager.setEngagementsContract(makeAddr("newEngagements"));
-    }
-    
-    function testSetEngagementsContractZeroAddressReverts() public {
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        vm.prank(governance);
-        verifierManager.setEngagementsContract(address(0));
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -202,7 +202,7 @@ contract VerifierManagerTest is Test {
     }
     
     function testSelectJurorsNonEngagementsReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
         verifierManager.selectJurors(1, COMMUNITY_ID_1, 3, 12345, false);
     }
@@ -272,7 +272,7 @@ contract VerifierManagerTest is Test {
         address[] memory offenders = new address[](1);
         offenders[0] = verifier1;
         
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
         verifierManager.reportFraud(1, COMMUNITY_ID_1, offenders, "evidence");
     }

@@ -19,6 +19,7 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 ## 🎯 Stage & Roadmap
 
 - **Current stage (staging/test)**: Active on Base Sepolia; Base mainnet is the launch target. All privileged operations remain timelock-gated; ParamController is the policy source; no staking for verifiers; TreasuryAdapter guardrails stay intact.
+- **Access control posture (Jan 2026)**: Timelock holds AccessManager admin; deploy-complete wires per-function roles across verification, economic, and commerce modules so privileged mutations execute via governance.
 - **Achieved milestones**:
     - **Q3 2025**: Alpha contract suite and research completed; staging deployment to Base Sepolia.
     - **Q4 2025**: Marketing site live and basic admin tool shipped.

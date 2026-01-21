@@ -2,11 +2,15 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {Types} from "../contracts/libs/Types.sol";
 import {ValuableActionSBT} from "../contracts/modules/ValuableActionSBT.sol";
+import {Roles} from "../contracts/libs/Roles.sol";
 
 contract ValuableActionSBTTest is Test {
     ValuableActionSBT public valuableActionSBT;
+    AccessManager public accessManager;
 
     address public owner = makeAddr("owner");
     address public manager = makeAddr("manager");
@@ -15,28 +19,37 @@ contract ValuableActionSBTTest is Test {
     address public bob = makeAddr("bob");
 
     function setUp() public {
-        valuableActionSBT = new ValuableActionSBT(owner, manager, governance);
+        accessManager = new AccessManager(owner);
+        valuableActionSBT = new ValuableActionSBT(address(accessManager));
+
+        vm.startPrank(owner);
+        bytes4[] memory selectors = new bytes4[](6);
+        selectors[0] = valuableActionSBT.mintEngagement.selector;
+        selectors[1] = valuableActionSBT.mintPosition.selector;
+        selectors[2] = valuableActionSBT.mintInvestment.selector;
+        selectors[3] = valuableActionSBT.setEndedAt.selector;
+        selectors[4] = valuableActionSBT.closePositionToken.selector;
+        selectors[5] = valuableActionSBT.updateTokenURI.selector;
+        accessManager.setTargetFunctionRole(address(valuableActionSBT), selectors, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, manager, 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, governance, 0);
+        vm.stopPrank();
     }
 
     /*//////////////////////////////////////////////////////////////
                           CONSTRUCTOR TESTS
     //////////////////////////////////////////////////////////////*/
     function testConstructorSetsRolesAndCounters() public view {
-        assertTrue(valuableActionSBT.hasRole(valuableActionSBT.DEFAULT_ADMIN_ROLE(), owner));
-        assertTrue(valuableActionSBT.hasRole(valuableActionSBT.MANAGER_ROLE(), manager));
-        assertTrue(valuableActionSBT.hasRole(valuableActionSBT.GOVERNANCE_ROLE(), governance));
+        (bool isAdmin,) = accessManager.hasRole(accessManager.ADMIN_ROLE(), owner);
+        assertTrue(isAdmin);
+        (bool isManager,) = accessManager.hasRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, manager);
+        assertTrue(isManager);
         assertEq(valuableActionSBT.nextTokenId(), 1);
     }
 
     function testConstructorZeroAddressReverts() public {
         vm.expectRevert();
-        new ValuableActionSBT(address(0), manager, governance);
-
-        vm.expectRevert();
-        new ValuableActionSBT(owner, address(0), governance);
-
-        vm.expectRevert();
-        new ValuableActionSBT(owner, manager, address(0));
+        new ValuableActionSBT(address(0));
     }
 
     /*//////////////////////////////////////////////////////////////

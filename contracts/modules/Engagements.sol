@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {IVerifierManager} from "contracts/core/interfaces/IVerifierManager.sol";
@@ -11,7 +13,7 @@ import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
 /// @title Engagements
 /// @notice Handles one-shot engagement submissions and M-of-N verification with juror panels
 /// @dev Integrates with ValuableActionRegistry for verification parameters and VerifierManager for juror selection
-contract Engagements {
+contract Engagements is AccessManaged {
     /// @notice Extended engagement structure with verification tracking
     struct Engagement {
         uint256 typeId;              // Action type ID
@@ -46,7 +48,6 @@ contract Engagements {
     ValuableActionRegistry public immutable actionRegistry;
     address public verifierManager;
     address public valuableActionSBT;
-    address public governance;
     address public membershipToken;
     uint256 public immutable communityId;
 
@@ -83,12 +84,6 @@ contract Engagements {
         string evidenceCID
     );
 
-    /// @notice Access control modifiers
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
     modifier onlyAssignedJuror(uint256 engagementId) {
         bool isAssigned = false;
         for (uint i = 0; i < engagements[engagementId].jurors.length; i++) {
@@ -102,27 +97,26 @@ contract Engagements {
     }
 
     /// @notice Constructor
-    /// @param _governance Governance contract address
+    /// @param manager AccessManager authority contract
     /// @param _actionRegistry ValuableActionRegistry contract address  
     /// @param _verifierManager VerifierManager contract address
     /// @param _valuableActionSBT ValuableActionSBT contract address
     /// @param _membershipToken MembershipToken contract address for minting rewards
     /// @param _communityId Community identifier for this engagements contract instance
     constructor(
-        address _governance,
-        address _actionRegistry, 
+        address manager,
+        address _actionRegistry,
         address _verifierManager,
         address _valuableActionSBT,
         address _membershipToken,
         uint256 _communityId
-    ) {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
+    ) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_actionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_verifierManager == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionSBT == address(0)) revert Errors.ZeroAddress();
         if (_membershipToken == address(0)) revert Errors.ZeroAddress();
 
-        governance = _governance;
         actionRegistry = ValuableActionRegistry(_actionRegistry);
         verifierManager = _verifierManager;
         valuableActionSBT = _valuableActionSBT;
@@ -270,7 +264,7 @@ contract Engagements {
 
     /// @notice Revoke engagement (governance only, for revocable action types)
     /// @param engagementId Engagement to revoke
-    function revoke(uint256 engagementId) external onlyGovernance {
+    function revoke(uint256 engagementId) external restricted {
         if (engagementId == 0 || engagementId > lastEngagementId) revert Errors.InvalidInput("Invalid engagement ID");
         
         Engagement storage engagement = engagements[engagementId];
@@ -517,16 +511,9 @@ contract Engagements {
     function updateContracts(
         address _verifierManager, 
         address _valuableActionSBT
-    ) external onlyGovernance {
+    ) external restricted {
         if (_verifierManager != address(0)) verifierManager = _verifierManager;
         if (_valuableActionSBT != address(0)) valuableActionSBT = _valuableActionSBT;
-    }
-
-    /// @notice Update governance address
-    /// @param _governance New governance address
-    function updateGovernance(address _governance) external onlyGovernance {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
-        governance = _governance;
     }
 
     /// @notice Get the community ID for this engagements contract

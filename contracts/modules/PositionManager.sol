@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {Errors} from "../libs/Errors.sol";
 import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
@@ -12,7 +13,7 @@ interface IRevenueRouter {
 
 /// @title PositionManager
 /// @notice Manages position definitions, applications, assignments, and closures with ROLE minting on SUCCESS
-contract PositionManager {
+contract PositionManager is AccessManaged {
     /*//////////////////////////////////////////////////////////////
                                     EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -59,9 +60,6 @@ contract PositionManager {
     uint8 private constant STATUS_PENDING = 1;
     uint8 private constant STATUS_APPROVED = 2;
 
-    address public governance;
-    mapping(address => bool) public isModerator;
-
     ValuableActionRegistry public immutable valuableActionRegistry;
     IValuableActionSBT public immutable valuableActionSBT;
     IRevenueRouter public revenueRouter;
@@ -71,55 +69,24 @@ contract PositionManager {
     uint256 public nextAppId = 1;
 
     /*//////////////////////////////////////////////////////////////
-                                  MODIFIERS
-    //////////////////////////////////////////////////////////////*/
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
-    modifier onlyGovOrModerator() {
-        if (msg.sender != governance && !isModerator[msg.sender]) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
-    /*//////////////////////////////////////////////////////////////
                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address _governance, address _valuableActionRegistry, address _valuableActionSBT) {
-        if (_governance == address(0)) revert Errors.ZeroAddress();
+    constructor(address manager, address _valuableActionRegistry, address _valuableActionSBT) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionSBT == address(0)) revert Errors.ZeroAddress();
 
-        governance = _governance;
         valuableActionRegistry = ValuableActionRegistry(_valuableActionRegistry);
         valuableActionSBT = IValuableActionSBT(_valuableActionSBT);
-
-        // Governance starts as moderator for convenience
-        isModerator[_governance] = true;
     }
 
     /*//////////////////////////////////////////////////////////////
                             WIRING CONTROLS
     //////////////////////////////////////////////////////////////*/
-    function setRevenueRouter(address router) external onlyGovernance {
+    function setRevenueRouter(address router) external restricted {
         if (router == address(0)) revert Errors.ZeroAddress();
         revenueRouter = IRevenueRouter(router);
         emit RevenueRouterUpdated(router);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                                GOVERNANCE
-    //////////////////////////////////////////////////////////////*/
-    function setModerator(address account, bool status) external onlyGovernance {
-        if (account == address(0)) revert Errors.ZeroAddress();
-        isModerator[account] = status;
-    }
-
-    function updateGovernance(address newGovernance) external onlyGovernance {
-        if (newGovernance == address(0)) revert Errors.ZeroAddress();
-        governance = newGovernance;
-        isModerator[newGovernance] = true;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -127,7 +94,7 @@ contract PositionManager {
     //////////////////////////////////////////////////////////////*/
     function definePositionType(bytes32 roleTypeId, uint256 communityId, uint32 points, bool active)
         external
-        onlyGovOrModerator
+        restricted
     {
         if (roleTypeId == bytes32(0)) revert Errors.InvalidInput("Missing roleTypeId");
         if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
@@ -166,7 +133,7 @@ contract PositionManager {
 
     function approveApplication(uint256 appId, bytes calldata metadata)
         external
-        onlyGovOrModerator
+        restricted
         returns (uint256 positionTokenId)
     {
         PositionApplication storage application = applications[appId];
@@ -199,7 +166,7 @@ contract PositionManager {
     //////////////////////////////////////////////////////////////*/
     function closePosition(uint256 positionTokenId, CloseOutcome outcome, bytes calldata evidenceOrMetadata)
         external
-        onlyGovOrModerator
+        restricted
         returns (uint256 roleTokenId)
     {
         IValuableActionSBT.TokenData memory data = valuableActionSBT.getTokenData(positionTokenId);

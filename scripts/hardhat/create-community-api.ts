@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { Roles } from "../roles";
 
 /**
  * API-Friendly Community Creation Script
@@ -324,7 +325,7 @@ export async function createCommunityForUI(
   txHashes.push(grantMinterTx.hash, revokeMinterTx.hash);
 
   // Grant claims manager role on WorkerSBT
-  const MANAGER_ROLE = await workerSBT.MANAGER_ROLE();
+  const MANAGER_ROLE = Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE;
   const grantManagerTx = await workerSBT.grantRole(MANAGER_ROLE, claimsAddress);
   await grantManagerTx.wait();
   console.log("✅ Engagements granted WorkerSBT manager role");
