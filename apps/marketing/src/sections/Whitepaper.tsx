@@ -5,6 +5,7 @@ import { Anchor, Heading, Paragraph, XStack, YStack } from 'tamagui'
 import { BookOpen } from 'lucide-react'
 import { Container } from '../components/Container'
 import { useLanguage, useTranslations } from '../providers/i18n/I18nContext'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 const WHITEPAPER_LINKS = {
   es: 'https://gist.github.com/Nevtep/3c7989ccdf7201faf957834f505b4cb0',
@@ -15,6 +16,7 @@ export default function Whitepaper() {
   const t = useTranslations()
   const [language] = useLanguage()
   const whitepaperHref = WHITEPAPER_LINKS[language] ?? WHITEPAPER_LINKS.es
+  const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   return (
     <YStack
@@ -42,6 +44,8 @@ export default function Whitepaper() {
           style={{
             boxShadow: '0 18px 42px rgba(0,0,0,0.08)',
           }}
+          ref={ref}
+          className={`reveal reveal-up ${visible ? 'is-visible' : ''}`}
         >
           <Heading
             fontSize="$11"

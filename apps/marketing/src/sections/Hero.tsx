@@ -5,6 +5,7 @@ import { YStack, Heading, Paragraph, XStack, Anchor } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
 import { secondaryGradientButton, secondaryOutlineButton } from '../components/buttonStyles'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 const HERO_BACKGROUNDS = ['/hero-backgound.webp', '/hero-backgound2.webp', '/hero-backgound3.webp']
 
@@ -12,6 +13,7 @@ export default function Hero() {
   const t = useTranslations()
   const heroBackgrounds = HERO_BACKGROUNDS
   const [currentBg, setCurrentBg] = useState(0)
+  const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   useEffect(() => {
     if (heroBackgrounds.length <= 1) return undefined
@@ -54,6 +56,7 @@ export default function Hero() {
         marginLeft: 'auto',
         marginRight: 'auto',
       }}
+      ref={ref}
     >
       <YStack position="absolute" inset={0} pointerEvents="none">
         {heroBackgrounds.map((src, index) => (
@@ -79,6 +82,7 @@ export default function Hero() {
           position="relative"
           zIndex={1}
           $md={{ maxWidth: '100%', gap: '$3' }}
+          className={`reveal reveal-up ${visible ? 'is-visible' : ''}`}
         >
           <YStack gap={0} alignItems="flex-start">
             <Heading

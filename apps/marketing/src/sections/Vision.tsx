@@ -4,6 +4,7 @@ import React from 'react'
 import { YStack, XStack, Heading, Paragraph, Card, Text, useMedia } from 'tamagui'
 import { Container } from '../components/Container'
 import { useTranslations } from '../providers/i18n/I18nContext'
+import { useRevealOnScroll } from '../hooks/useRevealOnScroll'
 
 const CheckCircleIcon = ({ color = '#6C8158' }: { color?: string }) => (
   <svg
@@ -27,6 +28,7 @@ const CheckCircleIcon = ({ color = '#6C8158' }: { color?: string }) => (
 export default function Vision() {
   const t = useTranslations()
   const media = useMedia()
+  const { ref, visible } = useRevealOnScroll<HTMLDivElement>()
 
   return (
     <YStack
@@ -95,6 +97,8 @@ export default function Vision() {
                 gap: media.md ? 16 : 24,
                 alignItems: 'stretch',
               }}
+              ref={ref}
+              className={`reveal reveal-up ${visible ? 'is-visible' : ''}`}
             >
               <Card
                 flex={1}
