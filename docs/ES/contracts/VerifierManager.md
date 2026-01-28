@@ -17,7 +17,7 @@ struct JurorSelection {
     bool completed;               // Estado de completitud de selección
 }
 
-mapping(uint256 => JurorSelection) public selections; // claimId => detalles de selección
+mapping(uint256 => JurorSelection) public selections; // engagementId => detalles de selección
 ```
 
 ### Marco de Integración
@@ -26,8 +26,6 @@ mapping(uint256 => JurorSelection) public selections; // claimId => detalles de 
 contract VerifierManager {
     IVerifierElection public immutable verifierElection;    // Gestión de poder de verificador
     IParamController public immutable paramController;      // Configuración de comunidad
-    address public immutable governance;                    // Contrato de gobernanza
-    address public claimsContract;                         // Contrato de procesamiento de reclamos
 }
 ```
 
@@ -39,13 +37,12 @@ contract VerifierManager {
 
 ```solidity
 function selectJurors(
-    uint256 claimId,
+    uint256 engagementId,
     uint256 communityId,
-    uint256 seed
-) external onlyClaims returns (
-    address[] memory selectedJurors,
-    uint256[] memory selectedPowers
-)
+    uint256 panelSize,
+    uint256 seed,
+    bool useWeighting
+) external restricted returns (address[] memory selectedJurors)
 ```
 
 **Algoritmo de Selección**:
@@ -76,16 +73,16 @@ function _selectWeighted(
 
 ```solidity
 function reportFraud(
-    uint256 claimId,
+    uint256 engagementId,
     uint256 communityId,
     address[] calldata offenders,
     string calldata evidenceCID
-) external onlyClaims
+) external restricted
 ```
 
 **Proceso de Reporte de Fraude**:
 
-1. **Validación de Autoridad**: Asegurar que los infractores fueron realmente seleccionados como jurados para este reclamo
+1. **Validación de Autoridad**: Asegurar que los infractores fueron realmente seleccionados como jurados para este compromiso
 2. **Registro de Evidencia**: Almacenar hash IPFS de evidencia de fraude para revisión comunitaria
 3. **Notificación de Gobernanza**: Emitir eventos para que el sistema de gobernanza procese acciones disciplinarias
 4. **Integridad de Selección**: Mantener historial de selección de jurado para responsabilidad
@@ -118,16 +115,15 @@ function _getCommunityParams(uint256 communityId) private view returns (
 
 | Rol | Funciones | Propósito |
 |-----|-----------|-----------|
-| **Contrato Claims** | `selectJurors()`, `reportFraud()` | Integración de flujo de trabajo de verificación |
-| **Gobernanza** | `setClaimsContract()` | Administración del sistema |
+| **Rol AccessManager `VERIFIER_MANAGER_CALLER_ROLE`** | `selectJurors()`, `reportFraud()` | Integración de flujo de trabajo de verificación (caller Engagements) |
 | **Público** | Funciones de vista | Transparencia y analíticas |
 
 ### Mecanismos de Integridad de Selección
 
 ```solidity
-// Prevenir doble selección para el mismo reclamo
-if (selections[claimId].selectedAt != 0) {
-    revert Errors.AlreadySelected(claimId);
+// Prevenir doble selección para el mismo compromiso
+if (selections[engagementId].selectedAt != 0) {
+    revert Errors.AlreadySelected(engagementId);
 }
 
 // Asegurar verificadores suficientes disponibles
@@ -136,8 +132,8 @@ if (eligibleCount < panelSize) {
 }
 
 // Validar autoridad de reporte de fraude
-if (!_isSelectedJuror(claimId, offender)) {
-    revert Errors.NotSelectedJuror(offender, claimId);
+if (!_isSelectedJuror(engagementId, offender)) {
+    revert Errors.NotSelectedJuror(offender, engagementId);
 }
 ```
 
@@ -179,23 +175,23 @@ function _getEligiblePool(uint256 communityId) private view returns (
 }
 ```
 
-### Flujo de Trabajo de Contrato Claims
+### Flujo de Trabajo de Contrato Compromisos
 
 ```solidity
-// Contrato Claims llama VerifierManager para selección de jurado
-function _selectVerificationJury(uint256 claimId) external {
-    uint256 communityId = _getClaimCommunity(claimId);
-    uint256 seed = _generateClaimSeed(claimId);
+// Contrato Compromisos llama VerifierManager para selección de jurado
+function _selectVerificationJury(uint256 engagementId) external {
+    uint256 communityId = _getEngagementCommunity(engagementId);
+    uint256 seed = _generateEngagementSeed(engagementId);
     
     (address[] memory jurors, uint256[] memory powers) = 
-        verifierManager.selectJurors(claimId, communityId, seed);
+        verifierManager.selectJurors(engagementId, communityId, seed);
     
     // Almacenar jurados seleccionados para proceso de verificación
 }
 
 // Integración de detección y reporte de fraude
-function _reportVerifierMisconduct(uint256 claimId, address[] calldata offenders) external {
-    verifierManager.reportFraud(claimId, community, offenders, evidenceCID);
+function _reportVerifierMisconduct(uint256 engagementId, address[] calldata offenders) external {
+    verifierManager.reportFraud(engagementId, community, offenders, evidenceCID);
 }
 ```
 
@@ -250,33 +246,33 @@ paramController.setUint256(comunityId, VERIFIER_MIN, 8);
 
 ## 🎛️ Ejemplos de Casos de Uso
 
-### Verificación Estándar de Reclamos
+### Verificación Estándar de Compromisos
 
 ```solidity
-// 1. Contrato Claims inicia verificación
-uint256 claimId = claims.submitClaim(communityId, valuableActionId, evidenceCID);
+// 1. Contrato Compromisos inicia verificación
+uint256 engagementId = engagements.submitEngagement(communityId, valuableActionId, evidenceCID);
 
 // 2. VerifierManager selecciona jurado 5-de-7
 (address[] memory jurors, uint256[] memory powers) = 
-    verifierManager.selectJurors(claimId, communityId, blockSeed);
+    verifierManager.selectJurors(engagementId, communityId, blockSeed);
 
 // 3. Jurados seleccionados revisan evidencia y votan
 for (uint i = 0; i < jurors.length; i++) {
-    claims.verifyClaimVPS(claimId, jurors[i], approved);
+    engagements.verifyEngagementVPS(engagementId, jurors[i], approved);
 }
 
-// 4. Claims alcanza umbral de 5 aprobaciones y aprueba
-claims.finalizeVerification(claimId, true);
+// 4. Compromisos alcanza umbral de 5 aprobaciones y aprueba
+engagements.finalizeVerification(engagementId, true);
 ```
 
 ### Detección y Respuesta de Fraude
 
 ```solidity
-// 1. Contrato Claims detecta patrón de verificación inconsistente
+// 1. Contrato Compromisos detecta patrón de verificación inconsistente
 address[] memory suspiciousJurors = [juror1, juror3, juror5];
 
 // 2. Reportar fraude con evidencia
-verifierManager.reportFraud(claimId, communityId, suspiciousJurors, "QmFraudEvidence123...");
+verifierManager.reportFraud(engagementId, communityId, suspiciousJurors, "QmFraudEvidence123...");
 
 // 3. Gobernanza comunitaria revisa reporte de fraude
 // 4. VerifierElection implementa acción disciplinaria (baneo/reducción de poder)
@@ -320,10 +316,10 @@ function getSelectionStats(uint256 communityId) external view returns (
 
 ```solidity
 function getVerifierSelectionHistory(address verifier, uint256 communityId) external view returns (
-    uint256[] memory claimIds,        // Reclamos donde el verificador fue seleccionado
-    uint256 totalSelections,         // Veces totales seleccionado como jurado
-    uint256 recentSelections,        // Selecciones en últimos 30 días
-    bool hasActiveFraudReports       // Reportes de fraude pendientes
+    uint256[] memory engagementIds,   // Compromisos donde el verificador fue seleccionado
+    uint256 totalSelections,          // Veces totales seleccionado como jurado
+    uint256 recentSelections,         // Selecciones en últimos 30 días
+    bool hasActiveFraudReports        // Reportes de fraude pendientes
 ) {
     // Análisis de actividad de verificador individual
 }
@@ -352,7 +348,7 @@ address[] memory selected = new address[](panelSize);
 uint256[] memory powers = new uint256[](panelSize);
 
 // Actualización única de struct de selección
-selections[claimId] = JurorSelection({
+selections[engagementId] = JurorSelection({
     selectedJurors: selected,
     selectedPowers: powers,
     seed: seed,
@@ -379,7 +375,7 @@ struct CommunityConfig {
 **Dependencias Requeridas**:
 - **VerifierElection**: Datos de elegibilidad y poder de verificadores
 - **ParamController**: Parámetros de configuración específicos de comunidad
-- **Contrato Claims**: Coordinación de flujo de trabajo de verificación
+- **Contrato Compromisos**: Coordinación de flujo de trabajo de verificación
 
 **Integraciones Opcionales**:
 - **Panel de Analíticas**: Monitoreo de patrones de selección e insights comunitarios
@@ -390,10 +386,10 @@ struct CommunityConfig {
 
 **Secuencia de Inicialización**:
 1. Desplegar VerifierManager con direcciones de VerifierElection y ParamController
-2. Establecer dirección inicial de contrato Claims (puede actualizarse después)
+2. Establecer dirección inicial de contrato Compromisos (puede actualizarse después)
 3. Configurar parámetros de verificación comunitarios vía ParamController
 4. Inicializar conjuntos de verificadores vía VerifierElection
-5. Comenzar procesamiento de reclamos con selección de jurados integrada
+5. Comenzar procesamiento de compromisos con selección de jurados integrada
 
 **Configuración de Comunidad**:
 - Establecer estándares de parámetros de verificación para experiencia consistente

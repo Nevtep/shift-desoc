@@ -53,11 +53,10 @@ contract CommunityRegistryTest is Test {
     );
     
     function setUp() public {
-        vm.startPrank(admin);
+        vm.startPrank(admin, admin);
         paramController = new ParamController(admin);
         registry = new CommunityRegistry(admin, address(paramController));
-        // Grant admin role to test contract to handle internal call context
-        registry.grantRole(registry.DEFAULT_ADMIN_ROLE(), address(this));
+        paramController.setCommunityRegistry(address(registry));
         vm.stopPrank();
     }
     
@@ -66,7 +65,6 @@ contract CommunityRegistryTest is Test {
     //////////////////////////////////////////////////////////////*/
     
     function testDeployment() public {
-        assertTrue(registry.hasRole(registry.DEFAULT_ADMIN_ROLE(), admin));
         assertEq(registry.nextCommunityId(), 1);
         assertEq(registry.activeCommunityCount(), 0);
     }
@@ -195,6 +193,8 @@ contract CommunityRegistryTest is Test {
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
         // Set parameters via ParamController
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         vm.prank(admin);
         paramController.setGovernanceParams(communityId, 10 days, 5 days, 3 days);
         
@@ -221,8 +221,7 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         registry.setModuleAddress(communityId, keccak256("governor"), governorAddress);
         
-        (address governor, , , , , , , , ) = registry.getModuleAddresses(communityId);
-        assertEq(governor, governorAddress);
+        assertEq(registry.getCommunityModules(communityId).governor, governorAddress);
     }
     
     function testSetModuleAddressUnauthorized() public {
@@ -249,50 +248,43 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
-        address[] memory addresses = new address[](10);
-        for (uint256 i = 0; i < 10; i++) {
+        address[] memory addresses = new address[](11);
+        for (uint256 i = 0; i < 11; i++) {
             addresses[i] = address(uint160(0x1000 + i));
         }
         
-        bytes32[] memory moduleKeys = new bytes32[](10);
+        bytes32[] memory moduleKeys = new bytes32[](11);
         moduleKeys[0] = keccak256("governor");
         moduleKeys[1] = keccak256("timelock");
         moduleKeys[2] = keccak256("requestHub");
         moduleKeys[3] = keccak256("draftsManager");
-        moduleKeys[4] = keccak256("claimsManager");
+        moduleKeys[4] = keccak256("engagementsManager");
         moduleKeys[5] = keccak256("valuableActionRegistry");
         moduleKeys[6] = keccak256("valuableActionSBT");
-        moduleKeys[7] = keccak256("treasuryAdapter");
-        moduleKeys[8] = keccak256("communityToken");
-        moduleKeys[9] = keccak256("paramController");
+        moduleKeys[7] = keccak256("treasuryVault");
+        moduleKeys[8] = keccak256("treasuryAdapter");
+        moduleKeys[9] = keccak256("communityToken");
+        moduleKeys[10] = keccak256("paramController");
         
-        vm.startPrank(user1);
-        for (uint256 i = 0; i < 10; i++) {
+        vm.startPrank(user1, user1);
+        for (uint256 i = 0; i < 11; i++) {
             registry.setModuleAddress(communityId, moduleKeys[i], addresses[i]);
         }
         vm.stopPrank();
         
-        (
-            address governor,
-            address timelock,
-            address requestHub,
-            address draftsManager,
-            address claimsManager,
-            address valuableActionRegistry,
-            address valuableActionSBT,
-            address treasuryAdapter,
-            address communityToken
-        ) = registry.getModuleAddresses(communityId);
+        CommunityRegistry.ModuleAddresses memory modules = registry.getCommunityModules(communityId);
         
-        assertEq(governor, addresses[0]);
-        assertEq(timelock, addresses[1]);
-        assertEq(requestHub, addresses[2]);
-        assertEq(draftsManager, addresses[3]);
-        assertEq(claimsManager, addresses[4]);
-        assertEq(valuableActionRegistry, addresses[5]);
-        assertEq(valuableActionSBT, addresses[6]);
-        assertEq(treasuryAdapter, addresses[7]);
-        assertEq(communityToken, addresses[8]);
+        assertEq(modules.governor, addresses[0]);
+        assertEq(modules.timelock, addresses[1]);
+        assertEq(modules.requestHub, addresses[2]);
+        assertEq(modules.draftsManager, addresses[3]);
+        assertEq(modules.engagementsManager, addresses[4]);
+        assertEq(modules.valuableActionRegistry, addresses[5]);
+        assertEq(modules.valuableActionSBT, addresses[6]);
+        assertEq(modules.treasuryVault, addresses[7]);
+        assertEq(modules.treasuryAdapter, addresses[8]);
+        assertEq(modules.communityToken, addresses[9]);
+        assertEq(modules.paramController, addresses[10]);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -300,16 +292,14 @@ contract CommunityRegistryTest is Test {
     //////////////////////////////////////////////////////////////*/
     
     function testGrantCommunityRole() public {
-        vm.prank(user1);
+        vm.startPrank(user1, user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
-        
 
-        
         vm.expectEmit(true, true, true, true);
         emit CommunityRoleGranted(communityId, moderator, registry.MODERATOR_ROLE());
         
-        vm.prank(user1);
         registry.grantCommunityRole(communityId, moderator, registry.MODERATOR_ROLE());
+        vm.stopPrank();
         
         assertTrue(registry.hasRole(communityId, moderator, registry.MODERATOR_ROLE()));
         assertFalse(registry.hasRole(communityId, moderator, registry.CURATOR_ROLE()));
@@ -320,15 +310,7 @@ contract CommunityRegistryTest is Test {
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
         // Ensure user2 definitely does not have any admin privileges
-        vm.startPrank(admin);
-        if (registry.hasRole(registry.DEFAULT_ADMIN_ROLE(), user2)) {
-            registry.revokeRole(registry.DEFAULT_ADMIN_ROLE(), user2);
-        }
-        vm.stopPrank();
-        
-        // Double-check the state
         assertFalse(registry.communityAdmins(communityId, user2), "user2 should not be community admin");
-        assertFalse(registry.hasRole(registry.DEFAULT_ADMIN_ROLE(), user2), "user2 should not have global admin");
         
         // TODO: Fix authorization test - currently has Foundry vm.prank() context issues
         // For now, skip this test as core functionality works (see other role tests)
@@ -349,21 +331,20 @@ contract CommunityRegistryTest is Test {
     }
     
     function testGrantCommunityRoleInvalidRole() public {
-        vm.prank(user1);
+        vm.startPrank(user1, user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Invalid role"));
-        
-        vm.prank(user1);
+
         registry.grantCommunityRole(communityId, moderator, keccak256("INVALID_ROLE"));
+        vm.stopPrank();
     }
     
     function testRevokeCommunityRole() public {
-        vm.prank(user1);
+        vm.startPrank(user1, user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
         // Grant role first
-        vm.prank(user1);
         registry.grantCommunityRole(communityId, moderator, registry.MODERATOR_ROLE());
         
         assertTrue(registry.hasRole(communityId, moderator, registry.MODERATOR_ROLE()));
@@ -371,8 +352,8 @@ contract CommunityRegistryTest is Test {
         vm.expectEmit(true, true, true, true);
         emit CommunityRoleRevoked(communityId, moderator, registry.MODERATOR_ROLE());
         
-        vm.prank(user1);
         registry.revokeCommunityRole(communityId, moderator, registry.MODERATOR_ROLE());
+        vm.stopPrank();
         
         assertFalse(registry.hasRole(communityId, moderator, registry.MODERATOR_ROLE()));
     }
@@ -382,7 +363,7 @@ contract CommunityRegistryTest is Test {
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
         // Grant both roles to same user
-        vm.startPrank(user1);
+        vm.startPrank(user1, user1);
         registry.grantCommunityRole(communityId, moderator, registry.MODERATOR_ROLE());
         registry.grantCommunityRole(communityId, moderator, registry.CURATOR_ROLE());
         vm.stopPrank();
@@ -490,6 +471,8 @@ contract CommunityRegistryTest is Test {
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
         // Set parameters first via ParamController
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         vm.prank(admin);
         paramController.setGovernanceParams(communityId, 7 days, 3 days, 2 days);
         
@@ -505,6 +488,8 @@ contract CommunityRegistryTest is Test {
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
         // Set parameters first via ParamController
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         vm.prank(admin);
         paramController.setEligibilityParams(communityId, 0, 0, 1e18);
         
@@ -520,20 +505,21 @@ contract CommunityRegistryTest is Test {
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
         // Set parameters first via ParamController
-        vm.startPrank(admin);
-        paramController.setRevenuePolicy(communityId, 7000, 2000, 1000, 0); // 70%, 20%, 10% in basis points
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
+        vm.startPrank(admin, admin);
+        paramController.setRevenuePolicy(communityId, 7000, 2000, 1, 0); // 70% treasury, 20% positions, spillover to treasury
         
         address[] memory assets = new address[](0);
         paramController.setAddressArray(communityId, paramController.BACKING_ASSETS(), assets);
         vm.stopPrank();
         
-        (uint256 minWorkersBps, uint256 treasuryBps, uint256 investorsBps, 
-         uint8 spilloverTarget, uint256 feeOnWithdraw, address[] memory backingAssets) = registry.getEconomicParameters(communityId);
+        (uint256 minTreasuryBps, uint256 minPositionsBps, uint8 spilloverTarget, uint256 splitBps, uint256 feeOnWithdraw, address[] memory backingAssets) = registry.getEconomicParameters(communityId);
         
-        assertEq(minWorkersBps, 7000); // 70% min workers
-        assertEq(treasuryBps, 2000); // 20% treasury
-        assertEq(investorsBps, 1000); // 10% investors
-        assertEq(spilloverTarget, 0); // spillover to workers
+        assertEq(minTreasuryBps, 7000); // 70% min treasury
+        assertEq(minPositionsBps, 2000); // 20% min positions
+        assertEq(spilloverTarget, 1); // spillover to treasury
+        assertEq(splitBps, 0);
         assertEq(feeOnWithdraw, 0);
         assertEq(backingAssets.length, 0);
     }
@@ -601,18 +587,11 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
-        // Grant admin role to user2
-        vm.prank(admin);
-        registry.grantRole(registry.DEFAULT_ADMIN_ROLE(), user2);
-        
-        // Parameters are now managed via ParamController
-        // Test that user2 can set module addresses as community admin
+        // Community creator (user1) should be able to set module addresses
         address governorAddress = address(0x1234);
-        
-        vm.prank(user2); // user2 has global admin role now
+        vm.prank(user1);
         registry.setModuleAddress(communityId, keccak256("governor"), governorAddress);
         
-        (address governor, , , , , , , , ) = registry.getModuleAddresses(communityId);
-        assertEq(governor, governorAddress);
+        assertEq(registry.getCommunityModules(communityId).governor, governorAddress);
     }
 }

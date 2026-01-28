@@ -271,10 +271,10 @@ struct FederatedProject {
 
 ```solidity
 // Link project work to ValuableAction completion
-function validateMilestoneWork(uint256 projectId, uint256 milestoneId, uint256[] calldata claimIds) external {
-    // Validate that required work claims have been approved
+function validateMilestoneWork(uint256 projectId, uint256 milestoneId, uint256[] calldata engagementIds) external {
+    // Validate that required work engagements have been approved
     // Release milestone funding based on verified work completion
-    // Mint WorkerSBT tokens for project contributors
+    // Mint ValuableActionSBT tokens for project contributors
 }
 ```
 

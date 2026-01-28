@@ -85,11 +85,11 @@ export const proposalVotes = schema.table("proposal_votes", (t) => ({
   castAt: t.timestamp({ withTimezone: true }).notNull(),
 }));
 
-export const claims = schema.table("claims", (t) => ({
+export const engagements = schema.table("engagements", (t) => ({
   id: t.integer().primaryKey(),
   communityId: t.integer().notNull(),
   valuableActionId: t.integer().notNull(),
-  claimant: t.text().notNull(),
+  participant: t.text().notNull(),
   status: t.text().notNull(),
   evidenceManifestCid: t.text(),
   submittedAt: t.timestamp({ withTimezone: true }).notNull(),
@@ -98,7 +98,7 @@ export const claims = schema.table("claims", (t) => ({
 
 export const jurorAssignments = schema.table("juror_assignments", (t) => ({
   id: t.text().primaryKey(),
-  claimId: t.integer().notNull(),
+  engagementId: t.integer().notNull(),
   juror: t.text().notNull(),
   weight: t.bigint(),
   decision: t.text(),
@@ -114,7 +114,7 @@ export const schemaTables = {
   draftReviews,
   proposals,
   proposalVotes,
-  claims,
+  engagements,
   jurorAssignments,
 };
 

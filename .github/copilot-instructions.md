@@ -4,7 +4,7 @@ You are Copilot inside the Shift DeSoc monorepo. Act as the project’s **blockc
 
 You MUST:
 - Keep the system aligned with the **Shift docs under /docs/EN/** (Architecture, Governance-Core, Verification-Layer, Economic-Layer, Commerce specs).
-- Preserve core invariants (timelock authority, no staking verifiers, commerce disputes separated from work claims, TreasuryAdapter guardrails, ParamController as single source of truth).
+- Preserve core invariants (timelock authority, no staking verifiers, commerce disputes separated from work verification, TreasuryAdapter guardrails, ParamController as single source of truth).
 - Prioritize determinism, auditability, and testability.
 - If anything is missing/ambiguous: do NOT assume. Produce a **Gap List** + 2–3 design options with trade-offs + targeted questions.
 
@@ -23,14 +23,14 @@ You MUST:
 - Architecture layering is canonical:
   1) **Coordination**: CommunityRegistry, RequestHub, DraftsManager, ParamController
   2) **Governance**: ShiftGovernor, CountingMultiChoice, TimelockController, MembershipTokenERC20Votes
-  3) **Verification**: ValuableActionRegistry, Claims, VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionSBT
+  3) **Verification**: ValuableActionRegistry, Engagements, VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionSBT
   4) **Economic**: CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter
   5) **Commerce**: Marketplace, HousingManager, CommerceDisputes, ProjectFactory
 
 ### Non-negotiable constraints
 - **Timelock is the only authority** for privileged mutations (ParamController updates, verifier power mint/burn, treasury spends, etc.).
 - **Verifier power is governance-controlled** (NO staking/bonding).
-- **CommerceDisputes is separate** from work Claims; Claims are reserved for ValuableActions.
+- **CommerceDisputes is separate** from work verification; Engagements handle ValuableActions ("Claims" term reserved only for revenue claiming).
 - **TreasuryAdapter guardrails must not be bypassed**:
   - ≤1 spend per week
   - ≤10% of a token’s Safe balance per spend
@@ -86,9 +86,9 @@ If requirements are incomplete, respond with:
   - VerifierPowerToken1155 (non-transferable power per community)
   - VerifierManager (panel selection / juror logic)
 
-### 2.4 Domain separation: Work vs Commerce
-- Claims / ValuableActions:
-  - worker submits claim + evidence
+- ### 2.4 Domain separation: Work vs Commerce
+- Engagements / ValuableActions:
+  - worker submits engagement + evidence
   - M-of-N verification
   - outcome mints SBT + governance token rewards (as configured)
 - Commerce flows:
@@ -215,7 +215,7 @@ If you spot a bug outside scope:
 - NEVER commit private keys/secrets.
 - Don’t bypass ParamController or Timelock.
 - Don’t introduce staking/bonding for verifiers.
-- Keep commerce disputes separate from work Claims.
+- Keep commerce disputes separate from work verification (Engagements).
 - Keep TreasuryAdapter guardrails strict.
 
 (End)# Shift DeSoc - Smart Contract Development Guide
@@ -244,7 +244,7 @@ Core flow: `requests → drafts → proposals → timelock execution` with Valua
 **Deployed Contract Suite (22 contracts):**
 - **Core Infrastructure**: CommunityRegistry, ParamController
 - **Governance System**: ShiftGovernor, TimelockController (OpenZeppelin), CountingMultiChoice, MembershipTokenERC20Votes
-- **Work Verification**: VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionRegistry, Claims, ValuableActionSBT
+- **Work Verification**: VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionRegistry, Engagements, ValuableActionSBT
 - **Economic Layer**: CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter
 - **Community Modules**: RequestHub, DraftsManager, CommerceDisputes, Marketplace, HousingManager, ProjectFactory
 
@@ -274,8 +274,8 @@ Shift implements a comprehensive **Community Coordination → Work Verification 
 - **VerifierPowerToken1155**: ERC1155 tokens representing verifier power per community, managed through timelock governance
 - **VerifierElection**: Governance-controlled verifier set management with power token distribution and slashing capabilities
 - **VerifierManager**: M-of-N juror selection from active verifier sets with configurable weighting and fraud reporting
-- **Claims**: Work submission and verification workflow with evidence validation and appeals process
-- **ValuableActionSBT** (formerly WorkerSBT): Soulbound tokens minted on approved claims with WorkerPoints EMA tracking and governance revocation
+- **Engagements**: Work submission and verification workflow with evidence validation and appeals process
+- **ValuableActionSBT** (formerly WorkerSBT): Soulbound tokens minted on approved engagements with WorkerPoints EMA tracking and governance revocation
 
 ### Token Economy & Revenue Distribution
 
@@ -435,7 +435,7 @@ struct Community {
     address timelock;
     address requestHub;
     address draftsManager;
-    address claimsManager;
+    address engagements;
     address valuableActionRegistry;
     address verifierElection;
     address verifierManager;
@@ -460,13 +460,13 @@ function getCommunityModules(uint256 communityId) returns (ModuleAddresses memor
 
 ### Integration Workflows
 
-#### **RequestHub → Claims Integration (Bounty System)**:
+#### **RequestHub → Engagements Integration (Bounty System)**:
 
 ```solidity
 // Requests can spawn bounties by linking ValuableActions
 function createBountyRequest(string title, string cid, uint256 valuableActionId, uint256 reward)
-// Workers file claims referencing the source request
-function submitClaim(uint256 requestId, string evidenceCID) returns (uint256 claimId)
+// Workers submit engagements referencing the source request / action type
+function submit(uint256 valuableActionId, string evidenceCID) returns (uint256 engagementId)
 ```
 
 #### **DraftsManager ↔ ValuableActionRegistry Integration**:
@@ -555,18 +555,18 @@ Shift uses a **governance-controlled verifier power system** instead of economic
 ### VPS Integration Patterns
 
 ```solidity
-// Claims verification workflow with VPS
-function verifyClaimVPS(uint256 claimId, bool approved) external {
-    // 1. VerifierManager validates juror has power for this community
-    require(verifierManager.isActiveJuror(msg.sender, claimId), "Not selected juror");
+// Engagement verification workflow with VPS
+function verifyEngagementVPS(uint256 engagementId, bool approved) external {
+  // 1. VerifierManager validates juror has power for this community
+  require(verifierManager.isActiveJuror(msg.sender, engagementId), "Not selected juror");
 
-    // 2. Record vote (no bonding/slashing)
-    _recordJurorVote(claimId, msg.sender, approved);
+  // 2. Record vote (no bonding/slashing)
+  _recordJurorVote(engagementId, msg.sender, approved);
 
-    // 3. Check if M-of-N threshold reached
-    if (_hasReachedThreshold(claimId)) {
-        _finalizeVerification(claimId);
-    }
+  // 3. Check if M-of-N threshold reached
+  if (_hasReachedThreshold(engagementId)) {
+    _finalizeVerification(engagementId);
+  }
 }
 
 // Governance adds verifier (timelock only)
@@ -609,7 +609,7 @@ function castVoteMulti(
 }
 ```
 
-### Claims Verification Flow
+### Engagement Verification Flow
 
 ```solidity
 // ValuableAction configuration
@@ -627,8 +627,8 @@ struct ValuableAction {
     uint32 slashVerifierBps;       // Penalty for inaccurate verification
 
     // Quality Control
-    uint32 cooldownPeriod;         // Minimum time between claims of this type
-    uint32 maxConcurrent;          // Maximum active claims per person
+    uint32 cooldownPeriod;         // Minimum time between engagements of this type
+    uint32 maxConcurrent;          // Maximum active engagements per person
     bool revocable;                // Can community governance revoke this SBT
     uint32 evidenceTypes;          // Bitmask of required evidence formats
 
@@ -639,7 +639,7 @@ struct ValuableAction {
 
     // Metadata & Automation
     string evidenceSpecCID;        // IPFS: detailed evidence requirements
-    string titleTemplate;          // Template for claim titles
+    string titleTemplate;          // Template for engagement titles
     bytes32[] automationRules;     // Integration with external systems (GitHub, etc)
 
     // Time-Based Parameters
@@ -648,7 +648,7 @@ struct ValuableAction {
     bool founderVerified;          // Special status for community bootstrapping
 }
 
-// Claims workflow: submit → verify (M-of-N) → approve → mint SBT + MembershipTokens
+// Engagement workflow: submit → verify (M-of-N) → approve → mint SBT + MembershipTokens
 ```
 
 ### Token Economy Patterns
@@ -812,7 +812,7 @@ Update `/docs/EN/Architecture.md` to reflect:
 
 - **Code examples** must be functional and tested
 - **Security analysis** must address real attack vectors
-- **Performance claims** must be measurable and verified
+- **Performance assertions** must be measurable and verified
 - **Integration examples** must reflect actual implementation
 
 #### Business Accessibility
@@ -854,7 +854,7 @@ Before considering implementation complete, verify:
 2. ✅ **RequestHub**: Full discussion forum with commenting, moderation, tagging, and spam prevention
 3. ✅ **DraftsManager**: Multi-contributor proposal development with versioning and review cycles
 4. ✅ **API-Based Community Creation**: Scalable deployment system replacing oversized factory contracts
-5. ✅ **Integration workflows**: RequestHub → Claims bounties, DraftsManager → ValuableAction proposals
+5. ✅ **Integration workflows**: RequestHub → Engagement bounties, DraftsManager → ValuableAction proposals
 
 #### **Phase 2: Core Governance ✅ COMPLETE**
 
@@ -869,7 +869,7 @@ Before considering implementation complete, verify:
 2. ✅ **VerifierPowerToken1155**: ERC1155 verifier power tokens with timelock governance and community isolation
 3. ✅ **VerifierElection**: Governance-controlled verifier set management with power distribution and slashing
 4. ✅ **VerifierManager**: M-of-N juror selection with configurable parameters and fraud reporting integration
-5. ✅ **Claims**: Complete end-to-end workflow with VPS integration, appeal windows, and RequestHub integration
+5. ✅ **Engagements**: Complete end-to-end workflow with VPS integration, appeal windows, and RequestHub integration
 6. ✅ **ValuableActionSBT**: WorkerPoints EMA tracking, discussion privileges, and governance integration
 
 #### **Phase 4: Economic Modules ✅ COMPLETE**

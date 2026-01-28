@@ -34,263 +34,85 @@ contract HousingManager {
         uint256 checkOut;           // Check-out timestamp
         uint256 totalCost;          // Total payment amount
         uint256 workerDiscount;     // Applied discount percentage
-        ReservationStatus status;   // Current reservation status
-    }
+        # HousingManager Contract
 
-    enum ReservationStatus {
-        PENDING,
-        CONFIRMED,
-        CHECKED_IN,
-        CHECKED_OUT,
-        CANCELLED
-    }
-}
-```
+        ## 🎯 Purpose & Role
 
-### Priority and Pricing System
+        The HousingManager contract manages **co-housing reservations and unit inventory** for communities. It integrates with Marketplace via the IModuleProduct interface to price reservations, create bookings, and respond to settlement outcomes (paid/refunded). It also supports investor staking of stablecoin backing per unit.
 
-```solidity
-// Planned: Dynamic pricing and priority allocation
-struct PricingRule {
-    uint256 workerSBTDiscount;      // Discount for WorkerSBT holders
-    uint256 seniorityMultiplier;    // Pricing based on community seniority
-    uint256 demandMultiplier;       // Dynamic pricing based on demand
-    uint256 seasonalAdjustment;     // Seasonal pricing adjustments
-}
+        ## 🏗️ Core Architecture
 
-struct PriorityRule {
-    uint256 sbtWeight;              // WorkerSBT priority weight
-    uint256 tenureWeight;           // Community membership length weight
-    uint256 contributionWeight;     // Recent contribution weight
-    uint256 needWeight;             // Special needs consideration weight
-}
-```
+        ### Key Data Structures
 
-## ⚙️ Current Implementation
+        - `Unit`: per-property listing (owner, pricing, capacity, active status, cancellation policy, and staked backing).
+        - `Reservation`: booking created via Marketplace with check-in/out dates and status.
+        - `unitOccupied[unitId][day]`: day-level occupancy bitmap for double-booking prevention.
+        - `investorStakes[unitId][investor]`: stablecoin stake tracking per unit.
 
-```solidity
-contract HousingManager {
-    event UnitListed(uint256 indexed unitId, string name, uint256 basePricePerNight);
-    event Reserved(uint256 indexed unitId, uint256 night, address indexed user);
+        ### Access Control
 
-    function listUnit(string calldata name, uint256 basePricePerNight)
-        external returns (uint256 unitId) {
-        // TODO: alta de unidad + calendario
-        unitId = 1;
-        emit UnitListed(unitId, name, basePricePerNight);
-    }
+        - **AccessManager-gated selectors** (via `restricted` and target function roles):
+          - `createUnit` (admin role wired in deployment)
+          - `consume`, `onOrderSettled` (role `HOUSING_MARKETPLACE_CALLER_ROLE`)
+        - **Owner/guest guards**:
+          - `updateUnit`: only `unit.owner`
+          - `checkIn` / `checkOut`: only `reservation.guest`
 
-    function reserve(uint256 unitId, uint256 nightTs) external payable {
-        // TODO: reglas de prioridad, descuentos, cobro en stable/token, NFT de reserva
-        emit Reserved(unitId, nightTs, msg.sender);
-    }
-}
-```
+        ## ⚙️ Key Functions & Logic
 
-**Current Functionality**:
+        ### Unit Management
 
-- ✅ Basic event emission for unit listing
-- ✅ Basic event emission for reservations
-- ❌ No actual unit storage or management
-- ❌ No pricing logic or payment processing
-- ❌ No priority or discount systems
-- ❌ No calendar or availability management
+        - `createUnit(...)` (restricted): registers a unit and mints ERC1155 unit token to the owner.
+        - `updateUnit(unitId, active, basePrice)`: owner can toggle availability and adjust price.
 
-## 🛡️ Planned Security Features
+        ### Pricing & Reservations (IModuleProduct)
 
-### Access Control
+        - `quote(productId, params, basePrice)`: calculates price by nights × unit base price (min stay enforced).
+        - `consume(productId, buyer, params, amountPaid)` (restricted): validates availability, marks occupancy, and creates reservation.
+        - `onOrderSettled(productId, resourceId, outcome)` (restricted): handles refunds by freeing occupancy; paid outcomes remain pending until check-in.
 
-- Unit owners can manage their properties
-- Community governance can set pricing rules
-- Reservation system prevents double-booking
-- Emergency admin controls for dispute resolution
+        ### Reservation Lifecycle
 
-### Payment Security
+        - `checkIn(reservationId)`: guest-only; requires `PENDING` status and check-in date.
+        - `checkOut(reservationId)`: guest-only; requires `CHECKED_IN` status.
 
-- Escrow system for reservation payments
-- Automatic refunds for cancelled reservations
-- Community token integration for seamless payments
-- Dispute resolution mechanisms
+        ### Investor Staking
 
-### Privacy Protection
+        - `stakeForUnit(unitId, amount)`: deposits stablecoin backing.
+        - `unstakeFromUnit(unitId, amount)`: withdraws previously staked backing.
 
-- Selective information sharing for residents
+        ## 🛡️ Security Features
+
+        - **AccessManager enforcement** for privileged and Marketplace callback functions.
+        - **Double-booking protection** via day-level occupancy tracking.
+        - **Role separation**: Marketplace callbacks are isolated to `HOUSING_MARKETPLACE_CALLER_ROLE`.
+        - **SafeERC20** for all staking transfers.
+
+        ## 🔗 Integration Points
+
+        - **Marketplace**: uses `quote`, `consume`, and `onOrderSettled` callbacks.
+        - **AccessManager**: configured via deployment to assign target function roles.
+        - **Stablecoin**: staking uses the configured ERC20 (typically USDC).
+
+        ## 📊 Economic Model
+
+        - Pricing is per-night, configured on each unit.
+        - Investor stakes increase unit backing; no automatic yield distribution is implemented in this contract.
+
+        ## 🎛️ Configuration Examples
+
+        ### AccessManager Role Wiring
+
+        - `consume` and `onOrderSettled` are wired to `HOUSING_MARKETPLACE_CALLER_ROLE`.
+        - Deployment grants `HOUSING_MARKETPLACE_CALLER_ROLE` to Marketplace.
+
+        ### Unit Creation
+
+        - Governance grants admin role → `createUnit(communityId, owner, uri, basePrice, capacity, policyBps)`.
+
+        ## 🚀 Advanced Features (Future)
+
+        - Discounts based on community reputation or SBTs.
+        - Automated revenue routing and maintenance splits.
+        - Extended cancellation policy schedules.
 - Opt-in location sharing and contact details
-- Reservation history privacy controls
-
-## 🔗 Planned Integration Points
-
-### WorkerSBT Integration
-
-```solidity
-// Planned: Worker discounts and priority
-interface IWorkerSBT {
-    function balanceOf(address owner) external view returns (uint256);
-    function getWorkerPoints(address worker) external view returns (uint256);
-}
-
-function calculateWorkerDiscount(address resident)
-    external view returns (uint256 discountBps) {
-    uint256 sbtCount = workerSBT.balanceOf(resident);
-    uint256 workerPoints = workerSBT.getWorkerPoints(resident);
-
-    // Calculate discount based on contributions
-    return _calculateDiscount(sbtCount, workerPoints);
-}
-```
-
-### CommunityToken Integration
-
-```solidity
-// Planned: Payment processing with community tokens
-function processReservationPayment(
-    uint256 unitId,
-    uint256 nights,
-    address resident
-) external {
-    uint256 totalCost = calculateTotalCost(unitId, nights, resident);
-
-    // Transfer community tokens for payment
-    IERC20(communityToken).safeTransferFrom(
-        resident,
-        address(this),
-        totalCost
-    );
-
-    // Issue reservation NFT
-    _mintReservationNFT(resident, unitId, nights);
-}
-```
-
-### Revenue Distribution Integration
-
-```solidity
-// Planned: Revenue sharing with community treasury
-function distributeHousingRevenue(uint256 reservationId) external {
-    Reservation memory reservation = reservations[reservationId];
-
-    uint256 unitOwnerShare = (reservation.totalCost * 7000) / 10000; // 70%
-    uint256 treasuryShare = (reservation.totalCost * 2000) / 10000;  // 20%
-    uint256 maintenanceShare = (reservation.totalCost * 1000) / 10000; // 10%
-
-    // Distribute payments accordingly
-}
-```
-
-## 📊 Planned Use Case Flows
-
-### 1. Property Onboarding Flow
-
-```
-Property Owner → Lists Unit → Community Approval →
-Calendar Setup → Pricing Configuration →
-Unit Available for Reservations
-```
-
-### 2. Reservation Flow
-
-```
-Resident Search → Available Units → Priority Check →
-Pricing Calculation → Payment Processing →
-Reservation Confirmation → NFT Issuance
-```
-
-### 3. Check-in/Check-out Flow
-
-```
-Reservation Date → Smart Lock Integration →
-Check-in Process → Stay Period →
-Check-out Process → Review System
-```
-
-## 🎛️ Planned Configuration Examples
-
-### Community Co-Housing Setup
-
-```solidity
-// Configure community-owned housing units
-listUnit("Community House Alpha", 50e18); // 50 tokens per night
-setPricingRules(unitId, PricingRule({
-    workerSBTDiscount: 2000,      // 20% discount for contributors
-    seniorityMultiplier: 500,     // 5% discount per year of membership
-    demandMultiplier: 1500,       // Up to 15% surge pricing
-    seasonalAdjustment: 1000      // 10% seasonal adjustment
-}));
-```
-
-### Individual Property Sharing
-
-```solidity
-// Individual community members sharing their properties
-listUnit("Alice's Guest Room", 30e18); // 30 tokens per night
-setPriorityRules(unitId, PriorityRule({
-    sbtWeight: 4000,              // 40% priority for WorkerSBT holders
-    tenureWeight: 3000,           // 30% priority for long-term members
-    contributionWeight: 2000,     // 20% priority for recent contributors
-    needWeight: 1000              // 10% priority for special needs
-}));
-```
-
-## 🚀 Development Roadmap
-
-### Phase 2 Implementation Plan
-
-1. **Core Housing Management**
-   - Unit registration and calendar management
-   - Availability tracking and booking system
-   - Payment processing with community tokens
-
-2. **Priority and Pricing Engine**
-   - WorkerSBT-based discount system
-   - Dynamic pricing based on demand
-   - Fair allocation mechanisms for high-demand periods
-
-3. **NFT Reservation System**
-   - ERC1155 reservation tokens (one per night)
-   - Transferable reservations for flexibility
-   - Integration with community reputation systems
-
-4. **Revenue Distribution**
-   - Automatic revenue sharing with property owners
-   - Community treasury integration
-   - Maintenance fund management
-
-### Technical Integration Requirements
-
-- **Smart Lock Integration**: Physical access control via blockchain
-- **Oracle Integration**: External pricing data and demand metrics
-- **IPFS Storage**: Unit photos, descriptions, and amenities data
-- **Mobile App**: Reservation management and check-in interfaces
-
-## 💡 Innovation Opportunities
-
-### Decentralized Hospitality Model
-
-- Community-owned property networks
-- Cross-community reciprocal housing agreements
-- Reputation-based travel networks
-
-### Economic Experiments
-
-- Time-banking integration (work hours → housing credits)
-- Seasonal worker housing programs
-- Co-living experiment coordination
-
-### Sustainability Integration
-
-- Carbon offset programs for housing usage
-- Renewable energy incentives for property owners
-- Community garden and resource sharing coordination
-
----
-
-**Note**: The HousingManager stub provides the foundation for a comprehensive community housing coordination system. The minimal current implementation allows the architecture to account for future housing features without blocking current community deployment.
-
-For immediate housing coordination needs, communities can:
-
-1. Use external platforms with community token integration
-2. Implement manual coordination through RequestHub discussions
-3. Create custom ValuableActions for housing contributions
-4. Utilize governance proposals for housing-related decisions
-
-The planned full implementation will create a unique **decentralized hospitality and co-housing ecosystem** that aligns economic incentives with community values and sustainable resource sharing.

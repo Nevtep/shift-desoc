@@ -1,230 +1,153 @@
 # Shift DeSoc Documentation Hub
 
-**Welcome to the complete Shift DeSoc documentation.** This index helps you find the right documentation for your needs.
+**Welcome to Shift DeSoc documentation.** This hub provides complete technical and business documentation for the Shift meta-governance platform.
 
-## 🎯 Quick Navigation by Role
+## 🎯 Quick Navigation
 
-### For Business Stakeholders & Investors
-- 📊 [**Whitepaper**](./Whitepaper.md) - Vision, business model, and investment case
-- 🏗️ [**Architecture Overview**](./Architecture.md) - System design and component relationships
-- 📈 [**One-Pager**](./SHIFT_DESOC_ONE_PAGER.md) - Quick executive summary
-
-### For Community Managers & Operators
-- 🏦 [**Cohort Management Guide**](./COHORT_MANAGEMENT.md) - Investment cohort operations
-- 🚀 [**Deployment Guide**](./Deployment-Guide.md) - Setting up a new community
-- 📋 [**System Status**](../../.github/project-management/PROJECT_STATUS.md) - Current production status
-
-### For Developers & Integrators
-- 🔧 [**Development Guide**](../../.github/copilot-instructions.md) - Complete development workflow
-- 📐 [**Contract Architecture**](./CONTRACT_ARCHITECTURE.md) - Technical reference for all contracts
-- 🏗️ [**Architecture Overview**](./Architecture.md) - System integration patterns
-
-### For Auditors & Security Researchers
-- 🔒 [**Security Model**](./Architecture.md#security-architecture) - Multi-layer security design
-- 📜 [**Contract Documentation**](./contracts/) - Individual contract specifications
-- 🧪 [**Test Coverage**](../../packages/foundry/test/) - Comprehensive test suite
+| Document | Purpose |
+|----------|---------|
+| [**Whitepaper**](./Whitepaper.md) | Vision, business model, and investment case |
+| [**Architecture**](./Architecture.md) | System design and 24-contract component relationships |
+| [**Layers**](./Layers.md) | Unified 5-layer architecture reference |
+| [**Tokenomics**](./Tokenomics.md) | Token economics, revenue distribution, and cohorts |
+| [**Contracts**](./contracts/) | Individual contract documentation (24 contracts) |
+| [**Guides**](./guides/) | Operational guides for community management |
 
 ---
 
-## 📚 Documentation by System Layer
+## 📚 Documentation Structure
 
-### Layer 1: Community Coordination (4 contracts)
-**Purpose**: Discussion, collaboration, and proposal development
+### Core Documents
 
-- [**CommunityRegistry**](./contracts/CommunityRegistry.md) - Community metadata and module coordination
-- [**RequestHub**](./contracts/RequestHub.md) - Discussion forum and idea coordination
-- [**DraftsManager**](./contracts/DraftsManager.md) - Collaborative proposal development
-- [**ParamController**](./contracts/ParamController.md) - Dynamic parameter management
+| Document | Description |
+|----------|-------------|
+| [Whitepaper.md](./Whitepaper.md) | Executive vision, business model, market opportunity, investment case |
+| [Architecture.md](./Architecture.md) | System design, 5-layer architecture, component relationships, security model |
+| [Layers.md](./Layers.md) | Unified layer reference merging coordination, governance, verification, economic, commerce |
+| [Tokenomics.md](./Tokenomics.md) | MembershipToken, CommunityToken, ValuableActionSBT (5 types), revenue waterfall, cohorts |
 
-📖 **Architecture**: [Community Coordination Layer](./Architecture.md#layer-1-community-coordination-infrastructure)
+### Contract Documentation (24 Contracts)
 
-### Layer 2: Democratic Governance (4 contracts)
-**Purpose**: Multi-choice voting and timelock execution
+#### Layer 1: Community Coordination (4 contracts)
+- [CommunityRegistry.md](./contracts/CommunityRegistry.md) — Community metadata and module coordination
+- [RequestHub.md](./contracts/RequestHub.md) — Discussion forum and idea coordination
+- [DraftsManager.md](./contracts/DraftsManager.md) — Collaborative proposal development
+- [ParamController.md](./contracts/ParamController.md) — Dynamic parameter management
 
-- [**ShiftGovernor**](./contracts/ShiftGovernor.md) - Multi-choice governance engine
-- [**CountingMultiChoice**](./contracts/CountingMultiChoice.md) - Weighted voting mechanism
-- [**MembershipTokenERC20Votes**](./contracts/MembershipTokenERC20Votes.md) - Merit-based governance tokens
-- **TimelockController** (OpenZeppelin) - Execution delays and protection
+#### Layer 2: Democratic Governance (4 contracts)
+- [ShiftGovernor.md](./contracts/ShiftGovernor.md) — Multi-choice governance engine
+- [CountingMultiChoice.md](./contracts/CountingMultiChoice.md) — Weighted voting mechanism
+- [MembershipTokenERC20Votes.md](./contracts/MembershipTokenERC20Votes.md) — Merit-based governance tokens
+- TimelockController (OpenZeppelin) — Execution delays and protection
 
-📖 **Architecture**: [Democratic Governance Engine](./Architecture.md#layer-2-democratic-governance-engine)
+#### Layer 3: Work Verification (9 contracts)
+- [ValuableActionRegistry.md](./contracts/ValuableActionRegistry.md) — Community-defined engagement types
+- [Engagements.md](./contracts/Engagements.md) — One-shot work verification workflow
+- [VerifierPowerToken1155.md](./contracts/VerifierPowerToken1155.md) — Democratic verifier selection
+- [VerifierElection.md](./contracts/VerifierElection.md) — Verifier governance and elections
+- [VerifierManager.md](./contracts/VerifierManager.md) — M-of-N juror selection
+- [ValuableActionSBT.md](./contracts/ValuableActionSBT.md) — Multi-type Soulbound tokens (5 types)
+- [CredentialManager.md](./contracts/CredentialManager.md) — Course credentials issuance
+- [PositionManager.md](./contracts/PositionManager.md) — Ongoing position lifecycle
+- [InvestmentCohortManager.md](./contracts/InvestmentCohortManager.md) — Investment cohort coordination
 
-### Layer 3: Work Verification (6 contracts)
-**Purpose**: Democratic work verification and reputation
+#### Layer 4: Economic Engine (4 contracts)
+- [CommunityToken.md](./contracts/CommunityToken.md) — 1:1 USDC-backed community currency
+- [CohortRegistry.md](./contracts/CohortRegistry.md) — Investment cohort storage and tracking
+- [RevenueRouter.md](./contracts/RevenueRouter.md) — Automated revenue distribution waterfall
+- [TreasuryAdapter.md](./contracts/TreasuryAdapter.md) — Treasury spending controls and guardrails
 
-- [**ValuableActionRegistry**](./contracts/ValuableActionRegistry.md) - Community-defined work categories
-- [**Claims**](./contracts/Claims.md) - Work submission and verification
-- [**VerifierPowerToken1155**](./contracts/VerifierPowerToken1155.md) - Democratic verifier selection
-- [**VerifierElection**](./contracts/VerifierElection.md) - Verifier governance and elections
-- [**VerifierManager**](./contracts/VerifierManager.md) - M-of-N juror selection
-- [**ValuableActionSBT**](./contracts/ValuableActionSBT.md) - Soulbound reputation tokens
+#### Layer 5: Community Modules (3 contracts)
+- [Marketplace.md](./contracts/Marketplace.md) — Decentralized service marketplace
+- [CommerceDisputes.md](./contracts/CommerceDisputes.md) — Commercial dispute resolution
+- [HousingManager.md](./contracts/HousingManager.md) — Co-housing coordination
 
-📖 **Architecture**: [Work Verification & Merit System](./Architecture.md#layer-3-work-verification--merit-system)
+### Guides
 
-### Layer 4: Economic Engine (4 contracts)
-**Purpose**: Revenue distribution and treasury management
-
-- [**CommunityToken**](./contracts/CommunityToken.md) - 1:1 USDC-backed community currency
-- [**CohortRegistry**](./contracts/CohortRegistry.md) - Investment cohort management
-- [**RevenueRouter**](./contracts/RevenueRouter.md) - Automated revenue distribution
-- [**TreasuryAdapter**](./contracts/TreasuryAdapter.md) - Treasury spending controls
-
-📖 **Architecture**: [Cohort-Based Economic Engine](./Architecture.md#layer-4-cohort-based-economic-engine)
-📖 **Operations**: [Cohort Management Guide](./COHORT_MANAGEMENT.md)
-
-### Layer 5: Community Modules (5 contracts)
-**Purpose**: Marketplace, housing, and project crowdfunding
-
-- [**Marketplace**](./contracts/Marketplace.md) - Decentralized service marketplace
-- [**CommerceDisputes**](./contracts/CommerceDisputes.md) - Commercial dispute resolution
-- [**HousingManager**](./contracts/HousingManager.md) - Co-housing coordination
-- [**ProjectFactory**](./contracts/ProjectFactory.md) - ERC-1155 crowdfunding
-
-📖 **Architecture**: [Utility & Project Infrastructure](./Architecture.md#layer-5-utility--project-infrastructure)
-📖 **Specifications**: [Marketplace Spec](./Marketplace-Spec-v1.md) | [Housing Spec](./HousingManager-Spec-v1.md) | [Disputes Design](./ARN-Disputes-Architecture.md)
+| Guide | Purpose |
+|-------|---------|
+| [Community Admin CLI](./guides/COMMUNITY_ADMIN_CLI.md) | CLI operations for community administrators |
+| [Management Tools](./guides/MANAGEMENT_TOOLS.md) | System management scripts and utilities |
 
 ---
 
-## 🗺️ Documentation Map by Use Case
+## 🗺️ Documentation by Use Case
 
-### "I want to understand the overall system"
-1. Start: [Architecture.md](./Architecture.md) - System overview
-2. Deep dive: [CONTRACT_ARCHITECTURE.md](./CONTRACT_ARCHITECTURE.md) - Technical details
-3. Business context: [Whitepaper.md](./Whitepaper.md) - Vision and economics
+### Understanding the System
+1. **Start**: [Architecture.md](./Architecture.md) — System overview
+2. **Deep dive**: [Layers.md](./Layers.md) — Layer-by-layer reference
+3. **Economics**: [Tokenomics.md](./Tokenomics.md) — Token and revenue mechanics
+4. **Business**: [Whitepaper.md](./Whitepaper.md) — Vision and investment case
 
-### "I want to implement governance features"
-1. Overview: [Architecture.md - Governance Layer](./Architecture.md#layer-2-democratic-governance-engine)
-2. Governance: [ShiftGovernor.md](./contracts/ShiftGovernor.md)
-3. Voting: [CountingMultiChoice.md](./contracts/CountingMultiChoice.md)
-4. Tokens: [MembershipTokenERC20Votes.md](./contracts/MembershipTokenERC20Votes.md)
+### Implementing Governance
+1. [ShiftGovernor.md](./contracts/ShiftGovernor.md) — Core governance engine
+2. [CountingMultiChoice.md](./contracts/CountingMultiChoice.md) — Voting mechanism
+3. [MembershipTokenERC20Votes.md](./contracts/MembershipTokenERC20Votes.md) — Governance tokens
 
-### "I want to build the work verification system"
-1. Overview: [Architecture.md - Verification Layer](./Architecture.md#layer-3-work-verification--merit-system)
-2. Work definition: [ValuableActionRegistry.md](./contracts/ValuableActionRegistry.md)
-3. Verification: [Claims.md](./contracts/Claims.md)
-4. Verifiers: [VerifierManager.md](./contracts/VerifierManager.md) + [VerifierElection.md](./contracts/VerifierElection.md)
-5. Reputation: [ValuableActionSBT.md](./contracts/ValuableActionSBT.md)
+### Building Work Verification
+1. [ValuableActionRegistry.md](./contracts/ValuableActionRegistry.md) — Work type definitions
+2. [Engagements.md](./contracts/Engagements.md) — One-shot verification workflow
+3. [VerifierManager.md](./contracts/VerifierManager.md) — Juror selection
+4. [ValuableActionSBT.md](./contracts/ValuableActionSBT.md) — SBT issuance (5 types)
 
-### "I want to implement the marketplace"
-1. Spec: [Marketplace-Spec-v1.md](./Marketplace-Spec-v1.md) - Complete specification
-2. Implementation: [Marketplace.md](./contracts/Marketplace.md) - Technical details
-3. Disputes: [ARN-Disputes-Architecture.md](./ARN-Disputes-Architecture.md) - Dispute system design
-4. Commerce disputes: [CommerceDisputes.md](./contracts/CommerceDisputes.md) - Implementation
+### Managing Credentials & Positions
+1. [CredentialManager.md](./contracts/CredentialManager.md) — Course credential flow
+2. [PositionManager.md](./contracts/PositionManager.md) — Ongoing position lifecycle
+3. [InvestmentCohortManager.md](./contracts/InvestmentCohortManager.md) — Investment coordination
 
-### "I want to set up co-housing"
-1. Spec: [HousingManager-Spec-v1.md](./HousingManager-Spec-v1.md) - Complete specification
-2. Implementation: [HousingManager.md](./contracts/HousingManager.md) - Technical details
-3. Integration: [Marketplace-Spec-v1.md](./Marketplace-Spec-v1.md) - How housing integrates
-
-### "I want to manage investment cohorts"
-1. Guide: [COHORT_MANAGEMENT.md](./COHORT_MANAGEMENT.md) - Complete operational guide
-2. Registry: [CohortRegistry.md](./contracts/CohortRegistry.md) - Technical implementation
-3. Distribution: [RevenueRouter.md](./contracts/RevenueRouter.md) - Revenue mechanics
-
-### "I want to deploy a new community"
-1. Setup: [Deployment-Guide.md](./Deployment-Guide.md) - General deployment
-2. Testnet: [BASE_SEPOLIA_DEPLOYMENT_GUIDE.md](../../.github/deployment/BASE_SEPOLIA_DEPLOYMENT_GUIDE.md)
-3. Production: [BASE_MAINNET_DEPLOYMENT_CHECKLIST.md](../../.github/deployment/BASE_MAINNET_DEPLOYMENT_CHECKLIST.md)
-4. Management: [COHORT_MANAGEMENT.md](./COHORT_MANAGEMENT.md) - Post-deployment operations
+### Setting Up Revenue Distribution
+1. [Tokenomics.md](./Tokenomics.md) — Revenue waterfall explanation
+2. [RevenueRouter.md](./contracts/RevenueRouter.md) — Distribution implementation
+3. [CohortRegistry.md](./contracts/CohortRegistry.md) — Cohort tracking
 
 ---
 
-## 📊 Current Status (December 2025)
+## 📊 Current Status (January 2026)
 
-**✅ Production-Ready MVP**
-- All 22 contracts deployed to Base Sepolia
-- 21/21 contracts fully documented
-- Community ID 1 operational
-- Base mainnet deployment ready (~$10 cost)
+**🚧 Early Beta (Base Sepolia Testnet)**
+- 24 contracts deployed on Base Sepolia testnet (Community ID 1 operational)
+- API-based deployment system (~$0.19 per community on testnet)
+- Full documentation coverage in EN/ES (Architecture, Layers, Tokenomics, 24 contracts)
+- Mainnet readiness: in progress; no mainnet deployment yet
 
-- **Configurable action types** with custom verification parameters
-- **M-of-N juror verification** with economic incentives
-- **Reputation-based verifier selection** using pseudo-random algorithms
-- **Appeals process** for disputed claims
+### Contract Suite (24 contracts)
 
-### Token Economy
+| Layer | Contracts |
+|-------|-----------|
+| **Coordination** | CommunityRegistry, RequestHub, DraftsManager, ParamController |
+| **Governance** | ShiftGovernor, CountingMultiChoice, MembershipTokenERC20Votes, TimelockController |
+| **Verification** | ValuableActionRegistry, Engagements, VerifierPowerToken1155, VerifierElection, VerifierManager, ValuableActionSBT, CredentialManager, PositionManager, InvestmentCohortManager |
+| **Economic** | CommunityToken, CohortRegistry, RevenueRouter, TreasuryAdapter |
+| **Commerce** | Marketplace, CommerceDisputes, HousingManager |
 
-- **Soulbound tokens (SBTs)** for non-transferable reputation
-- **WorkerPoints system** with exponential moving average tracking
-- **Bonding mechanisms** for verifier participation
-- **Revenue sharing** through configurable splits
+### SBT Types (via ValuableActionSBT)
 
-## 🔧 Implementation Status
+| Type | Issued By | Purpose |
+|------|-----------|---------|
+| WORK | Engagements | Completed one-shot contributions |
+| ROLE | PositionManager | Successfully completed positions |
+| CREDENTIAL | CredentialManager | Course/training certifications |
+| POSITION | PositionManager | Active ongoing roles |
+| INVESTMENT | InvestmentCohortManager | Investment participation |
 
-### ✅ PRODUCTION-READY MVP (November 2025)
-
-| Contract                     | Coverage | Status        | Features                                                     |
-| ---------------------------- | -------- | ------------- | ------------------------------------------------------------ |
-| **Core Governance**          |
-| ShiftGovernor                | 86%+     | ✅ Production | Multi-choice voting, timelock integration, draft escalation  |
-| CountingMultiChoice          | 100%     | ✅ Production | Weighted voting, snapshot support, enterprise features       |
-| **Community Coordination**   |
-| RequestHub                   | 95%+     | ✅ Production | Discussion forum, moderation, RequestHub→Claims integration  |
-| DraftsManager                | 98%+     | ✅ Production | Multi-contributor development, versioning, review cycles     |
-| CommunityRegistry            | 96%+     | ✅ Production | Metadata management, module addresses, cross-community links |
-| **Work Verification System** |
-| ValuableActionRegistry       | 96%+     | ✅ Production | Community-defined work types, governance integration         |
-| Claims                       | 98%+     | ✅ Production | M-of-N verification, appeals, RequestHub bounties            |
-| VerifierElection             | 98%+     | ✅ Production | Democratic verifier management, timelock governance          |
-| VerifierPowerToken1155       | 96%+     | ✅ Production | Per-community VPT tokens, non-transferable power system     |
-| VerifierManager              | 95%+     | ✅ Production | M-of-N selection, VPS integration, fraud reporting          |
-| ValuableActionSBT            | 94%+     | ✅ Production | WorkerPoints EMA tracking, governance integration            |
-| **Economic Modules**         |
-| RevenueRouter                | 92%+     | ✅ Production | Cohort-based waterfall, guaranteed Target ROI distribution  |
-| CommunityToken               | 100%     | ✅ Production | 1:1 USDC backing, treasury management                        |
-| MembershipTokenERC20Votes    | 98%+     | ✅ Production | Merit-based governance tokens, anti-plutocracy               |
-| TreasuryAdapter              | 90%+     | ✅ Production | CommunityRegistry parameter integration                      |
-
-**Deployment Status**: ✅ Community ID 3 operational on Base Sepolia with 28 successful transactions
-
-## 🎯 Key Innovations
-
-1. **Meta-Governance Technology**: Flexible infrastructure enabling communities to model any organizational structure rather than imposing specific governance models
-2. **Complete Coordination Pipeline**: `requests → drafts → proposals → timelock execution` with integrated discussion, collaboration, and verification
-3. **Multi-Choice Governance**: Weighted multi-option voting enabling nuanced decision-making beyond binary yes/no choices
-4. **API-Based Community Creation**: Scalable deployment system (~$0.19 per community on Base vs $9,600 on Ethereum)
-5. **Cohort-Based Revenue Distribution**: Guaranteed Target ROI for investment cohorts with waterfall allocation ensuring sustainable worker prioritization
-6. **Merit-Based Governance Power**: Pure work-to-governance-token system where community participation directly translates to voting power
+---
 
 ## 🔐 Security Features
 
 - **Timelock execution** prevents immediate governance attacks
 - **Democratic verifier elections** ensure community accountability
-- **Reputation decay** removes inactive or poor-performing verifiers
-- **Appeal mechanisms** provide recourse for disputed decisions
-- **Multi-signature patterns** for critical system functions
+- **M-of-N verification** for work validation
+- **Appeal mechanisms** for disputed decisions
+- **TreasuryAdapter guardrails** (1 spend/week, 10% cap, stablecoin allowlist)
 
 ## 📈 Testing & Coverage
 
-All contracts maintain ≥86% test coverage with comprehensive edge case testing:
-
-- **Unit tests** for individual contract functionality  
+All contracts maintain ≥86% test coverage:
+- **Unit tests** for individual contract functionality
 - **Integration tests** for cross-contract interactions
-- **Fuzz testing** for input validation and edge cases
-- **Gas optimization** with 200 optimizer runs
-- **383 passing tests** (100% success rate across all test suites)
-
-**Coverage Status**: Due to contract complexity causing stack overflow in forge coverage, we use an estimated coverage model based on comprehensive test results. Core contracts (CountingMultiChoice: 95%, ShiftGovernor: 92%) exceed the 86% threshold.
-
-## 🚀 Current Deployment Status
-
-**✅ PRODUCTION DEPLOYED**: Complete ecosystem successfully deployed and verified on Base Sepolia with real community operations.
-
-**Network Status:**
-
-1. **Base Sepolia** (testnet) - ✅ **OPERATIONAL** - Community ID 3 with 28 successful transactions
-2. **Base** (mainnet) - **Production Launch Ready** - Ultra-low cost deployment target (~$0.19 per community)
-3. **Ethereum Sepolia** (testnet) - Secondary target after Base success
-4. **Ethereum** (mainnet) - Final deployment after proven Base success
-
-**Cost Analysis**: ~$0.19 USD per community deployment on Base vs ~$9,600 on Ethereum mainnet
-
-## 📊 Performance Metrics
-
-- **Gas Efficiency**: Optimized for Layer 2 deployment on Base
-- **Scalability**: Designed for high transaction throughput
-- **Modularity**: Contracts can be upgraded independently through governance
-- **Interoperability**: Standard ERC interfaces for ecosystem compatibility
+- **Fuzz testing** for input validation
+- **Coverage gate** enforced in CI/CD
 
 ---
 
-_For technical implementation details, see the contract-specific documentation. For investment and business overview, see the [Whitepaper](./Whitepaper.md)._
+_For development workflow, see [.github/copilot-instructions.md](../../.github/copilot-instructions.md)._

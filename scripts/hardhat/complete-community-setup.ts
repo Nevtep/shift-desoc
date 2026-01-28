@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { Roles } from "../roles";
 
 /**
  * Continue Community Setup - Complete the setup that failed
@@ -12,6 +13,16 @@ async function main() {
   );
   const [deployer] = await ethers.getSigners();
 
+  const accessManagerAddress =
+    addresses.accessManager ?? process.env.ACCESS_MANAGER ?? "";
+  if (!accessManagerAddress) {
+    throw new Error("AccessManager address missing (add to deployed-addresses.json or set ACCESS_MANAGER)");
+  }
+  const accessManager = await ethers.getContractAt(
+    "AccessManager",
+    accessManagerAddress,
+  );
+
   console.log("🔧 Continuing Community Setup...");
   console.log("Deployer:", deployer.address);
 
@@ -22,7 +33,7 @@ async function main() {
     timelock: "0xF140d690BadDf50C3a1006AD587298Eed61ADCfA",
     membershipToken: "0xFf60937906c537685Ad21a67a2A4E8Dbf7A0F9cb",
     valuableActionRegistry: "0x831Ef7C12aD1A564C32630e5D1A18A3b0c8829f2",
-    claims: "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35",
+    engagements: "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35",
     verifierPool: "0x8D0962Ca5c55b2432819De25061a25Eb32DC1d3B",
     workerSBT: "0x8dA98a7ab4c487CFeD390c4C41c411213b1A6562",
     requestHub: "0xc7d1d9db153e45f14ef3EbD86f02e986F1a18eCA",
@@ -47,9 +58,9 @@ async function main() {
     "MembershipTokenERC20Votes",
     communityAddresses.membershipToken,
   );
-  const claims = await ethers.getContractAt(
-    "Claims",
-    communityAddresses.claims,
+  const engagements = await ethers.getContractAt(
+    "Engagements",
+    communityAddresses.engagements,
   );
   const verifierPool = await ethers.getContractAt(
     "VerifierPool",
@@ -59,6 +70,8 @@ async function main() {
     "WorkerSBT",
     communityAddresses.workerSBT,
   );
+  const accessManagerAddressForLog = await accessManager.getAddress();
+  console.log("AccessManager:", accessManagerAddressForLog);
 
   console.log("✅ Connected to all contracts");
 
@@ -74,7 +87,7 @@ async function main() {
     { key: "membershipToken", address: communityAddresses.membershipToken },
     { key: "requestHub", address: communityAddresses.requestHub },
     { key: "draftsManager", address: communityAddresses.draftsManager },
-    { key: "claimsManager", address: communityAddresses.claims },
+    { key: "engagementsManager", address: communityAddresses.engagements },
     {
       key: "valuableActionRegistry",
       address: communityAddresses.valuableActionRegistry,
@@ -156,51 +169,59 @@ async function main() {
   }
 
   try {
-    // Grant minter role to claims contract
+    // Grant minter role to Engagements contract
     console.log("\n🪙 Setting up token minting permissions...");
     const MINTER_ROLE = await membershipToken.MINTER_ROLE();
 
-    const hasMinterRole = await membershipToken.hasRole(
+    const hasMinterRole = await accessManager.hasRole(
       MINTER_ROLE,
-      communityAddresses.claims,
+      communityAddresses.engagements,
     );
     if (!hasMinterRole) {
-      await membershipToken.grantRole(MINTER_ROLE, communityAddresses.claims);
-      console.log("✅ Claims contract granted minter role");
+      await accessManager.grantRole(
+        MINTER_ROLE,
+        communityAddresses.engagements,
+        0,
+      );
+      console.log("✅ Engagements contract granted minter role");
     } else {
-      console.log("✅ Claims already has minter role");
+      console.log("✅ Engagements already has minter role");
     }
   } catch (error) {
     console.log("❌ Error setting minter permissions:", error.message);
   }
 
   try {
-    // Update WorkerSBT manager to Claims
+    // Update WorkerSBT manager to Engagements
     console.log("\n🎖️ Setting up WorkerSBT permissions...");
-    const MANAGER_ROLE = await workerSBT.MANAGER_ROLE();
+    const MANAGER_ROLE = Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE;
 
-    const hasManagerRole = await workerSBT.hasRole(
+    const hasManagerRole = await accessManager.hasRole(
       MANAGER_ROLE,
-      communityAddresses.claims,
+      communityAddresses.engagements,
     );
     if (!hasManagerRole) {
-      await workerSBT.grantRole(MANAGER_ROLE, communityAddresses.claims);
-      console.log("✅ Claims contract granted WorkerSBT manager role");
+      await accessManager.grantRole(
+        MANAGER_ROLE,
+        communityAddresses.engagements,
+        0,
+      );
+      console.log("✅ Engagements contract granted WorkerSBT manager role");
     } else {
-      console.log("✅ Claims already has WorkerSBT manager role");
+      console.log("✅ Engagements already has WorkerSBT manager role");
     }
   } catch (error) {
     console.log("❌ Error setting WorkerSBT permissions:", error.message);
   }
 
   try {
-    // Set VerifierPool claims contract
+    // Set VerifierPool engagements contract (legacy hook)
     console.log("\n👥 Setting up VerifierPool...");
     const currentClaimsContract = await verifierPool.claimsContract();
 
     if (currentClaimsContract === ethers.ZeroAddress) {
-      await verifierPool.setClaimsContract(communityAddresses.claims);
-      console.log("✅ VerifierPool connected to Claims");
+      await verifierPool.setClaimsContract(communityAddresses.engagements);
+      console.log("✅ VerifierPool connected to Engagements");
     } else {
       console.log(
         "✅ VerifierPool already connected to:",

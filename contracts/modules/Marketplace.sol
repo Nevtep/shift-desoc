@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IModuleProduct} from "./interfaces/IModuleProduct.sol";
 import {IDisputeReceiver} from "./interfaces/IDisputeReceiver.sol";
 import {CommerceDisputes} from "./CommerceDisputes.sol";
@@ -28,7 +29,7 @@ import {Errors} from "../libs/Errors.sol";
  * - CommerceDisputes handles all dispute resolution
  * - RevenueRouter distributes settlement proceeds
  */
-contract Marketplace is IDisputeReceiver, ReentrancyGuard {
+contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
     using SafeERC20 for IERC20;
 
     // ============ Constants ============
@@ -105,8 +106,6 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard {
     RevenueRouter public revenueRouter;
     mapping(uint256 => address) public communityTokens; // communityId => token address
 
-    // Access control
-    address public owner;
     mapping(uint256 => bool) public communityActive; // communityId => active
 
     // ============ Events ============
@@ -159,11 +158,6 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard {
 
     // ============ Modifiers ============
 
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert Errors.UnauthorizedCaller(msg.sender);
-        _;
-    }
-
     modifier offerExists(uint256 offerId) {
         if (offers[offerId].offerId == 0) revert OfferNotFound(offerId);
         _;
@@ -176,27 +170,26 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard {
 
     // ============ Constructor ============
 
-    constructor(address _owner, address _commerceDisputes, address _revenueRouter) {
-        owner = _owner;
+    constructor(address manager, address _commerceDisputes, address _revenueRouter) AccessManaged(manager) {
         commerceDisputes = CommerceDisputes(_commerceDisputes);
         revenueRouter = RevenueRouter(_revenueRouter);
     }
 
     // ============ Admin Functions ============
 
-    function setCommunityActive(uint256 communityId, bool active) external onlyOwner {
+    function setCommunityActive(uint256 communityId, bool active) external restricted {
         communityActive[communityId] = active;
     }
 
-    function setCommunityToken(uint256 communityId, address token) external onlyOwner {
+    function setCommunityToken(uint256 communityId, address token) external restricted {
         communityTokens[communityId] = token;
     }
 
-    function setCommerceDisputes(address _commerceDisputes) external onlyOwner {
+    function setCommerceDisputes(address _commerceDisputes) external restricted {
         commerceDisputes = CommerceDisputes(_commerceDisputes);
     }
 
-    function setRevenueRouter(address _revenueRouter) external onlyOwner {
+    function setRevenueRouter(address _revenueRouter) external restricted {
         revenueRouter = RevenueRouter(_revenueRouter);
     }
 

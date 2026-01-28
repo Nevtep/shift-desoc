@@ -2,9 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {ValuableActionRegistry} from "contracts/modules/ValuableActionRegistry.sol";
+import {ValuableActionSBT} from "contracts/modules/ValuableActionSBT.sol";
 import {Types} from "contracts/libs/Types.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 contract CommunityRegistryMock {
     struct ModuleAddresses {
@@ -12,12 +16,13 @@ contract CommunityRegistryMock {
         address timelock;
         address requestHub;
         address draftsManager;
-        address claimsManager;
+        address engagementsManager;
         address valuableActionRegistry;
         address verifierPowerToken;
         address verifierElection;
         address verifierManager;
         address valuableActionSBT;
+        address treasuryVault;
         address treasuryAdapter;
         address communityToken;
         address paramController;
@@ -37,21 +42,34 @@ contract CommunityRegistryMock {
 contract ValuableActionRegistryTest is Test {
     ValuableActionRegistry registry;
     CommunityRegistryMock communityRegistry;
+    ValuableActionSBT sbt;
+    AccessManager accessManager;
     
     address governance = makeAddr("governance");
     address moderator = makeAddr("moderator");
     address founder1 = makeAddr("founder1");
     address founder2 = makeAddr("founder2");
     address user = makeAddr("user");
+    address requestHubModule = makeAddr("requestHub");
     
     uint256 constant COMMUNITY_ID = 1;
+    bytes32 constant PROPOSAL_REF_1 = bytes32("proposal-1");
+    bytes32 constant PROPOSAL_REF_2 = bytes32("proposal-2");
+    bytes32 constant PROPOSAL_REF_3 = bytes32("proposal-3");
+    bytes32 constant BAD_PROPOSAL_REF = bytes32("bad-proposal");
     
     // Sample ValuableAction parameters
     Types.ValuableAction sampleAction;
     
     function setUp() public {
         communityRegistry = new CommunityRegistryMock();
-        registry = new ValuableActionRegistry(governance, address(communityRegistry));
+        accessManager = new AccessManager(governance);
+        registry = new ValuableActionRegistry(
+            address(accessManager),
+            address(communityRegistry),
+            governance
+        );
+        sbt = new ValuableActionSBT(address(accessManager));
 
         communityRegistry.setModuleAddresses(
             COMMUNITY_ID,
@@ -60,23 +78,44 @@ contract ValuableActionRegistryTest is Test {
                 timelock: governance,
                 requestHub: address(0),
                 draftsManager: address(0),
-                claimsManager: address(0),
+                engagementsManager: address(0),
                 valuableActionRegistry: address(registry),
                 verifierPowerToken: address(0),
                 verifierElection: address(0),
                 verifierManager: address(0),
                 valuableActionSBT: address(0),
+                treasuryVault: address(0),
                 treasuryAdapter: address(0),
                 communityToken: address(0),
                 paramController: address(0)
             })
         );
+
+        vm.startPrank(governance);
+        bytes4[] memory sbtSelectors = new bytes4[](6);
+        sbtSelectors[0] = sbt.mintEngagement.selector;
+        sbtSelectors[1] = sbt.mintPosition.selector;
+        sbtSelectors[2] = sbt.mintInvestment.selector;
+        sbtSelectors[3] = sbt.setEndedAt.selector;
+        sbtSelectors[4] = sbt.closePositionToken.selector;
+        sbtSelectors[5] = sbt.updateTokenURI.selector;
+        accessManager.setTargetFunctionRole(address(sbt), sbtSelectors, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
+        registry.setValuableActionSBT(address(sbt));
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(registry), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, requestHubModule, 0);
+        registry.setIssuanceModule(requestHubModule, true);
+        vm.stopPrank();
         
         // Setup sample valuable action
         sampleAction = Types.ValuableAction({
             membershipTokenReward: 100,
             communityTokenReward: 50,
             investorSBTReward: 0,
+            category: Types.ActionCategory.ENGAGEMENT_ONE_SHOT,
+            roleTypeId: bytes32(0),
+            positionPoints: 0,
+            verifierPolicy: Types.VerifierPolicy.JURY,
+            metadataSchemaId: bytes32("schema:work:v1"),
             jurorsMin: 2,
             panelSize: 3,
             verifyWindow: 7 days,
@@ -104,17 +143,19 @@ contract ValuableActionRegistryTest is Test {
     }
     
     function testConstructor() public view {
-        assertEq(registry.governance(), governance);
         assertTrue(registry.isModerator(governance)); // Governance is initial moderator
         assertEq(registry.lastId(), 0);
     }
     
     function testConstructorZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new ValuableActionRegistry(address(0), address(communityRegistry));
+        new ValuableActionRegistry(address(0), address(communityRegistry), governance);
 
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new ValuableActionRegistry(governance, address(0));
+        new ValuableActionRegistry(address(accessManager), address(0), governance);
+
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        new ValuableActionRegistry(address(accessManager), address(communityRegistry), address(0));
     }
     
     function testSetModerator() public {
@@ -137,7 +178,7 @@ contract ValuableActionRegistryTest is Test {
     
     function testSetModeratorUnauthorized() public {
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
         registry.setModerator(moderator, true);
         vm.stopPrank();
     }
@@ -190,7 +231,7 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
         
         assertEq(actionId, 1);
@@ -202,9 +243,9 @@ contract ValuableActionRegistryTest is Test {
     
     function testProposeValuableActionFailsWhenProposalIdUsed() public {
         vm.startPrank(governance);
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "ProposalId already used"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Proposal ref already used"));
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -213,21 +254,21 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
         vm.stopPrank();
         
-        uint256 proposalId = registry.pendingValuableActions(actionId);
+        bytes32 proposalRef = registry.pendingValuableActions(actionId);
         
         vm.startPrank(governance);
         
         vm.expectEmit(true, true, false, true);
-        emit ValuableActionRegistry.ValuableActionActivated(actionId, proposalId);
+        emit ValuableActionRegistry.ValuableActionActivated(actionId, uint256(proposalRef));
         
-        registry.activateFromGovernance(actionId, proposalId);
+        registry.activateFromGovernance(actionId, proposalRef);
         
         assertTrue(registry.isValuableActionActive(actionId));
-        assertEq(registry.pendingValuableActions(actionId), 0); // Cleared
+        assertEq(registry.pendingValuableActions(actionId), bytes32(0)); // Cleared
         
         vm.stopPrank();
     }
@@ -237,13 +278,13 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
         vm.stopPrank();
         
         vm.startPrank(governance);
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Proposal ID mismatch"));
-        registry.activateFromGovernance(actionId, 999); // Wrong proposal ID
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Proposal ref mismatch"));
+        registry.activateFromGovernance(actionId, BAD_PROPOSAL_REF); // Wrong proposal ref
         vm.stopPrank();
     }
     
@@ -253,9 +294,9 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
-        registry.activateFromGovernance(actionId, 1);
+        registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
         vm.stopPrank();
         
         // Update as moderator
@@ -279,9 +320,9 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
-        registry.activateFromGovernance(actionId, 1);
+        registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
         vm.stopPrank();
 
         vm.startPrank(user);
@@ -295,9 +336,9 @@ contract ValuableActionRegistryTest is Test {
         uint256 actionId = registry.proposeValuableAction(
             COMMUNITY_ID,
             sampleAction,
-            1
+            PROPOSAL_REF_1
         );
-        registry.activateFromGovernance(actionId, 1);
+        registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
         vm.stopPrank();
         
         vm.startPrank(moderator);
@@ -315,12 +356,12 @@ contract ValuableActionRegistryTest is Test {
     function testGetActiveValuableActions() public {
         // Create multiple actions
         vm.startPrank(governance);
-        uint256 action1 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
-        uint256 action2 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 2);
-        uint256 action3 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 3);
-        registry.activateFromGovernance(action1, 1);
-        registry.activateFromGovernance(action2, 2);
-        registry.activateFromGovernance(action3, 3);
+        uint256 action1 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
+        uint256 action2 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_2);
+        uint256 action3 = registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_3);
+        registry.activateFromGovernance(action1, PROPOSAL_REF_1);
+        registry.activateFromGovernance(action2, PROPOSAL_REF_2);
+        registry.activateFromGovernance(action3, PROPOSAL_REF_3);
         vm.stopPrank();
         
         // Deactivate one
@@ -347,7 +388,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "MembershipToken reward cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -356,7 +397,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Minimum jurors cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -365,7 +406,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Panel size cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -375,7 +416,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Minimum jurors cannot exceed panel size"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -384,7 +425,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Verify window cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -393,7 +434,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Slash rate cannot exceed 100%"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -402,7 +443,7 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Evidence spec CID cannot be empty"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
     
@@ -411,31 +452,120 @@ contract ValuableActionRegistryTest is Test {
         
         vm.startPrank(governance);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cooldown period cannot be zero"));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
         vm.stopPrank();
     }
 
     function testProposeValuableActionUnauthorized() public {
         vm.startPrank(user);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
+        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, PROPOSAL_REF_1);
+        vm.stopPrank();
+    }
+
+    function testIssueEngagementModuleOnly() public {
+        vm.prank(user);
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
-        registry.proposeValuableAction(COMMUNITY_ID, sampleAction, 1);
-        vm.stopPrank();
+        registry.issueEngagement(COMMUNITY_ID, user, Types.EngagementSubtype.WORK, bytes32("actionType"), hex"01");
     }
-    
-    function testUpdateGovernance() public {
-        address newGovernance = makeAddr("newGovernance");
-        
-        vm.startPrank(governance);
-        registry.updateGovernance(newGovernance);
-        assertEq(registry.governance(), newGovernance);
-        vm.stopPrank();
+
+    function testIssueEngagementMintsAndEmits() public {
+        bytes32 actionTypeId = bytes32("actionType");
+        bytes memory metadata = hex"1234";
+
+        vm.expectEmit(true, true, true, true);
+        emit ValuableActionRegistry.EngagementIssued(user, 1, Types.EngagementSubtype.WORK, actionTypeId);
+
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issueEngagement(COMMUNITY_ID, user, Types.EngagementSubtype.WORK, actionTypeId, metadata);
+
+        assertEq(tokenId, 1);
+        assertEq(sbt.ownerOf(tokenId), user);
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.WORK));
     }
-    
-    function testUpdateGovernanceZeroAddress() public {
+
+    function testIssuePositionMintsAndEmits() public {
+        bytes32 positionTypeId = bytes32("roleType");
+        bytes memory metadata = hex"cafebabe";
+
+        vm.expectEmit(true, true, true, true);
+        emit ValuableActionRegistry.PositionIssued(user, 1, positionTypeId, 10);
+
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issuePosition(COMMUNITY_ID, user, positionTypeId, 10, metadata);
+
+        assertEq(tokenId, 1);
+        assertEq(sbt.ownerOf(tokenId), user);
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.POSITION));
+        assertEq(data.points, 10);
+    }
+
+    function testIssueInvestmentMintsAndEmits() public {
+        uint256 cohortId = 1;
+        bytes memory metadata = hex"deadbeef";
+        vm.expectEmit(true, true, true, true);
+        emit ValuableActionRegistry.InvestmentIssued(user, 1, cohortId, 5);
+
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issueInvestment(COMMUNITY_ID, user, cohortId, 5, metadata);
+
+        assertEq(tokenId, 1);
+        assertEq(sbt.ownerOf(tokenId), user);
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.INVESTMENT));
+        assertEq(data.weight, 5);
+    }
+
+    function testClosePositionSetsEndedAt() public {
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issuePosition(COMMUNITY_ID, user, bytes32("pos"), 10, hex"00");
+
         vm.startPrank(governance);
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        registry.updateGovernance(address(0));
+        accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, governance, 0);
         vm.stopPrank();
+
+        vm.prank(governance);
+        sbt.closePositionToken(tokenId, 1);
+
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertTrue(data.endedAt > 0);
+        assertEq(data.closeOutcome, 1);
+    }
+
+    function testCommunityNarrowingBlocksOtherCommunities() public {
+        // Enable narrowing and allow module only for COMMUNITY_ID
+        vm.prank(governance);
+        registry.setCommunityNarrowing(COMMUNITY_ID, true);
+        vm.prank(governance);
+        registry.setCommunityIssuanceModule(COMMUNITY_ID, requestHubModule, true);
+
+        // Using different community should revert
+        uint256 otherCommunity = COMMUNITY_ID + 1;
+        vm.prank(governance);
+        registry.setCommunityNarrowing(otherCommunity, true);
+
+        vm.prank(requestHubModule);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, requestHubModule));
+        registry.issueEngagement(otherCommunity, user, Types.EngagementSubtype.WORK, bytes32("actionType"), hex"01");
+    }
+
+    function testCommunityNarrowingAllowsAuthorizedCommunity() public {
+        vm.prank(governance);
+        registry.setCommunityNarrowing(COMMUNITY_ID, true);
+        vm.prank(governance);
+        registry.setCommunityIssuanceModule(COMMUNITY_ID, requestHubModule, true);
+
+        vm.prank(requestHubModule);
+        uint256 tokenId = registry.issuePosition(COMMUNITY_ID, user, bytes32("pos"), 1, hex"00");
+        assertEq(tokenId, 1);
+
+        assertEq(tokenId, 1);
+        assertEq(sbt.ownerOf(tokenId), user);
+        ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        assertEq(uint8(data.kind), uint8(ValuableActionSBT.TokenKind.POSITION));
+        assertEq(data.points, 1);
     }
     
     function testGetValuableActionNonexistent() public {

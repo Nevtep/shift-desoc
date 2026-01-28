@@ -6,19 +6,86 @@ import "contracts/modules/RequestHub.sol";
 import "contracts/modules/CommunityRegistry.sol";
 import "contracts/modules/ParamController.sol";
 import "contracts/libs/Errors.sol";
+import "contracts/libs/Types.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract MockERC20 {
+    string public name = "Mock Token";
+    string public symbol = "MOCK";
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event Approval(address indexed owner, address indexed spender, uint256 amount);
+
+    function mint(address to, uint256 amount) external {
+        totalSupply += amount;
+        balanceOf[to] += amount;
+        emit Transfer(address(0), to, amount);
+    }
+
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        emit Approval(msg.sender, spender, amount);
+        return true;
+    }
+
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        allowance[from][msg.sender] -= amount;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount;
+        emit Transfer(from, to, amount);
+        return true;
+    }
+}
+
+contract ValuableActionRegistryMock {
+    mapping(uint256 => Types.ValuableAction) public actions;
+    mapping(uint256 => bool) public active;
+    uint256 public nextTokenId = 1;
+
+    function setAction(uint256 id, Types.ValuableAction memory action, bool isActive_) external {
+        actions[id] = action;
+        active[id] = isActive_;
+    }
+
+    function getValuableAction(uint256 id) external view returns (Types.ValuableAction memory action) {
+        return actions[id];
+    }
+
+    function isValuableActionActive(uint256 id) external view returns (bool) {
+        return active[id];
+    }
+
+    function issueEngagement(
+        uint256,
+        address,
+        Types.EngagementSubtype,
+        bytes32,
+        bytes calldata
+    ) external returns (uint256 tokenId) {
+        tokenId = nextTokenId++;
+    }
+}
 
 contract RequestHubTest is Test {
     RequestHub requestHub;
     CommunityRegistry communityRegistry;
+    ValuableActionRegistryMock valuableActionRegistry;
+    MockERC20 token;
     
     // Test accounts
     address admin = makeAddr("admin");
     address user1 = makeAddr("user1");
     address user2 = makeAddr("user2");
     address moderator = makeAddr("moderator");
+    address treasuryVault = makeAddr("vault");
     
     // Test data
     uint256 communityId;
+    uint256 constant ACTION_ID = 1;
     string constant TITLE = "Test Request";
     string constant CID = "QmTestContentHash";
     string[] tags = ["development", "urgent"];
@@ -53,7 +120,11 @@ contract RequestHubTest is Test {
         // Deploy contracts
         ParamController paramController = new ParamController(admin);
         communityRegistry = new CommunityRegistry(admin, address(paramController));
-        requestHub = new RequestHub(address(communityRegistry));
+        paramController.setCommunityRegistry(address(communityRegistry));
+        valuableActionRegistry = new ValuableActionRegistryMock();
+        token = new MockERC20();
+
+        requestHub = new RequestHub(address(communityRegistry), address(valuableActionRegistry));
         
         // Create test community
         communityId = communityRegistry.registerCommunity(
@@ -62,6 +133,37 @@ contract RequestHubTest is Test {
             "ipfs://test",
             0 // no parent community
         );
+
+        communityRegistry.setModuleAddress(communityId, keccak256("treasuryVault"), treasuryVault);
+
+        // Configure a default valuable action for completion tests
+        Types.ValuableAction memory action = Types.ValuableAction({
+            membershipTokenReward: 1,
+            communityTokenReward: 0,
+            investorSBTReward: 0,
+            category: Types.ActionCategory.ENGAGEMENT_ONE_SHOT,
+            roleTypeId: bytes32(0),
+            positionPoints: 0,
+            verifierPolicy: Types.VerifierPolicy.NONE,
+            metadataSchemaId: bytes32(0),
+            jurorsMin: 1,
+            panelSize: 1,
+            verifyWindow: 1,
+            verifierRewardWeight: 0,
+            slashVerifierBps: 0,
+            cooldownPeriod: 1,
+            maxConcurrent: 1,
+            revocable: false,
+            evidenceTypes: 0,
+            proposalThreshold: 0,
+            proposer: admin,
+            evidenceSpecCID: "",
+            titleTemplate: "",
+            automationRules: new bytes32[](0),
+            activationDelay: 0,
+            deprecationWarning: 0
+        });
+        valuableActionRegistry.setAction(ACTION_ID, action, true);
         
         // Grant moderator role
         communityRegistry.grantCommunityRole(communityId, moderator, communityRegistry.MODERATOR_ROLE());
@@ -97,8 +199,11 @@ contract RequestHubTest is Test {
         assertEq(request.tags[0], "development");
         assertEq(request.tags[1], "urgent");
         assertEq(request.commentCount, 0);
+        assertEq(request.bountyToken, address(0));
         assertEq(request.bountyAmount, 0);
         assertEq(request.linkedValuableAction, 0);
+        assertEq(request.consumed, false);
+        assertEq(request.winner, address(0));
         
         vm.stopPrank();
     }
@@ -358,14 +463,19 @@ contract RequestHubTest is Test {
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
         
         vm.startPrank(user2);
+        token.mint(user2, 1_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
         
-        vm.expectEmit(true, false, false, true);
-        emit RequestHub.BountyAdded(requestId, 1000, user2);
+        vm.expectEmit(true, true, false, true);
+        emit RequestHub.BountyAdded(requestId, communityId, address(token), 1_000, user2);
         
-        requestHub.addBounty(requestId, 1000);
+        requestHub.addBounty(requestId, address(token), 1_000);
         
         RequestHub.Request memory request = requestHub.getRequest(requestId);
-        assertEq(request.bountyAmount, 1000);
+        assertEq(request.bountyAmount, 1_000);
+        assertEq(request.bountyToken, address(token));
+        assertEq(token.balanceOf(treasuryVault), 1_000);
+        assertEq(token.balanceOf(address(requestHub)), 0);
         
         vm.stopPrank();
     }
@@ -377,7 +487,7 @@ contract RequestHubTest is Test {
         vm.startPrank(user2);
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Bounty amount must be positive"));
-        requestHub.addBounty(requestId, 0);
+        requestHub.addBounty(requestId, address(0xBEEF), 0);
         
         vm.stopPrank();
     }
@@ -386,9 +496,171 @@ contract RequestHubTest is Test {
         vm.startPrank(user1);
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Request does not exist"));
-        requestHub.addBounty(999, 1000);
+        requestHub.addBounty(999, address(0xBEEF), 1000);
         
         vm.stopPrank();
+    }
+
+    function testAddBountyAfterWinnerApprovedReverts() public {
+        vm.prank(user1);
+        uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
+
+        vm.startPrank(user1);
+        token.mint(user1, 2_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
+        requestHub.addBounty(requestId, address(token), 1_000);
+        vm.stopPrank();
+
+        vm.prank(moderator);
+        requestHub.setApprovedWinner(requestId, user2);
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Winner already approved"));
+        requestHub.addBounty(requestId, address(token), 500);
+    }
+
+    function testAddBountyTopUpTransfersDelta() public {
+        vm.prank(user1);
+        uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
+
+        vm.startPrank(user1);
+        token.mint(user1, 2_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
+        requestHub.addBounty(requestId, address(token), 1_000);
+        requestHub.addBounty(requestId, address(token), 1_600);
+        vm.stopPrank();
+
+        RequestHub.Request memory request = requestHub.getRequest(requestId);
+        assertEq(request.bountyAmount, 1_600);
+        assertEq(token.balanceOf(treasuryVault), 1_600);
+        assertEq(token.balanceOf(address(requestHub)), 0);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                       WINNER & COMPLETION TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    function _createLinkedRequest() internal returns (uint256 requestId) {
+        vm.prank(user1);
+        requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
+        vm.prank(user1);
+        requestHub.linkValuableAction(requestId, ACTION_ID);
+    }
+
+    function testSetApprovedWinnerAuthorized() public {
+        uint256 requestId = _createLinkedRequest();
+
+        vm.prank(moderator);
+        vm.expectEmit(true, true, true, false);
+        emit RequestHub.ApprovedWinnerSet(requestId, user2, moderator);
+        requestHub.setApprovedWinner(requestId, user2);
+
+        assertEq(requestHub.approvedWinner(requestId), user2);
+    }
+
+    function testSetApprovedWinnerUnauthorized() public {
+        uint256 requestId = _createLinkedRequest();
+
+        vm.prank(user2);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user2));
+        requestHub.setApprovedWinner(requestId, user2);
+    }
+
+    function testSetApprovedWinnerCannotClearOrReset() public {
+        uint256 requestId = _createLinkedRequest();
+
+        vm.prank(moderator);
+        requestHub.setApprovedWinner(requestId, user2);
+
+        vm.prank(moderator);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Winner already approved"));
+        requestHub.setApprovedWinner(requestId, user1);
+    }
+
+    function testCompleteEngagementHappyPath() public {
+        uint256 requestId = _createLinkedRequest();
+
+        vm.startPrank(user1);
+        token.mint(user1, 1_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
+        requestHub.addBounty(requestId, address(token), 500);
+        vm.stopPrank();
+
+        vm.prank(moderator);
+        requestHub.setApprovedWinner(requestId, user2);
+
+        vm.startPrank(user2);
+        vm.expectEmit(true, true, true, true);
+        emit RequestHub.BountyReady(requestId, communityId, user2, address(token), 500);
+        vm.expectEmit(true, true, false, true);
+        emit RequestHub.OneShotEngagementCompleted(requestId, user2, address(token), 500, 1);
+        uint256 tokenId = requestHub.completeEngagement(requestId, bytes("evidence"));
+        vm.stopPrank();
+
+        assertEq(tokenId, 1);
+        RequestHub.Request memory request = requestHub.getRequest(requestId);
+        assertTrue(request.consumed);
+        assertEq(request.winner, user2);
+        assertEq(token.balanceOf(treasuryVault), 500);
+        assertEq(token.balanceOf(address(requestHub)), 0);
+    }
+
+    function testCompleteEngagementRequiresApproval() public {
+        uint256 requestId = _createLinkedRequest();
+
+        vm.prank(user2);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Winner not approved"));
+        requestHub.completeEngagement(requestId, bytes("evidence"));
+    }
+
+    function testCompleteEngagementWrongCaller() public {
+        uint256 requestId = _createLinkedRequest();
+
+        vm.prank(moderator);
+        requestHub.setApprovedWinner(requestId, user2);
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        requestHub.completeEngagement(requestId, bytes("evidence"));
+    }
+
+    function testCompleteEngagementCannotRepeat() public {
+        uint256 requestId = _createLinkedRequest();
+        vm.prank(moderator);
+        requestHub.setApprovedWinner(requestId, user2);
+        vm.prank(user2);
+        requestHub.completeEngagement(requestId, bytes("evidence"));
+
+        vm.prank(user2);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Request already consumed"));
+        requestHub.completeEngagement(requestId, bytes("evidence"));
+    }
+
+    function testCompleteEngagementRequiresOneShotCategory() public {
+        // Configure action as non-one-shot before linking to fail fast at link time
+        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(ACTION_ID);
+        action.category = Types.ActionCategory.CREDENTIAL;
+        valuableActionRegistry.setAction(ACTION_ID, action, true);
+
+        vm.prank(user1);
+        uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Not a one-shot action"));
+        requestHub.linkValuableAction(requestId, ACTION_ID);
+    }
+
+    function testCompleteEngagementRequiresActiveAction() public {
+        // Deactivate action before linking to ensure link fails
+        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(ACTION_ID);
+        valuableActionRegistry.setAction(ACTION_ID, action, false);
+
+        vm.prank(user1);
+        uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
+
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidValuableAction.selector, ACTION_ID));
+        requestHub.linkValuableAction(requestId, ACTION_ID);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -398,33 +670,36 @@ contract RequestHubTest is Test {
     function testLinkValuableActionAsAuthor() public {
         vm.prank(user1);
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
-        
+
+        // Configure action 123 as active one-shot to allow linking
+        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(ACTION_ID);
+        valuableActionRegistry.setAction(123, action, true);
+
         vm.startPrank(user1);
-        
         vm.expectEmit(true, true, true, false);
         emit RequestHub.ValuableActionLinking(requestId, 123, user1);
-        
         requestHub.linkValuableAction(requestId, 123);
-        
+        vm.stopPrank();
+
         RequestHub.Request memory request = requestHub.getRequest(requestId);
         assertEq(request.linkedValuableAction, 123);
-        
-        vm.stopPrank();
     }
     
     function testLinkValuableActionAsCommunityAdmin() public {
         vm.prank(user1);
         uint256 requestId = requestHub.createRequest(communityId, TITLE, CID, tags);
         
+        // Configure action 456 as active one-shot to allow linking
+        Types.ValuableAction memory action = valuableActionRegistry.getValuableAction(ACTION_ID);
+        valuableActionRegistry.setAction(456, action, true);
+
         // Admin can link ValuableAction even if not author
         vm.startPrank(admin);
-        
         requestHub.linkValuableAction(requestId, 456);
-        
+        vm.stopPrank();
+
         RequestHub.Request memory request = requestHub.getRequest(requestId);
         assertEq(request.linkedValuableAction, 456);
-        
-        vm.stopPrank();
     }
     
     function testLinkValuableActionUnauthorized() public {

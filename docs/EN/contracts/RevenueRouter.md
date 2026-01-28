@@ -32,9 +32,9 @@ mapping(uint256 => mapping(address => bool)) public supportedTokens;  // Approve
 mapping(uint256 => mapping(address => uint256)) public workerPools;       // Worker revenue pools
 mapping(uint256 => mapping(address => uint256)) public treasuryReserves;  // Treasury reserves
 
-// Claims Tracking
-mapping(uint256 => mapping(address => mapping(address => uint256))) public workerClaims;    // [community][worker][token]
-mapping(uint256 => mapping(address => mapping(address => uint256))) public investorClaims; // [cohort][investor][token]
+// Revenue Claims Tracking
+mapping(uint256 => mapping(address => mapping(address => uint256))) public workerRevenueClaims;    // [community][worker][token]
+mapping(uint256 => mapping(address => mapping(address => uint256))) public investorRevenueClaims; // [cohort][investor][token]
 ```
 
 ## ⚙️ Key Functions & Logic
@@ -88,7 +88,7 @@ function _distributeToCohortInvestors(
 **Distribution Formula**:
 
 - `investorPayment = totalPayment * investmentAmount / cohort.investedTotal`
-- Updates `investorClaims[cohortId][investor][token]` for withdrawal
+- Updates `investorRevenueClaims[cohortId][investor][token]` for withdrawal
 - Maintains precision through careful integer arithmetic
 
 ## 🛡️ Security Features
@@ -116,7 +116,7 @@ if (amount == 0) revert Errors.InvalidInput("Zero amount");
 if (!supportedTokens[communityId][token]) revert Errors.InvalidInput("Unsupported token");
 
 // Withdrawal validation
-if (workerClaims[communityId][msg.sender][token] < amount) {
+if (workerRevenueClaims[communityId][msg.sender][token] < amount) {
     revert Errors.InsufficientBalance(msg.sender, amount, available);
 }
 ```
@@ -150,7 +150,7 @@ cohortRegistry.markRecovered(cohortId, cohortPayment);
 ### ValuableActionSBT Allocation Integration
 
 ```solidity
-// Called by Claims contract after work verification
+// Called by Engagements contract after work verification
 function allocateWorkerRevenue(
     uint256 communityId,
     address worker,
@@ -315,6 +315,6 @@ for (each cohort payment) {
 
 **Optional Integrations**:
 
-- **Claims Contract**: Worker revenue allocation after verification
+- **Engagements Contract**: Worker revenue allocation after verification
 - **Treasury Contract**: Advanced treasury management features
 - **Analytics Systems**: Event-based revenue tracking and reporting

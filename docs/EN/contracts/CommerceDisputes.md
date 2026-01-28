@@ -2,10 +2,10 @@
 
 ## 🎯 Purpose & Role
 
-The **CommerceDisputes** contract provides a dedicated dispute resolution system for commercial transactions within the Shift DeSoc ecosystem, specifically handling disputes from the Marketplace and HousingManager modules. Unlike the Claims contract (which handles work verification), CommerceDisputes focuses on buyer-seller transaction disputes with escrow resolution.
+The **CommerceDisputes** contract provides a dedicated dispute resolution system for commercial transactions within the Shift DeSoc ecosystem, specifically handling disputes from the Marketplace and HousingManager modules. Unlike the Engagements contract (which handles work verification), CommerceDisputes focuses on buyer-seller transaction disputes with escrow resolution.
 
 **Key Separation of Concerns:**
-- **Claims Contract**: Work verification and ValuableAction completion
+- **Engagements Contract**: Work verification and ValuableAction completion
 - **CommerceDisputes**: Commercial transaction dispute resolution (orders, reservations)
 
 This separation ensures that commercial dispute resolution doesn't interfere with the work verification system and allows for specialized workflows appropriate to each domain.
@@ -57,7 +57,6 @@ uint256 public nextDisputeId;
 
 // Access control
 address public owner;
-mapping(address => bool) public authorizedCallers;  // Modules that can open disputes
 address public disputeReceiver;                      // Marketplace or receiver contract
 
 // Prevent duplicate disputes
@@ -77,11 +76,11 @@ function openDispute(
     address seller,
     uint256 amount,
     string calldata evidenceURI
-) external onlyAuthorized returns (uint256 disputeId)
+) external restricted returns (uint256 disputeId)
 ```
 
 **Process:**
-1. Verify caller is authorized module (Marketplace, HousingManager)
+1. AccessManager enforces caller role (Marketplace, HousingManager)
 2. Check no duplicate dispute exists for this resource
 3. Create new dispute with OPEN status
 4. Track as active dispute for the resource
@@ -267,8 +266,12 @@ Buyer Purchase → Escrow Held → Dispute Opened
 const disputes = await CommerceDisputes.deploy(governanceAddress);
 
 // Authorize Marketplace to open disputes
-await disputes.setAuthorizedCaller(marketplaceAddress, true);
-await disputes.setAuthorizedCaller(housingManagerAddress, true);
+// AccessManager
+bytes4[] memory disputeCaller = new bytes4[](1);
+disputeCaller[0] = disputes.openDispute.selector;
+accessManager.setTargetFunctionRole(address(disputes), disputeCaller, Roles.COMMERCE_DISPUTES_CALLER_ROLE);
+accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, marketplaceAddress, 0);
+accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, housingManagerAddress, 0);
 
 // Set Marketplace as dispute receiver
 await disputes.setDisputeReceiver(marketplaceAddress);

@@ -18,7 +18,7 @@ type DeploymentAddresses = {
   verifierElection?: string;
   verifierManager?: string;
   valuableActionRegistry?: string;
-  claims?: string;
+  engagements?: string;
   valuableActionSBT?: string;
   communityToken?: string;
   treasuryAdapter?: string;
@@ -52,6 +52,9 @@ const startBlock = process.env.PONDER_START_BLOCK
   ? Number.parseInt(process.env.PONDER_START_BLOCK, 10)
   : deployment.startBlock;
 
+const toAddress = (val?: string): `0x${string}` | undefined =>
+  val && val.startsWith("0x") ? (val as `0x${string}`) : undefined;
+
 const abiPath = (file: string) => path.join(__dirname, "abis", file);
 const loadAbi = (file: string) => JSON.parse(fs.readFileSync(abiPath(file), "utf8")).abi;
 
@@ -73,49 +76,49 @@ export default createConfig({
   contracts: {
     CommunityRegistry: {
       network,
-      address: deployment.addresses?.communityRegistry ?? "",
+      address: toAddress(deployment.addresses?.communityRegistry),
       abi: loadAbi("CommunityRegistry.json"),
       startBlock
     },
     RequestHub: {
       network,
-      address: deployment.addresses?.requestHub ?? "",
+      address: toAddress(deployment.addresses?.requestHub),
       abi: loadAbi("RequestHub.json"),
       startBlock
     },
     DraftsManager: {
       network,
-      address: deployment.addresses?.draftsManager ?? "",
+      address: toAddress(deployment.addresses?.draftsManager),
       abi: loadAbi("DraftsManager.json"),
       startBlock
     },
     ShiftGovernor: {
       network,
-      address: deployment.addresses?.governor ?? "",
+      address: toAddress(deployment.addresses?.governor),
       abi: loadAbi("ShiftGovernor.json"),
       startBlock
     },
     CountingMultiChoice: {
       network,
-      address: deployment.addresses?.countingMultiChoice ?? "",
+      address: toAddress(deployment.addresses?.countingMultiChoice),
       abi: loadAbi("CountingMultiChoice.json"),
       startBlock
     },
-    Claims: {
+    Engagements: {
       network,
-      address: deployment.addresses?.claims ?? "",
-      abi: loadAbi("Claims.json"),
+      address: toAddress(deployment.addresses?.engagements),
+      abi: loadAbi("Engagements.json"),
       startBlock
     },
     VerifierManager: {
       network,
-      address: deployment.addresses?.verifierManager ?? "",
+      address: toAddress(deployment.addresses?.verifierManager),
       abi: loadAbi("VerifierManager.json"),
       startBlock
     },
     ValuableActionRegistry: {
       network,
-      address: deployment.addresses?.valuableActionRegistry ?? "",
+      address: toAddress(deployment.addresses?.valuableActionRegistry),
       abi: loadAbi("ValuableActionRegistry.json"),
       startBlock
     }

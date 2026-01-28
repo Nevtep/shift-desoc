@@ -73,7 +73,7 @@ _Building the organizational tools that unlock human cooperation: Where communit
 ### **Work Verification System** ✅ Production Ready
 
 - **ValuableActionRegistry**: Community-defined work value system
-- **Claims**: M-of-N peer verification with democratic oversight
+- **Engagements**: M-of-N peer verification with democratic oversight
 - **VerifierPowerToken1155 (VPT)**: Community-elected verifiers with governance accountability
 - **ValuableActionSBT**: Soulbound reputation tokens with portable credentials
 
@@ -153,7 +153,7 @@ pnpm fmt
 ### 👀 **User-Friendly Monitoring (5 scripts)**
 
 - **`check:balance`** - Simple wallet balance checker
-- **`check:claims`** - **Comprehensive claim monitoring with detailed analysis**
+- **`check:engagements`** - **Comprehensive engagement monitoring with detailed analysis**
 - **`check:rewards`** - **Detailed reward tracking and analysis**
 - **`check:governance`** - **Governance status monitoring with proposal tracking**
 - **`check:permissions`** - **Debug admin permissions and roles**
@@ -168,7 +168,7 @@ pnpm fmt
 ### 👥 **Verification Operations (2 scripts)**
 
 - **`verifier:register`** - **Register as verifier with required bonding**
-- **`verifier:verify-claim`** - **Verifier interface for M-of-N claim verification**
+- **`verifier:verify-engagement`** - **Verifier interface for M-of-N engagement verification**
 
 ### 🔬 **System Analysis (2 scripts)**
 
@@ -185,7 +185,7 @@ pnpm fmt
 
 - **`manage`** - Interactive admin CLI for system operations
 - **`status`** - Quick system status check
-- **`submit:claim`** - **User-friendly claim submission interface**
+- **`submit:engagement`** - **User-friendly engagement submission interface**
 - **`validate-deployment`** - Verify deployment completeness
 - **`test:e2e`** - End-to-end scenario testing
 - **`gas-costs`** - Gas cost analysis for operations
@@ -231,7 +231,7 @@ All management scripts automatically load addresses from deployment files:
 # No manual configuration needed - addresses auto-loaded!
 npm run manage --network base_sepolia status
 npm run check:governance --network base_sepolia
-npm run submit:claim --network base_sepolia
+npm run submit:engagement --network base_sepolia
 ```
 
 ### **Deployment File Format**
@@ -261,7 +261,7 @@ npm run submit:claim --network base_sepolia
 
 ### **System Management**
 
-Complete management interface for all system operations including governance, verifier elections, claims processing, and community administration.
+Complete management interface for all system operations including governance, verifier elections, engagements processing, and community administration.
 
 #### **System Status & Monitoring**
 
@@ -284,17 +284,17 @@ npm run manage governance proposal <proposalId>
 npm run manage governance vote <proposalId> 1 "Supporting this proposal"
 ```
 
-#### **Claims & Work Verification**
+#### **Engagements & Work Verification**
 
 ```bash
-# Submit work claim
-npm run manage claims submit 1 1 "QmEvidenceHash..."
+# Submit work engagement
+npm run manage engagements submit 1 1 "QmEvidenceHash..."
 
-# Check claim status
-npm run manage claims info 42
+# Check engagement status
+npm run manage engagements info 42
 
-# Verify claim (for verifiers)
-npm run manage claims verify 42 true
+# Verify engagement (for verifiers)
+npm run manage engagements verify 42 true
 ```
 
 #### **VPT Token Management**
@@ -354,7 +354,7 @@ Shift DeSoc enables **meta-governance for any organizational structure**:
 
 - ✅ Community coordination infrastructure (RequestHub, DraftsManager, CommunityRegistry, ParamController)
 - ✅ Multi-choice governance engine (ShiftGovernor, CountingMultiChoice, Timelock, MembershipToken)
-- ✅ Work verification & merit system (ValuableActionRegistry, Claims, VPT system, ValuableActionSBT)
+- ✅ Work verification & merit system (ValuableActionRegistry, Engagements, VPT system, ValuableActionSBT)
 - ✅ Economic distribution & treasury management (CommunityToken, RevenueRouter, CohortRegistry, TreasuryAdapter)
 - ✅ Community modules (Marketplace, ProjectFactory, HousingManager, CommerceDisputes)
 - ✅ Deployment infrastructure (API-based deployment, automated address management, Base mainnet optimization)

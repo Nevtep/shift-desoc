@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IDisputeReceiver} from "./interfaces/IDisputeReceiver.sol";
 import {Errors} from "../libs/Errors.sol";
 
 /**
  * @title CommerceDisputes
  * @notice Handles disputes for commerce transactions (Marketplace orders, housing reservations)
- * @dev Separate from WorkClaims which is dedicated to ValuableAction verification
+ * @dev Dedicated to commerce disputes; ValuableAction verification lives in Engagements
  *
  * MVP Implementation Notes:
  * - Supports two outcomes: REFUND_BUYER, PAY_SELLER
@@ -15,7 +16,7 @@ import {Errors} from "../libs/Errors.sol";
  * - Finalization is admin-only (TODO: integrate with verifier/juror system)
  * - Single receiver model (Marketplace only for now)
  */
-contract CommerceDisputes {
+contract CommerceDisputes is AccessManaged {
     // ============ Types ============
 
     enum DisputeType {
@@ -59,8 +60,6 @@ contract CommerceDisputes {
     uint256 public nextDisputeId = 1;
 
     // Access control
-    address public owner;
-    mapping(address => bool) public authorizedCallers; // Modules that can open disputes
     address public disputeReceiver; // Marketplace or other receiver
 
     // Prevent duplicate disputes for same resource
@@ -84,52 +83,29 @@ contract CommerceDisputes {
 
     event DisputeCancelled(uint256 indexed disputeId);
 
-    event AuthorizedCallerUpdated(address indexed caller, bool authorized);
     event DisputeReceiverUpdated(address indexed oldReceiver, address indexed newReceiver);
 
     // ============ Errors ============
 
-    error UnauthorizedCaller();
     error DisputeAlreadyExists(uint256 existingDisputeId);
     error DisputeNotFound(uint256 disputeId);
     error DisputeNotOpen(uint256 disputeId);
     error InvalidOutcome();
     error NoReceiver();
 
-    // ============ Modifiers ============
-
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert Errors.UnauthorizedCaller(msg.sender);
-        _;
-    }
-
-    modifier onlyAuthorized() {
-        if (!authorizedCallers[msg.sender]) revert UnauthorizedCaller();
-        _;
-    }
-
     // ============ Constructor ============
 
-    constructor(address _owner) {
-        owner = _owner;
+    constructor(address manager) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
     }
 
     // ============ Admin Functions ============
 
     /**
-     * @notice Set whether an address can open disputes
-     * @dev Typically Marketplace and other commerce modules
-     */
-    function setAuthorizedCaller(address caller, bool authorized) external onlyOwner {
-        authorizedCallers[caller] = authorized;
-        emit AuthorizedCallerUpdated(caller, authorized);
-    }
-
-    /**
      * @notice Set the dispute receiver contract (e.g. Marketplace)
      * @dev Receiver must implement IDisputeReceiver
      */
-    function setDisputeReceiver(address receiver) external onlyOwner {
+    function setDisputeReceiver(address receiver) external restricted {
         address oldReceiver = disputeReceiver;
         disputeReceiver = receiver;
         emit DisputeReceiverUpdated(oldReceiver, receiver);
@@ -157,7 +133,7 @@ contract CommerceDisputes {
         address seller,
         uint256 amount,
         string calldata evidenceURI
-    ) external onlyAuthorized returns (uint256 disputeId) {
+    ) external restricted returns (uint256 disputeId) {
         // Prevent duplicate disputes for same resource
         uint256 existing = activeDisputeFor[disputeType][relatedId];
         if (existing != 0 && disputes[existing].status == DisputeStatus.OPEN) {
@@ -192,7 +168,7 @@ contract CommerceDisputes {
      * @param disputeId The dispute to finalize
      * @param outcome The resolution (REFUND_BUYER or PAY_SELLER)
      */
-    function finalizeDispute(uint256 disputeId, DisputeOutcome outcome) external onlyOwner {
+    function finalizeDispute(uint256 disputeId, DisputeOutcome outcome) external restricted {
         Dispute storage dispute = disputes[disputeId];
 
         if (dispute.disputeId == 0) revert DisputeNotFound(disputeId);
@@ -221,7 +197,7 @@ contract CommerceDisputes {
      * @notice Cancel an open dispute (governance decision)
      * @dev Rare case, requires owner intervention
      */
-    function cancelDispute(uint256 disputeId) external onlyOwner {
+    function cancelDispute(uint256 disputeId) external restricted {
         Dispute storage dispute = disputes[disputeId];
 
         if (dispute.disputeId == 0) revert DisputeNotFound(disputeId);

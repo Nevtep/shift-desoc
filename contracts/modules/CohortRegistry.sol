@@ -1,33 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 /// @title CohortRegistry
 /// @notice Manages investment cohorts with immutable terms and Target ROI tracking
 /// @dev Investment cohorts guarantee Target ROI returns with priority weighting and spillover mechanics
-contract CohortRegistry {
+contract CohortRegistry is AccessManaged {
     /// @notice Cohort data structure with immutable terms
     struct Cohort {
         uint256 id;                 // Unique cohort identifier
         uint256 communityId;        // Associated community
         uint16 targetRoiBps;        // Target ROI in basis points (e.g., 15000 = 150%)
         uint64 createdAt;           // Creation timestamp
+        uint64 startAt;             // Optional start time (0 = immediate)
+        uint64 endAt;               // Optional end/expiry time (0 = none)
         uint32 priorityWeight;      // Priority weight for distribution (default: 1)
         uint256 investedTotal;      // Total amount invested in this cohort
         uint256 recoveredTotal;     // Total revenue paid to this cohort
-        bool active;               // Active until Target ROI reached
-        bytes32 termsHash;         // Immutable hash of cohort terms
+        bool active;                // Active until Target ROI reached or deactivated
+        bytes32 termsHash;          // Immutable hash of cohort terms
     }
     
-    /// @notice Access control addresses
-    address public timelock;           // Timelock for cohort creation
-    address public revenueRouter;      // Only RevenueRouter can mark recovery
-    address public valuableActionSBT;  // SBT contract for investment recording
-    
+
     /// @notice Cohort storage
     mapping(uint256 => Cohort) public cohorts;
     mapping(uint256 => mapping(address => uint256)) public investedBy; // [cohortId][investor] = amount
+    mapping(uint256 => uint256) public investmentByToken; // tokenId => amount
+    mapping(uint256 => uint256) public tokenCohort;       // tokenId => cohortId
     mapping(uint256 => uint256[]) public activeCohortsByCommunity;
     mapping(uint256 => address[]) public cohortInvestors; // [cohortId] = investor addresses
     
@@ -56,32 +58,13 @@ contract CohortRegistry {
         uint256 indexed cohortId,
         uint256 finalRecoveredTotal
     );
-    event TimelockUpdated(address oldTimelock, address newTimelock);
     event RevenueRouterUpdated(address oldRouter, address newRouter);
     event ValuableActionSBTUpdated(address oldSBT, address newSBT);
-    
-    /// @notice Access control modifiers
-    modifier onlyTimelock() {
-        if (msg.sender != timelock) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-    
-    modifier onlyRevenueRouter() {
-        if (msg.sender != revenueRouter) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-    
-    modifier onlyValuableActionSBT() {
-        if (msg.sender != valuableActionSBT) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-    
+
     /// @notice Constructor
-    /// @param _timelock Timelock contract address
-    constructor(address _timelock) {
-        if (_timelock == address(0)) revert Errors.ZeroAddress();
-        timelock = _timelock;
-        emit TimelockUpdated(address(0), _timelock);
+    /// @param manager AccessManager address for governance-controlled operations
+    constructor(address manager) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
     }
     
     /// @notice Create a new investment cohort with immutable terms
@@ -94,12 +77,16 @@ contract CohortRegistry {
         uint256 communityId,
         uint16 targetRoiBps,
         uint32 priorityWeight,
-        bytes32 termsHash
-    ) external onlyTimelock returns (uint256 cohortId) {
+        bytes32 termsHash,
+        uint64 startAt,
+        uint64 endAt,
+        bool active
+    ) external restricted returns (uint256 cohortId) {
         if (communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
         if (targetRoiBps < 10000) revert Errors.InvalidInput("Target ROI must be >= 100%");
         if (priorityWeight == 0) revert Errors.InvalidInput("Priority weight must be > 0");
         if (termsHash == bytes32(0)) revert Errors.InvalidInput("Terms hash cannot be empty");
+        if (endAt != 0 && endAt <= startAt) revert Errors.InvalidInput("Invalid schedule");
         
         cohortId = nextCohortId++;
         
@@ -108,14 +95,17 @@ contract CohortRegistry {
             communityId: communityId,
             targetRoiBps: targetRoiBps,
             createdAt: uint64(block.timestamp),
+            startAt: startAt,
+            endAt: endAt,
             priorityWeight: priorityWeight,
             investedTotal: 0,
             recoveredTotal: 0,
-            active: true,
+            active: active,
             termsHash: termsHash
         });
-        
-        activeCohortsByCommunity[communityId].push(cohortId);
+        if (active) {
+            activeCohortsByCommunity[communityId].push(cohortId);
+        }
         
         emit CohortCreated(communityId, cohortId, targetRoiBps, priorityWeight, termsHash);
     }
@@ -124,15 +114,18 @@ contract CohortRegistry {
     /// @param cohortId Cohort identifier
     /// @param investor Investor address
     /// @param amount Investment amount
+    /// @param tokenId Investment SBT identifier
     function addInvestment(
         uint256 cohortId,
         address investor,
-        uint256 amount
-    ) external onlyValuableActionSBT {
+        uint256 amount,
+        uint256 tokenId
+    ) external restricted {
         if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
         if (investor == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidInput("Investment amount must be > 0");
         if (!cohorts[cohortId].active) revert Errors.InvalidInput("Cohort is not active");
+        if (tokenId == 0) revert Errors.InvalidInput("Invalid tokenId");
         
         // Add to investor's total in this cohort
         if (investedBy[cohortId][investor] == 0) {
@@ -141,6 +134,9 @@ contract CohortRegistry {
         }
         investedBy[cohortId][investor] += amount;
         cohorts[cohortId].investedTotal += amount;
+
+        investmentByToken[tokenId] = amount;
+        tokenCohort[tokenId] = cohortId;
         
         emit InvestmentAdded(cohortId, investor, amount);
     }
@@ -148,7 +144,7 @@ contract CohortRegistry {
     /// @notice Mark revenue as recovered by a cohort (called by RevenueRouter)
     /// @param cohortId Cohort identifier
     /// @param amount Amount recovered
-    function markRecovered(uint256 cohortId, uint256 amount) external onlyRevenueRouter {
+    function markRecovered(uint256 cohortId, uint256 amount) external restricted {
         if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
         if (amount == 0) return; // No-op if no amount
         
@@ -167,6 +163,22 @@ contract CohortRegistry {
         
         emit CohortPaid(cohortId, amount, cohort.recoveredTotal);
     }
+
+    /// @notice Manually toggle cohort active status
+    /// @param cohortId Cohort identifier
+    /// @param active New active status
+    function setCohortActive(uint256 cohortId, bool active) external restricted {
+        if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
+        Cohort storage cohort = cohorts[cohortId];
+        if (cohort.active == active) return;
+
+        cohort.active = active;
+        if (active) {
+            activeCohortsByCommunity[cohort.communityId].push(cohortId);
+        } else {
+            _removeFromActiveCohorts(cohort.communityId, cohortId);
+        }
+    }
     
     /// @notice Get cohort information
     /// @param cohortId Cohort identifier
@@ -174,6 +186,18 @@ contract CohortRegistry {
     function getCohort(uint256 cohortId) external view returns (Cohort memory) {
         if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
         return cohorts[cohortId];
+    }
+
+    /// @notice Check if cohort is active
+    function isCohortActive(uint256 cohortId) external view returns (bool) {
+        if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
+        return cohorts[cohortId].active;
+    }
+
+    /// @notice Get community for cohort
+    function getCohortCommunity(uint256 cohortId) external view returns (uint256) {
+        if (cohortId == 0 || cohortId >= nextCohortId) revert Errors.InvalidInput("Invalid cohort ID");
+        return cohorts[cohortId].communityId;
     }
     
     /// @notice Get active cohorts for a community
@@ -196,6 +220,11 @@ contract CohortRegistry {
     /// @return Investment amount
     function getInvestmentAmount(uint256 cohortId, address investor) external view returns (uint256) {
         return investedBy[cohortId][investor];
+    }
+
+    /// @notice Get investment amount by tokenId
+    function getInvestmentAmountByToken(uint256 tokenId) external view returns (uint256) {
+        return investmentByToken[tokenId];
     }
     
     /// @notice Calculate unrecovered amount for a cohort
@@ -244,33 +273,6 @@ contract CohortRegistry {
         if (targetTotal == 0) return 0;
         
         return (cohort.recoveredTotal * 10000) / targetTotal;
-    }
-    
-    /// @notice Set RevenueRouter address
-    /// @param _revenueRouter New RevenueRouter address
-    function setRevenueRouter(address _revenueRouter) external onlyTimelock {
-        if (_revenueRouter == address(0)) revert Errors.ZeroAddress();
-        address oldRouter = revenueRouter;
-        revenueRouter = _revenueRouter;
-        emit RevenueRouterUpdated(oldRouter, _revenueRouter);
-    }
-    
-    /// @notice Set ValuableActionSBT address
-    /// @param _valuableActionSBT New ValuableActionSBT address
-    function setValuableActionSBT(address _valuableActionSBT) external onlyTimelock {
-        if (_valuableActionSBT == address(0)) revert Errors.ZeroAddress();
-        address oldSBT = valuableActionSBT;
-        valuableActionSBT = _valuableActionSBT;
-        emit ValuableActionSBTUpdated(oldSBT, _valuableActionSBT);
-    }
-    
-    /// @notice Update timelock address
-    /// @param _timelock New timelock address
-    function updateTimelock(address _timelock) external onlyTimelock {
-        if (_timelock == address(0)) revert Errors.ZeroAddress();
-        address oldTimelock = timelock;
-        timelock = _timelock;
-        emit TimelockUpdated(oldTimelock, _timelock);
     }
     
     /// @notice Remove cohort from active list (internal helper)

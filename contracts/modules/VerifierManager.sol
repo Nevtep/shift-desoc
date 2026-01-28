@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {IVerifierManager} from "contracts/core/interfaces/IVerifierManager.sol";
+import {IParamController} from "./interfaces/IParamController.sol";
 
 /// @notice Interface for VerifierElection contract
 interface IVerifierElection {
@@ -17,21 +19,13 @@ interface IVerifierElection {
     );
 }
 
-/// @notice Interface for ParamController to get verification parameters
-interface IParamController {
-    function getBool(uint256 communityId, bytes32 key) external view returns (bool);
-    function getUint256(uint256 communityId, bytes32 key) external view returns (uint256);
-}
-
 /// @title VerifierManager
 /// @notice Manages VPT-based verifier selection and fraud reporting
 /// @dev Integrates with VerifierElection and ParamController for community-specific settings
-contract VerifierManager is IVerifierManager {
+contract VerifierManager is IVerifierManager, AccessManaged {
     /// @notice Core contracts
     IVerifierElection public immutable verifierElection;
     IParamController public immutable paramController;
-    address public immutable governance;
-    address public claimsContract;
     
     /// @notice Parameter keys for community configuration
     bytes32 public constant USE_VPT_WEIGHTING = keccak256("USE_VPT_WEIGHTING");
@@ -48,11 +42,11 @@ contract VerifierManager is IVerifierManager {
         bool completed;
     }
     
-    mapping(uint256 => JurorSelection) public selections; // claimId => selection
+    mapping(uint256 => JurorSelection) public selections; // engagementId => selection
     
     /// @notice Events
     event JurorsSelected(
-        uint256 indexed claimId,
+        uint256 indexed engagementId,
         uint256 indexed communityId,
         address[] jurors,
         uint256[] powers,
@@ -60,68 +54,46 @@ contract VerifierManager is IVerifierManager {
         bool weighted
     );
     event FraudReported(
-        uint256 indexed claimId,
+        uint256 indexed engagementId,
         uint256 indexed communityId,
         address[] offenders,
         string evidenceCID
     );
-    event ClaimsContractUpdated(address oldClaims, address newClaims);
-    
-    /// @notice Access control modifiers
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-    
-    modifier onlyClaims() {
-        if (msg.sender != claimsContract) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
     
     /// @notice Constructor
+    /// @param manager AccessManager authority
     /// @param _verifierElection VerifierElection contract address
     /// @param _paramController ParamController contract address
-    /// @param _governance Governance contract address
     constructor(
+        address manager,
         address _verifierElection,
-        address _paramController,
-        address _governance
-    ) {
+        address _paramController
+    ) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_verifierElection == address(0)) revert Errors.ZeroAddress();
         if (_paramController == address(0)) revert Errors.ZeroAddress();
-        if (_governance == address(0)) revert Errors.ZeroAddress();
         
         verifierElection = IVerifierElection(_verifierElection);
         paramController = IParamController(_paramController);
-        governance = _governance;
-    }
-    
-    /// @notice Set claims contract address
-    /// @param _claimsContract Claims contract address
-    function setClaimsContract(address _claimsContract) external onlyGovernance {
-        if (_claimsContract == address(0)) revert Errors.ZeroAddress();
-        address oldClaims = claimsContract;
-        claimsContract = _claimsContract;
-        emit ClaimsContractUpdated(oldClaims, _claimsContract);
     }
     
     /// @notice Select M jurors from N available verifiers using VPT eligibility
-    /// @param claimId Claim ID requiring verification
+    /// @param engagementId Engagement ID requiring verification
     /// @param communityId Community identifier for verifier pool
     /// @param panelSize Total number of jurors to select (N)
     /// @param seed Randomness seed for selection
     /// @param useWeighting Whether to use VPT amounts as weights in selection
     /// @return selectedJurors Array of selected juror addresses
     function selectJurors(
-        uint256 claimId,
+        uint256 engagementId,
         uint256 communityId,
         uint256 panelSize,
         uint256 seed,
         bool useWeighting
-    ) external onlyClaims returns (address[] memory selectedJurors) {
+    ) external restricted returns (address[] memory selectedJurors) {
         if (panelSize == 0) revert Errors.InvalidInput("Panel size cannot be zero");
-        if (selections[claimId].completed) {
-            revert Errors.InvalidInput("Jurors already selected for claim");
+        if (selections[engagementId].completed) {
+            revert Errors.InvalidInput("Jurors already selected for engagement");
         }
         
         // Get eligible verifiers from VerifierElection
@@ -159,7 +131,7 @@ contract VerifierManager is IVerifierManager {
         }
         
         // Store selection
-        selections[claimId] = JurorSelection({
+        selections[engagementId] = JurorSelection({
             selectedJurors: selectedJurors,
             selectedPowers: selectedPowers,
             seed: seed,
@@ -167,10 +139,96 @@ contract VerifierManager is IVerifierManager {
             completed: true
         });
         
-        emit JurorsSelected(claimId, communityId, selectedJurors, selectedPowers, seed, shouldUseWeighting);
+        emit JurorsSelected(engagementId, communityId, selectedJurors, selectedPowers, seed, shouldUseWeighting);
         return selectedJurors;
     }
     
+    /// @notice Report fraud and initiate governance process for banning
+    /// @dev This replaces the old bond slashing mechanism
+    /// @param engagementId Engagement ID where fraud was detected
+    /// @param communityId Community identifier
+    /// @param offenders Array of juror addresses that voted incorrectly
+    /// @param evidenceCID IPFS hash with fraud evidence
+    function reportFraud(
+        uint256 engagementId,
+        uint256 communityId,
+        address[] calldata offenders,
+        string calldata evidenceCID
+    ) external restricted {
+        if (offenders.length == 0) revert Errors.InvalidInput("No offenders provided");
+        if (!selections[engagementId].completed) {
+            revert Errors.InvalidInput("No jury selection for engagement");
+        }
+        
+        // Validate offenders were actually selected as jurors
+        address[] memory selectedJurors = selections[engagementId].selectedJurors;
+        for (uint256 i = 0; i < offenders.length; i++) {
+            bool wasSelected = false;
+            for (uint256 j = 0; j < selectedJurors.length; j++) {
+                if (offenders[i] == selectedJurors[j]) {
+                    wasSelected = true;
+                    break;
+                }
+            }
+            if (!wasSelected) {
+                revert Errors.InvalidInput("Offender was not selected as juror");
+            }
+        }
+        
+        emit FraudReported(engagementId, communityId, offenders, evidenceCID);
+        
+        // NOTE: In the old system, this would slash bonds immediately.
+        // In the new VPT system, fraud reports trigger governance proposals
+        // to ban verifiers via VerifierElection.banVerifiers()
+        // The governance process ensures due process before punishment.
+    }
+    
+    /// @notice Check if address has verifier power for community
+    /// @param verifier Address to check
+    /// @param communityId Community identifier
+    /// @return True if verifier has power > 0 and is not banned
+    function hasVerifierPower(address verifier, uint256 communityId) external view returns (bool) {
+        (bool isVerifier, , bool isBanned) = verifierElection.getVerifierStatus(communityId, verifier);
+        return isVerifier && !isBanned;
+    }
+    
+    /// @notice Get eligible verifier count for a community
+    /// @param communityId Community identifier
+    /// @return Number of eligible verifiers (power > 0, not banned)
+    function getEligibleVerifierCount(uint256 communityId) external view returns (uint256) {
+        (address[] memory eligibleVerifiers, ) = verifierElection.getEligibleVerifiers(communityId);
+        return eligibleVerifiers.length;
+    }
+    
+    /// @notice Get verifier power amount
+    /// @param verifier Address to check
+    /// @param communityId Community identifier
+    /// @return power Amount of verifier power tokens
+    function getVerifierPower(address verifier, uint256 communityId) external view returns (uint256 power) {
+        (, power, ) = verifierElection.getVerifierStatus(communityId, verifier);
+        return power;
+    }
+    
+    /// @notice Get juror selection details
+    /// @param engagementId Engagement ID
+    /// @return selection JurorSelection struct
+    function getJurorSelection(uint256 engagementId) external view returns (JurorSelection memory selection) {
+        return selections[engagementId];
+    }
+    
+    /// @notice Get selected jurors for an engagement
+    /// @param engagementId Engagement ID
+    /// @return jurors Array of selected juror addresses
+    /// @return powers Array of corresponding verifier powers
+    function getSelectedJurors(uint256 engagementId) external view returns (
+        address[] memory jurors,
+        uint256[] memory powers
+    ) {
+        JurorSelection memory selection = selections[engagementId];
+        return (selection.selectedJurors, selection.selectedPowers);
+    }
+
+
     /// @notice Weighted selection based on VPT amounts
     function _weightedSelection(
         address[] memory verifiers,
@@ -260,90 +318,5 @@ contract VerifierManager is IVerifierManager {
         }
         
         return (selected, selectedPowers);
-    }
-    
-    /// @notice Report fraud and initiate governance process for banning
-    /// @dev This replaces the old bond slashing mechanism
-    /// @param claimId Claim ID where fraud was detected
-    /// @param communityId Community identifier
-    /// @param offenders Array of juror addresses that voted incorrectly
-    /// @param evidenceCID IPFS hash with fraud evidence
-    function reportFraud(
-        uint256 claimId,
-        uint256 communityId,
-        address[] calldata offenders,
-        string calldata evidenceCID
-    ) external onlyClaims {
-        if (offenders.length == 0) revert Errors.InvalidInput("No offenders provided");
-        if (!selections[claimId].completed) {
-            revert Errors.InvalidInput("No jury selection for claim");
-        }
-        
-        // Validate offenders were actually selected as jurors
-        address[] memory selectedJurors = selections[claimId].selectedJurors;
-        for (uint256 i = 0; i < offenders.length; i++) {
-            bool wasSelected = false;
-            for (uint256 j = 0; j < selectedJurors.length; j++) {
-                if (offenders[i] == selectedJurors[j]) {
-                    wasSelected = true;
-                    break;
-                }
-            }
-            if (!wasSelected) {
-                revert Errors.InvalidInput("Offender was not selected as juror");
-            }
-        }
-        
-        emit FraudReported(claimId, communityId, offenders, evidenceCID);
-        
-        // NOTE: In the old system, this would slash bonds immediately.
-        // In the new VPT system, fraud reports trigger governance proposals
-        // to ban verifiers via VerifierElection.banVerifiers()
-        // The governance process ensures due process before punishment.
-    }
-    
-    /// @notice Check if address has verifier power for community
-    /// @param verifier Address to check
-    /// @param communityId Community identifier
-    /// @return True if verifier has power > 0 and is not banned
-    function hasVerifierPower(address verifier, uint256 communityId) external view returns (bool) {
-        (bool isVerifier, , bool isBanned) = verifierElection.getVerifierStatus(communityId, verifier);
-        return isVerifier && !isBanned;
-    }
-    
-    /// @notice Get eligible verifier count for a community
-    /// @param communityId Community identifier
-    /// @return Number of eligible verifiers (power > 0, not banned)
-    function getEligibleVerifierCount(uint256 communityId) external view returns (uint256) {
-        (address[] memory eligibleVerifiers, ) = verifierElection.getEligibleVerifiers(communityId);
-        return eligibleVerifiers.length;
-    }
-    
-    /// @notice Get verifier power amount
-    /// @param verifier Address to check
-    /// @param communityId Community identifier
-    /// @return power Amount of verifier power tokens
-    function getVerifierPower(address verifier, uint256 communityId) external view returns (uint256 power) {
-        (, power, ) = verifierElection.getVerifierStatus(communityId, verifier);
-        return power;
-    }
-    
-    /// @notice Get juror selection details
-    /// @param claimId Claim ID
-    /// @return selection JurorSelection struct
-    function getJurorSelection(uint256 claimId) external view returns (JurorSelection memory selection) {
-        return selections[claimId];
-    }
-    
-    /// @notice Get selected jurors for a claim
-    /// @param claimId Claim ID
-    /// @return jurors Array of selected juror addresses
-    /// @return powers Array of corresponding verifier powers
-    function getSelectedJurors(uint256 claimId) external view returns (
-        address[] memory jurors,
-        uint256[] memory powers
-    ) {
-        JurorSelection memory selection = selections[claimId];
-        return (selection.selectedJurors, selection.selectedPowers);
     }
 }

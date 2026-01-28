@@ -97,7 +97,7 @@ Each deployment file contains addresses for:
 
 ### Work Verification (3)
 - ValuableActionRegistry
-- Claims
+- Engagements
 - ValuableActionSBT
 
 ### Economic Layer (4)

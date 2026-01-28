@@ -62,6 +62,17 @@ _Building the organizational tools that unlock human cooperation: Where communit
 
 The $2.8 billion governance technology market is experiencing explosive growth as organizations realize that traditional management hierarchies cannot scale in the digital age. **Shift DeSoc provides the democratic coordination infrastructure that the decentralized economy requires.**
 
+> **Quick Guide to Updated Concepts (Key Reading):**
+> - **Engagements (verified commitments)**: Each work submission or certification is processed as an Engagement.
+> - **Three SBT Families (soulbound, non-transferable tokens)**:  
+>   - **Engagement SBT** (completed work, credentials, or past roles).  
+>   - **Position SBT** (active roles with guaranteed revenue participation).  
+>   - **Investment SBT** (capital participation issued by cohorts with target ROI).  
+> - **Position SBT**: Active role; when closed, may issue a historical *Role Engagement SBT*.
+> - **Investment Cohorts (with immutable target ROI)**: Investor groups receiving distributions while cohort is active.
+> - **RevenueRouter (economic routing engine)**: Guarantees minimum treasury and positions first, then distributes remainder to cohorts; defines spillover if no active cohorts.
+> - **VPT (Verifier Power Token)**: Verification power assigned through elections; used to select M-of-N juries for Engagement verification.
+
 ## The Problem: Why Our Current Systems Hold Communities Back
 
 **Imagine a world where human potential is unleashed through cooperation rather than constrained by competition.** Where communities control their own destinies, where contribution is fairly rewarded, and where technology serves human flourishing rather than extracting from it.
@@ -73,7 +84,7 @@ We're not there yet. Today's organizational systems—from corporations to onlin
 When you help build something valuable—whether it's code, content, or community—your work becomes invisible:
 
 - **No permanent record** - Your contributions vanish when platforms shut down or you move on
-- **Easily falsified claims** - Anyone can claim credit for work they didn't do
+- **Easily falsified credit** - Anyone can take credit for work they didn't do
 - **Popularity over merit** - Recognition depends more on social connections than actual value created
 
 _What we need_: **Permanent, unfakeable proof** of the value you've created that follows you everywhere.
@@ -140,7 +151,7 @@ _Our Innovation_: **Tamper-Proof Digital Credentials That Follow You Everywhere*
 
 **How it works**:
 
-1. **Claim Submission**: Contributors submit evidence of completed work (photos, code, documentation)
+1. **Engagement Submission**: Contributors submit evidence of completed work (photos, code, documentation)
 2. **Peer Review**: System selects qualified community members to verify the work
 3. **Community Elections**: Verifiers are democratically elected by communities through transparent governance processes
 4. **Consensus Building**: Multiple verifiers must agree before work is approved
@@ -216,7 +227,7 @@ _Our Democratic Innovation_: **VerifierPowerToken1155 (VPT) - Community-Elected 
    - Results are publicly auditable
 
 4. **Verifier Service**: Elected verifiers receive VPT1155 tokens granting:
-   - Authority to verify community work claims
+   - Authority to verify community work submissions
    - Responsibility to maintain high accuracy standards
    - Accountability to the community that elected them
 
@@ -348,7 +359,7 @@ Our revolutionary solution: **Pure merit-based governance where voting power is 
 
 **Anti-Gaming Features:**
 
-- **Community verification required**: Founder-verified addresses can join and claim work
+- **Community verification required**: Founder-verified addresses can join and submit engagements
 - **Peer consensus validation**: Multiple community members must confirm work quality
 - **Cooldown periods**: Prevents rapid gaming through low-quality submissions
 
@@ -504,14 +515,14 @@ Our revolutionary solution: **Pure merit-based governance where voting power is 
 - **Period-based fairness**: Only SBTs earned during current period count (prevents gaming from old work)
 - **Workload completion tracking**: Payment reflects actual work completed vs. total work needed
 
-**3. Flexible Claiming & Redemption**
+**3. Flexible Collection & Redemption**
 
-- **Periodic claims enabled**: Workers claim earned CommunityTokens each salary period
+- **Periodic salary collection**: Workers collect earned CommunityTokens each salary period
 - **1:1 USDC redemption**: Burn CommunityTokens anytime for equivalent USDC from treasury
-- **Rollover protection**: Unclaimed tokens carry forward to next period, preventing loss
+- **Rollover protection**: Uncollected tokens carry forward to next period, preventing loss
 
 **Real Example:**
-_Community allocates $6,000 monthly salary budget. Three workers earned SBTs: Alice (50 points), Bob (25 points), Carol (25 points). Distribution: Alice claims $3,000, Bob and Carol each claim $1,500._
+_Community allocates $6,000 monthly salary budget. Three workers earned SBTs: Alice (50 points), Bob (25 points), Carol (25 points). Distribution: Alice receives $3,000, Bob and Carol each receive $1,500._
 
 **Built-in Fairness Features:**
 
@@ -539,7 +550,7 @@ Community governance democratically allocates all income through transparent, au
 
 1. **Worker Salaries (via CommunityVault)**
    - **Governance-approved budgets**: MembershipToken holders vote on salary allocations per period
-   - **Merit-based distribution**: CommunityTokens claimed proportional to SBT contributions each period
+   - **Merit-based distribution**: CommunityTokens distributed proportional to SBT contributions each period
    - **Protected from overspending**: Separate vault ensures worker compensation is guaranteed
    - **Evolution over time**: Investor-controlled budgets early, worker-controlled after ROI achieved
 
@@ -845,18 +856,25 @@ Existing blockchain governance focuses on financial decisions, not community coo
 
 _"The Earth has enough resources for everyone's need, but not everyone's greed."_ - Mahatma Gandhi
 
+_"We are called to be architects of the future, not its victims."_ - R. Buckminster Fuller
+
 ### A New Model for Human Organization
+
+**What if technology could finally deliver on its promise of abundance for all?**
 
 Imagine communities that don't just coordinate better, but actually meet all their members' fundamental needs through collaborative resource management and intelligent coordination. Shift DeSoc provides the foundation for **Community Nodes** - networks of interconnected communities that demonstrate how technology can enable post-scarcity abundance through cooperation rather than competition.
 
+**This is not utopia.** This is engineering applied to human coordination. Every tool in Shift DeSoc—from multi-choice voting to merit-based compensation to portable reputation—is designed to solve a specific coordination failure that keeps communities trapped in artificial scarcity.
+
 ### The Venus Project Vision: From Scarcity to Abundance
 
-Drawing inspiration from Jacque Fresco's Venus Project, we envision communities using Shift DeSoc to transition from money-based scarcity thinking to **Resource-Based Economics** where:
+Drawing inspiration from Jacque Fresco's Venus Project and the cooperative movements that have successfully operated for over 150 years, we envision communities using Shift DeSoc to transition from money-based scarcity thinking to **Resource-Based Economics** where:
 
 - **Intelligent Resource Management**: Communities coordinate to eliminate waste and maximize shared abundance
 - **Collaborative Production**: Peer-to-peer networks replace hierarchical employment structures
 - **Education Through Application**: Learning happens through real projects that benefit everyone
 - **Technology as Liberation**: Automation and coordination tools free people from monotonous labor
+- **Democratic Ownership**: Those who create value own what they create, together
 
 **Key Principle**: When communities can efficiently coordinate resources and verify contributions, traditional employment becomes obsolete. People contribute based on passion and capability, not survival necessity.
 
@@ -1141,7 +1159,7 @@ Most blockchain protocols and DAOs face the same organizational challenges:
 
 #### **For DAOs Seeking Operational Excellence:**
 
-- **Work Verification Systems**: M-of-N verification that proves work was actually completed, not just claimed
+- **Work Verification Systems**: Distributed verification that proves work was actually completed, not just stated
 - **Merit-Based Governance**: Voting power based on verified contributions, not just token holdings
 - **Treasury Management**: Automated revenue routing based on performance metrics rather than arbitrary founder decisions
 - **Cross-DAO Reputation**: Contributors build portable reputation that creates network effects across partnered DAOs
@@ -1174,7 +1192,7 @@ Shift DeSoc offers a valuable platform for strategic partnerships with leading d
 - **Kleros**: Integration opportunity for decentralized arbitration in community disputes, work verification appeals, and governance conflicts
 - **Aragon Court**: Partnership potential for specialized governance dispute resolution in high-stakes community decisions
 - **OpenLaw**: Collaboration opportunity for smart contract legal templates supporting community governance structures and asset management
-- **Chainlink Functions**: Integration potential for oracle services enabling real-world data verification in claims and milestone tracking
+- **Chainlink Functions**: Integration potential for oracle services enabling real-world data verification in engagements and milestone tracking
 
 #### **Property & Asset Tokenization Partners**
 

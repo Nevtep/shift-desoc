@@ -4,12 +4,15 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {ParamController} from "../contracts/modules/ParamController.sol";
 import {Errors} from "../contracts/libs/Errors.sol";
+import {MockCommunityRegistry} from "./mocks/MockCommunityRegistry.sol";
 
 /// @title ParamController VPT Integration Test Suite
 /// @notice Comprehensive tests for VPT system parameter management in ParamController
 contract ParamControllerVPTTest is Test {
     ParamController public paramController;
+    MockCommunityRegistry public registry;
     
+    address public systemAdmin = makeAddr("systemAdmin");
     address public governance = makeAddr("governance");
     address public unauthorizedUser = makeAddr("unauthorized");
     
@@ -18,10 +21,17 @@ contract ParamControllerVPTTest is Test {
     
     event UintParamSet(uint256 indexed communityId, bytes32 indexed key, uint256 value);
     event BoolParamSet(uint256 indexed communityId, bytes32 indexed key, bool value);
-    event GovernanceUpdated(address oldGov, address newGov);
     
     function setUp() public {
-        paramController = new ParamController(governance);
+        registry = new MockCommunityRegistry();
+        paramController = new ParamController(systemAdmin);
+
+        vm.prank(systemAdmin);
+        paramController.setCommunityRegistry(address(registry));
+
+        // Configure communities to use governance as timelock authority
+        registry.setTimelock(COMMUNITY_ID_1, governance);
+        registry.setTimelock(COMMUNITY_ID_2, governance);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -29,7 +39,7 @@ contract ParamControllerVPTTest is Test {
     //////////////////////////////////////////////////////////////*/
     
     function testConstructor() public view {
-        assertEq(paramController.governance(), governance);
+        assertEq(paramController.systemAdmin(), systemAdmin);
     }
     
     function testConstructorZeroAddressReverts() public {
@@ -293,50 +303,13 @@ contract ParamControllerVPTTest is Test {
     }
     
     /*//////////////////////////////////////////////////////////////
-                       GOVERNANCE MANAGEMENT TESTS
-    //////////////////////////////////////////////////////////////*/
-    
-    function testUpdateGovernance() public {
-        address newGovernance = makeAddr("newGovernance");
-        
-        vm.expectEmit(false, false, false, true);
-        emit GovernanceUpdated(governance, newGovernance);
-        
-        vm.prank(governance);
-        paramController.updateGovernance(newGovernance);
-        
-        assertEq(paramController.governance(), newGovernance);
-        
-        // Verify old governance address should no longer work
-        bytes32 panelSizeKey = paramController.VERIFIER_PANEL_SIZE();
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, governance));
-        vm.prank(governance);
-        paramController.setUint256(COMMUNITY_ID_1, panelSizeKey, 999);
-        
-        // New governance should work
-        vm.prank(newGovernance);
-        paramController.setUint256(COMMUNITY_ID_1, panelSizeKey, 10);
-        
-        assertEq(paramController.getUint256(COMMUNITY_ID_1, panelSizeKey), 10);
-    }
-    
-    function testUpdateGovernanceZeroAddressReverts() public {
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        vm.prank(governance);
-        paramController.updateGovernance(address(0));
-    }
-    
-    function testUpdateGovernanceUnauthorizedReverts() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
-        vm.prank(unauthorizedUser);
-        paramController.updateGovernance(makeAddr("newGov"));
-    }
-    
-    /*//////////////////////////////////////////////////////////////
                         REALISTIC CONFIGURATION TESTS
     //////////////////////////////////////////////////////////////*/
     
     function testRealisticVPTConfigurations() public {
+        registry.setTimelock(1, governance);
+        registry.setTimelock(2, governance);
+        registry.setTimelock(3, governance);
         vm.startPrank(governance);
         
         // Small Community Configuration
@@ -456,6 +429,8 @@ contract ParamControllerVPTTest is Test {
     ) public {
         vm.assume(panelSize > 0);
         vm.assume(minApprovals <= panelSize);
+
+        registry.setTimelock(communityId, governance);
         
         vm.prank(governance);
         paramController.setVerifierParams(
@@ -490,6 +465,8 @@ contract ParamControllerVPTTest is Test {
         uint256 paramValue,
         bool boolValue
     ) public {
+        registry.setTimelock(communityId, governance);
+
         vm.startPrank(governance);
         
         // Test all uint256 parameters

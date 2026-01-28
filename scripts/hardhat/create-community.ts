@@ -149,7 +149,7 @@ async function main() {
     console.log("├── Timelock:", modules.timelock);
     console.log("├── RequestHub:", modules.requestHub);
     console.log("├── DraftsManager:", modules.draftsManager);
-    console.log("├── Claims:", modules.claimsManager);
+    console.log("├── Engagements:", modules.engagementsManager);
     console.log("├── ValuableActionRegistry:", modules.valuableActionRegistry);
     console.log("├── VerifierPool:", modules.verifierPool);
     console.log("├── WorkerSBT:", modules.workerSBT);
@@ -224,7 +224,7 @@ async function main() {
   console.log("3. 💬 Post first request in RequestHub");
   console.log("4. 📄 Create first draft with governance proposals");
   console.log("5. 🗳️ Conduct first governance vote");
-  console.log("6. 🎖️ Start worker verification through Claims system");
+  console.log("6. 🎖️ Start worker verification through Engagements system");
 
   console.log("\n🔗 USEFUL COMMANDS:");
   console.log(`// Connect to community contracts`);

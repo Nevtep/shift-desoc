@@ -34,7 +34,7 @@ struct Community {
     address timelock;
     address requestHub;
     address draftsManager;
-    address claimsManager;
+    address engagementsManager;
     address valuableActionRegistry;
     address verifierElection;
     address verifierPowerToken1155;
@@ -117,7 +117,7 @@ function setModuleAddress(uint256 communityId, bytes32 moduleKey, address module
 **Supported Modules**:
 
 - Core governance: `governor`, `timelock`, `requestHub`, `draftsManager`
-- Work verification: `claimsManager`, `valuableActionRegistry`, `verifierElection`, `verifierPowerToken1155`, `verifierManager`, `valuableActionSBT`
+- Work verification: `engagementsManager`, `valuableActionRegistry`, `verifierElection`, `verifierPowerToken1155`, `verifierManager`, `valuableActionSBT`
 - Economic: `communityToken`, `treasuryAdapter`
 - Treasury management: `treasuryAdapter`
 

@@ -468,7 +468,7 @@ function shareRequest(uint256 requestId, uint256 targetCommunityId) external;
 
 ### Integration Workflows
 
-1. **Request → Claims**: Link requests to work verification via ValuableActions
+1. **Request → Engagements**: Link requests to work verification via ValuableActions
 2. **Discussion → Proposals:** RequestHub feeds into DraftsManager for formal governance
 3. **Bounties → Payment:** Integration with CommunityToken for incentive distribution
 4. **Activity → Reputation:** Discussion participation influences SBT scoring

@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "../libs/Errors.sol";
+import {Roles} from "../libs/Roles.sol";
 import {ParamController} from "./ParamController.sol";
 
 /// @title CommunityRegistry
 /// @notice Central registry for community metadata, parameters, and module addresses
 /// @dev Single source of truth for community coordination and configuration
-contract CommunityRegistry is AccessControl {
+contract CommunityRegistry is AccessManaged {
     
     /*//////////////////////////////////////////////////////////////
                                STRUCTS
@@ -27,12 +28,13 @@ contract CommunityRegistry is AccessControl {
         address timelock;             // Timelock contract
         address requestHub;           // RequestHub contract
         address draftsManager;        // DraftsManager contract
-        address claimsManager;        // Claims contract
+        address engagementsManager;   // Engagements contract
         address valuableActionRegistry; // ValuableActionRegistry contract
         address verifierPowerToken;   // VerifierPowerToken1155 contract (VPT system)
         address verifierElection;     // VerifierElection contract (VPT system)
         address verifierManager;      // VerifierManager contract (VPT system)
         address valuableActionSBT;    // ValuableActionSBT contract
+        address treasuryVault;        // Community treasury Safe (for manual custody)
         address treasuryAdapter;      // TreasuryAdapter contract
         address communityToken;       // CommunityToken contract
         address paramController;      // ParamController contract
@@ -48,12 +50,13 @@ contract CommunityRegistry is AccessControl {
         address timelock;
         address requestHub;
         address draftsManager;
-        address claimsManager;
+        address engagementsManager;
         address valuableActionRegistry;
         address verifierPowerToken;
         address verifierElection;
         address verifierManager;
         address valuableActionSBT;
+        address treasuryVault;
         address treasuryAdapter;
         address communityToken;
         address paramController;
@@ -65,13 +68,13 @@ contract CommunityRegistry is AccessControl {
                                 ROLES
     //////////////////////////////////////////////////////////////*/    
     /// @notice Role for governance operations
-    bytes32 public constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 public constant GOVERNANCE_ROLE = Roles.COMMUNITY_GOVERNANCE_ROLE;
     
     /// @notice Role for community moderators
-    bytes32 public constant MODERATOR_ROLE = keccak256("MODERATOR_ROLE");
+    bytes32 public constant MODERATOR_ROLE = Roles.COMMUNITY_MODERATOR_ROLE;
     
     /// @notice Role for community curators
-    bytes32 public constant CURATOR_ROLE = keccak256("CURATOR_ROLE");
+    bytes32 public constant CURATOR_ROLE = Roles.COMMUNITY_CURATOR_ROLE;
     
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -151,12 +154,11 @@ contract CommunityRegistry is AccessControl {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
     
-    /// @param initialAdmin Address that will have DEFAULT_ADMIN_ROLE
+    /// @param manager AccessManager authority
     /// @param _paramController ParamController contract address
-    constructor(address initialAdmin, address _paramController) {
-        if (initialAdmin == address(0)) revert Errors.ZeroAddress();
+    constructor(address manager, address _paramController) AccessManaged(manager) {
+        if (manager == address(0)) revert Errors.ZeroAddress();
         if (_paramController == address(0)) revert Errors.ZeroAddress();
-        _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
         paramController = ParamController(_paramController);
     }
     
@@ -200,7 +202,6 @@ contract CommunityRegistry is AccessControl {
         // Parameters are set separately via initializeDefaultParameters() or ParamController directly
         
         // Grant creator admin role for this community
-        communityRoles[communityId][msg.sender][DEFAULT_ADMIN_ROLE] = true;
         communityAdmins[communityId][msg.sender] = true;
         
         // Increment active community count
@@ -219,21 +220,8 @@ contract CommunityRegistry is AccessControl {
     function initializeDefaultParameters(uint256 communityId) external {
         _requireValidCommunity(communityId);
         _requireCommunityAdmin(communityId);
-        
-        // Set default governance parameters (7 day debate, 3 day vote, 2 day execution delay)
-        paramController.setGovernanceParams(communityId, 7 days, 3 days, 2 days);
-        
-        // Set default eligibility rules (no restrictions by default)
-        paramController.setEligibilityParams(communityId, 0, 0, 1e18);
-        
-        // Set default revenue policy (25% min workers, 25% treasury, 50% investors, spillover to treasury)
 
-        // Using basis points: 2500 = 25%, 2500 = 25%, 5000 = 50%
-        paramController.setRevenuePolicy(communityId, 2500, 2500, 5000, 1);
-        
-        // Set default backing assets (empty by default)
-        address[] memory emptyAssets = new address[](0);
-        paramController.setAddressArray(communityId, paramController.BACKING_ASSETS(), emptyAssets);
+        paramController.initializeDefaultParameters(communityId, msg.sender);
     }
     
 
@@ -269,9 +257,9 @@ contract CommunityRegistry is AccessControl {
         } else if (moduleKey == keccak256("draftsManager")) {
             oldAddress = community.draftsManager;
             community.draftsManager = moduleAddress;
-        } else if (moduleKey == keccak256("claimsManager")) {
-            oldAddress = community.claimsManager;
-            community.claimsManager = moduleAddress;
+        } else if (moduleKey == keccak256("engagementsManager")) {
+            oldAddress = community.engagementsManager;
+            community.engagementsManager = moduleAddress;
         } else if (moduleKey == keccak256("valuableActionRegistry")) {
             oldAddress = community.valuableActionRegistry;
             community.valuableActionRegistry = moduleAddress;
@@ -287,6 +275,9 @@ contract CommunityRegistry is AccessControl {
         } else if (moduleKey == keccak256("valuableActionSBT")) {
             oldAddress = community.valuableActionSBT;
             community.valuableActionSBT = moduleAddress;
+        } else if (moduleKey == keccak256("treasuryVault")) {
+            oldAddress = community.treasuryVault;
+            community.treasuryVault = moduleAddress;
         } else if (moduleKey == keccak256("treasuryAdapter")) {
             oldAddress = community.treasuryAdapter;
             community.treasuryAdapter = moduleAddress;
@@ -332,9 +323,9 @@ contract CommunityRegistry is AccessControl {
             emit ModuleAddressUpdated(communityId, keccak256("draftsManager"), community.draftsManager, modules.draftsManager);
             community.draftsManager = modules.draftsManager;
         }
-        if (modules.claimsManager != address(0)) {
-            emit ModuleAddressUpdated(communityId, keccak256("claimsManager"), community.claimsManager, modules.claimsManager);
-            community.claimsManager = modules.claimsManager;
+        if (modules.engagementsManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("engagementsManager"), community.engagementsManager, modules.engagementsManager);
+            community.engagementsManager = modules.engagementsManager;
         }
         if (modules.valuableActionRegistry != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("valuableActionRegistry"), community.valuableActionRegistry, modules.valuableActionRegistry);
@@ -355,6 +346,10 @@ contract CommunityRegistry is AccessControl {
         if (modules.valuableActionSBT != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("valuableActionSBT"), community.valuableActionSBT, modules.valuableActionSBT);
             community.valuableActionSBT = modules.valuableActionSBT;
+        }
+        if (modules.treasuryVault != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("treasuryVault"), community.treasuryVault, modules.treasuryVault);
+            community.treasuryVault = modules.treasuryVault;
         }
         if (modules.treasuryAdapter != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("treasuryAdapter"), community.treasuryAdapter, modules.treasuryAdapter);
@@ -492,6 +487,14 @@ contract CommunityRegistry is AccessControl {
         _requireValidCommunity(communityId);
         return communities[communityId];
     }
+
+    /// @notice Get timelock address for a community
+    /// @param communityId Community ID
+    /// @return Timelock address
+    function getTimelock(uint256 communityId) external view returns (address) {
+        _requireValidCommunity(communityId);
+        return communities[communityId].timelock;
+    }
     
     /// @notice Get community governance parameters
     /// @param communityId Community ID
@@ -523,62 +526,25 @@ contract CommunityRegistry is AccessControl {
     
     /// @notice Get revenue policy parameters for a community
     /// @param communityId Community ID
-    /// @return minWorkersBps Minimum workers share in basis points
-    /// @return treasuryBps Treasury base share in basis points
-    /// @return investorsBps Investors pool share in basis points
-    /// @return spilloverTarget 0 = spillover to workers, 1 = spillover to treasury
+    /// @return minTreasuryBps Minimum treasury share in basis points
+    /// @return minPositionsBps Minimum positions share in basis points
+    /// @return spilloverTarget 0 = spillover to positions, 1 = spillover to treasury, 2 = split
+    /// @return spilloverSplitBpsToTreasury Treasury split when spilloverTarget = split (bps)
     /// @return feeOnWithdraw Withdrawal fee in basis points
     /// @return backingAssets Array of backing asset addresses
     function getEconomicParameters(uint256 communityId) external view returns (
-        uint256 minWorkersBps,
-        uint256 treasuryBps,
-        uint256 investorsBps,
+        uint256 minTreasuryBps,
+        uint256 minPositionsBps,
         uint8 spilloverTarget,
+        uint256 spilloverSplitBpsToTreasury,
         uint256 feeOnWithdraw,
         address[] memory backingAssets
     ) {
         _requireValidCommunity(communityId);
-        (minWorkersBps, treasuryBps, investorsBps, spilloverTarget) = 
+        (minTreasuryBps, minPositionsBps, spilloverTarget, spilloverSplitBpsToTreasury) = 
             paramController.getRevenuePolicy(communityId);
         feeOnWithdraw = paramController.getUint256(communityId, paramController.FEE_ON_WITHDRAW());
         backingAssets = paramController.getAddressArray(communityId, paramController.BACKING_ASSETS());
-    }
-    
-    /// @notice Get all module addresses for a community
-    /// @param communityId Community ID
-    /// @return governor Governor contract address
-    /// @return timelock Timelock contract address
-    /// @return requestHub RequestHub contract address
-    /// @return draftsManager DraftsManager contract address
-    /// @return claimsManager Claims contract address
-    /// @return valuableActionRegistry ValuableActionRegistry contract address
-    /// @return valuableActionSBT ValuableActionSBT contract address
-    /// @return treasuryAdapter TreasuryAdapter contract address
-    /// @return communityToken CommunityToken contract address
-    function getModuleAddresses(uint256 communityId) external view returns (
-        address governor,
-        address timelock,
-        address requestHub,
-        address draftsManager,
-        address claimsManager,
-        address valuableActionRegistry,
-        address valuableActionSBT,
-        address treasuryAdapter,
-        address communityToken
-    ) {
-        _requireValidCommunity(communityId);
-        Community storage community = communities[communityId];
-        return (
-            community.governor,
-            community.timelock,
-            community.requestHub,
-            community.draftsManager,
-            community.claimsManager,
-            community.valuableActionRegistry,
-            community.valuableActionSBT,
-            community.treasuryAdapter,
-            community.communityToken
-        );
     }
     
     /// @notice Check if user has a specific role in a community
@@ -637,12 +603,13 @@ contract CommunityRegistry is AccessControl {
             timelock: community.timelock,
             requestHub: community.requestHub,
             draftsManager: community.draftsManager,
-            claimsManager: community.claimsManager,
+            engagementsManager: community.engagementsManager,
             valuableActionRegistry: community.valuableActionRegistry,
             verifierPowerToken: community.verifierPowerToken,
             verifierElection: community.verifierElection,
             verifierManager: community.verifierManager,
             valuableActionSBT: community.valuableActionSBT,
+            treasuryVault: community.treasuryVault,
             treasuryAdapter: community.treasuryAdapter,
             communityToken: community.communityToken,
             paramController: community.paramController
@@ -671,13 +638,8 @@ contract CommunityRegistry is AccessControl {
         if (communityAdmins[communityId][caller]) {
             return; // Authorized
         }
-        
-        // Check if caller has global admin role
-        if (hasRole(DEFAULT_ADMIN_ROLE, caller)) {
-            return; // Authorized
-        }
-        
-        // If neither condition is met, revert
+
+        // If not an admin, revert
         revert Errors.NotAuthorized(caller);
     }
     

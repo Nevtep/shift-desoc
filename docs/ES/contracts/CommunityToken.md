@@ -111,7 +111,7 @@ modifier onlyPaymentProcessor() {
 
 **Roles de Seguridad**:
 
-- `PAYMENT_PROCESSOR_ROLE`: Contratos autorizados (Claims, RevenueRouter) para procesar pagos
+- `PAYMENT_PROCESSOR_ROLE`: Contratos autorizados (Compromisos, RevenueRouter) para procesar pagos
 - `EMERGENCY_ROLE`: Capacidades de pausa de emergencia y recuperación de fondos
 - `DEFAULT_ADMIN_ROLE`: Gestión de roles y actualización de parámetros
 
@@ -138,14 +138,14 @@ function emergencyWithdraw(address token, uint256 amount)
 
 ## 🔗 Puntos de Integración
 
-### Con Sistema Claims
+### Con Sistema Compromisos
 
 ```solidity
-// Claims contrato usa pagos reservados para pagos de trabajadores
-function approveWorkerClaim(uint256 claimId) external {
-    bytes32 paymentId = keccak256(abi.encodePacked("claim", claimId));
-    uint256 reward = claims[claimId].reward;
-    address worker = claims[claimId].worker;
+// Contrato Compromisos usa pagos reservados para pagos de trabajadores
+function approveWorkerEngagement(uint256 engagementId) external {
+    bytes32 paymentId = keccak256(abi.encodePacked("engagement", engagementId));
+    uint256 reward = engagements[engagementId].reward;
+    address worker = engagements[engagementId].worker;
 
     // Reservar fondos inmediatamente al aprobar
     communityToken.reserveFunds(paymentId, reward, worker);
@@ -214,7 +214,7 @@ CommunityToken token = new CommunityToken(
 );
 
 // Configurar procesadores de pago autorizados
-token.grantRole(PAYMENT_PROCESSOR_ROLE, claimsContract);
+token.grantRole(PAYMENT_PROCESSOR_ROLE, engagementsContract);
 token.grantRole(PAYMENT_PROCESSOR_ROLE, revenueRouter);
 token.grantRole(EMERGENCY_ROLE, emergencyMultisig);
 

@@ -171,12 +171,12 @@ function getCommunityStats(uint256 communityId) external view returns (
 }
 ```
 
-### Claims Contract Authorization
+### Engagements Contract Authorization
 
 ```solidity
-// Claims contract checks verifier authorization via VPT balance
-function verifyClaimVPS(uint256 claimId, bool approved) external {
-    uint256 communityId = _getClaimCommunity(claimId);
+// Engagements contract checks verifier authorization via VPT balance
+function verifyEngagementVPS(uint256 engagementId, bool approved) external {
+    uint256 communityId = _getEngagementCommunity(engagementId);
     require(vpt.balanceOf(msg.sender, communityId) > 0, "No verifier power");
     // Process verification with governance-granted authority
 }
@@ -347,7 +347,7 @@ if (!communityInitialized[communityId]) revert CommunityNotInitialized(community
 **Integration Contracts**:
 - **VerifierElection**: Power distribution management and synchronization
 - **VerifierManager**: Authorization checks for juror selection
-- **Claims Contract**: Verifier power validation for claims processing
+- **Engagements Contract**: Verifier power validation for engagements processing
 
 ### Deployment Considerations
 

@@ -1,6 +1,7 @@
 import { ethers } from "hardhat";
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+import { Roles } from "../roles";
 
 /**
  * API-Friendly Community Creation Script
@@ -320,14 +321,14 @@ export async function createCommunityForUI(
     deployer.address,
   );
   await revokeMinterTx.wait();
-  console.log("✅ Claims granted minter role, deployer role revoked");
+  console.log("✅ Engagements granted minter role, deployer role revoked");
   txHashes.push(grantMinterTx.hash, revokeMinterTx.hash);
 
   // Grant claims manager role on WorkerSBT
-  const MANAGER_ROLE = await workerSBT.MANAGER_ROLE();
+  const MANAGER_ROLE = Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE;
   const grantManagerTx = await workerSBT.grantRole(MANAGER_ROLE, claimsAddress);
   await grantManagerTx.wait();
-  console.log("✅ Claims granted WorkerSBT manager role");
+  console.log("✅ Engagements granted WorkerSBT manager role");
   txHashes.push(grantManagerTx.hash);
 
   // =================================================================
@@ -339,7 +340,7 @@ export async function createCommunityForUI(
   const moduleRegistrations = [
     { key: "governor", address: governorAddress },
     { key: "timelock", address: timelockAddress },
-    { key: "claimsManager", address: claimsAddress },
+    { key: "engagementsManager", address: claimsAddress },
     { key: "actionTypeRegistry", address: valuableActionRegistryAddress },
     { key: "verifierPool", address: verifierPoolAddress },
     { key: "workerSBT", address: workerSBTAddress },

@@ -4,11 +4,12 @@ pragma solidity ^0.8.24;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {Errors} from "contracts/libs/Errors.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 import {ParamController} from "contracts/modules/ParamController.sol";
 
 /**
@@ -24,14 +25,14 @@ import {ParamController} from "contracts/modules/ParamController.sol";
  * - Treasury management with withdrawal controls
  * - Integration with community governance and revenue routing
  */
-contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
+contract CommunityToken is ERC20, AccessManaged, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /* ======== ROLES ======== */
     
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant TREASURY_ROLE = keccak256("TREASURY_ROLE");
-    bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
+    uint64 public constant MINTER_ROLE = Roles.COMMUNITY_TOKEN_MINTER_ROLE;
+    uint64 public constant TREASURY_ROLE = Roles.COMMUNITY_TOKEN_TREASURY_ROLE;
+    uint64 public constant EMERGENCY_ROLE = Roles.COMMUNITY_TOKEN_EMERGENCY_ROLE;
 
     /* ======== STATE VARIABLES ======== */
 
@@ -90,13 +91,6 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
     error InvalidWithdrawalAmount(uint256 amount);
     error InsufficientTreasuryBalance(uint256 required, uint256 available);
 
-    /* ======== MODIFIERS ======== */
-
-    modifier onlyValidRole(bytes32 role) {
-        if (!hasRole(role, msg.sender)) revert Errors.NotAuthorized(msg.sender);
-        _;
-    }
-
     /* ======== CONSTRUCTOR ======== */
 
     /**
@@ -116,11 +110,13 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
         string memory _symbol,
         address _treasury,
         uint256 _maxSupply,
-        address _paramController
-    ) ERC20(_name, _symbol) {
+        address _paramController,
+        address _manager
+    ) ERC20(_name, _symbol) AccessManaged(_manager) {
         if (_usdc == address(0)) revert Errors.ZeroAddress();
         if (_treasury == address(0)) revert Errors.ZeroAddress();
         if (_paramController == address(0)) revert Errors.ZeroAddress();
+        if (_manager == address(0)) revert Errors.ZeroAddress();
         if (_communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
         if (_maxSupply == 0) revert Errors.InvalidInput("Max supply cannot be zero");
 
@@ -129,12 +125,6 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
         treasury = _treasury;
         maxSupply = _maxSupply;
         paramController = ParamController(_paramController);
-        
-        // Grant admin role to deployer
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, msg.sender);
-        _grantRole(TREASURY_ROLE, msg.sender);
-        _grantRole(EMERGENCY_ROLE, msg.sender);
     }
 
     /* ======== CORE TOKEN FUNCTIONS ======== */
@@ -214,7 +204,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      * @param to Recipient address
      * @param amount Amount of tokens to mint
      */
-    function mintTo(address to, uint256 amount) external onlyValidRole(MINTER_ROLE) whenNotPaused {
+    function mintTo(address to, uint256 amount) external restricted whenNotPaused {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidInput("Amount cannot be zero");
         
@@ -246,11 +236,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      * @param amount Amount of USDC to withdraw
      * @param reason Reason for withdrawal
      */
-    function withdrawFromTreasury(
-        address recipient,
-        uint256 amount,
-        string calldata reason
-    ) external onlyValidRole(TREASURY_ROLE) whenNotPaused nonReentrant {
+    function withdrawFromTreasury(address recipient, uint256 amount, string calldata reason) external restricted whenNotPaused nonReentrant {
         if (recipient == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert Errors.InvalidInput("Amount cannot be zero");
         
@@ -272,7 +258,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      * @notice Request emergency withdrawal (requires delay)
      * @param amount Amount to withdraw
      */
-    function requestEmergencyWithdrawal(uint256 amount) external onlyValidRole(EMERGENCY_ROLE) {
+    function requestEmergencyWithdrawal(uint256 amount) external restricted {
         if (amount == 0) revert InvalidWithdrawalAmount(amount);
         
         uint256 requestId = emergencyWithdrawalCount++;
@@ -291,10 +277,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      * @param requestId ID of the withdrawal request
      * @param recipient Address to receive funds
      */
-    function executeEmergencyWithdrawal(
-        uint256 requestId,
-        address recipient
-    ) external onlyValidRole(EMERGENCY_ROLE) {
+    function executeEmergencyWithdrawal(uint256 requestId, address recipient) external restricted {
         if (recipient == address(0)) revert Errors.ZeroAddress();
         
         EmergencyWithdrawal storage withdrawal = emergencyWithdrawals[requestId];
@@ -321,14 +304,14 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
     /**
      * @notice Pause contract in emergency
      */
-    function pause() external onlyValidRole(EMERGENCY_ROLE) {
+    function pause() external restricted {
         _pause();
     }
 
     /**
      * @notice Unpause contract
      */
-    function unpause() external onlyValidRole(DEFAULT_ADMIN_ROLE) {
+    function unpause() external restricted {
         _unpause();
     }
 
@@ -340,7 +323,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      * @notice Update treasury address
      * @param newTreasury New treasury address
      */
-    function setTreasury(address newTreasury) external onlyValidRole(DEFAULT_ADMIN_ROLE) {
+    function setTreasury(address newTreasury) external restricted {
         if (newTreasury == address(0)) revert Errors.ZeroAddress();
         
         address oldTreasury = treasury;
@@ -352,7 +335,7 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      * @notice Update ParamController address
      * @param newParamController New ParamController address
      */
-    function setParamController(address newParamController) external onlyValidRole(DEFAULT_ADMIN_ROLE) {
+    function setParamController(address newParamController) external restricted {
         if (newParamController == address(0)) revert Errors.ZeroAddress();
         paramController = ParamController(newParamController);
     }
@@ -363,11 +346,13 @@ contract CommunityToken is ERC20, AccessControl, Pausable, ReentrancyGuard {
      */
     function getEffectiveRedemptionFee() external view returns (uint256 feeBps) {
         return _getRedemptionFeeBps();
-    }    /**
-     * @notice Update maximum supply
+    }
+
+    /**
+     * @notice Update maximum token supply
      * @param newMaxSupply New maximum supply
      */
-    function setMaxSupply(uint256 newMaxSupply) external onlyValidRole(DEFAULT_ADMIN_ROLE) {
+    function setMaxSupply(uint256 newMaxSupply) external restricted {
         if (newMaxSupply < totalSupply()) {
             revert Errors.InvalidInput("Max supply cannot be less than current supply");
         }

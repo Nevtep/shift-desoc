@@ -17,6 +17,7 @@ contract ParameterIntegrationTest is Test {
         vm.startPrank(admin);
         paramController = new ParamController(admin);
         registry = new CommunityRegistry(admin, address(paramController));
+        paramController.setCommunityRegistry(address(registry));
         vm.stopPrank();
     }
     
@@ -29,6 +30,10 @@ contract ParameterIntegrationTest is Test {
             "ipfs://metadata", 
             0
         );
+
+        // bootstrap timelock to admin so governance writes can proceed
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         
         // Set governance parameters via ParamController
         vm.prank(admin);
@@ -59,21 +64,20 @@ contract ParameterIntegrationTest is Test {
         assets[1] = address(0x5678);
         
         vm.startPrank(admin);
-        paramController.setRevenuePolicy(communityId, 6000, 2500, 1500, 0); // 60%, 25%, 15% in basis points
+        paramController.setRevenuePolicy(communityId, 6000, 2500, 0, 0); // 60% treasury min, 25% positions min, spillover to positions
         
         paramController.setUint256(communityId, paramController.FEE_ON_WITHDRAW(), 100);
         
         paramController.setAddressArray(communityId, paramController.BACKING_ASSETS(), assets);
         vm.stopPrank();
         
-        (uint256 minWorkersBps, uint256 treasuryBps, uint256 investorsBps, 
-         uint8 spilloverTarget, uint256 feeOnWithdraw, address[] memory backingAssets) = 
+        (uint256 minTreasuryBps, uint256 minPositionsBps, uint8 spilloverTarget, uint256 splitBps, uint256 feeOnWithdraw, address[] memory backingAssets) = 
             registry.getEconomicParameters(communityId);
             
-        assertEq(minWorkersBps, 6000); // 60% min workers
-        assertEq(treasuryBps, 2500); // 25% treasury  
-        assertEq(investorsBps, 1500); // 15% investors
-        assertEq(spilloverTarget, 0); // spillover to workers
+        assertEq(minTreasuryBps, 6000); // 60% min treasury
+        assertEq(minPositionsBps, 2500); // 25% min positions
+        assertEq(spilloverTarget, 0); // spillover to positions
+        assertEq(splitBps, 0); // no split configured
         assertEq(feeOnWithdraw, 100);
         assertEq(backingAssets.length, 2);
         assertEq(backingAssets[0], address(0x1234));
@@ -88,20 +92,28 @@ contract ParameterIntegrationTest is Test {
             "ipfs://metadata", 
             0
         );
+
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         
-        // Test invalid revenue policy (doesn't sum to 100%)
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Revenue policy must sum to 100%"));
+        // Guarantees cannot exceed 100%
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Guarantees exceed 100%"));
         vm.prank(admin);
-        paramController.setRevenuePolicy(communityId, 5000, 3000, 3000, 0); // 50%+30%+30% = 110%
+        paramController.setRevenuePolicy(communityId, 5000, 6000, 0, 0); // 110%
         
-        // Test that low workers share is now allowed (no minimum restriction)
+        // Valid lower guarantees
         vm.prank(admin);
-        paramController.setRevenuePolicy(communityId, 2000, 4000, 4000, 0); // 20% workers now allowed
+        paramController.setRevenuePolicy(communityId, 2000, 4000, 0, 0); // 20% treasury, 40% positions
         
-        // Test invalid spillover target
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Spillover target must be 0 (workers) or 1 (treasury)"));
+        // Invalid spillover target
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Invalid spillover target"));
         vm.prank(admin);
-        paramController.setRevenuePolicy(communityId, 4000, 3000, 3000, 2); // Invalid spillover target
+        paramController.setRevenuePolicy(communityId, 4000, 3000, 3, 0); // Invalid target
+
+        // Invalid split percentage when using split target
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Split bps > 100%"));
+        vm.prank(admin);
+        paramController.setRevenuePolicy(communityId, 4000, 3000, 2, 20000);
     }
     
     function testCrossParameterConsistency() public {
@@ -111,6 +123,11 @@ contract ParameterIntegrationTest is Test {
         
         vm.prank(user1);
         uint256 communityId2 = registry.registerCommunity("Community 2", "Desc2", "ipfs://2", 0);
+
+        vm.startPrank(user1);
+        registry.setModuleAddress(communityId1, keccak256("timelock"), admin);
+        registry.setModuleAddress(communityId2, keccak256("timelock"), admin);
+        vm.stopPrank();
         
         // Set different parameters for each community
         vm.startPrank(admin);
@@ -148,6 +165,9 @@ contract ParameterIntegrationTest is Test {
     function testParameterManagementViaParamController() public {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Desc", "ipfs://metadata", 0);
+
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), admin);
         
         // Verify that parameter management now happens through ParamController
         vm.prank(admin);

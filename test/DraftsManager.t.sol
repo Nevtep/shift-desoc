@@ -4,16 +4,50 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import {DraftsManager} from "contracts/modules/DraftsManager.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {ICommunityRegistry} from "contracts/modules/interfaces/ICommunityRegistry.sol";
+import {IRequestHub} from "contracts/modules/interfaces/IRequestHub.sol";
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 
 contract MockCommunityRegistry {
     mapping(uint256 => bool) public communities;
-    
-    function addCommunity(uint256 communityId) external {
+    mapping(uint256 => ICommunityRegistry.ModuleAddresses) internal modulesByCommunity;
+
+    function addCommunity(uint256 communityId, address requestHub) external {
         communities[communityId] = true;
+        modulesByCommunity[communityId].requestHub = requestHub;
     }
-    
-    function validateCommunityExists(uint256 communityId) external view returns (bool) {
-        return communities[communityId];
+
+    function setRequestHub(uint256 communityId, address requestHub) external {
+        modulesByCommunity[communityId].requestHub = requestHub;
+    }
+
+    function setCommunityModules(uint256 communityId, ICommunityRegistry.ModuleAddresses calldata modules) external {
+        modulesByCommunity[communityId] = modules;
+    }
+
+    function getCommunityModules(uint256 communityId) external view returns (ICommunityRegistry.ModuleAddresses memory) {
+        if (!communities[communityId]) {
+            revert Errors.InvalidInput("Community does not exist");
+        }
+        return modulesByCommunity[communityId];
+    }
+}
+
+contract MockRequestHub is IRequestHub {
+    mapping(uint256 => Request) internal requests;
+
+    function addRequest(uint256 requestId, uint256 communityId, address author) external {
+        Request storage request = requests[requestId];
+        request.communityId = communityId;
+        request.author = author;
+    }
+
+    function getRequest(uint256 requestId) external view override returns (Request memory request) {
+        request = requests[requestId];
+        if (request.author == address(0)) {
+            revert Errors.InvalidInput("Request does not exist");
+        }
     }
 }
 
@@ -53,12 +87,15 @@ contract DraftsManagerTest is Test {
     DraftsManager public draftsManager;
     MockCommunityRegistry public communityRegistry;
     MockGovernor public governor;
+    MockRequestHub public requestHub;
+        AccessManager public accessManager;
     
     // Test addresses
     address public user1 = address(0x101);
     address public user2 = address(0x102);
     address public user3 = address(0x103);
     address public user4 = address(0x104);
+    address public timelock = address(0x501);
     address public reviewer1 = address(0x201);
     address public reviewer2 = address(0x202);
     address public reviewer3 = address(0x203);
@@ -131,17 +168,30 @@ contract DraftsManagerTest is Test {
         uint256 indexed proposalId,
         DraftsManager.DraftStatus outcome
     );
+
+    event GovernorUpdated(address indexed oldGovernor, address indexed newGovernor);
+
+    event ConfigurationUpdated(uint256 reviewPeriod, uint256 minReviewsForEscalation, uint256 supportThresholdBps);
     
     function setUp() public {
         // Deploy mock contracts
         communityRegistry = new MockCommunityRegistry();
+        requestHub = new MockRequestHub();
         governor = new MockGovernor();
+        accessManager = new AccessManager(address(this));
+        accessManager.grantRole(accessManager.ADMIN_ROLE(), timelock, 0);
         
         // Deploy DraftsManager
-        draftsManager = new DraftsManager(address(communityRegistry), address(governor));
+        draftsManager = new DraftsManager(address(communityRegistry), address(governor), address(accessManager));
+
+        bytes4[] memory adminSelectors = new bytes4[](2);
+        adminSelectors[0] = DraftsManager.updateGovernor.selector;
+        adminSelectors[1] = DraftsManager.updateConfiguration.selector;
+        accessManager.setTargetFunctionRole(address(draftsManager), adminSelectors, accessManager.ADMIN_ROLE());
         
         // Setup test community
-        communityRegistry.addCommunity(COMMUNITY_ID);
+        _addCommunity(COMMUNITY_ID);
+        _addRequest(REQUEST_ID, COMMUNITY_ID, user1);
         
         // Setup test actions
         address[] memory targets = new address[](2);
@@ -171,10 +221,22 @@ contract DraftsManagerTest is Test {
         vm.deal(reviewer2, 100 ether);
         vm.deal(reviewer3, 100 ether);
     }
+
+    function _addCommunity(uint256 communityId) internal {
+        ICommunityRegistry.ModuleAddresses memory modules;
+        modules.requestHub = address(requestHub);
+        modules.timelock = timelock;
+        communityRegistry.addCommunity(communityId, address(requestHub));
+        communityRegistry.setCommunityModules(communityId, modules);
+    }
+
+    function _addRequest(uint256 requestId, uint256 communityId, address author) internal {
+        requestHub.addRequest(requestId, communityId, author);
+    }
     
     /* ======== CONSTRUCTOR TESTS ======== */
     
-    function testConstructor() public {
+    function testConstructor() public view {
         assertEq(draftsManager.communityRegistry(), address(communityRegistry));
         assertEq(draftsManager.governor(), address(governor));
         assertEq(draftsManager.getDraftsCount(), 0);
@@ -182,10 +244,13 @@ contract DraftsManagerTest is Test {
     
     function testConstructorZeroAddressReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new DraftsManager(address(0), address(governor));
+        new DraftsManager(address(0), address(governor), address(accessManager));
         
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new DraftsManager(address(communityRegistry), address(0));
+        new DraftsManager(address(communityRegistry), address(0), address(accessManager));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        new DraftsManager(address(communityRegistry), address(governor), address(0));
     }
     
     /* ======== DRAFT CREATION TESTS ======== */
@@ -283,6 +348,27 @@ contract DraftsManagerTest is Test {
         uint256[] memory requestDrafts = draftsManager.getDraftsByRequest(0);
         assertEq(requestDrafts.length, 0);
     }
+
+    function testCreateDraftRevertsForMissingCommunity() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Community does not exist"));
+        vm.prank(user1);
+        draftsManager.createDraft(COMMUNITY_ID + 1, REQUEST_ID, testActions, VERSION_CID);
+    }
+
+    function testCreateDraftRevertsWhenRequestHubNotConfigured() public {
+        uint256 communityWithoutHub = COMMUNITY_ID + 2;
+        communityRegistry.addCommunity(communityWithoutHub, address(0));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "RequestHub not set"));
+        vm.prank(user1);
+        draftsManager.createDraft(communityWithoutHub, REQUEST_ID, testActions, VERSION_CID);
+    }
+
+    function testCreateDraftRevertsForMissingRequest() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Request does not exist"));
+        vm.prank(user1);
+        draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 50, testActions, VERSION_CID);
+    }
     
     function testCreateDraftEmptyVersionCIDReverts() public {
         vm.prank(user1);
@@ -296,6 +382,7 @@ contract DraftsManagerTest is Test {
         uint256 draft1 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, "version1");
         
         // Create second draft
+        requestHub.addRequest(REQUEST_ID + 1, COMMUNITY_ID, user2);
         vm.prank(user2);
         uint256 draft2 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 1, testActions, "version2");
         
@@ -506,7 +593,7 @@ contract DraftsManagerTest is Test {
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
         
-        (,,,,,, DraftsManager.DraftStatus status, uint64 createdAt, uint64 reviewStartedAt,,) = draftsManager.getDraft(draftId);
+        (,,,,,, DraftsManager.DraftStatus status, , uint64 reviewStartedAt,,) = draftsManager.getDraft(draftId);
         assertTrue(status == DraftsManager.DraftStatus.REVIEW);
         assertEq(reviewStartedAt, block.timestamp);
     }
@@ -628,6 +715,7 @@ contract DraftsManagerTest is Test {
         // Check review is no longer active
         (,, uint64 timestamp, bool isActive) = draftsManager.getReview(draftId, reviewer1);
         assertFalse(isActive);
+        assertGt(timestamp, 0);
         
         // Check counters updated
         (uint256 support,,,, uint256 total) = draftsManager.getReviewSummary(draftId);
@@ -827,6 +915,7 @@ contract DraftsManagerTest is Test {
         emit ProposalOutcomeUpdated(draftId, proposalId, DraftsManager.DraftStatus.WON);
         
         // TODO: This should be called by governance, but we don't have authorization checks yet
+        vm.prank(timelock);
         draftsManager.updateProposalOutcome(draftId, DraftsManager.DraftStatus.WON);
         
         (,,,,,, DraftsManager.DraftStatus status,,,,) = draftsManager.getDraft(draftId);
@@ -842,8 +931,102 @@ contract DraftsManagerTest is Test {
         vm.prank(user1);
         draftsManager.escalateToProposal(draftId, false, 0, PROPOSAL_DESC);
         
+        vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Outcome must be WON or LOST"));
         draftsManager.updateProposalOutcome(draftId, DraftsManager.DraftStatus.DRAFTING);
+    }
+
+    function testUpdateProposalOutcomeAuthorizedByAuthor() public {
+        uint256 draftId = _escalateDraft();
+
+        vm.prank(user1);
+        draftsManager.updateProposalOutcome(draftId, DraftsManager.DraftStatus.WON);
+
+        (,,,,,, DraftsManager.DraftStatus status,,,,) = draftsManager.getDraft(draftId);
+        assertTrue(status == DraftsManager.DraftStatus.WON);
+    }
+
+    function testUpdateProposalOutcomeAuthorizedByContributor() public {
+        vm.prank(user1);
+        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+
+        vm.prank(user1);
+        draftsManager.addContributor(draftId, user2);
+
+        _completeReviewProcess(draftId);
+
+        vm.prank(user1);
+        draftsManager.escalateToProposal(draftId, false, 0, PROPOSAL_DESC);
+
+        vm.prank(user2);
+        draftsManager.updateProposalOutcome(draftId, DraftsManager.DraftStatus.LOST);
+
+        (,,,,,, DraftsManager.DraftStatus status,,,,) = draftsManager.getDraft(draftId);
+        assertTrue(status == DraftsManager.DraftStatus.LOST);
+    }
+
+    function testUpdateProposalOutcomeAuthorizedByTimelock() public {
+        uint256 draftId = _escalateDraft();
+
+        vm.prank(timelock);
+        draftsManager.updateProposalOutcome(draftId, DraftsManager.DraftStatus.LOST);
+
+        (,,,,,, DraftsManager.DraftStatus status,,,,) = draftsManager.getDraft(draftId);
+        assertTrue(status == DraftsManager.DraftStatus.LOST);
+    }
+
+    function testUpdateProposalOutcomeUnauthorizedReverts() public {
+        uint256 draftId = _escalateDraft();
+
+        vm.prank(user4);
+        vm.expectRevert(abi.encodeWithSelector(DraftsManager.NotAuthorized.selector, user4));
+        draftsManager.updateProposalOutcome(draftId, DraftsManager.DraftStatus.WON);
+    }
+
+    /* ======== ADMIN TESTS ======== */
+
+    function testUpdateGovernorAuthorized() public {
+        vm.prank(timelock);
+        vm.expectEmit(true, true, false, true);
+        emit GovernorUpdated(address(governor), user3);
+        draftsManager.updateGovernor(user3);
+
+        assertEq(draftsManager.governor(), user3);
+    }
+
+    function testUpdateGovernorUnauthorizedReverts() public {
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
+        draftsManager.updateGovernor(user2);
+    }
+
+    function testUpdateGovernorZeroAddressReverts() public {
+        vm.prank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
+        draftsManager.updateGovernor(address(0));
+    }
+
+    function testUpdateConfigurationAuthorized() public {
+        vm.prank(timelock);
+        vm.expectEmit(false, false, false, true);
+        emit ConfigurationUpdated(1 days, 5, 7000);
+        draftsManager.updateConfiguration(1 days, 5, 7000);
+
+        assertEq(draftsManager.reviewPeriod(), 1 days);
+        assertEq(draftsManager.minReviewsForEscalation(), 5);
+        assertEq(draftsManager.supportThresholdBps(), 7000);
+    }
+
+    function testUpdateConfigurationUnauthorizedReverts() public {
+        vm.prank(user1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user1));
+        draftsManager.updateConfiguration(1 days, 5, 7000);
+    }
+
+    function testUpdateConfigurationSupportThresholdTooHighReverts() public {
+        vm.prank(timelock);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Support threshold cannot exceed 100%"));
+        draftsManager.updateConfiguration(1 days, 5, 10001);
     }
     
     /* ======== VIEW FUNCTIONS TESTS ======== */
@@ -876,9 +1059,11 @@ contract DraftsManagerTest is Test {
         vm.prank(user1);
         uint256 draft1 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
         
+        _addRequest(REQUEST_ID + 1, COMMUNITY_ID, user1);
         vm.prank(user1);
-        uint256 draft2 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 1, testActions, VERSION_CID);
+        draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 1, testActions, VERSION_CID);
         
+        _addCommunity(COMMUNITY_ID + 1);
         vm.prank(user2);
         uint256 draft3 = draftsManager.createDraft(COMMUNITY_ID + 1, REQUEST_ID, testActions, VERSION_CID);
         
@@ -956,6 +1141,7 @@ contract DraftsManagerTest is Test {
         uint256 proposalId = draftsManager.escalateToProposal(draftId, false, 0, PROPOSAL_DESC);
         
         // 9. Update outcome
+        vm.prank(timelock);
         draftsManager.updateProposalOutcome(draftId, DraftsManager.DraftStatus.WON);
         
         // Verify final state
@@ -985,5 +1171,15 @@ contract DraftsManagerTest is Test {
         
         vm.prank(user1);
         draftsManager.finalizeForProposal(draftId);
+    }
+
+    function _escalateDraft() internal returns (uint256 draftId) {
+        vm.prank(user1);
+        draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+
+        _completeReviewProcess(draftId);
+
+        vm.prank(user1);
+        draftsManager.escalateToProposal(draftId, false, 0, PROPOSAL_DESC);
     }
 }

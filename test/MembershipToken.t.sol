@@ -2,13 +2,16 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
 
+import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
 import {MembershipTokenERC20Votes} from "contracts/tokens/MembershipTokenERC20Votes.sol";
 import {Errors} from "contracts/libs/Errors.sol";
+import {Roles} from "contracts/libs/Roles.sol";
 
 contract MembershipTokenTest is Test {
     MembershipTokenERC20Votes token;
+    AccessManager accessManager;
     
     address admin = makeAddr("admin");
     address founder = makeAddr("founder");
@@ -23,16 +26,26 @@ contract MembershipTokenTest is Test {
     string constant TOKEN_SYMBOL = "MEMBER-1";
 
     function setUp() public {
-        vm.startPrank(admin);
-        
+        accessManager = new AccessManager(admin);
+        vm.startPrank(admin, admin);
         // Deploy MembershipToken
         token = new MembershipTokenERC20Votes(
             TOKEN_NAME,
             TOKEN_SYMBOL,
             COMMUNITY_ID,
-            admin
+            address(accessManager)
         );
-        
+
+        bytes4[] memory minterSelectors = new bytes4[](2);
+        minterSelectors[0] = token.mint.selector;
+        minterSelectors[1] = token.batchMint.selector;
+        accessManager.setTargetFunctionRole(address(token), minterSelectors, token.MINTER_ROLE());
+        vm.stopPrank();
+    }
+
+    function _grantMinter(address minter) internal {
+        vm.startPrank(admin, admin);
+        accessManager.grantRole(token.MINTER_ROLE(), minter, 0);
         vm.stopPrank();
     }
 
@@ -41,9 +54,8 @@ contract MembershipTokenTest is Test {
         assertEq(token.symbol(), TOKEN_SYMBOL);
         assertEq(token.communityId(), COMMUNITY_ID);
         assertEq(token.totalSupply(), 0); // No initial minting
-        assertTrue(token.hasRole(token.DEFAULT_ADMIN_ROLE(), admin));
-        assertTrue(token.hasRole(token.GOVERNANCE_ROLE(), admin));
-        assertFalse(token.initialized());
+        (bool isAdmin,) = accessManager.hasRole(accessManager.ADMIN_ROLE(), admin);
+        assertTrue(isAdmin);
     }
 
     function test_Constructor_ZeroAddress() public {
@@ -56,62 +68,16 @@ contract MembershipTokenTest is Test {
         new MembershipTokenERC20Votes(TOKEN_NAME, TOKEN_SYMBOL, 0, admin);
     }
 
-    function test_Initialize() public {
-        vm.startPrank(admin);
-        
-        token.initialize(claimsContract, communityFactory);
-        
-        assertTrue(token.initialized());
-        assertTrue(token.hasRole(token.MINTER_ROLE(), claimsContract));
-        assertTrue(token.hasRole(token.MINTER_ROLE(), communityFactory));
-        
-        vm.stopPrank();
-    }
-
-    function test_Initialize_OnlyAdmin() public {
-        vm.startPrank(founder);
-        
-        vm.expectRevert();
-        token.initialize(claimsContract, communityFactory);
-        
-        vm.stopPrank();
-    }
-
-    function test_Initialize_ZeroAddress() public {
-        vm.startPrank(admin);
-        
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        token.initialize(address(0), communityFactory);
-        
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        token.initialize(claimsContract, address(0));
-        
-        vm.stopPrank();
-    }
-
-    function test_Initialize_AlreadyInitialized() public {
-        vm.startPrank(admin);
-        
-        token.initialize(claimsContract, communityFactory);
-        
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Already initialized"));
-        token.initialize(claimsContract, communityFactory);
-        
-        vm.stopPrank();
-    }
-
     function test_Mint() public {
-        // Initialize first
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
-        
-        vm.startPrank(claimsContract);
+        _grantMinter(claimsContract);
+
+        vm.startPrank(claimsContract, claimsContract);
         
         uint256 mintAmount = 1000 ether;
         string memory reason = "ValuableAction completion";
         
         vm.expectEmit(true, true, false, true);
-        emit MembershipTokenERC20Votes.TokensMintedForWork(worker1, mintAmount, claimsContract, reason);
+        emit MembershipTokenERC20Votes.MembershipTokenMinted(worker1, mintAmount, claimsContract, reason);
         
         token.mint(worker1, mintAmount, reason);
         
@@ -122,22 +88,18 @@ contract MembershipTokenTest is Test {
     }
 
     function test_Mint_OnlyMinter() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
         
-        vm.startPrank(worker1);
-        
-        vm.expectRevert();
+        vm.startPrank(worker1, worker1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, worker1));
         token.mint(worker1, 1000 ether, "test");
         
         vm.stopPrank();
     }
 
     function test_Mint_ZeroAddress() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(claimsContract);
         
-        vm.startPrank(claimsContract);
+        vm.startPrank(claimsContract, claimsContract);
         
         vm.expectRevert(Errors.ZeroAddress.selector);
         token.mint(address(0), 1000 ether, "test");
@@ -146,10 +108,9 @@ contract MembershipTokenTest is Test {
     }
 
     function test_Mint_ZeroAmount() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(claimsContract);
         
-        vm.startPrank(claimsContract);
+        vm.startPrank(claimsContract, claimsContract);
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Amount cannot be zero"));
         token.mint(worker1, 0, "test");
@@ -158,10 +119,9 @@ contract MembershipTokenTest is Test {
     }
 
     function test_Mint_MaxSupplyCap() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(claimsContract);
         
-        vm.startPrank(claimsContract);
+        vm.startPrank(claimsContract, claimsContract);
         
         // Mint up to max supply
         token.mint(worker1, token.MAX_SUPPLY(), "test");
@@ -174,10 +134,9 @@ contract MembershipTokenTest is Test {
     }
 
     function test_BatchMint() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(communityFactory);
         
-        vm.startPrank(communityFactory);
+        vm.startPrank(communityFactory, communityFactory);
         
         address[] memory recipients = new address[](2);
         recipients[0] = worker1;
@@ -199,10 +158,9 @@ contract MembershipTokenTest is Test {
     }
 
     function test_BatchMint_ArrayLengthMismatch() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
-        
-        vm.startPrank(communityFactory);
+        _grantMinter(communityFactory);
+
+        vm.startPrank(communityFactory, communityFactory);
         
         address[] memory recipients = new address[](2);
         recipients[0] = worker1;
@@ -218,10 +176,9 @@ contract MembershipTokenTest is Test {
     }
 
     function test_BatchMint_EmptyArrays() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(communityFactory);
         
-        vm.startPrank(communityFactory);
+        vm.startPrank(communityFactory, communityFactory);
         
         address[] memory recipients = new address[](0);
         uint256[] memory amounts = new uint256[](0);
@@ -233,45 +190,30 @@ contract MembershipTokenTest is Test {
     }
 
     function test_GrantMinterRole() public {
-        vm.startPrank(admin);
-        
-        token.initialize(claimsContract, communityFactory);
-        
-        vm.expectEmit(true, false, false, true);
-        emit MembershipTokenERC20Votes.MinterRoleUpdated(governance, true, admin);
-        
-        token.grantMinterRole(governance);
-        
-        assertTrue(token.hasRole(token.MINTER_ROLE(), governance));
-        
+        vm.startPrank(admin, admin);
+        accessManager.grantRole(token.MINTER_ROLE(), governance, 0);
+        (bool isMinter,) = accessManager.hasRole(token.MINTER_ROLE(), governance);
+        assertTrue(isMinter);
         vm.stopPrank();
     }
 
     function test_RevokeMinterRole() public {
-        vm.startPrank(admin);
-        
-        token.initialize(claimsContract, communityFactory);
-        token.grantMinterRole(governance);
-        
-        vm.expectEmit(true, false, false, true);
-        emit MembershipTokenERC20Votes.MinterRoleUpdated(governance, false, admin);
-        
-        token.revokeMinterRole(governance);
-        
-        assertFalse(token.hasRole(token.MINTER_ROLE(), governance));
-        
+        vm.startPrank(admin, admin);
+        accessManager.grantRole(token.MINTER_ROLE(), governance, 0);
+        accessManager.revokeRole(token.MINTER_ROLE(), governance);
+        (bool stillMinter,) = accessManager.hasRole(token.MINTER_ROLE(), governance);
+        assertFalse(stillMinter);
         vm.stopPrank();
     }
 
     function test_EmergencyBurn() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(claimsContract);
         
         // Mint some tokens first
         vm.prank(claimsContract);
         token.mint(worker1, 1000 ether, "test");
         
-        vm.startPrank(admin);
+        vm.startPrank(admin, admin);
         
         token.emergencyBurn(worker1, 500 ether);
         
@@ -282,23 +224,20 @@ contract MembershipTokenTest is Test {
     }
 
     function test_EmergencyBurn_OnlyGovernance() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(claimsContract);
         
         vm.prank(claimsContract);
         token.mint(worker1, 1000 ether, "test");
         
-        vm.startPrank(worker1);
-        
-        vm.expectRevert();
+        vm.startPrank(worker1, worker1);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, worker1));
         token.emergencyBurn(worker1, 500 ether);
         
         vm.stopPrank();
     }
 
     function test_ViewFunctions() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(claimsContract);
         
         // Test remainingSupply
         assertEq(token.remainingSupply(), token.MAX_SUPPLY());
@@ -308,21 +247,10 @@ contract MembershipTokenTest is Test {
         token.mint(worker1, 1000 ether, "test");
         
         assertEq(token.remainingSupply(), token.MAX_SUPPLY() - 1000 ether);
-        
-        // Test isMinter
-        assertTrue(token.isMinter(claimsContract));
-        assertFalse(token.isMinter(worker1));
-        
-        // Test getMinters
-        address[] memory minters = token.getMinters();
-        assertEq(minters.length, 2);
-        assertEq(minters[0], claimsContract);
-        assertEq(minters[1], communityFactory);
     }
 
     function test_VotingFunctionality() public {
-        vm.prank(admin);
-        token.initialize(claimsContract, communityFactory);
+        _grantMinter(claimsContract);
         
         // Mint tokens to worker
         vm.prank(claimsContract);
@@ -336,7 +264,7 @@ contract MembershipTokenTest is Test {
         assertEq(token.getVotes(worker1), 1000 ether);
         
         // Test delegation to another user
-        vm.startPrank(worker1);
+        vm.startPrank(worker1, worker1);
         token.delegate(worker2);
         vm.stopPrank();
         
@@ -347,7 +275,7 @@ contract MembershipTokenTest is Test {
 
     function test_Constants() public view {
         assertEq(token.MAX_SUPPLY(), 100_000_000 ether);
-        assertEq(token.MINTER_ROLE(), keccak256("MINTER_ROLE"));
-        assertEq(token.GOVERNANCE_ROLE(), keccak256("GOVERNANCE_ROLE"));
+        assertEq(token.MINTER_ROLE(), Roles.MEMBERSHIP_TOKEN_MINTER_ROLE);
+        assertEq(token.GOVERNANCE_ROLE(), Roles.MEMBERSHIP_TOKEN_GOVERNANCE_ROLE);
     }
 }

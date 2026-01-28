@@ -130,7 +130,7 @@ function redeem(uint256 tokenAmount) external returns (uint256 usdcRedeemed) {
 ```solidity
 function mintTo(address to, uint256 amount) external onlyValidRole(MINTER_ROLE) {
     // Mint tokens for governance rewards without USDC backing
-    // Used by Claims contract and governance distribution
+    // Used by Engagements contract and governance distribution
 }
 
 function depositToTreasury(uint256 amount) external nonReentrant {
@@ -249,11 +249,11 @@ contract RevenueRouter {
 }
 ```
 
-### With Claims Payment
+### With Engagements Payment
 
 ```solidity
-// Claims contract pays workers in CommunityTokens
-contract Claims {
+// Engagements contract pays workers in CommunityTokens
+contract Engagements {
     function _payWorker(address worker, uint256 amount) internal {
         CommunityToken communityToken = CommunityToken(tokenAddress);
 
@@ -407,7 +407,7 @@ CommunityToken communityToken = new CommunityToken(
 
 // Configure initial parameters
 communityToken.setRedemptionFee(100);  // 1% redemption fee
-communityToken.grantRole(MINTER_ROLE, claimsContract);
+communityToken.grantRole(MINTER_ROLE, engagementsContract);
 communityToken.grantRole(TREASURY_ROLE, treasuryManager);
 ```
 
@@ -525,7 +525,7 @@ contract GovernanceCommunityToken is CommunityToken, ERC20Votes {
 - **Treasury Management**: Controlled USDC deposits and withdrawals
 - **Emergency Controls**: Two-step emergency withdrawals with 7-day delay
 - **Supply Management**: Configurable maximum supply caps
-- **Integration Ready**: MINTER_ROLE for Claims contract integration
+- **Integration Ready**: MINTER_ROLE for Engagements contract integration
 
 ### Advanced Security ✅
 
@@ -545,7 +545,7 @@ contract GovernanceCommunityToken is CommunityToken, ERC20Votes {
 ### Integration Points 🔗
 
 ```solidity
-// Claims contract mints rewards
+// Engagements contract mints rewards
 function mintTo(address worker, uint256 amount) external onlyValidRole(MINTER_ROLE)
 
 // Treasury operations

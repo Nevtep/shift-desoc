@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {IModuleProduct} from "./interfaces/IModuleProduct.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
@@ -26,7 +27,7 @@ import {Errors} from "../libs/Errors.sol";
  * - Staking: Investors lock USDC to back units (tracked separately from UnitToken)
  * - Discounts: Community members (ValuableActionSBT holders) get lower rates
  */
-contract HousingManager is IModuleProduct, ERC1155Supply {
+contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged {
     // ============ Constants ============
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
@@ -85,7 +86,6 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
     mapping(uint256 => mapping(uint256 => bool)) public unitOccupied; // unitId => dayTimestamp => occupied
 
     // Marketplace integration
-    address public marketplace;
     mapping(uint256 => uint256) public orderToReservation; // orderId => reservationId
 
     // Staking tracking (separate from UnitToken ownership)
@@ -93,9 +93,6 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
 
     // Stablecoin for investor staking
     address public stablecoin;
-
-    // Access control
-    address public owner;
 
     // ============ Events ============
 
@@ -131,24 +128,12 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
     error ReservationNotFound(uint256 reservationId);
     error InvalidDateRange(uint64 checkIn, uint64 checkOut);
     error UnitNotAvailable(uint256 unitId, uint64 checkIn, uint64 checkOut);
-    error OnlyMarketplace();
-    error OnlyOwner();
     error OnlyUnitOwner();
     error OnlyGuest();
     error InvalidStatus(ReservationStatus current, ReservationStatus required);
     error MinStayNotMet(uint256 nights, uint256 required);
 
     // ============ Modifiers ============
-
-    modifier onlyOwner() {
-        if (msg.sender != owner) revert OnlyOwner();
-        _;
-    }
-
-    modifier onlyMarketplace() {
-        if (msg.sender != marketplace) revert OnlyMarketplace();
-        _;
-    }
 
     modifier unitExists(uint256 unitId) {
         if (units[unitId].unitId == 0) revert UnitNotFound(unitId);
@@ -164,20 +149,10 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
 
     // ============ Constructor ============
 
-    constructor(address _owner, address _marketplace, address _stablecoin) ERC1155("") {
-        if (_owner == address(0)) revert Errors.ZeroAddress();
-        if (_marketplace == address(0)) revert Errors.ZeroAddress();
+    constructor(address manager, address _stablecoin) ERC1155("") AccessManaged(manager) {
         if (_stablecoin == address(0)) revert Errors.ZeroAddress();
 
-        owner = _owner;
-        marketplace = _marketplace;
         stablecoin = _stablecoin;
-    }
-
-    // ============ Admin Functions ============
-
-    function setMarketplace(address _marketplace) external onlyOwner {
-        marketplace = _marketplace;
     }
 
     // ============ Unit Management ============
@@ -193,7 +168,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
         uint256 basePrice,
         uint256 capacity,
         uint256 cancellationPolicyBps
-    ) external onlyOwner returns (uint256 unitId) {
+    ) external restricted returns (uint256 unitId) {
         unitId = nextUnitId++;
 
         units[unitId] = Unit({
@@ -285,6 +260,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
         override
         returns (uint256 finalPrice)
     {
+        basePrice; // base price intentionally ignored (unit's basePrice used)
         Unit storage unit = units[productId];
         if (unit.unitId == 0) revert UnitNotFound(productId);
 
@@ -312,7 +288,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
     function consume(uint256 productId, address buyer, bytes calldata params, uint256 amountPaid)
         external
         override
-        onlyMarketplace
+        restricted
         returns (uint256 resourceId)
     {
         Unit storage unit = units[productId];
@@ -353,7 +329,8 @@ contract HousingManager is IModuleProduct, ERC1155Supply {
      * @param resourceId The reservationId
      * @param outcome 1=PAID (settled), 2=REFUNDED (dispute)
      */
-    function onOrderSettled(uint256 productId, uint256 resourceId, uint8 outcome) external override onlyMarketplace {
+    function onOrderSettled(uint256 productId, uint256 resourceId, uint8 outcome) external override restricted {
+        productId; // unused in current flow; reserved for future logic
         Reservation storage reservation = reservations[resourceId];
         if (reservation.reservationId == 0) return; // Graceful handling for non-existent
 
