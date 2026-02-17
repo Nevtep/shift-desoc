@@ -358,8 +358,46 @@ contract VerifierManagerTest is Test {
         VerifierManager.JurorSelection memory selectionAfter = verifierManager.getJurorSelection(claimId);
         assertTrue(selectionAfter.completed);
         assertEq(selectionAfter.selectedJurors.length, 3);
-        assertEq(selectionAfter.seed, 12345);
+        assertTrue(selectionAfter.seed != 0);
         assertTrue(selectionAfter.selectedAt > 0);
+    }
+
+    function testEntropyDiffersAcrossBlocksWithSameInputSeed() public {
+        vm.prank(engagementsContract);
+        verifierManager.selectJurors(701, COMMUNITY_ID_1, 3, 11111, true);
+        VerifierManager.JurorSelection memory first = verifierManager.getJurorSelection(701);
+
+        vm.roll(block.number + 1);
+        vm.warp(block.timestamp + 12);
+
+        vm.prank(engagementsContract);
+        verifierManager.selectJurors(702, COMMUNITY_ID_1, 3, 11111, true);
+        VerifierManager.JurorSelection memory second = verifierManager.getJurorSelection(702);
+
+        assertTrue(first.seed != second.seed);
+    }
+
+    function testSelectionFairnessRegressionAcrossEntropyWindows() public {
+        bytes32 firstPanelHash;
+        bool sawDifferentPanel = false;
+
+        for (uint256 i = 0; i < 6; i++) {
+            vm.roll(block.number + 1);
+            vm.warp(block.timestamp + 9);
+
+            uint256 claimId = 800 + i;
+            vm.prank(engagementsContract);
+            address[] memory selected = verifierManager.selectJurors(claimId, COMMUNITY_ID_1, 3, 424242, true);
+
+            bytes32 panelHash = keccak256(abi.encode(selected));
+            if (i == 0) {
+                firstPanelHash = panelHash;
+            } else if (panelHash != firstPanelHash) {
+                sawDifferentPanel = true;
+            }
+        }
+
+        assertTrue(sawDifferentPanel);
     }
     
     /*//////////////////////////////////////////////////////////////

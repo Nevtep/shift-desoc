@@ -295,6 +295,11 @@ contract CommunityToken is ERC20, AccessManaged, Pausable, ReentrancyGuard {
             revert InsufficientUSDCBalance(withdrawal.amount, usdcBalance);
         }
 
+        uint256 reserveRequired = totalSupply();
+        if (usdcBalance < reserveRequired + withdrawal.amount) {
+            revert InsufficientTreasuryBalance(reserveRequired + withdrawal.amount, usdcBalance);
+        }
+
         withdrawal.executed = true;
         USDC.safeTransfer(recipient, withdrawal.amount);
 

@@ -5,6 +5,7 @@ import {Test, console2} from "forge-std/Test.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {Marketplace} from "contracts/modules/Marketplace.sol";
 import {CommerceDisputes} from "contracts/modules/CommerceDisputes.sol";
+import {RevenueRouter} from "contracts/modules/RevenueRouter.sol";
 import {Roles} from "contracts/libs/Roles.sol";
 import {HousingManager} from "contracts/modules/HousingManager.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
@@ -320,6 +321,39 @@ contract MarketplaceDisputesTest is Test {
         assertEq(usdc.balanceOf(seller), sellerBalanceBefore + escrowAmount);
 
         // Verify order status
+        order = marketplace.getOrder(orderId);
+        assertEq(uint8(order.status), uint8(Marketplace.OrderStatus.SETTLED));
+    }
+
+    function test_PaySellerOutcomeFallsBackWhenRouterTokenUnsupported() public {
+        RevenueRouter unsupportedRouter =
+            new RevenueRouter(address(accessManager), address(0x10), address(0x11), address(0x12));
+        marketplace.setRevenueRouter(address(unsupportedRouter));
+
+        uint64 checkIn = uint64(block.timestamp + 1 days);
+        uint64 checkOut = checkIn + 2 days;
+        bytes memory params = abi.encode(checkIn, checkOut);
+
+        vm.prank(buyer);
+        orderId = marketplace.purchase(offerId, address(usdc), params);
+
+        vm.prank(seller);
+        marketplace.markOrderFulfilled(orderId);
+
+        vm.prank(buyer);
+        marketplace.openOrderDispute(orderId, "ipfs://evidence1");
+
+        Marketplace.Order memory order = marketplace.getOrder(orderId);
+        uint256 disputeId = order.disputeId;
+        uint256 escrowAmount = order.amount;
+
+        uint256 sellerBalanceBefore = usdc.balanceOf(seller);
+        vm.prank(owner);
+        disputes.finalizeDispute(disputeId, CommerceDisputes.DisputeOutcome.PAY_SELLER);
+
+        assertEq(usdc.balanceOf(seller), sellerBalanceBefore + escrowAmount);
+        assertEq(unsupportedRouter.treasuryAccrual(COMMUNITY_ID, address(usdc)), 0);
+
         order = marketplace.getOrder(orderId);
         assertEq(uint8(order.status), uint8(Marketplace.OrderStatus.SETTLED));
     }

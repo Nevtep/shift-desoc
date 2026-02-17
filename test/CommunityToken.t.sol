@@ -353,28 +353,26 @@ contract CommunityTokenTest is Test {
         communityToken.redeem(1000e18);
     }
 
-    function testRedeemInsufficientUSDCReservesReverts() public {
-        // Mint tokens first
+    function testEmergencyWithdrawalCannotDrainBackedSupply() public {
         vm.startPrank(user1, user1);
         usdc.approve(address(communityToken), 1000e18);
         communityToken.mint(1000e18);
         vm.stopPrank();
 
-        // Artificially drain USDC reserves
         vm.startPrank(emergencyRole, emergencyRole);
-        communityToken.requestEmergencyWithdrawal(1000e18);
+        communityToken.requestEmergencyWithdrawal(1);
         vm.warp(block.timestamp + 7 days + 1);
+        vm.expectRevert(abi.encodeWithSelector(
+            CommunityToken.InsufficientTreasuryBalance.selector,
+            1000e18 + 1,
+            1000e18
+        ));
         communityToken.executeEmergencyWithdrawal(0, emergencyRole);
         vm.stopPrank();
 
-        // Now redemption should fail
         vm.prank(user1);
-        vm.expectRevert(abi.encodeWithSelector(
-            CommunityToken.InsufficientUSDCBalance.selector,
-            1000e18,
-            0
-        ));
-        communityToken.redeem(1000e18);
+        uint256 usdcReceived = communityToken.redeem(1000e18);
+        assertEq(usdcReceived, 1000e18);
     }
 
     /* ======== TREASURY MANAGEMENT TESTS ======== */
@@ -496,6 +494,22 @@ contract CommunityTokenTest is Test {
         
         (,, bool executed,) = communityToken.emergencyWithdrawals(0);
         assertTrue(executed);
+    }
+
+    function testExecuteEmergencyWithdrawalAllowsOnlySurplus() public {
+        vm.startPrank(user1, user1);
+        usdc.approve(address(communityToken), 1500e18);
+        communityToken.mint(1000e18);
+        communityToken.depositToTreasury(500e18);
+        vm.stopPrank();
+
+        vm.startPrank(emergencyRole, emergencyRole);
+        communityToken.requestEmergencyWithdrawal(500e18);
+        vm.warp(block.timestamp + 7 days + 1);
+        communityToken.executeEmergencyWithdrawal(0, emergencyRole);
+        vm.stopPrank();
+
+        assertEq(usdc.balanceOf(address(communityToken)), 1000e18);
     }
 
     function testExecuteEmergencyWithdrawalBeforeDelayReverts() public {

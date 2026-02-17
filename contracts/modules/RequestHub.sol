@@ -208,6 +208,11 @@ contract RequestHub is ReentrancyGuard {
         string[] calldata tags
     ) external returns (uint256 requestId) {
         _requireValidCommunity(communityId);
+        
+        uint256 dayStart = (block.timestamp / 1 days) * 1 days;
+        if (userLastPostTime[communityId][msg.sender] < dayStart) {
+            userRequestCount[communityId][msg.sender] = 0;
+        }
         _requireNotRateLimited(communityId, msg.sender);
         
         if (bytes(title).length == 0) revert Errors.InvalidInput("Title cannot be empty");
@@ -413,6 +418,11 @@ contract RequestHub is ReentrancyGuard {
         request.consumed = true;
         request.winner = winner;
 
+        CommunityRegistry.Community memory community = communityRegistry.getCommunity(request.communityId);
+        if (request.bountyAmount > 0 && community.treasuryVault == address(0)) {
+            revert Errors.InvalidInput("Treasury vault not set");
+        }
+
         engagementTokenId = valuableActionRegistry.issueEngagement(
             request.communityId,
             winner,
@@ -422,6 +432,7 @@ contract RequestHub is ReentrancyGuard {
         );
 
         if (request.bountyAmount > 0) {
+            IERC20(request.bountyToken).safeTransferFrom(community.treasuryVault, winner, request.bountyAmount);
             emit BountyReady(requestId, request.communityId, winner, request.bountyToken, request.bountyAmount);
         }
 

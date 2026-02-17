@@ -119,14 +119,15 @@ contract VerifierManager is IVerifierManager, AccessManaged {
         }
         
         // Perform selection
+        uint256 entropySeed = _deriveEntropySeed(seed, engagementId, communityId);
         uint256[] memory selectedPowers;
         if (shouldUseWeighting) {
             (selectedJurors, selectedPowers) = _weightedSelection(
-                eligibleVerifiers, eligiblePowers, panelSize, seed, communityId
+                eligibleVerifiers, eligiblePowers, panelSize, entropySeed, communityId
             );
         } else {
             (selectedJurors, selectedPowers) = _uniformSelection(
-                eligibleVerifiers, eligiblePowers, panelSize, seed
+                eligibleVerifiers, eligiblePowers, panelSize, entropySeed
             );
         }
         
@@ -134,7 +135,7 @@ contract VerifierManager is IVerifierManager, AccessManaged {
         selections[engagementId] = JurorSelection({
             selectedJurors: selectedJurors,
             selectedPowers: selectedPowers,
-            seed: seed,
+            seed: entropySeed,
             selectedAt: uint64(block.timestamp),
             completed: true
         });
@@ -318,5 +319,22 @@ contract VerifierManager is IVerifierManager, AccessManaged {
         }
         
         return (selected, selectedPowers);
+    }
+
+    /// @notice Build a stronger, domain-separated entropy seed for juror selection
+    function _deriveEntropySeed(uint256 seed, uint256 engagementId, uint256 communityId) internal view returns (uint256) {
+        return uint256(
+            keccak256(
+                abi.encode(
+                    seed,
+                    engagementId,
+                    communityId,
+                    block.prevrandao,
+                    blockhash(block.number - 1),
+                    address(this),
+                    msg.sender
+                )
+            )
+        );
     }
 }

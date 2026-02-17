@@ -1,307 +1,122 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
+import fs from "fs";
+import path from "path";
 
-/**
- * Check Engagement Status Script - Base Sepolia
- *
- * Monitors the status of submitted engagements through the verification process.
- * Provides detailed information about engagement progress and verification results.
- *
- * Run: npx hardhat run scripts/check-claim-status.ts --network base_sepolia
- */
-
-const CONTRACT_ADDRESSES = {
-  engagements: "0xcd3fEfEE2dd2F3114742893f86D269740DF68B35",
-  valuableActionRegistry: "0x831Ef7C12aD1A564C32630e5D1A18A3b0c8829f2",
+type DeploymentsFile = {
+  addresses?: {
+    engagements?: string;
+    valuableActionRegistry?: string;
+  };
 };
 
-// Configuration - Update this to check specific engagement
-const ENGAGEMENT_ID = 1; // Engagement ID to check (leave as 0 to check latest engagements)
+const DEFAULT_LOOKBACK = 50;
+const DEFAULT_STALE_GRACE_SECONDS = 3600;
+
+function loadDeployment(networkName: string): DeploymentsFile {
+  const root = process.cwd();
+  const preferred = path.join(root, "deployments", `${networkName}.json`);
+  const latest = path.join(root, "deployments", "latest.json");
+
+  if (fs.existsSync(preferred)) {
+    return JSON.parse(fs.readFileSync(preferred, "utf8"));
+  }
+  if (fs.existsSync(latest)) {
+    return JSON.parse(fs.readFileSync(latest, "utf8"));
+  }
+  throw new Error(
+    "No deployments file found. Expected deployments/<network>.json or deployments/latest.json",
+  );
+}
 
 async function main() {
-  console.log("📊 Check Engagement Status - Base Sepolia");
+  const lookback = Number(process.env.ENGAGEMENT_LOOKBACK ?? DEFAULT_LOOKBACK);
+  const staleGraceSeconds = Number(
+    process.env.ENGAGEMENT_STALE_GRACE_SECONDS ?? DEFAULT_STALE_GRACE_SECONDS,
+  );
+
+  const deployment = loadDeployment(network.name);
+  const engagementsAddress = deployment.addresses?.engagements;
+  const registryAddress = deployment.addresses?.valuableActionRegistry;
+
+  if (!engagementsAddress || !registryAddress) {
+    throw new Error(
+      "engagements or valuableActionRegistry address missing in deployment file",
+    );
+  }
+
+  const engagements = await ethers.getContractAt("Engagements", engagementsAddress);
+  const registry = await ethers.getContractAt("ValuableActionRegistry", registryAddress);
+
+  const total = Number(await engagements.nextEngagementId()) - 1;
+  const fromId = Math.max(1, total - lookback + 1);
+
+  let pending = 0;
+  let approved = 0;
+  let rejected = 0;
+  let revoked = 0;
+  const stalePending: number[] = [];
+
+  console.log("D-2 Engagement Anomaly Monitor");
   console.log("============================================================");
+  console.log("Network:", network.name);
+  console.log("Engagements:", engagementsAddress);
+  console.log("ValuableActionRegistry:", registryAddress);
+  console.log("Scan range:", `${fromId}..${total}`);
 
-  const [signer] = await ethers.getSigners();
-  const signerAddress = await signer.getAddress();
-  console.log("👤 Checking from account:", signerAddress);
-  console.log("📅 Check Time:", new Date().toLocaleString());
-
-  // Connect to contracts
-  const engagements = await ethers.getContractAt(
-    "Engagements",
-    CONTRACT_ADDRESSES.engagements,
-  );
-  const valuableActionRegistry = await ethers.getContractAt(
-    "ValuableActionRegistry",
-    CONTRACT_ADDRESSES.valuableActionRegistry,
-  );
-
-  if (ENGAGEMENT_ID > 0) {
-    console.log("🎯 Target Engagement ID:", ENGAGEMENT_ID);
-    await checkSpecificEngagement(
-      ENGAGEMENT_ID,
-      engagements,
-      valuableActionRegistry,
-    );
-  } else {
-    console.log("🔍 Checking recent engagements...");
-    await checkRecentEngagements(
-      engagements,
-      valuableActionRegistry,
-      signerAddress,
-    );
-  }
-}
-
-async function checkSpecificEngagement(
-  engagementId: number,
-  engagements: any,
-  valuableActionRegistry: any,
-) {
-  console.log("\n📋 ENGAGEMENT DETAILS:");
-  console.log("=".repeat(50));
-
-  try {
-    // Get engagement information
-    const engagement = await engagements.getEngagement(engagementId);
-
-    console.log("🔍 Engagement #" + engagementId + ":");
-    console.log("   ├── Worker:", engagement.worker);
-    console.log("   ├── Action ID:", engagement.typeId.toString());
-    console.log("   ├── Evidence CID:", engagement.evidenceCID);
-    console.log("   ├── Status:", getStatusName(engagement.status));
-    console.log(
-      "   ├── Created:",
-      new Date(Number(engagement.createdAt) * 1000).toLocaleString(),
-    );
-
-    // Get associated action details
-    console.log("\n🎯 ASSOCIATED ACTION:");
-    try {
-      const action = await valuableActionRegistry.getValuableAction(
-        engagement.typeId,
-      );
-      console.log(
-        "   ├── Membership Reward:",
-        action.membershipTokenReward.toString(),
-        "tokens",
-      );
-      console.log(
-        "   ├── Community Reward:",
-        action.communityTokenReward.toString(),
-        "tokens",
-      );
-      console.log(
-        "   ├── Verification Panel:",
-        action.jurorsMin.toString(),
-        "of",
-        action.panelSize.toString(),
-        "required",
-      );
-      console.log(
-        "   ├── Verify Window:",
-        action.verifyWindow.toString(),
-        "seconds",
-      );
-      console.log(
-        "   └── Evidence Types:",
-        "0x" + action.evidenceTypes.toString(16),
-      );
-    } catch (error) {
-      console.log("   └── Could not retrieve action details");
-    }
-
-    // Analyze engagement status
-    console.log("\n📈 STATUS ANALYSIS:");
-    analyzeEngagementStatus(engagement.status, engagement.createdAt);
-  } catch (error) {
-    console.log("❌ Engagement not found or error accessing:");
-    console.log("   Error:", error);
-    console.log("   Verify ENGAGEMENT_ID is correct and engagement exists");
-  }
-}
-
-async function checkRecentEngagements(
-  engagements: any,
-  valuableActionRegistry: any,
-  userAddress: string,
-) {
-  console.log("\n📋 RECENT ENGAGEMENTS OVERVIEW:");
-  console.log("=".repeat(50));
-
-  try {
-    // Try to get engagements 1-10 (basic range check)
-    let foundEngagements = 0;
-    let userEngagements = 0;
-
-    for (let i = 1; i <= 10; i++) {
-      try {
-        const engagement = await engagements.getEngagement(i);
-        foundEngagements++;
-
-        const isUserEngagement =
-          engagement.worker.toLowerCase() === userAddress.toLowerCase();
-        if (isUserEngagement) userEngagements++;
-
-        console.log(
-          "📋 Engagement #" +
-            i +
-            (isUserEngagement ? " (YOURS)" : "") +
-            ":",
-        );
-        console.log(
-          "   ├── Worker:",
-          engagement.worker === userAddress ? "YOU" : engagement.worker,
-        );
-        console.log("   ├── Action ID:", engagement.typeId.toString());
-        console.log("   ├── Status:", getStatusName(engagement.status));
-        console.log(
-          "   ├── Created:",
-          new Date(Number(engagement.createdAt) * 1000).toLocaleDateString(),
-        );
-        console.log(
-          "   └── Evidence:",
-          engagement.evidenceCID.substring(0, 30) + "...",
-        );
-      } catch (error) {
-        // Engagement doesn't exist, continue checking
-        if (i === 1) {
-          console.log("📋 No engagements found in system yet");
-          break;
-        }
-        break;
-      }
-    }
-
-    if (foundEngagements > 0) {
-      console.log("\n📊 SUMMARY:");
-      console.log("   ├── Total Engagements Found:", foundEngagements);
-      console.log("   ├── Your Engagements:", userEngagements);
-      console.log(
-        "   └── Recent Activity:",
-        foundEngagements > 5
-          ? "High"
-          : foundEngagements > 2
-            ? "Medium"
-            : "Low",
-      );
-
-      if (userEngagements === 0) {
-        console.log("\n💡 OPPORTUNITY:");
-        console.log(
-          "   • No engagements submitted yet - consider submitting work for verification",
-        );
-        console.log(
-          "   • Command: npx hardhat run scripts/submit-claim.ts --network base_sepolia",
-        );
-      }
-    }
-  } catch (error) {
-    console.log("❌ Error checking recent engagements:", error);
-  }
-}
-
-function getStatusName(status: bigint): string {
-  const statusMap: { [key: string]: string } = {
-    "0": "PENDING ⏳",
-    "1": "APPROVED ✅",
-    "2": "REJECTED ❌",
-    "3": "REVOKED ⚠️",
-  };
-
-  return statusMap[status.toString()] || "UNKNOWN ❓";
-}
-
-function analyzeEngagementStatus(status: bigint, createdAt: bigint) {
   const now = Math.floor(Date.now() / 1000);
-  const engagementAge = now - Number(createdAt);
-  const ageHours = engagementAge / 3600;
 
-  console.log("   ├── Current Status:", getStatusName(status));
-  console.log("   ├── Age:", ageHours.toFixed(1), "hours");
+  for (let id = fromId; id <= total; id++) {
+    const engagement = await engagements.getEngagement(id);
+    const status: bigint = engagement.status;
+    const typeId: bigint = engagement.typeId;
 
-  switch (Number(status)) {
-    case 0: // PENDING
-      console.log("   ├── Next Step: Juror selection and review initiation");
-      console.log("   └── Timeline: Review begins within verify window");
-
-      if (ageHours > 24) {
-        console.log("   ⚠️ WARNING: Engagement pending longer than expected");
-        console.log("      Check if sufficient jurors are available");
+    if (status === 0n) {
+      pending += 1;
+      const action = await registry.getValuableAction(typeId);
+      const verifyWindow = Number(action.verifyWindow);
+      const createdAt = Number(engagement.createdAt);
+      const staleThreshold = createdAt + verifyWindow + staleGraceSeconds;
+      if (now > staleThreshold) {
+        stalePending.push(id);
       }
-      break;
-
-    case 1: // APPROVED
-      console.log("   ├── ✅ SUCCESSFUL: Work approved by juror majority");
-      console.log("   ├── Rewards: Distributed automatically upon approval (if configured)");
-      console.log(
-        "   └── Timeline: Completed in",
-        ageHours.toFixed(1),
-        "hours",
-      );
-
-      console.log("\n🎉 CONGRATULATIONS!");
-      console.log("   • Work met community quality standards");
-      console.log("   • Tokens and SBTs distributed to your account");
-      console.log("   • Reputation increased in community");
-      console.log(
-        "   • Check rewards: npx hardhat run scripts/check-rewards.ts --network base_sepolia",
-      );
-      break;
-
-    case 2: // REJECTED
-      console.log("   ├── ❌ REJECTED: Work did not meet quality standards");
-      console.log("   ├── Outcome: No rewards distributed");
-      console.log("   └── Timeline: Decided in", ageHours.toFixed(1), "hours");
-
-      console.log("\n💡 NEXT STEPS:");
-      console.log("   • Review verifier feedback for improvement areas");
-      console.log("   • Enhance work quality based on feedback");
-      console.log("   • Resubmit improved version when ready");
-      console.log(
-        "   • Consider discussing requirements in community channels",
-      );
-      break;
-
-    case 3: // REVOKED
-      console.log("   ├── ⚠️ REVOKED: Engagement revoked by governance");
-      console.log("   └── Outcome: Rewards revoked, consult governance proposal");
-      break;
-
-    default:
-      console.log("   └── Status unknown or system error");
+    } else if (status === 1n) {
+      approved += 1;
+    } else if (status === 2n) {
+      rejected += 1;
+    } else if (status === 3n) {
+      revoked += 1;
+    }
   }
 
-  // General timeline guidance
-  if (Number(status) < 2) {
-    // Still in progress
-    console.log("\n⏰ EXPECTED TIMELINE:");
-    console.log("   • Submission → Review: depends on panel selection");
-    console.log("   • Review → Decision: within verify window");
-    console.log("   • Decision → Rewards: Immediate (if approved)");
+  const scanned = Math.max(0, total - fromId + 1);
+  console.log("Scanned:", scanned);
+  console.log("Pending:", pending);
+  console.log("Approved:", approved);
+  console.log("Rejected:", rejected);
+  console.log("Revoked:", revoked);
+
+  const decided = approved + rejected + revoked;
+  const rejectionRate = decided === 0 ? 0 : (rejected / decided) * 100;
+  console.log("Rejection rate (decided only):", rejectionRate.toFixed(2) + "%");
+
+  if (stalePending.length > 0) {
+    console.log("\nALERT: stale pending engagements detected:", stalePending.join(", "));
+    console.log(
+      "Action: Follow docs/EN/guides/security-runbook-d2.md triage and mitigation steps.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  if (rejectionRate > 80 || rejectionRate < 5) {
+    console.log("\nWARNING: outcome distribution is outside expected operational band.");
+    console.log("Action: Investigate for process drift/manipulation per D-2 runbook.");
+  } else {
+    console.log("\nStatus: HEALTHY");
   }
 }
 
-main()
-  .then(() => {
-    console.log("\n🎯 ENGAGEMENT STATUS CHECK COMPLETE!");
-    console.log("============================================================");
-    console.log("✅ Engagement information retrieved");
-    console.log("✅ Status analysis provided");
-    console.log("✅ Next steps identified");
-    console.log("");
-    console.log("🔄 Regular Monitoring:");
-    console.log("   • Run this script to track engagement progress");
-    console.log(
-      "   • Monitor rewards: npx hardhat run scripts/check-rewards.ts --network base_sepolia",
-    );
-    console.log(
-      "   • System status: npx hardhat run scripts/verify-base-sepolia.ts --network base_sepolia",
-    );
-
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

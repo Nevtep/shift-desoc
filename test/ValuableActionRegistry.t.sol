@@ -299,13 +299,13 @@ contract ValuableActionRegistryTest is Test {
         registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
         vm.stopPrank();
         
-        // Update as moderator
+        // Update as governance/timelock authority
         sampleAction.membershipTokenReward = 200;
         
-        vm.startPrank(moderator);
+        vm.startPrank(governance);
         
         vm.expectEmit(true, false, false, true);
-        emit ValuableActionRegistry.ValuableActionUpdated(actionId, sampleAction, moderator);
+        emit ValuableActionRegistry.ValuableActionUpdated(actionId, sampleAction, governance);
         
         registry.update(actionId, sampleAction);
         
@@ -326,7 +326,23 @@ contract ValuableActionRegistryTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user));
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
+        registry.update(actionId, sampleAction);
+        vm.stopPrank();
+    }
+
+    function testUpdateValuableActionModeratorUnauthorized() public {
+        vm.startPrank(governance);
+        uint256 actionId = registry.proposeValuableAction(
+            COMMUNITY_ID,
+            sampleAction,
+            PROPOSAL_REF_1
+        );
+        registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
+        vm.stopPrank();
+
+        vm.startPrank(moderator);
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, moderator));
         registry.update(actionId, sampleAction);
         vm.stopPrank();
     }
@@ -341,10 +357,10 @@ contract ValuableActionRegistryTest is Test {
         registry.activateFromGovernance(actionId, PROPOSAL_REF_1);
         vm.stopPrank();
         
-        vm.startPrank(moderator);
+        vm.startPrank(governance);
         
         vm.expectEmit(true, false, false, true);
-        emit ValuableActionRegistry.ValuableActionDeactivated(actionId, moderator);
+        emit ValuableActionRegistry.ValuableActionDeactivated(actionId, governance);
         
         registry.deactivate(actionId);
         
@@ -365,7 +381,7 @@ contract ValuableActionRegistryTest is Test {
         vm.stopPrank();
         
         // Deactivate one
-        vm.startPrank(moderator);
+        vm.startPrank(governance);
         registry.deactivate(action2);
         vm.stopPrank();
         

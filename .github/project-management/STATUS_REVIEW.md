@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Jan 21, 2026)
+# Shift DeSoc Status Review (Feb 15, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -60,6 +60,7 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-02-15: Security-fixes implementation pass completed for staged hardening set (M-1/M-2/M-4/M-5) with regression coverage additions; added D-1/D-2 ops runbooks and helper monitoring scripts; docs alignment updated across Architecture/Whitepaper/FEATURES.
 - 2026-01-21: Removed MembershipTokenERC20Votes `initialize` placeholder and `initialized` flag; tests updated.
 - 2026-01-21: Removed VerifierManager `engagementsContract` state and `setEngagementsContract`; AccessManager caller role remains for Engagements; deploy/test/docs updated.
 - 2026-01-21: VerifierManager `selectJurors`/`reportFraud` now AccessManager-gated via `VERIFIER_MANAGER_CALLER_ROLE`; deploy wiring and tests updated; docs aligned.

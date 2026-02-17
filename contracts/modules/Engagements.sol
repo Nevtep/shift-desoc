@@ -59,6 +59,7 @@ contract Engagements is AccessManaged {
     mapping(uint256 => Engagement) public engagements;
     mapping(uint256 => Appeal) public appeals;
     mapping(address => mapping(uint256 => uint64)) public participantCooldowns; // participant => typeId => nextAllowedTime
+    mapping(address => mapping(uint256 => uint256)) public activeEngagementCounts; // participant => typeId => active pending count
     mapping(uint256 => uint256[]) public engagementsByParticipant; // participant address hash => engagement IDs
     mapping(uint256 => uint256[]) public pendingEngagements; // typeId => pending engagement IDs
 
@@ -144,7 +145,7 @@ contract Engagements is AccessManaged {
         }
 
         // Check max concurrent engagements for this action type
-        uint256 currentConcurrent = _countActiveEngagements(msg.sender, typeId);
+        uint256 currentConcurrent = activeEngagementCounts[msg.sender][typeId];
         if (currentConcurrent >= action.maxConcurrent) {
             revert Errors.InvalidInput("Too many concurrent engagements for this action type");
         }
@@ -162,26 +163,29 @@ contract Engagements is AccessManaged {
         engagement.verifyDeadline = uint64(block.timestamp + action.verifyWindow);
 
         // Assign juror panel via VerifierManager using registry parameters
-        if (verifierManager != address(0) && verifierManager.code.length > 0) {
-            try IVerifierManager(verifierManager).selectJurors(
-                engagementId,
-                communityId,
-                action.panelSize,
-                uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, engagementId))),
-                false // Use community configuration for weighting
-            ) returns (address[] memory selectedJurors) {
-                engagement.jurors = selectedJurors;
-                emit JurorsAssigned(engagementId, selectedJurors);
-            // solhint-disable-next-line no-empty-blocks
-            } catch {
-                // If verifier selection fails, leave jurors empty for manual assignment
-                // This allows the system to still function with fallback mechanisms
-            }
+        if (verifierManager == address(0) || verifierManager.code.length == 0) {
+            revert Errors.InvalidInput("VerifierManager unavailable");
         }
+
+        address[] memory selectedJurors = IVerifierManager(verifierManager).selectJurors(
+            engagementId,
+            communityId,
+            action.panelSize,
+            uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, engagementId))),
+            false // Use community configuration for weighting
+        );
+
+        if (selectedJurors.length < action.jurorsMin) {
+            revert Errors.InvalidInput("Insufficient jurors selected");
+        }
+
+        engagement.jurors = selectedJurors;
+        emit JurorsAssigned(engagementId, selectedJurors);
         
         // Track pending engagements
         pendingEngagements[typeId].push(engagementId);
         engagementsByParticipant[uint256(uint160(msg.sender))].push(engagementId);
+        activeEngagementCounts[msg.sender][typeId] = currentConcurrent + 1;
 
         emit EngagementSubmitted(engagementId, typeId, msg.sender, evidenceCID);
     }
@@ -223,17 +227,29 @@ contract Engagements is AccessManaged {
 
         emit EngagementVerified(engagementId, msg.sender, approve);
 
-        // Check if we have enough votes to resolve
-        // This would get jurorsMin from ValuableActionRegistry
-        // For now using simple majority
-        uint32 requiredApprovals = uint32(engagement.jurors.length / 2 + 1);
-        uint32 requiredRejections = uint32(engagement.jurors.length / 2 + 1);
+        // Check if we have enough votes to resolve using action-configured jurorsMin
+        Types.ValuableAction memory action = actionRegistry.getValuableAction(engagement.typeId);
+        uint32 requiredApprovals = action.jurorsMin;
+        uint32 requiredRejections = uint32(engagement.jurors.length) - requiredApprovals + 1;
 
         if (engagement.approvalsCount >= requiredApprovals) {
             _resolveEngagement(engagementId, Types.EngagementStatus.Approved);
         } else if (engagement.rejectionsCount >= requiredRejections) {
             _resolveEngagement(engagementId, Types.EngagementStatus.Rejected);
         }
+    }
+
+    /// @notice Resolve a pending engagement that exceeded verification deadline
+    /// @param engagementId Engagement ID to resolve
+    function resolveExpired(uint256 engagementId) external {
+        if (engagementId == 0 || engagementId > lastEngagementId) revert Errors.InvalidInput("Invalid engagement ID");
+
+        Engagement storage engagement = engagements[engagementId];
+        if (engagement.resolved) revert Errors.InvalidInput("Engagement already resolved");
+        if (engagement.status != Types.EngagementStatus.Pending) revert Errors.InvalidInput("Engagement not pending");
+        if (block.timestamp <= engagement.verifyDeadline) revert Errors.InvalidInput("Verification deadline not reached");
+
+        _resolveEngagement(engagementId, Types.EngagementStatus.Rejected);
     }
 
     /// @notice Submit appeal for rejected engagement
@@ -350,6 +366,10 @@ contract Engagements is AccessManaged {
 
         // Remove from pending engagements
         _removePendingEngagement(engagement.typeId, engagementId);
+        uint256 currentActiveCount = activeEngagementCounts[engagement.participant][engagement.typeId];
+        if (currentActiveCount > 0) {
+            activeEngagementCounts[engagement.participant][engagement.typeId] = currentActiveCount - 1;
+        }
 
         emit EngagementResolved(engagementId, status, engagement.approvalsCount, engagement.rejectionsCount);
     }
@@ -527,13 +547,7 @@ contract Engagements is AccessManaged {
     /// @param typeId Action type ID
     /// @return count Number of active engagements
     function _countActiveEngagements(address participant, uint256 typeId) internal view returns (uint256 count) {
-        uint256[] storage participantEngagements = engagementsByParticipant[uint256(uint160(participant))];
-        for (uint256 i = 0; i < participantEngagements.length; i++) {
-            Engagement storage engagement = engagements[participantEngagements[i]];
-            if (engagement.typeId == typeId && engagement.status == Types.EngagementStatus.Pending) {
-                count++;
-            }
-        }
+        return activeEngagementCounts[participant][typeId];
     }
 
     /// @notice Get basic engagement info (excludes mappings)

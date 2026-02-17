@@ -589,6 +589,9 @@ contract RequestHubTest is Test {
         vm.prank(moderator);
         requestHub.setApprovedWinner(requestId, user2);
 
+        vm.prank(treasuryVault);
+        token.approve(address(requestHub), type(uint256).max);
+
         vm.startPrank(user2);
         vm.expectEmit(true, true, true, true);
         emit RequestHub.BountyReady(requestId, communityId, user2, address(token), 500);
@@ -601,8 +604,32 @@ contract RequestHubTest is Test {
         RequestHub.Request memory request = requestHub.getRequest(requestId);
         assertTrue(request.consumed);
         assertEq(request.winner, user2);
-        assertEq(token.balanceOf(treasuryVault), 500);
+        assertEq(token.balanceOf(treasuryVault), 0);
+        assertEq(token.balanceOf(user2), 500);
         assertEq(token.balanceOf(address(requestHub)), 0);
+    }
+
+    function testCompleteEngagementBountyTransferAtomicity() public {
+        uint256 requestId = _createLinkedRequest();
+
+        vm.startPrank(user1);
+        token.mint(user1, 1_000 ether);
+        token.approve(address(requestHub), type(uint256).max);
+        requestHub.addBounty(requestId, address(token), 500);
+        vm.stopPrank();
+
+        vm.prank(moderator);
+        requestHub.setApprovedWinner(requestId, user2);
+
+        vm.prank(user2);
+        vm.expectRevert();
+        requestHub.completeEngagement(requestId, bytes("evidence"));
+
+        RequestHub.Request memory request = requestHub.getRequest(requestId);
+        assertFalse(request.consumed);
+        assertEq(request.winner, address(0));
+        assertEq(token.balanceOf(treasuryVault), 500);
+        assertEq(token.balanceOf(user2), 0);
     }
 
     function testCompleteEngagementRequiresApproval() public {
@@ -751,6 +778,27 @@ contract RequestHubTest is Test {
         vm.warp(123); // 62 + 61 = 123
         requestHub.postComment(requestId, 0, "Comment 2");
         
+        vm.stopPrank();
+    }
+
+    function testRateLimitResetsNextDay() public {
+        vm.startPrank(user1);
+
+        for (uint256 i = 0; i < 10; i++) {
+            requestHub.createRequest(communityId, string(abi.encodePacked("Request ", vm.toString(i))), CID, tags);
+            if (i < 9) {
+                vm.warp(block.timestamp + 61);
+            }
+        }
+
+        vm.warp(block.timestamp + 61);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Rate limit exceeded"));
+        requestHub.createRequest(communityId, "Blocked same day", CID, tags);
+
+        vm.warp(block.timestamp + 1 days);
+        uint256 requestId = requestHub.createRequest(communityId, "Allowed next day", CID, tags);
+        assertGt(requestId, 0);
+
         vm.stopPrank();
     }
     

@@ -240,6 +240,13 @@ contract CohortRegistry is AccessManaged {
     
     /// @notice Calculate cohort weight for distribution
     /// @param cohortId Cohort identifier
+    /// @return Distribution weight using priority weighting (default behavior)
+    function getCohortWeight(uint256 cohortId) external view returns (uint256) {
+        return this.getCohortWeight(cohortId, true);
+    }
+
+    /// @notice Calculate cohort weight for distribution
+    /// @param cohortId Cohort identifier
     /// @param useWeights Whether to apply priority weights
     /// @return Distribution weight
     function getCohortWeight(uint256 cohortId, bool useWeights) external view returns (uint256) {

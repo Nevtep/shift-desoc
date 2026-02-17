@@ -1426,6 +1426,39 @@ event VerifierRemoved(address indexed verifier, string reason, address replacedB
 - **Recovery Procedures**: Defined processes for handling various failure scenarios
 - **Bug Bounty Programs**: Community-driven security testing and improvement
 
+##### D-1 Control: Backing-Ratio Integrity Monitoring
+
+- **Objective**: Detect any temporary under-collateralization around governance-triggered mint/deposit operations.
+- **Signal**: `USDC reserves in CommunityToken / CommunityToken totalSupply`.
+- **Thresholds**:
+    - Healthy: `>= 1.00`
+    - Warning: `< 1.00`
+    - Critical: `< 0.995` or warning persisting beyond 15 minutes
+- **Owner**: Protocol Operations (primary), Security Lead (escalation)
+- **Runbook**: `docs/EN/guides/security-runbook-d1.md`
+- **Helper**: `scripts/check-balance.ts`
+
+##### D-2 Control: Engagement/Claim Anomaly Monitoring
+
+- **Objective**: Detect liveness drift, verifier-process failures, or manipulation indicators in engagement outcomes.
+- **Signals**:
+    - stale pending engagements (`pending > verifyWindow + grace`)
+    - outcome distribution anomalies (approval/rejection skew)
+    - latency spikes vs trailing baseline
+- **Thresholds**:
+    - Immediate alert on stale pending engagements
+    - warning when decided-outcome skew exits expected operational band
+- **Owner**: Verification Operations (primary), Security Lead (escalation)
+- **Runbook**: `docs/EN/guides/security-runbook-d2.md`
+- **Helper**: `scripts/check-claim-status.ts`
+
+##### Security Hardening Deltas (Security Fixes)
+
+- Housing staking/unstaking flows now enforce explicit reentrancy protection and bounded reservation windows.
+- Engagement lifecycle paths include deterministic terminal resolution under expiration and selection failures.
+- Verifier selection uses stronger entropy derivation to reduce timing-based manipulation opportunities.
+- Marketplace settlement paths preserve non-trapping behavior when routing token support is unavailable.
+
 ### Attack Vector Analysis & Mitigation
 
 #### Governance Attacks
