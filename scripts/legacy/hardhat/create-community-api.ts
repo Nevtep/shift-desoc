@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import { Roles } from "../roles";
+import { Roles } from "../../roles";
 
 /**
  * API-Friendly Community Creation Script

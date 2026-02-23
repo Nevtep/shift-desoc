@@ -2233,6 +2233,13 @@ pnpm manage:system --network base_sepolia
 
 - API-based community creation (avoiding blockchain size limits)
 - Automated address management via deployments/{network}.json files
+- Canonical deployment pipeline for new communities:
+    1) `deploy-shared-infra.ts` (if missing)
+    2) `deploy-community-stack.ts`
+    3) `post-deploy-role-wiring.ts`
+    4) `verify-community-deployment.ts`
+- Selector-level AccessManager role wiring for cross-contract restricted calls with least-privilege grants
+- Mandatory VerifierPowerToken community initialization before any verifier power operations
 - Core workflow validation: request → draft → proposal → execution → engagements → verification
 - Production-ready deployment infrastructure for Base mainnet
 

@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Feb 15, 2026)
+# Shift DeSoc Status Review (Feb 19, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -60,6 +60,8 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-02-19: Reorganized `scripts/` surface by archiving deprecated/hardcoded/broken operational scripts to `scripts/legacy/`, removed legacy package command exposure, retained only active deployment/admin/monitoring tooling, and added `scripts/README.md` as the canonical scripts inventory.
+- 2026-02-17: Added production-grade community deployment flow under `scripts/hardhat` with explicit phases (`deploy-shared-infra`, `deploy-community-stack`, `post-deploy-role-wiring`, `verify-community-deployment`), selector-level least-privilege AccessManager wiring for cross-module restricted calls, VerifierPowerToken community initialization guard in wiring, deployments JSON consistency updates, and new role-path validation tests (Foundry + Hardhat dry-run).
 - 2026-02-15: Security-fixes implementation pass completed for staged hardening set (M-1/M-2/M-4/M-5) with regression coverage additions; added D-1/D-2 ops runbooks and helper monitoring scripts; docs alignment updated across Architecture/Whitepaper/FEATURES.
 - 2026-01-21: Removed MembershipTokenERC20Votes `initialize` placeholder and `initialized` flag; tests updated.
 - 2026-01-21: Removed VerifierManager `engagementsContract` state and `setEngagementsContract`; AccessManager caller role remains for Engagements; deploy/test/docs updated.
