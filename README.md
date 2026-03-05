@@ -107,7 +107,7 @@ pnpm build                    # Compile both toolchains
 pnpm forge:test              # Run Foundry tests
 pnpm cov:gate                # Check coverage
 
-# Deploy complete system (fresh deployment)
+# Deploy staged canonical pipeline (fresh deployment)
 npm run deploy:base-sepolia   # Deploy to Base Sepolia testnet
 npm run deploy:base           # Deploy to Base mainnet
 npm run deploy:ethereum       # Deploy to Ethereum mainnet
@@ -135,10 +135,10 @@ pnpm fmt
 
 ### 🚀 **Network Deployment (4 scripts)**
 
-- **`deploy:base-sepolia`** - Deploy to Base Sepolia testnet
-- **`deploy:base`** - Deploy to Base mainnet
-- **`deploy:ethereum-sepolia`** - Deploy to Ethereum Sepolia testnet
-- **`deploy:ethereum`** - Deploy to Ethereum mainnet
+- **`deploy:base-sepolia`** - Run full staged deployment pipeline on Base Sepolia
+- **`deploy:base`** - Run full staged deployment pipeline on Base
+- **`deploy:ethereum-sepolia`** - Run full staged deployment pipeline on Ethereum Sepolia
+- **`deploy:ethereum`** - Run full staged deployment pipeline on Ethereum
 
 ### 🧩 **Canonical Community Deployment (4 scripts)**
 

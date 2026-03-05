@@ -441,7 +441,7 @@ sequenceDiagram
     participant TL as TimelockController
     participant FE as Frontend/Indexer
 
-    A->>DS: run deploy-complete.ts
+    A->>DS: run staged deploy pipeline (4 scripts)
     DS->>DS: deploy all contracts
     DS->>CR: registerCommunity(metadata)
     DS->>CR: setModuleAddresses(modules[])
@@ -459,7 +459,7 @@ sequenceDiagram
     end
 ```
 
-- References: [Architecture](docs/EN/Architecture.md), [CommunityRegistry](docs/EN/contracts/CommunityRegistry.md), [ParamController](docs/EN/contracts/ParamController.md), [Deployments Guide](deployments/README.md), [Deploy Script](scripts/deploy-complete.ts).
+- References: [Architecture](docs/EN/Architecture.md), [CommunityRegistry](docs/EN/contracts/CommunityRegistry.md), [ParamController](docs/EN/contracts/ParamController.md), [Deployments Guide](deployments/README.md), [Deployment Scripts](scripts/hardhat/deploy-shared-infra.ts).
 
 ---
 

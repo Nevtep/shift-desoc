@@ -8,12 +8,12 @@
 
 ## Monorepo structure (high level)
 - Contracts: contracts/core (governor/counting), contracts/modules (coordination, verification, commerce), contracts/tokens; libs in contracts/libs; remappings in remappings.txt.
-- Scripts: scripts/ holds deployment/ops utilities (deploy-complete.ts, manage-*, governance helpers, verifier flows, coverage gate, ABI copy scripts, E2E test runners).
+- Scripts: scripts/ holds deployment/ops utilities (canonical staged deploy scripts under scripts/hardhat, manage-*, governance helpers, verifier flows, coverage gate, ABI copy scripts, E2E test runners). Deprecated one-shot deploy scripts are archived under scripts/legacy/.
 - Packages: packages/contracts (shared ABIs/types), packages/shared (utilities), packages/ui (design system/UI kit).
 - Apps: apps/web (Next.js App Router dApp), apps/indexer (Ponder indexer → Postgres + GraphQL), apps/marketing (Next.js + Storybook; README absent).
 
 ## Tooling & workflows
-- Node >=22, pnpm workspaces. Key scripts from package.json: fmt, lint/lint:fix (solhint), quality/sanity (lint+tests+coverage), forge:test, forge:cov, cov:gate (>=86%), forge:build (also copies ABIs), hh:compile/test, deploy:* (hardhat deploy-complete.ts per network), manage/admin/create-community/setup/validate, governance:* (proposal/vote/monitor/execute), verifier:* (register/verify engagement), test:e2e + verification/governance E2Es, analyze:* diagnostics, check:* status scripts.
+- Node >=22, pnpm workspaces. Key scripts from package.json: fmt, lint/lint:fix (solhint), quality/sanity (lint+tests+coverage), forge:test, forge:cov, cov:gate (>=86%), forge:build (also copies ABIs), hh:compile/test, deploy:* (canonical staged deploy pipeline per network), manage/admin/create-community/setup/validate, governance:* (proposal/vote/monitor/execute), verifier:* (register/verify engagement), test:e2e + verification/governance E2Es, analyze:* diagnostics, check:* status scripts.
 - ABI sync: scripts/copy-ponder-abis.js and scripts/copy-web-abis.js after contract changes.
 - Frontend testing: apps/web uses Vitest + Testing Library + MSW (renderWithProviders, mockWagmiHooks) and Playwright scaffold.
 - Indexer: Ponder config/schema in apps/indexer.
@@ -60,6 +60,8 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-03-05: Hardened staged deployment reliability for live networks: `deploySharedInfraIfMissing` now validates on-chain bytecode/ABI probes before reusing JSON addresses and auto-redeploys invalid shared infra; community registration ID resolution now uses `CommunityRegistered` receipt logs to avoid immediate-RPC readback mismatch; package `deploy:shared-infra|deploy:community-stack|deploy:wire-community|deploy:verify-community` scripts now correctly accept forwarded `--network` arguments.
+- 2026-03-05: Deprecated one-shot deployment path after dry-run failure (`GovernorOnlyExecutor`) and archived `scripts/deploy-complete.ts` + `scripts/hardhat/deploy.ts` into `scripts/legacy/`; package deploy scripts now run the canonical 4-step staged pipeline per network.
 - 2026-03-05: Security closeout package completed for `001-security-fixes`: added explicit closeout evidence bundle, quantitative M-1 methodology/thresholds, deterministic settlement outcome matrix, dependency validation matrix, and partial-rollout recovery checks. M-1 closeout status recorded as `RESIDUAL_RISK_ACCEPTED` with governance ownership and compensating controls.
 - 2026-02-19: Reorganized `scripts/` surface by archiving deprecated/hardcoded/broken operational scripts to `scripts/legacy/`, removed legacy package command exposure, retained only active deployment/admin/monitoring tooling, and added `scripts/README.md` as the canonical scripts inventory.
 - 2026-02-17: Added production-grade community deployment flow under `scripts/hardhat` with explicit phases (`deploy-shared-infra`, `deploy-community-stack`, `post-deploy-role-wiring`, `verify-community-deployment`), selector-level least-privilege AccessManager wiring for cross-module restricted calls, VerifierPowerToken community initialization guard in wiring, deployments JSON consistency updates, and new role-path validation tests (Foundry + Hardhat dry-run).

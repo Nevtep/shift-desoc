@@ -181,19 +181,59 @@ async function deployAccessManager(admin: string): Promise<any> {
   return accessManager;
 }
 
+async function isUsableSharedInfra(addresses: Partial<SharedInfra>): Promise<boolean> {
+  if (!addresses.accessManager || !addresses.paramController || !addresses.communityRegistry) {
+    return false;
+  }
+
+  try {
+    const accessManagerCode = await ethers.provider.getCode(addresses.accessManager);
+    const paramControllerCode = await ethers.provider.getCode(addresses.paramController);
+    const communityRegistryCode = await ethers.provider.getCode(addresses.communityRegistry);
+
+    if (
+      accessManagerCode === "0x" ||
+      paramControllerCode === "0x" ||
+      communityRegistryCode === "0x"
+    ) {
+      return false;
+    }
+
+    const accessManager = await ethers.getContractAt("ShiftAccessManager", addresses.accessManager);
+    const paramController = await ethers.getContractAt("ParamController", addresses.paramController);
+    const communityRegistry = await ethers.getContractAt("CommunityRegistry", addresses.communityRegistry);
+
+    // Probe read-only calls to ensure ABI/runtime compatibility, not just non-empty bytecode.
+    await accessManager.ADMIN_ROLE();
+    await paramController.communityRegistry();
+    await communityRegistry.nextCommunityId();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
   const net = networkName();
   const existing = net === "hardhat" ? null : loadDeploymentFile(net);
-  if (
-    existing?.addresses?.accessManager &&
-    existing?.addresses?.paramController &&
-    existing?.addresses?.communityRegistry
-  ) {
+  const existingShared: Partial<SharedInfra> = {
+    accessManager: existing?.addresses?.accessManager,
+    paramController: existing?.addresses?.paramController,
+    communityRegistry: existing?.addresses?.communityRegistry,
+  };
+
+  if (await isUsableSharedInfra(existingShared)) {
     return {
-      accessManager: existing.addresses.accessManager,
-      paramController: existing.addresses.paramController,
-      communityRegistry: existing.addresses.communityRegistry,
+      accessManager: existingShared.accessManager!,
+      paramController: existingShared.paramController!,
+      communityRegistry: existingShared.communityRegistry!,
     };
+  }
+
+  if (existing?.addresses?.accessManager || existing?.addresses?.paramController || existing?.addresses?.communityRegistry) {
+    console.warn(
+      "⚠️ Existing shared infra addresses are missing or invalid on current network. Redeploying shared infra and overwriting deployment JSON.",
+    );
   }
 
   const [deployer] = await ethers.getSigners();
@@ -370,11 +410,31 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     config.communityMetadataURI,
     0,
   );
-  await registerTx.wait();
-  const communityId = Number(await communityRegistry.nextCommunityId()) - 1;
+  const registerReceipt = await registerTx.wait();
+
+  let communityId: number | null = null;
+  for (const log of registerReceipt.logs ?? []) {
+    try {
+      const parsed = communityRegistry.interface.parseLog({ topics: log.topics as string[], data: log.data });
+      if (parsed?.name === "CommunityRegistered") {
+        communityId = Number(parsed.args.communityId);
+        break;
+      }
+    } catch {
+      // Ignore unrelated logs.
+    }
+  }
+
+  if (communityId === null) {
+    // Fallback for legacy ABI/event parsing edge-cases.
+    communityId = Number(await communityRegistry.nextCommunityId()) - 1;
+  }
 
   if (communityId !== nextCommunityId) {
-    throw new Error(`Community ID mismatch. predicted=${nextCommunityId} actual=${communityId}`);
+    const observedNext = Number(await communityRegistry.nextCommunityId());
+    throw new Error(
+      `Community ID mismatch. predicted=${nextCommunityId} actual=${communityId} observedNext=${observedNext}`,
+    );
   }
 
   await (await paramController.setVerifierParams(

@@ -1,6 +1,6 @@
 {
-  "network": "hardhat",
-  "timestamp": "2026-03-05T03:20:18.539Z",
+  "network": "localhost",
+  "timestamp": "2026-03-05T03:21:08.303Z",
   "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
   "communityId": 1,
   "addresses": {

@@ -3,7 +3,7 @@
 Current phase: testing/staging on Base Sepolia. Treat Base/mainnet steps as future-only. Run everything from repo root with Node 22, Hardhat 2.22, Solidity ^0.8.24, OZ 5.x.
 
 ## Primary flow
-- Full stack deploy (staging): `pnpm deploy:base-sepolia` → runs `scripts/deploy-complete.ts` (writes deployments/base_sepolia.json and deployments/latest.json).
+- Full stack deploy (staging): `pnpm deploy:base-sepolia` → runs the canonical 4-step staged pipeline (`deploy-shared-infra`, `deploy-community-stack`, `post-deploy-role-wiring`, `verify-community-deployment`) and updates deployments JSON.
 - Build/lint/test before deploy: `pnpm fmt && pnpm lint && pnpm forge:test && pnpm forge:cov && pnpm cov:gate`; then `pnpm forge:build && pnpm hh:compile` (copies ABIs to web/indexer).
 - Addresses: always load from deployments/*.json; never hardcode.
 
@@ -44,7 +44,6 @@ This flow guarantees:
 - These targeted scripts are expected since VARegistry/RequestHub changed; keep deployments/latest.json consistent after use.
 
 ## Other helpers
-- Hardhat entry wrapper: `npx hardhat run scripts/hardhat/deploy.ts --network base_sepolia` (delegates to deploy-complete).
 - Legacy scripts stay in `scripts/legacy/hardhat/` for reference only (not exposed as package commands).
 - Status/checks: `pnpm verify:base-sepolia`, `pnpm check:balance --network <network>`, `pnpm check:engagements --network <network>`.
 - Admin/ops scripts live under `scripts/` and are documented in `scripts/README.md`.

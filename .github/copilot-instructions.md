@@ -115,7 +115,7 @@ Any changes must keep:
 - contracts/libs/ — shared Errors.sol, Types.sol (prefer these)
 
 ### Scripts / Tooling
-- Deploy & ops helpers in scripts/ (deploy-complete.ts, manage-*, governance helpers, verifier flows).
+- Deploy & ops helpers in scripts/ (canonical staged deploy scripts under scripts/hardhat, manage-*, governance helpers, verifier flows).
 - ABI sync scripts (run after contract changes):
   - scripts/copy-ponder-abis.js
   - scripts/copy-web-abis.js
@@ -922,8 +922,8 @@ pnpm build                    # Compile both toolchains
 pnpm forge:test              # Run Foundry tests
 pnpm cov:gate                # Check coverage (≥86% enforced)
 
-# Deploy complete system to testnet
-pnpm -C packages/hardhat hardhat run scripts/deploy-complete.ts --network base_sepolia
+# Deploy full staged pipeline to testnet
+pnpm deploy:base-sepolia
 
 # Verify deployment addresses
 pnpm verify:addresses

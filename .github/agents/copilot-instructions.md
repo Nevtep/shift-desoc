@@ -46,7 +46,7 @@ You MUST:
 - OpenZeppelin: **5.x**
 - Tooling versions (run from repo root): Node 22, Foundry (forge), Hardhat **2.22.x**, Next.js **16** / React **19** (apps/web), Ponder **0.7.17** (apps/indexer).
 - Addresses are managed via **deployments/*.json** (and deployments/latest.json); scripts load from these JSON files — do not hardcode.
-- Status log: keep [.github/project-management/STATUS_REVIEW.md](./project-management/STATUS_REVIEW.md) updated after meaningful implementations or deploys; bump the date and note deltas briefly.
+- Status log: keep [.github/project-management/STATUS_REVIEW.md](../project-management/STATUS_REVIEW.md) updated after meaningful implementations or deploys; bump the date and note deltas briefly.
 
 ### Repo expectations
 - Architecture layering is canonical:
@@ -144,7 +144,7 @@ Any changes must keep:
 - contracts/libs/ — shared Errors.sol, Types.sol (prefer these)
 
 ### Scripts / Tooling
-- Deploy & ops helpers in scripts/ (deploy-complete.ts, manage-*, governance helpers, verifier flows).
+- Deploy & ops helpers in scripts/ (canonical staged deploy scripts under scripts/hardhat, manage-*, governance helpers, verifier flows).
 - ABI sync scripts (run after contract changes):
   - scripts/copy-ponder-abis.js
   - scripts/copy-web-abis.js
@@ -951,8 +951,8 @@ pnpm build                    # Compile both toolchains
 pnpm forge:test              # Run Foundry tests
 pnpm cov:gate                # Check coverage (≥86% enforced)
 
-# Deploy complete system to testnet
-pnpm -C packages/hardhat hardhat run scripts/deploy-complete.ts --network base_sepolia
+# Deploy full staged pipeline to testnet
+pnpm deploy:base-sepolia
 
 # Verify deployment addresses
 pnpm verify:addresses

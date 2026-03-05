@@ -21,8 +21,6 @@ Hardhat implementations:
 ## Active Script Tools
 
 ### Deployment
-- `scripts/deploy-complete.ts` — full-stack deploy flow for network bootstrap.
-- `scripts/hardhat/deploy.ts` — wrapper entry for deploy-complete.
 - `scripts/hardhat/deploy-requesthub-only.ts` — surgical RequestHub redeploy/update.
 - `scripts/hardhat/community-deploy-lib.ts` — shared deploy/wiring/verification library.
 
@@ -45,4 +43,5 @@ Hardhat implementations:
 
 - `scripts/legacy/` contains historical scripts that are not maintained for current architecture.
 - `scripts/legacy/hardhat/` contains old hardhat flows and scenario scripts.
+- Deprecated one-shot deployment scripts were archived: `scripts/legacy/deploy-complete.ts`, `scripts/legacy/hardhat/deploy.ts`.
 - Treat archived scripts as reference only.
