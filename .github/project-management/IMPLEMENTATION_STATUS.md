@@ -35,7 +35,7 @@ Status semantics used in this file:
 |---|---|---|---|---|
 | `3.1 Governance System` | Implemented | Partial | Partial | `contracts/core/ShiftGovernor.sol`, `contracts/core/CountingMultiChoice.sol`, `test/CountingMultiChoice.t.sol`; indexer proposal/vote handlers in `apps/indexer/src/index.ts`; proposal UI in `apps/web/app/governance/proposals/page.tsx`, `apps/web/components/governance/proposal-detail.tsx` |
 | `3.2 Community Management` | Implemented | Partial | Partial | `contracts/modules/CommunityRegistry.sol`, `contracts/modules/ParamController.sol`, `test/CommunityRegistry.t.sol`, `test/ParamControllerVPT.t.sol`; only community registration projection in `apps/indexer/src/index.ts`; community list + placeholder detail in `apps/web/components/communities/community-list.tsx`, `apps/web/app/communities/[communityId]/page.tsx` |
-| `3.3 Valuable Action & Engagement` | Partial | Partial | Partial | `contracts/modules/ValuableActionRegistry.sol`, `contracts/modules/Engagements.sol`, `contracts/modules/ValuableActionSBT.sol`, `test/ValuableActionRegistry.t.sol`, `test/Engagements.t.sol`, `test/ValuableActionSBT.t.sol`; engagement handlers in `apps/indexer/src/index.ts`; claims/engagement UI in `apps/web/components/claims/*` and `apps/web/app/claims/page.tsx` |
+| `3.3 Valuable Action & Engagement` | Partial | Partial | Partial | `contracts/modules/ValuableActionRegistry.sol`, `contracts/modules/Engagements.sol`, `contracts/modules/ValuableActionSBT.sol`, `test/ValuableActionRegistry.t.sol`, `test/Engagements.t.sol`, `test/ValuableActionSBT.t.sol`; engagement handlers in `apps/indexer/src/index.ts`; canonical engagements UI/routes in `apps/web/app/engagements/**` with legacy compatibility wrappers in `apps/web/app/claims/**` and shared components in `apps/web/components/claims/*` |
 | `3.4 Verifier / Jury (VPT)` | Partial | Partial | Missing | `contracts/tokens/VerifierPowerToken1155.sol`, `contracts/modules/VerifierElection.sol`, `contracts/modules/VerifierManager.sol`, `test/VerifierPowerToken1155.t.sol`, `test/VerifierElection.t.sol`, `test/VerifierManager.t.sol`; juror selection projection only in `apps/indexer/src/index.ts`; no verifier management pages/components in `apps/web/app` |
 | `3.5 Credential Management` | Implemented | Missing | Missing | `contracts/modules/CredentialManager.sol`, `test/CredentialManager.t.sol`; no credential tables/handlers in `apps/indexer/ponder.schema.ts`, `apps/indexer/src/index.ts`; no credential UI routes/components in `apps/web/app` |
 | `3.6 Position & Role Management` | Implemented | Missing | Missing | `contracts/modules/PositionManager.sol`, `test/PositionManager.t.sol`; no position projection in `apps/indexer/ponder.config.ts` or `apps/indexer/src/index.ts`; no position UI in `apps/web/app` |
@@ -62,10 +62,9 @@ Status semantics used in this file:
 
 ## 3) Cross-Layer Drift Risks
 
-1. Terminology and wiring drift: `Claims` vs `Engagements`.
-- Constitution requires current terminology (`Engagements`) in `.specify/memory/constitution.md`.
-- App still uses claims naming in routing and components (`apps/web/app/claims/page.tsx`, `apps/web/components/claims/*`, `apps/web/app/page.tsx`).
-- Contract config imports missing ABI and key (`apps/web/lib/contracts.ts` imports `../abis/Claims.json`; `apps/web/abis/` has `Engagements.json`; deployment addresses in `deployments/base_sepolia.json` expose `engagements`, not `claims`).
+1. Terminology transition still in compatibility window.
+- Canonical work-verification route/copy and contract wiring now use `Engagements` (`apps/web/app/engagements/**`, `apps/web/lib/contracts.ts`, `apps/web/lib/graphql/queries.ts`).
+- Legacy `/claims` wrappers and temporary query/contract aliases remain for migration safety and must be sunset explicitly after dependent links/tests are migrated.
 
 2. Indexer under-projects deployed protocol surface.
 - `apps/indexer/ponder.config.ts` includes only a subset of contracts.

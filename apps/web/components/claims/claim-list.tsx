@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
-import { ClaimsQuery, type ClaimNode, type ClaimsQueryResult } from "../../lib/graphql/queries";
+import { EngagementsQuery, type EngagementNode, type EngagementsQueryResult } from "../../lib/graphql/queries";
 
 export type ClaimListProps = {
   communityId?: string;
@@ -14,36 +14,36 @@ export type ClaimListProps = {
 export function ClaimList({ communityId }: ClaimListProps) {
   const communityIdNumber = communityId ? Number(communityId) : undefined;
   const variables = Number.isFinite(communityIdNumber) ? { communityId: communityIdNumber } : undefined;
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<ClaimsQueryResult, { communityId?: number }>(
-    ["claims", variables],
-    ClaimsQuery,
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<EngagementsQueryResult, { communityId?: number }>(
+    ["engagements", variables],
+    EngagementsQuery,
     variables
   );
 
-  const claims = useMemo(() => data?.claims.nodes ?? [], [data]);
+  const engagements = useMemo(() => data?.engagements.nodes ?? [], [data]);
 
-  if (isLoading) return <StatusMessage message="Loading claims…" />;
+  if (isLoading) return <StatusMessage message="Loading engagements..." />;
   if (isError)
     return (
       <div className="space-y-2">
-        <StatusMessage message="Failed to load claims." tone="error" />
+        <StatusMessage message="Failed to load engagements." tone="error" />
         <button className="text-xs underline" onClick={() => void refetch()}>
           Retry
         </button>
       </div>
     );
-  if (!claims.length) return <StatusMessage message="No claims indexed yet." />;
+  if (!engagements.length) return <StatusMessage message="No engagements indexed yet." />;
 
   return (
     <ul className="space-y-3">
-      {claims.map((claim) => (
-        <ClaimListItem key={claim.id} claim={claim} />
+      {engagements.map((engagement) => (
+        <ClaimListItem key={engagement.id} claim={engagement} />
       ))}
     </ul>
   );
 }
 
-function ClaimListItem({ claim }: { claim: ClaimNode }) {
+function ClaimListItem({ claim }: { claim: EngagementNode }) {
   return (
     <li className="rounded-lg border border-border p-4 shadow-sm">
       <div className="flex flex-col gap-2">
@@ -52,10 +52,10 @@ function ClaimListItem({ claim }: { claim: ClaimNode }) {
           <span>Submitted {formatDistanceToNow(new Date(claim.submittedAt), { addSuffix: true })}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium">Claim {claim.id}</span>
+          <span className="font-medium">Engagement {claim.id}</span>
           <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{claim.status}</span>
         </div>
-        <Link className="text-sm underline" href={`/claims/${claim.id}`}>
+        <Link className="text-sm underline" href={`/engagements/${claim.id}`}>
           View details
         </Link>
       </div>

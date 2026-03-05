@@ -68,6 +68,22 @@ export const handlers = [
     const match = id === fixtures.proposal.id ? fixtures.proposal : null;
     return HttpResponse.json({ data: { proposal: match } });
   }),
+  graphql.query("Engagements", () => {
+    return HttpResponse.json({
+      data: {
+        engagements: {
+          nodes: [fixtures.claim],
+          pageInfo: { endCursor: null, hasNextPage: false }
+        }
+      }
+    });
+  }),
+  graphql.query("Engagement", ({ variables }) => {
+    const id = String((variables as { id?: string } | undefined)?.id ?? "");
+    const match = id === fixtures.claim.id ? fixtures.claim : null;
+    return HttpResponse.json({ data: { engagement: match } });
+  }),
+  // Legacy aliases retained during compatibility window.
   graphql.query("Claims", () => {
     return HttpResponse.json({
       data: {

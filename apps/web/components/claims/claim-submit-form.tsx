@@ -67,7 +67,7 @@ export function ClaimSubmitForm() {
         throw new Error(uploadJson.error ?? "Failed to upload evidence to IPFS");
       }
 
-      const { address: contractAddress, abi } = getContractConfig("claims", chainId);
+      const { address: contractAddress, abi } = getContractConfig("engagements", chainId);
 
       await writeContractAsync({
         address: contractAddress,
@@ -76,14 +76,14 @@ export function ClaimSubmitForm() {
         args: [BigInt(typeIdNum), uploadJson.cid]
       });
 
-      setSuccessMessage("Claim submitted. It will appear after the indexer updates.");
+      setSuccessMessage("Engagement submitted. It will appear after the indexer updates.");
       setTitle("");
       setDescription("");
       setEvidenceLinks("");
       router.refresh();
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Failed to submit claim");
+      alert(err instanceof Error ? err.message : "Failed to submit engagement");
     } finally {
       setIsUploading(false);
     }
@@ -92,9 +92,9 @@ export function ClaimSubmitForm() {
   return (
     <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="space-y-1">
-        <h2 className="text-base font-semibold">Submit Claim</h2>
+        <h2 className="text-base font-semibold">Submit Engagement</h2>
         <p className="text-sm text-muted-foreground">
-          Upload an evidence manifest to IPFS and submit to the Claims contract for juror verification.
+          Upload an evidence manifest to IPFS and submit to the Engagements contract for juror verification.
         </p>
       </div>
 
@@ -146,7 +146,7 @@ export function ClaimSubmitForm() {
           disabled={disabled}
           className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
         >
-          {isPending || isUploading ? "Submitting..." : "Submit claim"}
+          {isPending || isUploading ? "Submitting..." : "Submit engagement"}
         </button>
         {!isConnected ? <span className="text-xs text-destructive">Connect a wallet to submit.</span> : null}
         {error ? <span className="text-xs text-destructive">{error.message ?? "Transaction failed"}</span> : null}

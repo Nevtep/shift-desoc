@@ -8,6 +8,8 @@
 
 **Core Flow**: `requests → drafts → proposals → timelock execution` with Engagement-based merit verification and token rewards.
 
+**Manager Surface Canonicalization (2026-03)**: Work verification user flows are canonicalized under `/engagements` in the Manager app. Legacy `/claims` routes are temporary compatibility wrappers and should be sunset after migration.
+
 **Contract Count**: 25 Solidity contracts (excluding libs/interfaces; includes ProjectFactory)
 
 **Target Networks**: Base (primary), Ethereum (secondary), Base Sepolia (testing)

@@ -94,8 +94,8 @@ export function RequestDetailHeader({
               {linkedValuableActionId ? `Valuable Action ${linkedValuableActionId}` : "Not linked"}
             </span>
             {linkedValuableActionId ? (
-              <Link className="text-xs underline" href={`/claims?valuableActionId=${linkedValuableActionId}`}>
-                Submit or view claims
+              <Link className="text-xs underline" href={`/engagements?valuableActionId=${linkedValuableActionId}`}>
+                Submit or view engagements
               </Link>
             ) : null}
           </div>

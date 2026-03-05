@@ -50,8 +50,8 @@ export default function RootLayout({
                     <Link className="hover:text-foreground" href="/requests">
                       Path A: Requests
                     </Link>
-                    <Link className="hover:text-foreground" href="/claims">
-                      Path B: Claims
+                    <Link className="hover:text-foreground" href="/engagements">
+                      Path B: Engagements
                     </Link>
                     <Link className="hover:text-foreground" href="/marketplace">
                       Path C: Marketplace

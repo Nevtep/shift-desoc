@@ -28,7 +28,7 @@ export default async function CommunityDetailPage({ params }: PageParams) {
         <div className="rounded-lg border border-border p-4 shadow-sm">
           <h2 className="text-lg font-medium">Core Modules</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Links to requests, drafts, governance, and claims for this community.
+            Links to requests, drafts, governance, and engagements for this community.
           </p>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
@@ -47,8 +47,8 @@ export default async function CommunityDetailPage({ params }: PageParams) {
               </Link>
             </li>
             <li>
-              <Link className="underline" href={`/claims?communityId=${communityId}`}>
-                Claims
+              <Link className="underline" href={`/engagements?communityId=${communityId}`}>
+                Engagements
               </Link>
             </li>
             <li>

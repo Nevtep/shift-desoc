@@ -17,7 +17,7 @@ describe("ClaimSubmitForm", () => {
 
     renderWithProviders(<ClaimSubmitForm />);
 
-    expect(screen.getByRole("button", { name: /Submit claim/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Submit engagement/i })).toBeDisabled();
     expect(screen.getByText(/Connect a wallet to submit/i)).toBeInTheDocument();
   });
 
@@ -31,7 +31,7 @@ describe("ClaimSubmitForm", () => {
     await userEvent.type(screen.getByLabelText(/Valuable Action ID/i), "abc");
     await userEvent.type(screen.getByLabelText(/Title/i), "Example title");
     await userEvent.type(screen.getByLabelText(/Description/i), "Example description");
-    await userEvent.click(screen.getByRole("button", { name: /Submit claim/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Submit engagement/i }));
 
     await waitFor(() =>
       expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/valid valuable action id/i))
@@ -52,9 +52,9 @@ describe("ClaimSubmitForm", () => {
     await userEvent.type(screen.getByLabelText(/Description/i), "Did the thing");
     await userEvent.type(screen.getByLabelText(/Evidence CIDs/i), "ipfs://cid1,cid2");
 
-    await userEvent.click(screen.getByRole("button", { name: /Submit claim/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Submit engagement/i }));
 
-    await waitFor(() => expect(screen.getByText(/Claim submitted/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Engagement submitted/i)).toBeInTheDocument());
     expect(fetchSpy).toHaveBeenCalledWith(
       "/api/ipfs/upload",
       expect.objectContaining({ method: "POST" })

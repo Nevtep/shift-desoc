@@ -12,7 +12,7 @@ describe("ClaimDetail", () => {
     mockWagmiHooks({ connected: true });
     renderWithProviders(<ClaimDetail claimId={fixtures.claim.id} />);
 
-    expect(await screen.findByText(/Claim 50/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Engagement 50/i)).toBeInTheDocument();
     expect(screen.getByText(/Evidence/i)).toBeInTheDocument();
     expect(screen.getByText(/Juror Panel/i)).toBeInTheDocument();
   });
@@ -42,11 +42,11 @@ describe("ClaimDetail", () => {
       originalError(...args);
     });
 
-    server.use(graphql.query("Claim", () => HttpResponse.json({ errors: [{ message: "nope" }] })));
+    server.use(graphql.query("Engagement", () => HttpResponse.json({ errors: [{ message: "nope" }] })));
 
     renderWithProviders(<ClaimDetail claimId="404" />);
 
-    expect(await screen.findAllByText(/Failed to load claim/i)).not.toHaveLength(0);
+    expect(await screen.findAllByText(/Failed to load engagement/i)).not.toHaveLength(0);
 
     errorSpy.mockRestore();
   });
