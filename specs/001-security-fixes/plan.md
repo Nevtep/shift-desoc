@@ -23,16 +23,17 @@ Implement a security-first remediation program for all CRITICAL/HIGH/MEDIUM find
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- `.specify/memory/constitution.md` contains placeholder template text (no ratified enforceable principles).
-- Enforced gates for this plan therefore derive from repo operating manual and spec invariants:
-  - Timelock/governance authority is the only privileged mutation path.
-  - Verifier model remains governance-controlled (no staking/bonding introduction).
-  - Commerce disputes remain separated from work verification logic.
-  - Treasury/backing guardrails cannot be bypassed.
+- Constitution reference: `.specify/memory/constitution.md` (Shift Monorepo Constitution v1.0.0).
+- Gate checks:
+  - Protocol infrastructure first: changes remain protocol-generic; no vertical UX logic embedded in primitives.
+  - Contract-first authority: no indexer/app shadow authority for privileged state transitions.
+  - Security/invariant preservation: timelock authority, commerce/work separation, and treasury invariants preserved.
+  - Event-driven deterministic projection: contract/event changes evaluated for indexer replay/migration and health impact.
+  - Monorepo vertical-slice delivery: contracts/tests/docs synced; downstream consumer compatibility validated.
 
 **Gate Status (Pre-Phase 0)**: PASS (no constitutional contradiction detected)
 
-**Gate Status (Post-Phase 1 Design)**: PASS (design artifacts preserve all listed invariants)
+**Gate Status (Post-Phase 1 Design)**: PASS with closeout actions required for explicit evidence packaging and M-1 resolution classification.
 
 ## Project Structure
 
@@ -84,6 +85,26 @@ docs/EN/
 ```
 
 **Structure Decision**: Contract-first remediation with test updates in existing Foundry suite and mandatory docs sync under `docs/EN/` and `contracts/FEATURES.md`.
+
+## Monorepo Impact & Compatibility Matrix
+
+| Layer | Impact | Required Validation |
+|-------|--------|---------------------|
+| Contracts | Direct changes across modules/tokens/interfaces | Foundry regression + authorization/invariant checks |
+| Indexer (Ponder) | ABI/event consumer impact possible | ABI sync + replay compatibility check + consumer validation |
+| Manager App (Next.js) | Behavior/docs alignment required for security-sensitive flows | Role-gating and tx-path alignment verification |
+| Downstream dApps | Interface/event semantics dependency | Breaking-change assessment + migration notes if needed |
+| Documentation | Mandatory for security posture and behavior truth | Sync `docs/EN/*`, `neuromancer/SHIFT_SYSTEM.md`, `contracts/FEATURES.md` |
+
+## Security Closeout Evidence Package (Required)
+
+Closeout is not complete until all artifacts exist and are linked from the checklist:
+
+1. Finding-to-code-and-test trace matrix with file references.
+2. Governance/authorization validation evidence for privileged paths.
+3. ABI sync evidence and downstream consumer impact notes.
+4. Rollout/recovery notes for partial migration or replay divergence.
+5. Explicit M-1 decision record: `FULLY_RESOLVED` or `RESIDUAL_RISK_ACCEPTED` with approver.
 
 ## Phase 0: Research & Decisions
 

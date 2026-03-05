@@ -192,6 +192,21 @@
 
 ---
 
+## Phase 9: Security Closeout & Signoff (Checklist-Driven)
+
+**Purpose**: Produce explicit closeout evidence and resolve remaining ambiguity gates required by `checklists/security-closeout.md`.
+
+- [x] T063 Create closeout evidence bundle document with finding-by-finding trace links in specs/001-security-fixes/contracts/security-closeout-evidence.md
+- [x] T064 [P] Add M-1 quantitative methodology and threshold statement in specs/001-security-fixes/spec.md
+- [x] T065 Add explicit M-1 closeout decision record (`FULLY_RESOLVED` or `RESIDUAL_RISK_ACCEPTED`) and approver in specs/001-security-fixes/contracts/security-closeout-evidence.md
+- [x] T066 [P] Add deterministic settlement outcome matrix (routed vs fallback) in specs/001-security-fixes/spec.md
+- [x] T067 [P] Add external dependency validation matrix and compensating controls in specs/001-security-fixes/spec.md
+- [x] T068 Add partial-rollout recovery and rollback runbook checks in specs/001-security-fixes/quickstart.md
+- [x] T069 Map and check off `specs/001-security-fixes/checklists/security-closeout.md` with evidence links
+- [x] T070 Final signoff update in .github/project-management/STATUS_REVIEW.md with residual-risk ownership
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -202,7 +217,8 @@
 - **Phase 4 (US2)** and **Phase 5 (US3)**: Start after Phase 2; run in parallel after US1 Immediate tasks T016–T018 complete.
 - **Phase 6 (US4)**: Starts after Phase 2; scheduled after Before-mainnet items for security-first ordering.
 - **Phase 7 (Operational controls)**: Starts after relevant code behaviors are finalized.
-- **Phase 8 (Polish)**: Final pass after chosen story scopes are complete.
+- **Phase 8 (Polish)**: Runs after implementation stabilization.
+- **Phase 9 (Closeout)**: Final gate; required before security-audit completion declaration.
 
 ### User Story Dependencies
 
@@ -223,6 +239,7 @@
 2. **Before mainnet**: T019–T020, T029–T032, T039–T040
 3. **Pre-production hardening**: T021–T022, T033–T034, T045–T048
 4. **Operational controls**: T051–T056
+5. **Closeout signoff**: T063–T070
 
 ---
 
@@ -297,4 +314,4 @@ T049 and T050
 - `[P]` tasks touch different files and can run concurrently.
 - Every finding from CRITICAL/HIGH/MEDIUM is represented by at least one implementation task and one test task.
 - Design-Awareness items (D-1, D-2) are handled in operational controls only (no behavior changes).
-- This task list is ready for execution and handoff tracking.
+- Security closeout requires Phase 9 evidence completion before final signoff.

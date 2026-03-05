@@ -157,6 +157,14 @@ As protocol operators, we need protections against gas-based denial-of-service, 
   - **Fixed Means**: Settlement either completes safely or falls back to a guaranteed non-trapping settlement path.  
   - **Primary Acceptance Scenario**: Unsupported routing token still allows deterministic settlement without trapped escrow.  
   - **Edge Cases**: Router unavailable; token support toggled between order and settlement.
+  - **Deterministic Settlement Outcome Matrix**:
+
+    | Condition | Settlement Path | Expected Outcome |
+    |-----------|-----------------|------------------|
+    | `revenueRouter` configured + token supported | Routed (`routeRevenue`) | Order settles; accrual accounted by router policy; no escrow remainder in marketplace |
+    | `revenueRouter` configured + token unsupported | Direct fallback transfer | Order settles; seller paid directly; router accrual unchanged for that order |
+    | `revenueRouter` unset/unavailable | Direct fallback transfer | Order settles; seller paid directly; no trapped escrow |
+    | Routing revert due to unsupported compatibility | Must not leave order unsettled | Fallback path succeeds or tx reverts atomically pre-state-change |
 
 10. **M-1 Predictable juror selection entropy**  
    - **Problem**: Selection inputs can be influenced or observed to bias juror outcomes.  
@@ -165,6 +173,15 @@ As protocol operators, we need protections against gas-based denial-of-service, 
    - **Fixed Means**: Selection uses unpredictability source and process that cannot be materially biased by simple timing control.  
    - **Primary Acceptance Scenario**: Repeated timing attempts do not yield statistically biased favorable selection in simulation bounds.  
    - **Edge Cases**: Low verifier population; repeated submissions in same block window.
+  - **Closeout Decision Gate**: Final status MUST be explicitly classified as one of:
+    - `FULLY_RESOLVED`: meets quantitative anti-bias threshold in reproducible tests, or
+    - `RESIDUAL_RISK_ACCEPTED`: documented residual risk accepted by governance with rationale and compensating controls.
+   - **Quantitative Methodology (Closeout Minimum)**:
+     - Use fixed-seed reproducible harness with at least `N = 10,000` selections per mode.
+     - Uniform mode threshold: maximum absolute per-juror selection deviation from expected probability MUST be `<= 5%` relative error for eligible jurors with expected frequency >= 1%.
+     - Weighted mode threshold: observed selection rank MUST preserve expected weight rank with Spearman correlation `>= 0.95`.
+     - Timing sensitivity check: repeated submission-time perturbation runs MUST NOT produce statistically significant directional advantage at `p < 0.01` for a fixed actor set.
+     - If any threshold is not met, closeout MUST use `RESIDUAL_RISK_ACCEPTED` with compensating controls and ownership.
 
 11. **M-2 Active engagement counting is unbounded complexity**  
    - **Problem**: Submission complexity grows with historical engagement count.  
@@ -211,39 +228,49 @@ As protocol operators, we need protections against gas-based denial-of-service, 
 ### Functional Requirements
 
 - **FR-001**: The system MUST maintain signature compatibility across cross-contract interfaces used in financial distribution paths.
-- **FR-002**: The system MUST enforce liability-preserving financial invariants so no emergency or privileged action can reduce redeemable collateral below outstanding obligations.
+- **FR-002**: The system MUST enforce liability-preserving financial invariants so no emergency or privileged action can reduce redeemable collateral below outstanding obligations; specifically `USDC.balanceOf(CommunityToken) - emergencyWithdrawalAmount >= totalSupply()` at execution time.
 - **FR-003**: Engagement completion MUST execute configured bounty payouts atomically with completion finalization.
-- **FR-004**: Every engagement MUST have a guaranteed path to a terminal state, including timeout-driven resolution.
+- **FR-004**: Every engagement MUST have a guaranteed path to a terminal state, including timeout-driven resolution; expired pending engagements MUST resolve deterministically and release participant concurrency accounting.
 - **FR-005**: Engagement submission MUST fail atomically if juror assignment cannot be completed.
 - **FR-006**: Verification outcomes MUST use governance-configured approval thresholds per action type.
 - **FR-007**: Request rate limiting MUST reset by policy period and never create permanent lockout for compliant users.
-- **FR-008**: Privileged economic/policy mutations MUST be executable only through governance-authorized authority and MUST reject moderator-only bypasses.
-- **FR-009**: Settlement flows MUST guarantee no escrow remains permanently trapped due to routing compatibility conditions.
-- **FR-010**: Juror selection MUST be resilient against practical timing-based manipulation and provide auditable fairness assurances.
+- **FR-008**: Privileged economic/policy mutations MUST be executable only through governance-authorized authority (`Governor -> Timelock -> AccessManager restricted target`) and MUST reject moderator-only bypasses.
+- **FR-009**: Settlement flows MUST guarantee no escrow remains permanently trapped due to routing compatibility conditions, with explicit deterministic outcomes for both routed and fallback settlement paths.
+- **FR-010**: Juror selection MUST be resilient against practical timing-based manipulation and provide auditable fairness assurances using a quantitative test threshold and reproducible methodology documented in closeout evidence.
 - **FR-011**: State checks in high-frequency flows MUST be bounded to prevent historical growth from causing gas-based denial of service.
 - **FR-012**: All fund-moving staking/unstaking flows MUST be protected against reentrant execution.
 - **FR-013**: Reservation and occupancy operations MUST enforce bounded processing limits that prevent gas exhaustion.
 - **FR-014**: For Design-Awareness items, the system MUST preserve current functional behavior while adding operational safeguards, monitoring/alerts, and documentation updates.
 - **FR-015**: Security hardening documentation MUST include updated threat model, runbooks, and alert conditions for all findings prioritized as Immediate/Before mainnet/Hardening/Ops.
 - **FR-016**: Protocol documentation MUST be synchronized with remediated behavior, including removal of stale claims in `contracts/FEATURES.md` that conflict with implemented contract logic.
+- **FR-017**: Security closeout MUST include an evidence package with trace links for each finding to: changed contracts, tests, governance/authorization validation, ABI sync outputs, and rollout notes.
+- **FR-018**: For unresolved or partially mitigated findings, the spec MUST record explicit residual-risk ownership, acceptance authority, and compensating controls.
+- **FR-019**: Closeout artifacts MUST include recovery/runbook steps for partial rollout failures (migration mismatch, stale consumer ABIs, replay divergence).
 
 ### Assumptions & Dependencies
 
 - The audit report in `contracts/SECURITY_AUDIT.md` is the authoritative source for finding definitions and severity.
 - Governance authority model remains: privileged mutations execute via governor + timelock path.
 - Existing accepted Design-Awareness behaviors (D-1 and D-2) remain unchanged functionally and are mitigated operationally.
+- Statistical fairness checks for M-1 may be environment-sensitive; fixed seeds, sample sizes, and pass/fail thresholds MUST be documented to keep results reproducible.
+- External dependencies (token behavior quirks, routing availability, indexer replay behavior, reorg handling assumptions) MUST be listed with validation status and fallback controls.
+
+### Dependency Validation Matrix
+
+| Dependency | Validation Method | Current Status | Compensating Control |
+|------------|-------------------|----------------|----------------------|
+| ERC20 token behavior variance (fee-on-transfer/non-standard return) | Marketplace/RequestHub integration tests on supported tokens | Validated for project-supported token set | Allowlist discipline + fallback direct transfer where applicable |
+| Router availability/support matrix | Settlement regression tests (supported + unsupported) | Validated | Deterministic fallback settlement path |
+| ABI consumer freshness (web/indexer) | ABI copy scripts + consumer build/type/test pass | Validated | Release gate blocks deploy when ABI sync missing |
+| Indexer replay and event consumption | Replay checklist in quickstart + staging dry run | Pending periodic re-validation | Start-block control + staged replay checklist |
+| Reorg sensitivity for projections | Ponder operational monitoring and replay checks | Pending periodic re-validation | Health checks + replay runbook before releases |
 
 ### Consistency Clarifications (Features vs Implementation)
 
 - `contracts/SECURITY_AUDIT.md` and on-chain contract behavior take precedence over descriptive claims in `contracts/FEATURES.md` whenever they differ.
-- RequestHub currently does not execute bounty token transfer in `completeEngagement`; payout is emitted as readiness only and is remediated by C-3.
-- RequestHub currently enforces a lifetime-accumulating post counter (not a true daily reset), so H-5 is required to meet the stated rate-limit intent.
-- CommunityToken currently supports governance `mintTo` without immediate USDC deposit and emergency withdrawal without liability floor enforcement; C-2 and D-1 define corrective and operational treatment.
-- Engagements currently uses simple-majority verification and tolerates juror-selection failure; H-2, H-3, and H-1 are required for configured-threshold and liveness correctness.
-- ValuableActionRegistry currently permits moderator-level `update`/`deactivate`; M-3 restores timelock-only privileged mutation boundaries.
-- HousingManager staking paths currently lack explicit reentrancy guard and reservation availability updates iterate unbounded by stay length; M-4 and M-5 address these risks.
-- Revenue cohort distribution currently has interface/implementation selector mismatch risk (`ICohortRegistry` vs `CohortRegistry`); C-1 is an immediate blocker.
-- Marketplace settlement currently assumes router compatibility and can fail deterministically for unsupported routing tokens; H-4 requires non-trapping settlement behavior.
+- C-1/C-2/C-3, H-1/H-2/H-3/H-5, and M-2/M-3/M-4/M-5 are implemented and covered by regression tests in this feature branch.
+- H-4 fallback settlement behavior is implemented with routing compatibility checks and direct-transfer fallback path.
+- M-1 remains a hardening-sensitive area and requires explicit closeout classification (`FULLY_RESOLVED` vs `RESIDUAL_RISK_ACCEPTED`) with quantitative evidence and signoff.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -264,3 +291,6 @@ As protocol operators, we need protections against gas-based denial-of-service, 
 - **SC-006**: In acceptance tests, no escrow remains trapped due to unsupported routing conditions; each settlement path resolves to payout or deterministic fallback.
 - **SC-007**: In stress scenarios representing high historical activity, submission and booking flows remain within defined bounded execution limits for accepted input ranges.
 - **SC-008**: For Design-Awareness findings, monitoring alerts, runbooks, and ownership documentation are published and validated for operational readiness before mainnet.
+- **SC-009**: Security closeout evidence bundle is complete and traceable for every finding (code diff, test proof, governance/role validation, ABI sync, and rollout notes).
+- **SC-010**: M-1 has an explicit approved closeout status (`FULLY_RESOLVED` or `RESIDUAL_RISK_ACCEPTED`) with measurable justification and designated approver.
+- **SC-011**: Recovery procedures for partial rollout failures are documented and validated in at least one dry run.

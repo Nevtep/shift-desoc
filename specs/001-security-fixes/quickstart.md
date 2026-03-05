@@ -78,3 +78,15 @@ node scripts/copy-web-abis.js
 - Update `contracts/FEATURES.md` to remove stale behavior claims
 - Update `docs/EN/Architecture.md` and security sections for new invariants
 - Add/refresh runbooks and monitoring rules for D-1 and D-2
+
+## 8) Partial-Rollout Recovery & Rollback Checks
+
+Use this if a deployment/update completes only partially or consumer drift is detected.
+
+- [ ] Snapshot current addresses and role wiring from `deployments/latest.json` and governance state.
+- [ ] Re-run ABI sync scripts and verify app/indexer consumers are on the same ABI set.
+- [ ] If mismatch is detected, halt rollout and restore last known good ABI/artifact set.
+- [ ] Re-run staging replay checklist to confirm contract/indexer/app consistency.
+- [ ] If indexer replay diverges, reset/replay from approved start block and re-validate key queries.
+- [ ] Re-run targeted regression suite for touched modules and at least one end-to-end fund-flow scenario.
+- [ ] Update `.github/project-management/STATUS_REVIEW.md` with incident, rollback action, and closure note.
