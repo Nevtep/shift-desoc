@@ -237,7 +237,7 @@ contract ValuableActionRegistry is AccessManaged {
     /// @notice Update an existing valuable action
     /// @param id ID of the valuable action to update
     /// @param params New configuration for the valuable action
-    function update(uint256 id, Types.ValuableAction calldata params) external onlyModerator {
+    function update(uint256 id, Types.ValuableAction calldata params) external restricted {
         if (!_exists(id)) revert Errors.InvalidValuableAction(id);
         if (!isActive[id]) revert Errors.InvalidValuableAction(id);
         
@@ -249,7 +249,7 @@ contract ValuableActionRegistry is AccessManaged {
 
     /// @notice Deactivate a valuable action (cannot be used for new claims)
     /// @param id ID of the valuable action to deactivate
-    function deactivate(uint256 id) external onlyModerator {
+    function deactivate(uint256 id) external restricted {
         if (!_exists(id)) revert Errors.InvalidValuableAction(id);
         if (!isActive[id]) revert Errors.InvalidValuableAction(id);
         

@@ -8,6 +8,7 @@ import {HousingManager} from "contracts/modules/HousingManager.sol";
 import {CommerceDisputes} from "contracts/modules/CommerceDisputes.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 import {Roles} from "contracts/libs/Roles.sol";
+import {MaliciousERC20} from "./mocks/MaliciousERC20.sol";
 
 /**
  * @title MarketplaceHousing Integration Test
@@ -531,5 +532,65 @@ contract MarketplaceHousingTest is Test {
 
         // After staking (would need staking implementation)
         // This is tested more thoroughly in HousingManager unit tests
+    }
+
+    function test_RevertWhen_ReservationExceedsMaxStay() public {
+        uint64 checkIn = uint64(block.timestamp + 1 days);
+        uint64 checkOut = checkIn + 91 days;
+        bytes memory params = abi.encode(checkIn, checkOut);
+
+        vm.prank(guest1);
+        vm.expectRevert();
+        marketplace.purchase(offerId, address(usdc), params);
+    }
+
+    function test_MaxStayBoundaryAllowed() public {
+        uint64 checkIn = uint64(block.timestamp + 1 days);
+        uint64 checkOut = checkIn + 90 days;
+        bytes memory params = abi.encode(checkIn, checkOut);
+
+        vm.prank(guest1);
+        uint256 orderId = marketplace.purchase(offerId, address(usdc), params);
+        assertGt(orderId, 0);
+    }
+}
+
+contract HousingManagerReentrancyTest is Test {
+    AccessManager public accessManager;
+    HousingManager public housing;
+    MaliciousERC20 public maliciousToken;
+
+    address public owner = address(this);
+    address public unitOwner = address(0xABC1);
+    address public attacker = address(0xABC2);
+
+    uint256 public constant COMMUNITY_ID = 1;
+
+    function setUp() public {
+        maliciousToken = new MaliciousERC20();
+        accessManager = new AccessManager(owner);
+        housing = new HousingManager(address(accessManager), address(maliciousToken));
+
+        bytes4[] memory housingAdmin = new bytes4[](1);
+        housingAdmin[0] = housing.createUnit.selector;
+        accessManager.setTargetFunctionRole(address(housing), housingAdmin, accessManager.ADMIN_ROLE());
+
+        maliciousToken.mint(attacker, 1_000e18);
+    }
+
+    function testUnstakeReentrancyBlocked() public {
+        uint256 unitId = housing.createUnit(COMMUNITY_ID, unitOwner, "ipfs://unit", 1e18, 2, 0);
+
+        vm.startPrank(attacker);
+        maliciousToken.approve(address(housing), type(uint256).max);
+        housing.stakeForUnit(unitId, 100e18);
+
+        maliciousToken.setAttackTarget(address(housing), unitId, 10e18, true);
+
+        vm.expectRevert();
+        housing.unstakeFromUnit(unitId, 10e18);
+        vm.stopPrank();
+
+        assertEq(housing.getInvestorStake(unitId, attacker), 100e18);
     }
 }

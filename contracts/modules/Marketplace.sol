@@ -390,8 +390,13 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
      * @notice Internal settlement logic via RevenueRouter
      */
     function _settleToSeller(Order storage order, Offer storage offer) internal {
-        // Route settlement through RevenueRouter for cohort distribution
+        bool shouldRoute = false;
         if (address(revenueRouter) != address(0)) {
+            shouldRoute = revenueRouter.supportedTokens(offer.communityId, order.paymentToken);
+        }
+
+        // Route settlement through RevenueRouter for cohort distribution when token is supported
+        if (shouldRoute) {
             // Approve RevenueRouter to pull funds
             IERC20(order.paymentToken).forceApprove(address(revenueRouter), order.amount);
             
@@ -403,7 +408,7 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
             // - Spillover handling
             revenueRouter.routeRevenue(offer.communityId, order.paymentToken, order.amount);
         } else {
-            // Fallback: direct transfer to seller (for testing/MVP without RevenueRouter)
+            // Fallback: direct transfer to seller when routing is unavailable/incompatible
             IERC20(order.paymentToken).safeTransfer(offer.seller, order.amount);
         }
 

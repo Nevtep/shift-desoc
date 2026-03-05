@@ -107,7 +107,7 @@ pnpm build                    # Compile both toolchains
 pnpm forge:test              # Run Foundry tests
 pnpm cov:gate                # Check coverage
 
-# Deploy complete system (fresh deployment)
+# Deploy staged canonical pipeline (fresh deployment)
 npm run deploy:base-sepolia   # Deploy to Base Sepolia testnet
 npm run deploy:base           # Deploy to Base mainnet
 npm run deploy:ethereum       # Deploy to Ethereum mainnet
@@ -135,83 +135,63 @@ pnpm fmt
 
 ### 🚀 **Network Deployment (4 scripts)**
 
-- **`deploy:base-sepolia`** - Deploy to Base Sepolia testnet
-- **`deploy:base`** - Deploy to Base mainnet
-- **`deploy:ethereum-sepolia`** - Deploy to Ethereum Sepolia testnet
-- **`deploy:ethereum`** - Deploy to Ethereum mainnet
+- **`deploy:base-sepolia`** - Run full staged deployment pipeline on Base Sepolia
+- **`deploy:base`** - Run full staged deployment pipeline on Base
+- **`deploy:ethereum-sepolia`** - Run full staged deployment pipeline on Ethereum Sepolia
+- **`deploy:ethereum`** - Run full staged deployment pipeline on Ethereum
 
-### 🏠 **Community Creation (6 scripts)**
+### 🧩 **Canonical Community Deployment (4 scripts)**
 
-- **`create-community`** - Standard community creation
-- **`create-community:api`** - API-friendly community creation for UI integration
-- **`create-community:direct`** - Manual deployment bypassing factory size limits
-- **`deploy:mvp`** - Lightweight MVP deployment for testing
-- **`setup:complete-community`** - Recovery tool for failed deployments
-- **`setup:finalize-community`** - Production deployment completion
-- **`setup:fix-issues`** - **Surgical fixes for deployment problems**
+- **`deploy:shared-infra`** - Deploy/reuse shared infra (AccessManager/ParamController/CommunityRegistry)
+- **`deploy:community-stack`** - Deploy per-community contracts and register modules
+- **`deploy:wire-community`** - Apply selector-level least-privilege role wiring
+- **`deploy:verify-community`** - Verify deployment invariants and critical role paths
 
-### 👀 **User-Friendly Monitoring (5 scripts)**
+### 👀 **Monitoring & Verification (3 scripts)**
 
-- **`check:balance`** - Simple wallet balance checker
-- **`check:engagements`** - **Comprehensive engagement monitoring with detailed analysis**
-- **`check:rewards`** - **Detailed reward tracking and analysis**
-- **`check:governance`** - **Governance status monitoring with proposal tracking**
-- **`check:permissions`** - **Debug admin permissions and roles**
+- **`check:balance`** - D-1 backing ratio monitor
+- **`check:engagements`** - D-2 engagement anomaly monitor
+- **`verify:base-sepolia`** - Base Sepolia integration/accessibility verification
 
-### 🏛️ **Governance Operations (3 scripts)**
+### 🛠️ **Administration & Operations**
 
-- **`governance:create-action`** - **Create ValuableActions through governance proposals**
-- **`governance:monitor`** - **Real-time proposal monitoring with status tracking**
-- **`governance:vote`** - **Cast votes on governance proposals**
-- **`execute:proposal`** - **Execute succeeded governance proposals through timelock**
+- **`admin` / `admin:create` / `admin:grant-role` / `admin:set-params` / `admin:timelock`** - community admin CLI commands
+- **`manage:cohorts`** - cohort lifecycle and revenue cohort operations
+- **`dev:generate-wallets`** - local wallet generation helper
 
-### 👥 **Verification Operations (2 scripts)**
+### 📦 **Build & ABI Tooling**
 
-- **`verifier:register`** - **Register as verifier with required bonding**
-- **`verifier:verify-engagement`** - **Verifier interface for M-of-N engagement verification**
+- **`forge:build`** - Foundry build + ABI sync to indexer/web
+- **`hh:compile`** - Hardhat compile
+- **`forge:cov`** + **`cov:gate`** - coverage and gate enforcement
 
-### 🔬 **System Analysis (2 scripts)**
+### 🗃️ **Legacy Scripts**
 
-- **`analyze:system`** - **Comprehensive system health diagnostics**
-- **`analyze:verification`** - **Work verification system analysis and testing**
-
-### 🧪 **E2E Testing Suite (3 scripts)**
-
-- **`test:verification-e2e`** - **Complete work verification workflow test**
-- **`test:governance-e2e`** - **Simple governance flow validation**
-- **`test:validate-results`** - **Validate E2E test results**
-
-### 🎛️ **System Administration & Utilities**
-
-- **`manage`** - Interactive admin CLI for system operations
-- **`status`** - Quick system status check
-- **`submit:engagement`** - **User-friendly engagement submission interface**
-- **`validate-deployment`** - Verify deployment completeness
-- **`test:e2e`** - End-to-end scenario testing
-- **`gas-costs`** - Gas cost analysis for operations
-- **`dev:generate-wallets`** - **Generate test wallets for multi-user testing**
+- Historical, one-off, and broken/outdated scripts are archived under `scripts/legacy/`.
+- They are reference-only and intentionally not exposed as package commands.
+- See `scripts/README.md` for the maintained active script surface.
 
 ## 🎯 **Why This Toolkit Is Essential**
 
 ### **Production Readiness**
 
-- **Multiple deployment strategies** + recovery tools for complex multi-contract deployments
-- **Comprehensive monitoring** with user-friendly status checking vs diving into blockchain explorers
-- **Surgical troubleshooting** for production issues without full redeployment
+- **Single canonical deployment path** for deterministic and auditable setup
+- **Focused monitoring scripts** for backing ratio and engagement anomalies
+- **Reduced operator ambiguity** by archiving outdated workflows
 
 ### **Community Operations**
 
-- **Guided governance workflows** for proposal creation, voting, and execution
-- **Work verification coordination** between verifiers with M-of-N verification tools
-- **Economic transparency** with reward tracking and treasury monitoring
+- **Admin CLI** for community creation, role assignment, and parameter updates
+- **Cohort tooling** for economic-layer operations
+- **Deployment JSON-based wiring** to keep scripts network-aware
 
 ### **Operational Excellence**
 
-- **Complete test coverage** for all workflows from governance to verification
-- **System intelligence** with deep diagnostic tools for proactive issue detection
-- **Multi-user support** with wallet generation and validation tools
+- **Coverage gates** and dual-toolchain validation
+- **ABI sync tooling** for web/indexer consistency
+- **Clear script governance** (active vs archived)
 
-**Result**: Production-ready toolkit covering every scenario from development to community governance to system maintenance.
+**Result**: Lean, maintainable toolkit for current deployment and operations.
 
 ## 📝 **Deployment Address Management**
 
@@ -225,13 +205,13 @@ When you deploy, addresses are automatically saved to:
 
 ### **Automatic Address Loading**
 
-All management scripts automatically load addresses from deployment files:
+Active operational scripts load addresses from deployment files:
 
 ```bash
-# No manual configuration needed - addresses auto-loaded!
-npm run manage --network base_sepolia status
-npm run check:governance --network base_sepolia
-npm run submit:engagement --network base_sepolia
+# No manual configuration needed - addresses auto-loaded where supported
+pnpm check:balance --network base_sepolia
+pnpm check:engagements --network base_sepolia
+pnpm verify:base-sepolia
 ```
 
 ### **Deployment File Format**
@@ -259,79 +239,9 @@ npm run submit:engagement --network base_sepolia
 
 📚 **See [`deployments/README.md`](deployments/README.md) for complete documentation**
 
-### **System Management**
+### **Script Inventory**
 
-Complete management interface for all system operations including governance, verifier elections, engagements processing, and community administration.
-
-#### **System Status & Monitoring**
-
-```bash
-# Check overall system status
-npm run status
-
-# Get community information
-npm run manage community info 1
-npm run manage community params 1
-```
-
-#### **Governance Operations**
-
-```bash
-# Check proposal information
-npm run manage governance proposal <proposalId>
-
-# Vote on governance proposal (0=Against, 1=For, 2=Abstain)
-npm run manage governance vote <proposalId> 1 "Supporting this proposal"
-```
-
-#### **Engagements & Work Verification**
-
-```bash
-# Submit work engagement
-npm run manage engagements submit 1 1 "QmEvidenceHash..."
-
-# Check engagement status
-npm run manage engagements info 42
-
-# Verify engagement (for verifiers)
-npm run manage engagements verify 42 true
-```
-
-#### **VPT Token Management**
-
-```bash
-# Check VPT balance
-npm run manage vpt balance 0x123... 1
-
-# Mint VPT tokens (governance only)
-npm run manage vpt mint 0x123... 1 1000
-
-# Check voting eligibility
-npm run manage vpt eligibility 0x123... 1
-```
-
-### **Example Deployment Workflow**
-
-```bash
-# 1. Deploy core Shift DeSoc contracts
-pnpm -C packages/hardhat hardhat run scripts/deploy.ts --network base_sepolia
-
-# 2. Deploy VPT system migration
-pnpm vpt:deploy:base-sepolia
-
-# 3. Create first verifier election
-pnpm vpt:manage create-election \
-  --community-id 1 \
-  --seats 3 \
-  --term-length 90 \
-  --network base_sepolia
-
-# 4. Community members apply and vote
-# [Applications and voting happen through UI or individual commands]
-
-# 5. Check election results and verifier status
-pnpm vpt:manage list-verifiers --community-id 1 --network base_sepolia
-```
+For the complete and current script inventory, see `scripts/README.md`.
 
 ## 🌐 **Network Support**
 

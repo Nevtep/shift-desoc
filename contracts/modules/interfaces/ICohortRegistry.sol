@@ -23,4 +23,6 @@ interface ICohortRegistry {
     function isCohortActive(uint256 cohortId) external view returns (bool);
     function getCohortCommunity(uint256 cohortId) external view returns (uint256);
     function getInvestmentAmountByToken(uint256 tokenId) external view returns (uint256);
+    function getCohortWeight(uint256 cohortId) external view returns (uint256);
+    function markRecovered(uint256 cohortId, uint256 amount) external;
 }

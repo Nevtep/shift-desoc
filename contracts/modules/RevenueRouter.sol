@@ -201,9 +201,7 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         uint256[] memory weights = new uint256[](active.length);
 
         for (uint256 i = 0; i < active.length; i++) {
-            ICohortRegistry.Cohort memory cohort = cohortRegistry.getCohort(active[i]);
-            if (!cohort.active || cohort.communityId != communityId) continue;
-            weights[i] = cohort.investedTotal;
+            weights[i] = cohortRegistry.getCohortWeight(active[i]);
             totalWeight += weights[i];
         }
 
@@ -218,6 +216,7 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
 
             uint256 deltaIndex = (cohortPayment * INDEX_SCALE) / weight;
             cohortIndex[cohortId][token] += deltaIndex;
+            cohortRegistry.markRecovered(active[i], cohortPayment);
             distributed += cohortPayment;
         }
     }

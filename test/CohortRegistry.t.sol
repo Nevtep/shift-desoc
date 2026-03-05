@@ -126,4 +126,22 @@ contract CohortRegistryTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, address(this)));
         registry.markRecovered(cohortId, 1);
     }
+
+    function testGetCohortWeightOneArgCompatibility() public {
+        uint32 priority = 3;
+
+        vm.prank(governance);
+        uint256 cohortId = registry.createCohort(COMMUNITY_ID, TARGET_ROI, priority, TERMS_HASH, 0, 0, true);
+
+        vm.prank(recorder);
+        registry.addInvestment(cohortId, address(1), 1000, 1);
+
+        uint256 weighted = registry.getCohortWeight(cohortId);
+        uint256 weightedTwoArg = registry.getCohortWeight(cohortId, true);
+        uint256 unweighted = registry.getCohortWeight(cohortId, false);
+
+        assertEq(weighted, weightedTwoArg);
+        assertEq(weighted, 4500);
+        assertEq(unweighted, 1500);
+    }
 }

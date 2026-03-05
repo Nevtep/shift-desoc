@@ -76,6 +76,26 @@ The script automatically:
 4. **Saves addresses to `deployments/base_sepolia.json`**
 5. **Saves addresses to `deployments/latest.json`**
 
+### Production-grade new-community sequence
+
+For staged, auditable deployments aligned with current interfaces and least-privilege role wiring:
+
+1. `npx hardhat run scripts/hardhat/deploy-shared-infra.ts --network <network>`
+2. `npx hardhat run scripts/hardhat/deploy-community-stack.ts --network <network>`
+3. `npx hardhat run scripts/hardhat/post-deploy-role-wiring.ts --network <network>`
+4. `npx hardhat run scripts/hardhat/verify-community-deployment.ts --network <network>`
+
+Equivalent `pnpm` commands:
+
+1. `pnpm deploy:shared-infra --network <network>`
+2. `pnpm deploy:community-stack --network <network>`
+3. `pnpm deploy:wire-community --network <network>`
+4. `pnpm deploy:verify-community --network <network>`
+
+This sequence writes both `deployments/{network}.json` and `deployments/latest.json` consistently, and verifies module registration plus role grants required for cross-contract restricted calls.
+
+Legacy deployment/setup scripts are stored under `scripts/legacy/hardhat/` and should only be used for historical troubleshooting or reproduction.
+
 ## Contract List
 
 Each deployment file contains addresses for:

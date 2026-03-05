@@ -77,7 +77,7 @@ El script de despliegue:
 
 ```bash
 # Verificar estado del sistema
-pnpm validate-deployment --network base_sepolia
+pnpm deploy:verify-community --network base_sepolia
 
 # Ejecutar tests E2E
 pnpm test:e2e --network base_sepolia
@@ -271,7 +271,7 @@ pnpm check:balance --network base_sepolia
 
 ```bash
 # Verificar despliegue completo
-pnpm validate-deployment --network base_sepolia
+pnpm deploy:verify-community --network base_sepolia
 
 # Re-desplegar si es necesario
 pnpm deploy:base-sepolia
@@ -345,7 +345,7 @@ pnpm manage:cohorts create 1 150 4500 10 50000 1000000  # Investigación
 Para soporte técnico:
 
 1. Revisar documentación en `/docs/ES/`
-2. Ejecutar `pnpm validate-deployment`
+2. Ejecutar `pnpm deploy:verify-community`
 3. Verificar logs en BaseScan
 4. Consultar con el equipo de desarrollo
 

@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { Roles } from "../roles";
+import { Roles } from "../../roles";
 
 /**
  * Create Community Directly (without CommunityFactory)

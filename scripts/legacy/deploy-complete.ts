@@ -9,7 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const hre = require("hardhat");
 const { ethers } = hre;
-const { Roles } = require("./roles");
+const { Roles } = require("../roles");
 
 type DeploymentConfig = {
   network: string;
@@ -1365,7 +1365,7 @@ class ShiftDeSocDeployer {
   }
 
   private async saveDeploymentAddresses(report: DeploymentReport): Promise<void> {
-    const deploymentsDir = path.join(__dirname, "..", "deployments");
+    const deploymentsDir = path.join(__dirname, "..", "..", "deployments");
     if (!fs.existsSync(deploymentsDir)) {
       fs.mkdirSync(deploymentsDir, { recursive: true });
     }

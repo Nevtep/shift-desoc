@@ -420,6 +420,113 @@ contract EngagementsTest is Test {
         engagements.submit(ACTION_TYPE_1, "");
     }
 
+    function testSubmitEngagementRevertsWhenJurorSelectionFails() public {
+        Types.ValuableAction memory action = Types.ValuableAction({
+            membershipTokenReward: 50,
+            communityTokenReward: 0,
+            investorSBTReward: 0,
+            category: Types.ActionCategory.ENGAGEMENT_ONE_SHOT,
+            roleTypeId: bytes32(0),
+            positionPoints: 0,
+            verifierPolicy: Types.VerifierPolicy.JURY,
+            metadataSchemaId: bytes32("schema:work:v1"),
+            jurorsMin: 2,
+            panelSize: 6,
+            verifyWindow: 86400,
+            verifierRewardWeight: 10,
+            slashVerifierBps: 100,
+            cooldownPeriod: 1,
+            maxConcurrent: 1,
+            revocable: false,
+            evidenceTypes: 1,
+            proposalThreshold: 100,
+            proposer: governance,
+            evidenceSpecCID: "QmSpec",
+            titleTemplate: "Title",
+            automationRules: new bytes32[](0),
+            activationDelay: 0,
+            deprecationWarning: 0
+        });
+
+        vm.startPrank(governance);
+        uint256 actionId = actionRegistry.proposeValuableAction(COMMUNITY_ID, action, bytes32("proposal-fail-jurors"));
+        actionRegistry.activateFromGovernance(actionId, bytes32("proposal-fail-jurors"));
+        vm.stopPrank();
+
+        vm.expectRevert();
+        vm.prank(worker1);
+        engagements.submit(actionId, EVIDENCE_CID);
+    }
+
+    function testActiveEngagementCounterTracksPendingState() public {
+        vm.prank(worker1);
+        uint256 engagementId = engagements.submit(ACTION_TYPE_1, EVIDENCE_CID);
+
+        assertEq(engagements.activeEngagementCounts(worker1, ACTION_TYPE_1), 1);
+
+        address[] memory jurors = engagements.getEngagementJurors(engagementId);
+        vm.prank(jurors[0]);
+        engagements.verify(engagementId, true);
+        vm.prank(jurors[1]);
+        engagements.verify(engagementId, true);
+
+        assertEq(engagements.activeEngagementCounts(worker1, ACTION_TYPE_1), 0);
+    }
+
+    function testMaxConcurrentReleasedAfterResolution() public {
+        Types.ValuableAction memory action = Types.ValuableAction({
+            membershipTokenReward: 50,
+            communityTokenReward: 0,
+            investorSBTReward: 0,
+            category: Types.ActionCategory.ENGAGEMENT_ONE_SHOT,
+            roleTypeId: bytes32(0),
+            positionPoints: 0,
+            verifierPolicy: Types.VerifierPolicy.JURY,
+            metadataSchemaId: bytes32("schema:work:v1"),
+            jurorsMin: 2,
+            panelSize: 3,
+            verifyWindow: 86400,
+            verifierRewardWeight: 10,
+            slashVerifierBps: 100,
+            cooldownPeriod: 1,
+            maxConcurrent: 1,
+            revocable: false,
+            evidenceTypes: 1,
+            proposalThreshold: 100,
+            proposer: governance,
+            evidenceSpecCID: "QmSpec",
+            titleTemplate: "Title",
+            automationRules: new bytes32[](0),
+            activationDelay: 0,
+            deprecationWarning: 0
+        });
+
+        vm.startPrank(governance);
+        uint256 actionId = actionRegistry.proposeValuableAction(COMMUNITY_ID, action, bytes32("proposal-max-concurrent"));
+        actionRegistry.activateFromGovernance(actionId, bytes32("proposal-max-concurrent"));
+        vm.stopPrank();
+
+        vm.prank(worker1);
+        uint256 firstEngagementId = engagements.submit(actionId, EVIDENCE_CID);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Too many concurrent engagements for this action type"));
+        vm.prank(worker1);
+        engagements.submit(actionId, "QmSecondEvidence");
+
+        address[] memory jurors = engagements.getEngagementJurors(firstEngagementId);
+        vm.prank(jurors[0]);
+        engagements.verify(firstEngagementId, true);
+        vm.prank(jurors[1]);
+        engagements.verify(firstEngagementId, true);
+
+        assertEq(engagements.activeEngagementCounts(worker1, actionId), 0);
+
+        vm.warp(block.timestamp + 2);
+        vm.prank(worker1);
+        uint256 secondEngagementId = engagements.submit(actionId, "QmSecondEvidence");
+        assertGt(secondEngagementId, firstEngagementId);
+    }
+
     /*//////////////////////////////////////////////////////////////
                         VERIFICATION WORKFLOW
     //////////////////////////////////////////////////////////////*/
@@ -468,6 +575,53 @@ contract EngagementsTest is Test {
         assertTrue(resolved);
     }
 
+    function testVerifyUsesConfiguredJurorsMin() public {
+        Types.ValuableAction memory action = Types.ValuableAction({
+            membershipTokenReward: 50,
+            communityTokenReward: 0,
+            investorSBTReward: 0,
+            category: Types.ActionCategory.ENGAGEMENT_ONE_SHOT,
+            roleTypeId: bytes32(0),
+            positionPoints: 0,
+            verifierPolicy: Types.VerifierPolicy.JURY,
+            metadataSchemaId: bytes32("schema:work:v1"),
+            jurorsMin: 1,
+            panelSize: 3,
+            verifyWindow: 86400,
+            verifierRewardWeight: 10,
+            slashVerifierBps: 100,
+            cooldownPeriod: 1,
+            maxConcurrent: 1,
+            revocable: false,
+            evidenceTypes: 1,
+            proposalThreshold: 100,
+            proposer: governance,
+            evidenceSpecCID: "QmSpec",
+            titleTemplate: "Title",
+            automationRules: new bytes32[](0),
+            activationDelay: 0,
+            deprecationWarning: 0
+        });
+
+        vm.startPrank(governance);
+        uint256 actionId = actionRegistry.proposeValuableAction(COMMUNITY_ID, action, bytes32("proposal-jurors-min"));
+        actionRegistry.activateFromGovernance(actionId, bytes32("proposal-jurors-min"));
+        vm.stopPrank();
+
+        vm.prank(worker1);
+        uint256 engagementId = engagements.submit(actionId, EVIDENCE_CID);
+
+        address[] memory jurors = engagements.getEngagementJurors(engagementId);
+        vm.prank(jurors[0]);
+        engagements.verify(engagementId, true);
+
+        (, , , Types.EngagementStatus status, , , , uint32 approvals, uint32 rejections, bool resolved) = engagements.getEngagement(engagementId);
+        assertEq(uint8(status), uint8(Types.EngagementStatus.Approved));
+        assertEq(approvals, 1);
+        assertEq(rejections, 0);
+        assertTrue(resolved);
+    }
+
     function testNonJurorCannotVerify() public {
         vm.prank(worker1);
         uint256 engagementId = engagements.submit(ACTION_TYPE_1, EVIDENCE_CID);
@@ -510,5 +664,80 @@ contract EngagementsTest is Test {
         vm.prank(worker1);
         uint256 secondId = engagements.submit(ACTION_TYPE_1, "QmSecondEvidence");
         assertEq(secondId, 2);
+    }
+
+    function testResolveExpiredEngagement() public {
+        vm.prank(worker1);
+        uint256 engagementId = engagements.submit(ACTION_TYPE_1, EVIDENCE_CID);
+
+        (, , , , , uint64 verifyDeadline, , , , ) = engagements.getEngagement(engagementId);
+        vm.warp(uint256(verifyDeadline) + 1);
+
+        engagements.resolveExpired(engagementId);
+
+        (, , , Types.EngagementStatus status, , , , uint32 approvals, uint32 rejections, bool resolved) = engagements.getEngagement(engagementId);
+        assertEq(uint8(status), uint8(Types.EngagementStatus.Rejected));
+        assertEq(approvals, 0);
+        assertEq(rejections, 0);
+        assertTrue(resolved);
+    }
+
+    function testSubmitGasTrendBoundedWithGrowingHistory() public {
+        Types.ValuableAction memory action = Types.ValuableAction({
+            membershipTokenReward: 50,
+            communityTokenReward: 0,
+            investorSBTReward: 0,
+            category: Types.ActionCategory.ENGAGEMENT_ONE_SHOT,
+            roleTypeId: bytes32(0),
+            positionPoints: 0,
+            verifierPolicy: Types.VerifierPolicy.JURY,
+            metadataSchemaId: bytes32("schema:work:v1"),
+            jurorsMin: 2,
+            panelSize: 3,
+            verifyWindow: 86400,
+            verifierRewardWeight: 10,
+            slashVerifierBps: 100,
+            cooldownPeriod: 1,
+            maxConcurrent: 1,
+            revocable: false,
+            evidenceTypes: 1,
+            proposalThreshold: 100,
+            proposer: governance,
+            evidenceSpecCID: "QmSpec",
+            titleTemplate: "Title",
+            automationRules: new bytes32[](0),
+            activationDelay: 0,
+            deprecationWarning: 0
+        });
+
+        vm.startPrank(governance);
+        uint256 actionId = actionRegistry.proposeValuableAction(COMMUNITY_ID, action, bytes32("proposal-gas-trend"));
+        actionRegistry.activateFromGovernance(actionId, bytes32("proposal-gas-trend"));
+        vm.stopPrank();
+
+        uint256 firstSubmitGas;
+        uint256 latestSubmitGas;
+
+        for (uint256 i = 0; i < 12; i++) {
+            uint256 gasBefore = gasleft();
+            vm.prank(worker1);
+            uint256 engagementId = engagements.submit(actionId, string(abi.encodePacked("QmEvidence", vm.toString(i))));
+            uint256 gasUsed = gasBefore - gasleft();
+
+            if (i == 0) {
+                firstSubmitGas = gasUsed;
+            }
+            latestSubmitGas = gasUsed;
+
+            address[] memory jurors = engagements.getEngagementJurors(engagementId);
+            vm.prank(jurors[0]);
+            engagements.verify(engagementId, true);
+            vm.prank(jurors[1]);
+            engagements.verify(engagementId, true);
+
+            vm.warp(block.timestamp + 2);
+        }
+
+        assertLt(latestSubmitGas, firstSubmitGas + 120000);
     }
 }

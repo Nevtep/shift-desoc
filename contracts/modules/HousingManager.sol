@@ -7,6 +7,7 @@ import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Errors} from "../libs/Errors.sol";
 
 /**
@@ -27,11 +28,12 @@ import {Errors} from "../libs/Errors.sol";
  * - Staking: Investors lock USDC to back units (tracked separately from UnitToken)
  * - Discounts: Community members (ValuableActionSBT holders) get lower rates
  */
-contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged {
+contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged, ReentrancyGuard {
     // ============ Constants ============
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant MIN_STAY_NIGHTS = 1;
+    uint256 public constant MAX_STAY_NIGHTS = 90;
 
     // Cancellation refund tiers
     uint256 public constant CANCEL_FULL_REFUND_DAYS = 7; // >7 days = 100% refund
@@ -128,6 +130,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged {
     error ReservationNotFound(uint256 reservationId);
     error InvalidDateRange(uint64 checkIn, uint64 checkOut);
     error UnitNotAvailable(uint256 unitId, uint64 checkIn, uint64 checkOut);
+    error MaxStayExceeded(uint256 nights, uint256 maxAllowed);
     error OnlyUnitOwner();
     error OnlyGuest();
     error InvalidStatus(ReservationStatus current, ReservationStatus required);
@@ -211,7 +214,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged {
      * @notice Stake USDC to back a unit
      * @dev Staking is tracked separately from UnitToken ownership
      */
-    function stakeForUnit(uint256 unitId, uint256 amount) external unitExists(unitId) {
+    function stakeForUnit(uint256 unitId, uint256 amount) external nonReentrant unitExists(unitId) {
         Unit storage unit = units[unitId];
 
         if (amount == 0) revert Errors.InvalidInput("Zero amount");
@@ -229,7 +232,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged {
      * @notice Unstake USDC from a unit
      * @dev Can only unstake what you previously staked
      */
-    function unstakeFromUnit(uint256 unitId, uint256 amount) external unitExists(unitId) {
+    function unstakeFromUnit(uint256 unitId, uint256 amount) external nonReentrant unitExists(unitId) {
         Unit storage unit = units[unitId];
         uint256 currentStake = investorStakes[unitId][msg.sender];
 
@@ -272,6 +275,7 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged {
         // Calculate nights
         uint256 nights = (checkOutTime - checkInTime) / 1 days;
         if (nights < MIN_STAY_NIGHTS) revert MinStayNotMet(nights, MIN_STAY_NIGHTS);
+        if (nights > MAX_STAY_NIGHTS) revert MaxStayExceeded(nights, MAX_STAY_NIGHTS);
 
         // Use unit's base price (ignore suggested basePrice)
         finalPrice = unit.basePrice * nights;
@@ -298,6 +302,8 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged {
         (uint64 checkInTime, uint64 checkOutTime) = abi.decode(params, (uint64, uint64));
 
         // Validate availability
+        uint256 nights = (checkOutTime - checkInTime) / 1 days;
+        if (nights > MAX_STAY_NIGHTS) revert MaxStayExceeded(nights, MAX_STAY_NIGHTS);
         if (!_isAvailable(productId, checkInTime, checkOutTime)) {
             revert UnitNotAvailable(productId, checkInTime, checkOutTime);
         }

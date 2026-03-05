@@ -719,6 +719,15 @@ Beyond the basic time-evolution, the system rewards **actual performance** rathe
 - **Emergency controls**: Community can pause distributions if attacks are detected
 - **Term Limits**: Regular verifier re-elections prevent long-term capture or entrenchment
 
+**Current Security Posture Enhancements (Staging Rollout)**:
+
+- **Treasury safety floor**: Emergency withdrawals preserve collateral obligations and cannot drain user liabilities.
+- **Non-trapping settlements**: Commerce settlement flows avoid escrow traps when unsupported routing tokens are encountered.
+- **Deterministic verification liveness**: Engagements include explicit terminal resolution paths for expiry/selection-failure scenarios.
+- **Governance-only privileged action changes**: Valuable-action mutation boundaries align to timelock/governance authority.
+- **Reentrancy + availability hardening**: Housing stake/unstake paths are guarded and reservation duration is bounded.
+- **Operational anomaly controls**: Backing-ratio and engagement-anomaly monitoring runbooks provide incident-response pathways.
+
 ### **Complete Community Economic Sovereignty**
 
 **The Ultimate Principle**: Shift DeSoc is meta-governance technology. Each community controls its own economic rules through democratic governance—we provide the tools, communities decide how to use them.

@@ -5,7 +5,7 @@ const fs = require("fs");
 
 async function main() {
   const networkName = network.name;
-  const deploymentPath = path.join(__dirname, "../../deployments", `${networkName}.json`);
+  const deploymentPath = path.join(__dirname, "../../../deployments", `${networkName}.json`);
   if (!fs.existsSync(deploymentPath)) {
     throw new Error(`Deployment file not found at ${deploymentPath}`);
   }

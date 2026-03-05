@@ -101,6 +101,13 @@ contract CohortRegistryMock2 {
     function isCohortActive(uint256 cohortId) external view returns (bool) { return cohorts[cohortId].active; }
     function getCohortCommunity(uint256 cohortId) external view returns (uint256) { return cohorts[cohortId].communityId; }
     function getInvestmentAmountByToken(uint256 tokenId) external view returns (uint256) { return tokenWeight[tokenId]; }
+    function getCohortWeight(uint256 cohortId) external view returns (uint256) {
+        if (!cohorts[cohortId].active) {
+            return 0;
+        }
+        return cohorts[cohortId].investedTotal;
+    }
+    function markRecovered(uint256, uint256) external {}
 }
 
 contract SBTMock is IValuableActionSBT {

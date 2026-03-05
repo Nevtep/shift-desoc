@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
+import {Marketplace} from "contracts/modules/Marketplace.sol";
 import {RevenueRouter} from "contracts/modules/RevenueRouter.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 import {Roles} from "contracts/libs/Roles.sol";
@@ -365,5 +366,126 @@ contract MarketplaceRevenueRouterTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Zero amount"));
         router.routeRevenue(COMMUNITY_ID, address(token), 0);
         vm.stopPrank();
+    }
+}
+
+contract MarketplaceSettlementRegressionTest is Test {
+    AccessManager public accessManager;
+    Marketplace public marketplace;
+    RevenueRouter public router;
+    ParamControllerMock public paramController;
+    CohortRegistryMock public cohortRegistry;
+    ValuableActionSBTMock public sbt;
+    MockERC20 public token;
+
+    address public admin = address(this);
+    address public seller = address(0x1111);
+    address public buyer = address(0x2222);
+    address public treasury = address(0x3333);
+
+    uint256 public constant COMMUNITY_ID = 1;
+
+    function setUp() public {
+        paramController = new ParamControllerMock();
+        cohortRegistry = new CohortRegistryMock();
+        sbt = new ValuableActionSBTMock();
+        token = new MockERC20();
+
+        accessManager = new AccessManager(admin);
+        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt));
+        marketplace = new Marketplace(address(accessManager), address(0), address(router));
+
+        vm.startPrank(admin, admin);
+
+        bytes4[] memory routerAdminSelectors = new bytes4[](2);
+        routerAdminSelectors[0] = router.setCommunityTreasury.selector;
+        routerAdminSelectors[1] = router.setSupportedToken.selector;
+        accessManager.setTargetFunctionRole(address(router), routerAdminSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory routerDistributorSelectors = new bytes4[](1);
+        routerDistributorSelectors[0] = router.routeRevenue.selector;
+        accessManager.setTargetFunctionRole(
+            address(router), routerDistributorSelectors, Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE
+        );
+
+        bytes4[] memory marketplaceAdminSelectors = new bytes4[](2);
+        marketplaceAdminSelectors[0] = marketplace.setCommunityActive.selector;
+        marketplaceAdminSelectors[1] = marketplace.setCommunityToken.selector;
+        accessManager.setTargetFunctionRole(address(marketplace), marketplaceAdminSelectors, accessManager.ADMIN_ROLE());
+
+        accessManager.grantRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, address(marketplace), 0);
+        vm.stopPrank();
+
+        marketplace.setCommunityActive(COMMUNITY_ID, true);
+        marketplace.setCommunityToken(COMMUNITY_ID, address(0xCAFE));
+        router.setCommunityTreasury(COMMUNITY_ID, treasury);
+
+        token.mint(buyer, 1_000e18);
+        vm.prank(buyer);
+        token.approve(address(marketplace), type(uint256).max);
+
+        paramController.setRevenuePolicy(COMMUNITY_ID, 10_000, 0, 1, 0);
+    }
+
+    function _createGenericOffer() internal returns (uint256 offerId) {
+        vm.prank(seller);
+        offerId = marketplace.createOffer(
+            COMMUNITY_ID,
+            Marketplace.OfferKind.GENERIC,
+            address(0),
+            0,
+            100e18,
+            address(token),
+            false,
+            true,
+            0,
+            address(token),
+            0,
+            "ipfs://offer"
+        );
+    }
+
+    function testSettleRoutesWhenTokenSupported() public {
+        router.setSupportedToken(COMMUNITY_ID, address(token), true);
+
+        uint256 offerId = _createGenericOffer();
+
+        vm.prank(buyer);
+        uint256 orderId = marketplace.purchase(offerId, address(token), "");
+
+        vm.prank(seller);
+        marketplace.markOrderFulfilled(orderId);
+
+        vm.warp(block.timestamp + 3 days + 1);
+
+        vm.prank(seller);
+        marketplace.settleOrder(orderId);
+
+        Marketplace.Order memory order = marketplace.getOrder(orderId);
+        assertEq(uint8(order.status), uint8(Marketplace.OrderStatus.SETTLED));
+        assertEq(token.balanceOf(address(marketplace)), 0);
+        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), order.amount);
+        assertEq(token.balanceOf(seller), 0);
+    }
+
+    function testSettleFallsBackWhenTokenUnsupported() public {
+        uint256 offerId = _createGenericOffer();
+
+        vm.prank(buyer);
+        uint256 orderId = marketplace.purchase(offerId, address(token), "");
+
+        vm.prank(seller);
+        marketplace.markOrderFulfilled(orderId);
+
+        vm.warp(block.timestamp + 3 days + 1);
+
+        uint256 sellerBefore = token.balanceOf(seller);
+        vm.prank(seller);
+        marketplace.settleOrder(orderId);
+
+        Marketplace.Order memory order = marketplace.getOrder(orderId);
+        assertEq(uint8(order.status), uint8(Marketplace.OrderStatus.SETTLED));
+        assertEq(token.balanceOf(seller), sellerBefore + order.amount);
+        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 0);
     }
 }
