@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { ClaimSubmitForm } from "../../../components/claims/claim-submit-form";
+import { EngagementSubmitForm } from "../../../components/engagements/engagement-submit-form";
 import { renderWithProviders, mockWagmiHooks } from "../utils";
 
 vi.mock("../../../lib/contracts", () => {
@@ -11,11 +11,11 @@ vi.mock("../../../lib/contracts", () => {
   };
 });
 
-describe("ClaimSubmitForm", () => {
+describe("EngagementSubmitForm", () => {
   it("disables submit and shows wallet hint when disconnected", () => {
     mockWagmiHooks({ connected: false });
 
-    renderWithProviders(<ClaimSubmitForm />);
+    renderWithProviders(<EngagementSubmitForm />);
 
     expect(screen.getByRole("button", { name: /Submit engagement/i })).toBeDisabled();
     expect(screen.getByText(/Connect a wallet to submit/i)).toBeInTheDocument();
@@ -25,7 +25,7 @@ describe("ClaimSubmitForm", () => {
     mockWagmiHooks({ connected: true });
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
 
-    renderWithProviders(<ClaimSubmitForm />);
+    renderWithProviders(<EngagementSubmitForm />);
 
     await userEvent.clear(screen.getByLabelText(/Valuable Action ID/i));
     await userEvent.type(screen.getByLabelText(/Valuable Action ID/i), "abc");
@@ -45,7 +45,7 @@ describe("ClaimSubmitForm", () => {
 
     const fetchSpy = vi.spyOn(global, "fetch");
 
-    renderWithProviders(<ClaimSubmitForm />);
+    renderWithProviders(<EngagementSubmitForm />);
 
     await userEvent.type(screen.getByLabelText(/Valuable Action ID/i), "2");
     await userEvent.type(screen.getByLabelText(/Title/i), "Ship feature");

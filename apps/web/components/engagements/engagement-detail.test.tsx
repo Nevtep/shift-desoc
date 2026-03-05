@@ -2,15 +2,15 @@ import { HttpResponse, graphql } from "msw";
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ClaimDetail } from "./claim-detail";
+import { EngagementDetail } from "./engagement-detail";
 import { server } from "../../tests/unit/server";
 import { mockWagmiHooks, renderWithProviders } from "../../tests/unit/utils";
 import { fixtures } from "../../tests/unit/mocks/fixtures";
 
-describe("ClaimDetail", () => {
+describe("EngagementDetail", () => {
   it("renders metadata, evidence, and juror table", async () => {
     mockWagmiHooks({ connected: true });
-    renderWithProviders(<ClaimDetail claimId={fixtures.claim.id} />);
+    renderWithProviders(<EngagementDetail engagementId={fixtures.engagement.id} />);
 
     expect(await screen.findByText(/Engagement 50/i)).toBeInTheDocument();
     expect(screen.getByText(/Evidence/i)).toBeInTheDocument();
@@ -19,7 +19,7 @@ describe("ClaimDetail", () => {
 
   it("gates verification when disconnected", async () => {
     mockWagmiHooks({ connected: false });
-    renderWithProviders(<ClaimDetail claimId={fixtures.claim.id} />);
+    renderWithProviders(<EngagementDetail engagementId={fixtures.engagement.id} />);
 
     const submit = await screen.findByRole("button", { name: /Submit verification/i });
     expect(submit).toBeDisabled();
@@ -28,7 +28,7 @@ describe("ClaimDetail", () => {
 
   it("shows juror warning when connected but not assigned", async () => {
     mockWagmiHooks({ connected: true, address: "0x9999999999999999999999999999999999999999" });
-    renderWithProviders(<ClaimDetail claimId={fixtures.claim.id} />);
+    renderWithProviders(<EngagementDetail engagementId={fixtures.engagement.id} />);
 
     expect(await screen.findByText(/You are not assigned as a juror/i)).toBeInTheDocument();
   });
@@ -44,7 +44,7 @@ describe("ClaimDetail", () => {
 
     server.use(graphql.query("Engagement", () => HttpResponse.json({ errors: [{ message: "nope" }] })));
 
-    renderWithProviders(<ClaimDetail claimId="404" />);
+    renderWithProviders(<EngagementDetail engagementId="404" />);
 
     expect(await screen.findAllByText(/Failed to load engagement/i)).not.toHaveLength(0);
 

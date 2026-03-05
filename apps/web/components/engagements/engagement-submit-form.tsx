@@ -6,7 +6,7 @@ import { useAccount, useChainId, useWriteContract } from "wagmi";
 
 import { getContractConfig } from "../../lib/contracts";
 
-export function ClaimSubmitForm() {
+export function EngagementSubmitForm() {
   const router = useRouter();
   const chainId = useChainId();
   const { address, status } = useAccount();

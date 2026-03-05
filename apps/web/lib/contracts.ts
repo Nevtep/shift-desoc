@@ -37,11 +37,6 @@ export const CONTRACTS = {
     key: "engagements" as ContractKey,
     abi: engagementsAbi
   },
-  // Temporary alias during /claims route compatibility window.
-  claims: {
-    key: "engagements" as ContractKey,
-    abi: engagementsAbi
-  },
   governor: {
     key: "governor" as ContractKey,
     abi: governorAbi

@@ -1,4 +1,4 @@
-import { ClaimDetail } from "../../../components/claims/claim-detail";
+import { EngagementDetail } from "../../../components/engagements/engagement-detail";
 
 export const metadata = {
   title: "Engagement Detail | Shift"
@@ -21,7 +21,7 @@ export function EngagementDetailPageContent({ engagementId }: { engagementId: st
           proxy.
         </p>
       </header>
-      <ClaimDetail claimId={engagementId} />
+      <EngagementDetail engagementId={engagementId} />
     </main>
   );
 }

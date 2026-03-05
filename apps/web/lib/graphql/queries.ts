@@ -345,7 +345,7 @@ export const EngagementsQuery = /* GraphQL */ `
   }
 `;
 
-export type ClaimNode = {
+export type EngagementNode = {
   communityId: number;
   id: string;
   valuableActionId: string;
@@ -355,8 +355,6 @@ export type ClaimNode = {
   submittedAt: string;
   resolvedAt?: string | null;
 };
-
-export type EngagementNode = ClaimNode;
 
 export type EngagementsQueryResult = {
   engagements: {
@@ -406,15 +404,4 @@ export type EngagementQueryResult = {
       decidedAt?: string | null;
     }[];
   } | null;
-};
-
-// Transitional aliases for compatibility with claim-named imports.
-export const ClaimsQuery = EngagementsQuery;
-export type ClaimsQueryResult = {
-  claims: EngagementsQueryResult["engagements"];
-};
-
-export const ClaimQuery = EngagementQuery;
-export type ClaimQueryResult = {
-  claim: EngagementQueryResult["engagement"];
 };

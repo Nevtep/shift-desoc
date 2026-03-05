@@ -7,11 +7,11 @@ import { useMemo } from "react";
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { EngagementsQuery, type EngagementNode, type EngagementsQueryResult } from "../../lib/graphql/queries";
 
-export type ClaimListProps = {
+export type EngagementListProps = {
   communityId?: string;
 };
 
-export function ClaimList({ communityId }: ClaimListProps) {
+export function EngagementList({ communityId }: EngagementListProps) {
   const communityIdNumber = communityId ? Number(communityId) : undefined;
   const variables = Number.isFinite(communityIdNumber) ? { communityId: communityIdNumber } : undefined;
   const { data, isLoading, isError, refetch } = useGraphQLQuery<EngagementsQueryResult, { communityId?: number }>(
@@ -37,25 +37,25 @@ export function ClaimList({ communityId }: ClaimListProps) {
   return (
     <ul className="space-y-3">
       {engagements.map((engagement) => (
-        <ClaimListItem key={engagement.id} claim={engagement} />
+        <EngagementListItem key={engagement.id} engagement={engagement} />
       ))}
     </ul>
   );
 }
 
-function ClaimListItem({ claim }: { claim: EngagementNode }) {
+function EngagementListItem({ engagement }: { engagement: EngagementNode }) {
   return (
     <li className="rounded-lg border border-border p-4 shadow-sm">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span>Valuable Action {claim.valuableActionId}</span>
-          <span>Submitted {formatDistanceToNow(new Date(claim.submittedAt), { addSuffix: true })}</span>
+          <span>Valuable Action {engagement.valuableActionId}</span>
+          <span>Submitted {formatDistanceToNow(new Date(engagement.submittedAt), { addSuffix: true })}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium">Engagement {claim.id}</span>
-          <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{claim.status}</span>
+          <span className="font-medium">Engagement {engagement.id}</span>
+          <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{engagement.status}</span>
         </div>
-        <Link className="text-sm underline" href={`/engagements/${claim.id}`}>
+        <Link className="text-sm underline" href={`/engagements/${engagement.id}`}>
           View details
         </Link>
       </div>

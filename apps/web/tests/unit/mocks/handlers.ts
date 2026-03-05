@@ -72,7 +72,7 @@ export const handlers = [
     return HttpResponse.json({
       data: {
         engagements: {
-          nodes: [fixtures.claim],
+          nodes: [fixtures.engagement],
           pageInfo: { endCursor: null, hasNextPage: false }
         }
       }
@@ -80,24 +80,8 @@ export const handlers = [
   }),
   graphql.query("Engagement", ({ variables }) => {
     const id = String((variables as { id?: string } | undefined)?.id ?? "");
-    const match = id === fixtures.claim.id ? fixtures.claim : null;
+    const match = id === fixtures.engagement.id ? fixtures.engagement : null;
     return HttpResponse.json({ data: { engagement: match } });
-  }),
-  // Legacy aliases retained during compatibility window.
-  graphql.query("Claims", () => {
-    return HttpResponse.json({
-      data: {
-        claims: {
-          nodes: [fixtures.claim],
-          pageInfo: { endCursor: null, hasNextPage: false }
-        }
-      }
-    });
-  }),
-  graphql.query("Claim", ({ variables }) => {
-    const id = String((variables as { id?: string } | undefined)?.id ?? "");
-    const match = id === fixtures.claim.id ? fixtures.claim : null;
-    return HttpResponse.json({ data: { claim: match } });
   }),
   // Draft detail via REST API base
   http.get(`${API_BASE}/drafts/:draftId`, ({ params }) => {
@@ -113,7 +97,7 @@ export const handlers = [
       }
     });
   }),
-  // IPFS proxy for request/draft/proposal/claim documents
+  // IPFS proxy for request/draft/proposal/engagement documents
   http.get("/api/ipfs/:cid", ({ params }) => {
     const cid = String(params.cid);
     const now = new Date().toISOString();
@@ -151,7 +135,7 @@ export const handlers = [
       });
     }
 
-    if (cid === fixtures.claim.evidenceManifestCid) {
+    if (cid === fixtures.engagement.evidenceManifestCid) {
       return HttpResponse.json({
         cid,
         type: "claimEvidence",

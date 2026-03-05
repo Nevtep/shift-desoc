@@ -15,21 +15,21 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "../ui/toaster";
 
-export type ClaimDetailProps = {
-  claimId: string;
+export type EngagementDetailProps = {
+  engagementId: string;
 };
 
-export function ClaimDetail({ claimId }: ClaimDetailProps) {
+export function EngagementDetail({ engagementId }: EngagementDetailProps) {
   const { data, isLoading, isError, refetch } = useGraphQLQuery<EngagementQueryResult, { id: string }>(
-    ["engagement", claimId],
+    ["engagement", engagementId],
     EngagementQuery,
-    { id: claimId }
+    { id: engagementId }
   );
 
   const { push } = useToast();
 
-  const claim = data?.engagement ?? null;
-  const manifestCid = claim?.evidenceManifestCid ?? undefined;
+  const engagement = data?.engagement ?? null;
+  const manifestCid = engagement?.evidenceManifestCid ?? undefined;
   const { data: manifest, isLoading: isManifestLoading, isError: isManifestError } = useIpfsDocument(
     manifestCid,
     Boolean(manifestCid)
@@ -39,7 +39,7 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
     return <p className="text-sm text-muted-foreground">Loading engagement...</p>;
   }
 
-  if (isError || !claim) {
+  if (isError || !engagement) {
     if (isError) {
       push("Failed to load engagement. Please retry.", "error");
     }
@@ -59,22 +59,22 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
         <div className="rounded-lg border border-border p-4 shadow-sm">
           <h2 className="text-lg font-medium">Metadata</h2>
           <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
-            <MetadataItem label="Valuable Action" value={claim.valuableActionId} />
-            <MetadataItem label="Participant" value={claim.claimant} />
-            <MetadataItem label="Status" value={claim.status} />
+            <MetadataItem label="Valuable Action" value={engagement.valuableActionId} />
+            <MetadataItem label="Participant" value={engagement.claimant} />
+            <MetadataItem label="Status" value={engagement.status} />
             <MetadataItem
               label="Submitted"
-              value={formatDistanceToNow(new Date(claim.submittedAt), { addSuffix: true })}
+              value={formatDistanceToNow(new Date(engagement.submittedAt), { addSuffix: true })}
             />
-            {claim.resolvedAt ? (
+            {engagement.resolvedAt ? (
               <MetadataItem
                 label="Resolved"
-                value={formatDistanceToNow(new Date(claim.resolvedAt), { addSuffix: true })}
+                value={formatDistanceToNow(new Date(engagement.resolvedAt), { addSuffix: true })}
               />
             ) : null}
           </dl>
           <div className="mt-3 text-xs">
-            <Link className="underline" href={`/governance/proposals?engagementId=${claim.id}`}>
+            <Link className="underline" href={`/governance/proposals?engagementId=${engagement.id}`}>
               View related governance proposals
             </Link>
           </div>
@@ -97,16 +97,16 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
       </section>
 
       <section className="space-y-3">
-        <VerifyClaimForm
-          claimId={claim.id}
-          claimStatus={claim.status}
-          assignments={claim.jurorAssignments ?? []}
+        <VerifyEngagementForm
+          engagementId={engagement.id}
+          engagementStatus={engagement.status}
+          assignments={engagement.jurorAssignments ?? []}
         />
       </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Juror Panel</h2>
-        {(claim.jurorAssignments ?? []).length ? (
+        {(engagement.jurorAssignments ?? []).length ? (
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -117,7 +117,7 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
               </tr>
             </thead>
             <tbody>
-              {(claim.jurorAssignments ?? []).map((assignment) => (
+              {(engagement.jurorAssignments ?? []).map((assignment) => (
                 <tr key={`${assignment.juror}-${assignment.decision ?? "pending"}`} className="border-t border-border">
                   <td className="py-2 align-top font-medium">{assignment.juror}</td>
                   <td className="py-2 align-top text-muted-foreground">{assignment.weight}</td>
@@ -141,13 +141,13 @@ export function ClaimDetail({ claimId }: ClaimDetailProps) {
 
 type JurorAssignment = NonNullable<NonNullable<EngagementQueryResult["engagement"]>["jurorAssignments"]>[number];
 
-function VerifyClaimForm({
-  claimId,
-  claimStatus,
+function VerifyEngagementForm({
+  engagementId,
+  engagementStatus,
   assignments
 }: {
-  claimId: string;
-  claimStatus: string;
+  engagementId: string;
+  engagementStatus: string;
   assignments: JurorAssignment[];
 }) {
   const router = useRouter();
@@ -165,7 +165,7 @@ function VerifyClaimForm({
   }, [address, assignments]);
 
   const alreadyDecided = Boolean(jurorAssignment?.decision);
-  const isEligible = isConnected && Boolean(jurorAssignment) && !alreadyDecided && claimStatus !== "Resolved";
+  const isEligible = isConnected && Boolean(jurorAssignment) && !alreadyDecided && engagementStatus !== "Resolved";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -180,13 +180,13 @@ function VerifyClaimForm({
         address,
         abi,
         functionName: "verify",
-        args: [BigInt(claimId), decision === "approve"]
+        args: [BigInt(engagementId), decision === "approve"]
       });
       setSuccess("Verification submitted.");
       router.refresh();
     } catch (err) {
       console.error(err);
-      setActionError(formatClaimTxError(err));
+      setActionError(formatEngagementTxError(err));
     }
   }
 
@@ -197,7 +197,7 @@ function VerifyClaimForm({
           <h3 className="text-base font-semibold">Verify Engagement</h3>
           <p className="text-sm text-muted-foreground">Only assigned jurors can verify on-chain.</p>
         </div>
-        <span className="text-xs text-muted-foreground">Engagement {claimId}</span>
+        <span className="text-xs text-muted-foreground">Engagement {engagementId}</span>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3 text-sm">
@@ -291,7 +291,7 @@ function EvidenceManifest({ manifest }: { manifest: IpfsDocumentResponse }) {
   );
 }
 
-function formatClaimTxError(err: unknown) {
+function formatEngagementTxError(err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   const lower = message.toLowerCase();
 

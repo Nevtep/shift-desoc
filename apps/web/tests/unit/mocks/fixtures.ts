@@ -64,7 +64,7 @@ export const fixtures = {
       }
     ]
   },
-  claim: {
+  engagement: {
     communityId: 84532,
     id: "50",
     valuableActionId: "200",
@@ -82,7 +82,7 @@ export const fixtures = {
       }
     ]
   },
-  claimJuror: {
+  engagementJuror: {
     juror: "0xJUROR000000000000000000000000000000000000",
     weight: "1",
     decision: null,

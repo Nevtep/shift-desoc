@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { ClaimList } from "../../components/claims/claim-list";
-import { ClaimSubmitForm } from "../../components/claims/claim-submit-form";
+import { EngagementList } from "../../components/engagements/engagement-list";
+import { EngagementSubmitForm } from "../../components/engagements/engagement-submit-form";
 
 export const metadata = {
   title: "Engagements | Shift"
@@ -20,10 +20,10 @@ export function EngagementsPageContent({ communityId }: { communityId?: string }
           Track valuable actions from submission through juror verification and resolution.
         </p>
       </header>
-      <ClaimSubmitForm />
+      <EngagementSubmitForm />
       <section className="space-y-4">
         <CommunityFilter currentCommunityId={communityId ?? undefined} />
-        <ClaimList communityId={communityId ?? undefined} />
+        <EngagementList communityId={communityId ?? undefined} />
       </section>
     </main>
   );

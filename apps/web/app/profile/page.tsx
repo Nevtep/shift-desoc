@@ -8,7 +8,7 @@ export default function ProfilePage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">Your Profile</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Governance power, claim history, and marketplace activity will populate here after wallet
+          Governance power, engagement history, and marketplace activity will populate here after wallet
           connection and GraphQL hooks are wired.
         </p>
       </header>
