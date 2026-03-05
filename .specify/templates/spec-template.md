@@ -119,6 +119,11 @@
 - **DT-002**: Specs MUST use current Shift terminology (Engagements,
   ValuableActionSBT, VPS, PositionManager, RevenueRouter, RequestHub, Drafts,
   Governor/Timelock, Target ROI).
+- **DT-003**: If implementation status, drift risks, backlog priorities,
+  architecture expectations, or workflow requirements change, specs MUST include
+  synchronized update requirements for
+  `.github/project-management/IMPLEMENTATION_STATUS.md` and
+  `.github/project-management/STATUS_REVIEW.md`.
 
 *Example of marking unclear requirements:*
 

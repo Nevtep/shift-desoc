@@ -1,10 +1,18 @@
-# Shift DeSoc Status Review (Feb 19, 2026)
+# Shift DeSoc Status Review (Mar 05, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
 ## Source of truth & spec alignment
 - Reference specs: docs/EN/Architecture.md, Layers.md, Flows.md, Tokenomics.md, Whitepaper.md, plus per-contract specs under docs/EN/contracts/*. AI coding guide: .github/copilot-instructions.md.
 - Core expectations: coordination → governance → verification → economic → commerce layers; Timelock-gated authority; verifier power via governance (no staking); TreasuryAdapter guardrails (1 spend/week, 10% per-token cap); addresses loaded from deployments/*.json; Solidity ^0.8.24 + OZ 5.x.
+
+## Documentation coordination contract
+- `STATUS_REVIEW.md` purpose: strategic baseline for architecture, invariants, tooling, and chronological changelog of meaningful deltas.
+- `IMPLEMENTATION_STATUS.md` purpose: tactical per-feature implementation matrix across contracts/indexer/manager, plus drift risks and prioritized backlog.
+- Update handshake:
+	- Any change to feature statuses, drift risks, or backlog priorities in `IMPLEMENTATION_STATUS.md` MUST be reflected here in `## Changelog` with date and summary.
+	- Any architecture/process expectation change here MUST trigger matrix re-validation in `.github/project-management/IMPLEMENTATION_STATUS.md` in the same PR.
+	- Both files SHOULD be reviewed together during release-readiness checks.
 
 ## Monorepo structure (high level)
 - Contracts: contracts/core (governor/counting), contracts/modules (coordination, verification, commerce), contracts/tokens; libs in contracts/libs; remappings in remappings.txt.
@@ -60,6 +68,7 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-03-05: Added formal documentation coordination contract between `.github/project-management/STATUS_REVIEW.md` (strategic baseline/changelog) and `.github/project-management/IMPLEMENTATION_STATUS.md` (tactical implementation matrix). Future updates must keep both files synchronized in the same change set.
 - 2026-03-05: Hardened staged deployment reliability for live networks: `deploySharedInfraIfMissing` now validates on-chain bytecode/ABI probes before reusing JSON addresses and auto-redeploys invalid shared infra; community registration ID resolution now uses `CommunityRegistered` receipt logs to avoid immediate-RPC readback mismatch; package `deploy:shared-infra|deploy:community-stack|deploy:wire-community|deploy:verify-community` scripts now correctly accept forwarded `--network` arguments.
 - 2026-03-05: Deprecated one-shot deployment path after dry-run failure (`GovernorOnlyExecutor`) and archived `scripts/deploy-complete.ts` + `scripts/hardhat/deploy.ts` into `scripts/legacy/`; package deploy scripts now run the canonical 4-step staged pipeline per network.
 - 2026-03-05: Security closeout package completed for `001-security-fixes`: added explicit closeout evidence bundle, quantitative M-1 methodology/thresholds, deterministic settlement outcome matrix, dependency validation matrix, and partial-rollout recovery checks. M-1 closeout status recorded as `RESIDUAL_RISK_ACCEPTED` with governance ownership and compensating controls.

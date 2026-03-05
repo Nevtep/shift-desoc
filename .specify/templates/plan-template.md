@@ -41,6 +41,11 @@
   reorg handling, and indexer health implications.
 - Monorepo vertical-slice scope: Document required updates across contracts,
   indexer, Manager app, downstream integration surface, tests, and docs.
+- Project-management docs sync: Confirm whether this feature changes status,
+  risks, priorities, architecture expectations, or workflows and, if yes,
+  require synchronized updates to
+  `.github/project-management/IMPLEMENTATION_STATUS.md` and
+  `.github/project-management/STATUS_REVIEW.md`.
 - Compatibility discipline: Identify breaking interface/event risks and required
   migration/versioning strategy for downstream dApps.
 

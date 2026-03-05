@@ -7,6 +7,14 @@ This document is an evidence-based implementation snapshot of Shift across three
 - Ponder indexer (`apps/indexer/**`)
 - Next.js Manager (`apps/web/**`)
 
+Companion document:
+- This file is the tactical implementation matrix and gap tracker.
+- `.github/project-management/STATUS_REVIEW.md` is the strategic architecture/risk/workflow baseline and historical changelog.
+
+Coordination rule with `STATUS_REVIEW.md`:
+- If feature statuses, drift risks, or backlog priorities change here, add a dated changelog note in `STATUS_REVIEW.md`.
+- If architecture/governance/tooling expectations change in `STATUS_REVIEW.md`, re-validate and update this matrix in the same change set.
+
 Evaluation baseline:
 - Feature taxonomy from `contracts/FEATURES.md` (sections `3.1` to `3.18`)
 - Constitution requirements in `.specify/memory/constitution.md`, especially:
@@ -188,3 +196,7 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 
 7. Record the delta.
 - Add a short note in `.github/project-management/STATUS_REVIEW.md` referencing this file update.
+
+8. Keep companion documents in lockstep.
+- Confirm `.github/project-management/STATUS_REVIEW.md` still matches this file's current top risks and priorities.
+- If they diverge, update both in the same PR before merge.

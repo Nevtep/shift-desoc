@@ -1,25 +1,19 @@
 <!--
 Sync Impact Report
-- Version change: template-unversioned -> 1.0.0
+- Version change: 1.0.0 -> 1.1.0
 - Modified principles:
-	- [PRINCIPLE_1_NAME] -> I. Protocol Infrastructure First
-	- [PRINCIPLE_2_NAME] -> II. Contract-First Authority
-	- [PRINCIPLE_3_NAME] -> III. Security And Invariant Preservation
-	- [PRINCIPLE_4_NAME] -> IV. Event-Driven Deterministic Projection
-	- [PRINCIPLE_5_NAME] -> V. Monorepo Vertical-Slice Delivery
+	- V. Monorepo Vertical-Slice Delivery (expanded with documentation synchronization mandate)
 - Added sections:
-	- Protocol Boundaries And Compatibility
-	- Delivery, Testing, And Documentation Gates
+	- None
 - Removed sections:
-	- None (template placeholders replaced)
+	- None
 - Templates requiring updates:
 	- ✅ /Users/core/Code/shift/.specify/templates/plan-template.md
 	- ✅ /Users/core/Code/shift/.specify/templates/spec-template.md
 	- ✅ /Users/core/Code/shift/.specify/templates/tasks-template.md
 	- ⚠ pending /Users/core/Code/shift/.specify/templates/commands/*.md (directory not present)
 - Follow-up TODOs:
-	- TODO(COMMAND_TEMPLATES): Add/update command templates if this repository introduces
-		`.specify/templates/commands/` in the future.
+	- TODO(COMMAND_TEMPLATES): Add/update command templates if this repository introduces `.specify/templates/commands/` in the future.
 -->
 
 # Shift Monorepo Constitution
@@ -62,7 +56,10 @@ contracts, events/ABIs, indexer projections, Manager UX/tx flows, tests, and
 documentation. No feature is complete if one layer is changed while dependent
 layers remain inconsistent. The Manager MUST present only implemented protocol
 capabilities and MUST tie high-impact actions to explicit contract calls and
-real role boundaries.
+real role boundaries. Documentation updates MUST keep `.github/project-management/IMPLEMENTATION_STATUS.md`
+and `.github/project-management/STATUS_REVIEW.md` synchronized in the same
+change set when status, risks, priorities, architecture expectations, or
+workflow requirements change.
 
 ## Protocol Boundaries And Compatibility
 
@@ -110,5 +107,9 @@ Compliance Review Expectations:
 - Every task list MUST include cross-layer synchronization tasks where impacted.
 - Reviews MUST reject changes that introduce authority drift, event/schema drift,
 	or app behavior that exceeds actual contract support.
+- Reviews MUST reject PRs that update one of
+	`.github/project-management/IMPLEMENTATION_STATUS.md` or
+	`.github/project-management/STATUS_REVIEW.md` without required companion
+	updates when coordination-relevant content changed.
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-04 | **Last Amended**: 2026-03-04
+**Version**: 1.1.0 | **Ratified**: 2026-03-04 | **Last Amended**: 2026-03-05
