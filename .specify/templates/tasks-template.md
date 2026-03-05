@@ -8,7 +8,8 @@ description: "Task list template for feature implementation"
 **Input**: Design documents from `/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: Cross-layer tests are REQUIRED for impacted layers. Include contract,
+indexer, and app tests whenever those layers are touched.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -17,13 +18,16 @@ description: "Task list template for feature implementation"
 - **[P]**: Can run in parallel (different files, no dependencies)
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
+- Include layer tags in descriptions when applicable: `[contracts]`,
+  `[indexer]`, `[app]`, `[docs]`, `[compat]`
 
 ## Path Conventions
 
-- **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
-- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+- **Protocol**: `contracts/`, `test/`
+- **Indexer**: `apps/indexer/`
+- **Manager App**: `apps/web/`
+- **Docs/Specs**: `docs/`, `specs/`, `neuromancer/`, `contracts/FEATURES.md`
+- **Ops/Deploy**: `scripts/`, `deployments/`
 
 <!-- 
   ============================================================================
@@ -48,9 +52,9 @@ description: "Task list template for feature implementation"
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools
+- [ ] T001 Build monorepo impact checklist from plan impact matrix
+- [ ] T002 Identify compatibility/migration requirements for interfaces/events
+- [ ] T003 [P] Confirm required layer test suites and validation commands
 
 ---
 
@@ -62,12 +66,12 @@ description: "Task list template for feature implementation"
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T004 Validate authority model and privileged call paths against contracts
+- [ ] T005 [P] Define event/ABI compatibility strategy and migration steps
+- [ ] T006 [P] Define indexer replay/reorg validation strategy
+- [ ] T007 Define app transaction and role-gating validation strategy
+- [ ] T008 Define cross-layer rollback/backout plan for deployment
+- [ ] T009 Setup/update shared fixtures or mocks required across layers
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -83,17 +87,17 @@ Examples of foundational tasks (adjust based on your project):
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] [contracts] Add/update protocol tests in `test/...`
+- [ ] T011 [P] [US1] [indexer] Add/update replay/projection tests in `apps/indexer/...`
+- [ ] T012 [P] [US1] [app] Add/update tx flow and role-gating tests in `apps/web/...`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T013 [P] [US1] [contracts] Implement protocol changes in `contracts/...`
+- [ ] T014 [P] [US1] [indexer] Implement projection/schema updates in `apps/indexer/...`
+- [ ] T015 [P] [US1] [app] Implement Manager updates in `apps/web/...`
+- [ ] T016 [US1] [compat] Update ABI/event consumers and migration assets
+- [ ] T017 [US1] [docs] Sync docs and terminology (`docs/`, `neuromancer/`, `contracts/FEATURES.md`)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -150,10 +154,10 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] TXXX [P] Documentation updates in docs/
+- [ ] TXXX [P] Documentation updates in `docs/`, `neuromancer/`, `contracts/FEATURES.md`
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX [P] Cross-layer regression tests and compatibility validation
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
 
@@ -246,6 +250,7 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
+- Treat event schemas as public integration surface with compatibility discipline
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

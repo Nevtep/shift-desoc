@@ -90,6 +90,36 @@
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
 
+### Monorepo Impact Requirements *(mandatory)*
+
+- **MR-001**: Feature spec MUST identify impact across contracts, indexer,
+  Manager app, tests, and documentation.
+- **MR-002**: If contract interfaces or event schemas change, spec MUST define
+  compatibility expectations and migration/versioning requirements for the
+  indexer and downstream dApps.
+- **MR-003**: Spec MUST state how derived/indexed state maps back to canonical
+  on-chain state and events without introducing shadow authority.
+- **MR-004**: Spec MUST define role/authority implications for privileged flows
+  and confirm Governor/Timelock governance path expectations.
+- **MR-005**: Manager UI requirements MUST map to actual implemented contract
+  capabilities and MUST NOT rely on aspirational protocol behavior.
+
+### Compatibility And Migration Requirements *(mandatory when applicable)*
+
+- **CM-001**: Breaking changes MUST be explicitly marked and justified.
+- **CM-002**: Required migration/replay/backfill steps MUST be defined for
+  indexer and app consumers.
+- **CM-003**: Event and ABI change impact on downstream niche dApps MUST be
+  documented.
+
+### Documentation And Terminology Requirements *(mandatory)*
+
+- **DT-001**: `neuromancer/SHIFT_SYSTEM.md` and `contracts/FEATURES.md` MUST be
+  updated when shipped behavior changes.
+- **DT-002**: Specs MUST use current Shift terminology (Engagements,
+  ValuableActionSBT, VPS, PositionManager, RevenueRouter, RequestHub, Drafts,
+  Governor/Timelock, Target ROI).
+
 *Example of marking unclear requirements:*
 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
@@ -113,3 +143,7 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-005**: [Cross-layer consistency metric, e.g., "0 unresolved
+  contract/indexer/app drift items at merge"]
+- **SC-006**: [Compatibility metric, e.g., "All required migration/replay steps
+  validated in staging"]

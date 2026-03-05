@@ -31,7 +31,18 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Protocol infrastructure first: Confirm protocol primitives stay generic and
+  vertical-specific behavior is pushed to app layers unless truly shared.
+- Contract-first authority: Confirm no indexer/app shadow-authority path for
+  permissions or state transitions.
+- Security/invariant preservation: Enumerate affected invariants and privileged
+  mutation paths (Governor/Timelock/AccessManager).
+- Event/indexer discipline: List event/ABI changes, replay or migration impact,
+  reorg handling, and indexer health implications.
+- Monorepo vertical-slice scope: Document required updates across contracts,
+  indexer, Manager app, downstream integration surface, tests, and docs.
+- Compatibility discipline: Identify breaking interface/event risks and required
+  migration/versioning strategy for downstream dApps.
 
 ## Project Structure
 
@@ -49,50 +60,33 @@ specs/[###-feature]/
 
 ### Source Code (repository root)
 <!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
+  ACTION REQUIRED: Provide the real monorepo layout touched by this feature.
+  Include all affected layers (contracts, indexer, app, docs, scripts/tests).
+  Do not provide generic single-project placeholders.
 -->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+contracts/
+test/
+apps/indexer/
+apps/web/
+docs/
+scripts/
+deployments/
 ```
 
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
+
+## Monorepo Impact Matrix
+
+| Layer | Impacted? | Paths | Contract / Event / API Compatibility Notes |
+|-------|-----------|-------|--------------------------------------------|
+| Protocol Contracts | [Yes/No] | [paths] | [notes] |
+| Indexer (Ponder) | [Yes/No] | [paths] | [notes] |
+| Manager App (Next.js) | [Yes/No] | [paths] | [notes] |
+| Downstream dApp Surface | [Yes/No] | [interfaces/events] | [notes] |
+| Documentation | [Yes/No] | [paths] | [notes] |
 
 ## Complexity Tracking
 
