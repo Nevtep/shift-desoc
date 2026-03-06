@@ -1,0 +1,108 @@
+openapi: 3.0.3
+info:
+  title: Manager Home Read API Contract
+  version: 0.1.0
+  description: |
+    Read-only API contract for Manager home orchestration support. This contract
+    intentionally excludes any privileged deployment signing. All writes remain
+    user-signed transactions from the client wallet.
+servers:
+  - url: /api
+paths:
+  /manager/home/preflight:
+    get:
+      summary: Read preflight assessment for deploy wizard start gating
+      parameters:
+        - in: query
+          name: chainId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: deployer
+          required: true
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{40}$'
+      responses:
+        '200':
+          description: Preflight assessment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreflightAssessment'
+  /manager/home/verification/{communityId}:
+    get:
+      summary: Deterministic deployment verification summary by communityId
+      parameters:
+        - in: path
+          name: communityId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Verification check results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [communityId, checks]
+                properties:
+                  communityId:
+                    type: integer
+                  checks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VerificationCheckResult'
+components:
+  schemas:
+    PreflightAssessment:
+      type: object
+      required:
+        [walletConnected, supportedNetwork, chainId, sharedInfraUsable, requiredWei, currentBalanceWei, isSufficient, blockingReasons]
+      properties:
+        walletConnected:
+          type: boolean
+        supportedNetwork:
+          type: boolean
+        chainId:
+          type: integer
+        sharedInfraUsable:
+          type: boolean
+        requiredWei:
+          type: string
+        currentBalanceWei:
+          type: string
+        isSufficient:
+          type: boolean
+        recommendedAdditionalWei:
+          type: string
+          nullable: true
+        blockingReasons:
+          type: array
+          items:
+            type: string
+    VerificationCheckResult:
+      type: object
+      required: [key, label, passed]
+      properties:
+        key:
+          type: string
+          enum:
+            - MODULE_WIRING_VALUABLE_ACTION_REGISTRY
+            - VPT_COMMUNITY_INITIALIZED
+            - ROLE_RR_POSITION_MANAGER
+            - ROLE_RR_DISTRIBUTOR
+            - ROLE_COMMERCE_DISPUTES_CALLER
+            - ROLE_HOUSING_MARKETPLACE_CALLER
+            - ROLE_VA_ISSUER_REQUEST_HUB
+            - MARKETPLACE_COMMUNITY_ACTIVE
+            - REVENUE_ROUTER_TREASURY_SET
+        label:
+          type: string
+        passed:
+          type: boolean
+        failureReason:
+          type: string
+          nullable: true

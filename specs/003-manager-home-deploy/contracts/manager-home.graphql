@@ -1,0 +1,18 @@
+# Manager Home GraphQL Contract
+# Read-only query contract for communities index rendering.
+
+query Communities($limit: Int = 20, $after: String) {
+  communities: communitiess(orderBy: "createdAt", orderDirection: "desc", after: $after, limit: $limit) {
+    nodes: items {
+      id
+      chainId
+      name
+      metadataUri
+      createdAt
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

@@ -5,6 +5,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 ## Active Technologies
 - TypeScript (Next.js 16 / React 19), Solidity (unchanged), Node 22 tooling + Next.js App Router, wagmi/viem, graphql-request/TanStack Query, Ponder 0.7.x (consumer surface only) (002-canonicalize-engagements-surface)
 - Existing on-chain state + Ponder Postgres projection (no schema migration planned) (002-canonicalize-engagements-surface)
+- TypeScript 5.x, React 19, Next.js App Router (16.x), Node 22 + wagmi 2.x, viem 2.x, @tanstack/react-query 5.x, graphql-request, zod, Vitest, Testing Library, MSW (003-manager-home-deploy)
+- On-chain state (CommunityRegistry + module contracts) as canonical source; browser local/session storage for pre-registration in-progress metadata only (003-manager-home-deploy)
 
 - Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22 + OpenZeppelin 5.x (`AccessManaged`, `ReentrancyGuard`, `SafeERC20`), Foundry, Hardhat 2.22.x (001-security-fixes)
 
@@ -25,6 +27,7 @@ npm test && npm run lint
 Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22: Follow standard conventions
 
 ## Recent Changes
+- 003-manager-home-deploy: Added TypeScript 5.x, React 19, Next.js App Router (16.x), Node 22 + wagmi 2.x, viem 2.x, @tanstack/react-query 5.x, graphql-request, zod, Vitest, Testing Library, MSW
 - 002-canonicalize-engagements-surface: Added TypeScript (Next.js 16 / React 19), Solidity (unchanged), Node 22 tooling + Next.js App Router, wagmi/viem, graphql-request/TanStack Query, Ponder 0.7.x (consumer surface only)
 
 - 001-security-fixes: Added Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22 + OpenZeppelin 5.x (`AccessManaged`, `ReentrancyGuard`, `SafeERC20`), Foundry, Hardhat 2.22.x
@@ -35,7 +38,6 @@ Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22: Follow standa
 You are Copilot inside the Shift DeSoc monorepo. Act as the project’s **blockchain + smart-contract architecture expert** and **security-first implementer**. The system is currently in **staging/test phase on Base Sepolia**; functionality and implementations may change. Never commit or request private keys or secrets.
 
 You MUST:
-- Keep the system aligned with the **Shift docs under /docs/EN/** (Architecture, Governance-Core, Verification-Layer, Economic-Layer, Commerce specs).
 
 ---
 
