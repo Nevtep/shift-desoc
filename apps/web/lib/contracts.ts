@@ -4,7 +4,7 @@ import { baseSepolia } from "wagmi/chains";
 import communityRegistryArtifact from "../abis/CommunityRegistry.json" assert { type: "json" };
 import requestHubArtifact from "../abis/RequestHub.json" assert { type: "json" };
 import draftsManagerArtifact from "../abis/DraftsManager.json" assert { type: "json" };
-import claimsArtifact from "../abis/Claims.json" assert { type: "json" };
+import engagementsArtifact from "../abis/Engagements.json" assert { type: "json" };
 import governorArtifact from "../abis/ShiftGovernor.json" assert { type: "json" };
 import valuableActionRegistryArtifact from "../abis/ValuableActionRegistry.json" assert { type: "json" };
 import baseSepoliaDeployment from "../../../deployments/base_sepolia.json" assert { type: "json" };
@@ -23,7 +23,7 @@ const deployments: Record<number, DeploymentJson> = {
 const requestHubAbi = requestHubArtifact.abi as Abi;
 const communityRegistryAbi = communityRegistryArtifact.abi as Abi;
 
-const claimsAbi = claimsArtifact.abi as Abi;
+const engagementsAbi = engagementsArtifact.abi as Abi;
 const governorAbi = governorArtifact.abi as Abi;
 const draftsManagerAbi = draftsManagerArtifact.abi as Abi;
 const valuableActionRegistryAbi = valuableActionRegistryArtifact.abi as Abi;
@@ -33,9 +33,9 @@ export const CONTRACTS = {
     key: "requestHub" as ContractKey,
     abi: requestHubAbi
   },
-  claims: {
-    key: "claims" as ContractKey,
-    abi: claimsAbi
+  engagements: {
+    key: "engagements" as ContractKey,
+    abi: engagementsAbi
   },
   governor: {
     key: "governor" as ContractKey,

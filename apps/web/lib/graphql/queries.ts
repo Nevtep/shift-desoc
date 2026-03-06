@@ -318,9 +318,9 @@ export type ProposalsQueryResult = {
   };
 };
 
-export const ClaimsQuery = /* GraphQL */ `
-  query Claims($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
-    claims: claimss(
+export const EngagementsQuery = /* GraphQL */ `
+  query Engagements($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
+    engagements: claimss(
       where: { communityId: $communityId, status_in: $status }
       orderBy: "submittedAt"
       orderDirection: "desc"
@@ -345,7 +345,7 @@ export const ClaimsQuery = /* GraphQL */ `
   }
 `;
 
-export type ClaimNode = {
+export type EngagementNode = {
   communityId: number;
   id: string;
   valuableActionId: string;
@@ -356,9 +356,9 @@ export type ClaimNode = {
   resolvedAt?: string | null;
 };
 
-export type ClaimsQueryResult = {
-  claims: {
-    nodes: ClaimNode[];
+export type EngagementsQueryResult = {
+  engagements: {
+    nodes: EngagementNode[];
     pageInfo: {
       endCursor?: string | null;
       hasNextPage: boolean;
@@ -366,9 +366,9 @@ export type ClaimsQueryResult = {
   };
 };
 
-export const ClaimQuery = /* GraphQL */ `
-  query Claim($id: Int!) {
-    claim: claims(id: $id) {
+export const EngagementQuery = /* GraphQL */ `
+  query Engagement($id: Int!) {
+    engagement: claims(id: $id) {
       id
       communityId
       valuableActionId
@@ -387,8 +387,8 @@ export const ClaimQuery = /* GraphQL */ `
   }
 `;
 
-export type ClaimQueryResult = {
-  claim: {
+export type EngagementQueryResult = {
+  engagement: {
     communityId: number;
     id: string;
     valuableActionId: string;

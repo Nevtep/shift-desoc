@@ -164,6 +164,7 @@ The system is designed around the concept of **communities** — each community 
 | **Issuance Pausing** | Global pause switch for SBT issuance in emergencies. |
 | **Community Narrowing** | Per-community allowlists restrict which modules can issue SBTs. |
 | **Founder Bootstrap** | Founder whitelist for initial community setup before governance is fully operational. |
+| **Manager Canonical Route** | Work-verification UX uses canonical `/engagements` routes, with temporary `/claims` compatibility wrappers during migration. |
 
 #### Use Cases
 

@@ -27,6 +27,7 @@ indexer, and app tests whenever those layers are touched.
 - **Indexer**: `apps/indexer/`
 - **Manager App**: `apps/web/`
 - **Docs/Specs**: `docs/`, `specs/`, `neuromancer/`, `contracts/FEATURES.md`
+- **Project Management**: `.github/project-management/`
 - **Ops/Deploy**: `scripts/`, `deployments/`
 
 <!-- 
@@ -155,6 +156,10 @@ Examples of foundational tasks (adjust based on your project):
 **Purpose**: Improvements that affect multiple user stories
 
 - [ ] TXXX [P] Documentation updates in `docs/`, `neuromancer/`, `contracts/FEATURES.md`
+- [ ] TXXX [P] Coordinated updates in
+  `.github/project-management/IMPLEMENTATION_STATUS.md` and
+  `.github/project-management/STATUS_REVIEW.md` when status/risk/priority/
+  architecture/workflow content changed
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Cross-layer regression tests and compatibility validation

@@ -926,7 +926,7 @@ pnpm cov:gate                # Check coverage (≥86% enforced)
 pnpm deploy:base-sepolia
 
 # Verify deployment addresses
-pnpm verify:addresses
+pnpm verify:base-sepolia
 
 # Manage deployed system
 pnpm manage:system --network base_sepolia

@@ -1,10 +1,18 @@
-# Shift DeSoc Status Review (Feb 19, 2026)
+# Shift DeSoc Status Review (Mar 05, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
 ## Source of truth & spec alignment
 - Reference specs: docs/EN/Architecture.md, Layers.md, Flows.md, Tokenomics.md, Whitepaper.md, plus per-contract specs under docs/EN/contracts/*. AI coding guide: .github/copilot-instructions.md.
 - Core expectations: coordination → governance → verification → economic → commerce layers; Timelock-gated authority; verifier power via governance (no staking); TreasuryAdapter guardrails (1 spend/week, 10% per-token cap); addresses loaded from deployments/*.json; Solidity ^0.8.24 + OZ 5.x.
+
+## Documentation coordination contract
+- `STATUS_REVIEW.md` purpose: strategic baseline for architecture, invariants, tooling, and chronological changelog of meaningful deltas.
+- `IMPLEMENTATION_STATUS.md` purpose: tactical per-feature implementation matrix across contracts/indexer/manager, plus drift risks and prioritized backlog.
+- Update handshake:
+	- Any change to feature statuses, drift risks, or backlog priorities in `IMPLEMENTATION_STATUS.md` MUST be reflected here in `## Changelog` with date and summary.
+	- Any architecture/process expectation change here MUST trigger matrix re-validation in `.github/project-management/IMPLEMENTATION_STATUS.md` in the same PR.
+	- Both files SHOULD be reviewed together during release-readiness checks.
 
 ## Monorepo structure (high level)
 - Contracts: contracts/core (governor/counting), contracts/modules (coordination, verification, commerce), contracts/tokens; libs in contracts/libs; remappings in remappings.txt.
@@ -13,7 +21,7 @@
 - Apps: apps/web (Next.js App Router dApp), apps/indexer (Ponder indexer → Postgres + GraphQL), apps/marketing (Next.js + Storybook; README absent).
 
 ## Tooling & workflows
-- Node >=22, pnpm workspaces. Key scripts from package.json: fmt, lint/lint:fix (solhint), quality/sanity (lint+tests+coverage), forge:test, forge:cov, cov:gate (>=86%), forge:build (also copies ABIs), hh:compile/test, deploy:* (canonical staged deploy pipeline per network), manage/admin/create-community/setup/validate, governance:* (proposal/vote/monitor/execute), verifier:* (register/verify engagement), test:e2e + verification/governance E2Es, analyze:* diagnostics, check:* status scripts.
+- Node >=22, pnpm workspaces. Key scripts are defined in the root package.json (formatting, linting, tests, coverage gate, contract build/compile, deploy/manage helpers, governance/verifier flows, E2E suites, diagnostics, and status checks); keep this file in sync with any future script changes by updating this note only if categories meaningfully change.
 - ABI sync: scripts/copy-ponder-abis.js and scripts/copy-web-abis.js after contract changes.
 - Frontend testing: apps/web uses Vitest + Testing Library + MSW (renderWithProviders, mockWagmiHooks) and Playwright scaffold.
 - Indexer: Ponder config/schema in apps/indexer.
@@ -60,6 +68,9 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-03-05: Completed Manager route/component canonicalization by removing legacy `/claims` app routes and compatibility tests, renaming claim-named UI files/symbols to engagement naming (`components/engagements/*`, unit tests, mocks), and dropping temporary `claims` aliases from web contract/query helpers. Updated marketplace/profile copy/links to `/engagements`. Validation: targeted engagement-related web tests pass; full web suite remains blocked by pre-existing unresolved `draft-create-form` import error.
+- 2026-03-05: Implemented Manager Engagements canonicalization slice for work verification: added canonical `/engagements` routes with `/claims` compatibility wrappers, switched Manager contract wiring to `addresses.engagements` + `apps/web/abis/Engagements.json`, and promoted canonical `EngagementQuery`/`EngagementsQuery` symbols with temporary claim aliases. Added compatibility and wiring tests (`apps/web/tests/unit/routes/claims-compatibility.test.tsx`, `apps/web/lib/contracts.test.ts`, `apps/web/lib/graphql/queries.test.ts`) and updated existing claim component tests/copy to Engagement wording. Validation status: targeted web tests PASS, indexer build PASS, full `pnpm --filter @shift/web test:unit` blocked by pre-existing missing import in draft-create-form tests, and `pnpm forge:test` blocked by pre-existing Foundry compiler-cache parse error.
+- 2026-03-05: Added formal documentation coordination contract between `.github/project-management/STATUS_REVIEW.md` (strategic baseline/changelog) and `.github/project-management/IMPLEMENTATION_STATUS.md` (tactical implementation matrix). Future updates must keep both files synchronized in the same change set.
 - 2026-03-05: Hardened staged deployment reliability for live networks: `deploySharedInfraIfMissing` now validates on-chain bytecode/ABI probes before reusing JSON addresses and auto-redeploys invalid shared infra; community registration ID resolution now uses `CommunityRegistered` receipt logs to avoid immediate-RPC readback mismatch; package `deploy:shared-infra|deploy:community-stack|deploy:wire-community|deploy:verify-community` scripts now correctly accept forwarded `--network` arguments.
 - 2026-03-05: Deprecated one-shot deployment path after dry-run failure (`GovernorOnlyExecutor`) and archived `scripts/deploy-complete.ts` + `scripts/hardhat/deploy.ts` into `scripts/legacy/`; package deploy scripts now run the canonical 4-step staged pipeline per network.
 - 2026-03-05: Security closeout package completed for `001-security-fixes`: added explicit closeout evidence bundle, quantitative M-1 methodology/thresholds, deterministic settlement outcome matrix, dependency validation matrix, and partial-rollout recovery checks. M-1 closeout status recorded as `RESIDUAL_RISK_ACCEPTED` with governance ownership and compensating controls.

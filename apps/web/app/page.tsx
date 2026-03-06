@@ -46,12 +46,12 @@ export default function HomePage() {
           </Link>
           <Link
             className="rounded-lg border border-border p-4 text-left shadow-sm transition hover:border-primary"
-            href="/claims"
+            href="/engagements"
           >
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Path B</p>
-            <h3 className="text-lg font-semibold">Valuable Actions → Claims</h3>
+            <h3 className="text-lg font-semibold">Valuable Actions → Engagements</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Review claim submissions, juror decisions, and evidence manifests.
+              Review engagement submissions, juror decisions, and evidence manifests.
             </p>
           </Link>
           <Link

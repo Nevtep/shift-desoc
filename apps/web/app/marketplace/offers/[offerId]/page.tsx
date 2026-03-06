@@ -12,6 +12,9 @@ type PageProps = {
 
 export default async function OfferDetailPage({ params }: PageProps) {
   const { offerId } = await params;
+  // TODO: replace with canonical marketplace claims route when implemented.
+  const marketplaceClaimsHref = "#";
+
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
       <header className="space-y-2">
@@ -34,7 +37,7 @@ export default async function OfferDetailPage({ params }: PageProps) {
           <p className="mt-2 text-sm text-muted-foreground">
             Dispute timelines and outcomes appear once the dispute events are ingested.
           </p>
-          <Link className="mt-3 inline-flex text-sm underline" href={`/claims?offerId=${offerId}`}>
+          <Link className="mt-3 inline-flex text-sm underline" href={marketplaceClaimsHref}>
             View related claims
           </Link>
         </div>
