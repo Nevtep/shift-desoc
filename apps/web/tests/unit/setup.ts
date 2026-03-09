@@ -38,8 +38,14 @@ vi.mock("wagmi", async () => {
     useWriteContract: () => buildMockedHooks().writeContract,
     useReadContract: () => ({ data: undefined, isLoading: false, isError: false }),
     usePublicClient: () => ({
-      waitForTransactionReceipt: async () => ({ status: "success" }),
-      readContract: async () => 1n
+      waitForTransactionReceipt: async () => ({ status: "success", logs: [] }),
+      estimateContractGas: async () => 300000n,
+      readContract: async () => 1n,
+      getBytecode: async () => "0x1234",
+      getBalance: async () => 10_000_000_000_000_000_000n,
+      getTransactionCount: async () => 0n,
+      getBlockNumber: async () => 38_600_000n,
+      getLogs: async () => []
     })
   };
 });

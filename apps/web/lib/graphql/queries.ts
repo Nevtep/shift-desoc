@@ -19,7 +19,7 @@ export const CommunitiesQuery = /* GraphQL */ `
 export type CommunityNode = {
   id: string;
   chainId: number;
-  name: string;
+  name?: string | null;
   metadataUri?: string | null;
   createdAt: string;
 };

@@ -87,5 +87,18 @@ export const fixtures = {
     weight: "1",
     decision: null,
     decidedAt: null
+  },
+  deploy: {
+    sessionId: "0xabc-1",
+    deployerAddress: "0xabc1230000000000000000000000000000000000",
+    chainId: 84532,
+    communityId: 1,
+    status: "in-progress",
+    steps: [
+      { key: "PRECHECKS", status: "succeeded" },
+      { key: "DEPLOY_STACK", status: "running" },
+      { key: "WIRE_ROLES", status: "pending" },
+      { key: "VERIFY_DEPLOYMENT", status: "pending" }
+    ]
   }
 };

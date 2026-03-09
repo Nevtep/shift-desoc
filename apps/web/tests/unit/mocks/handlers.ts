@@ -178,6 +178,21 @@ export const handlers = [
   }),
   http.post("/api/ipfs/upload", async () => {
     return HttpResponse.json({ cid: "uploaded-cid" });
+  }),
+  // Deploy wizard read-side placeholders (tests can override as needed)
+  http.get(`${API_BASE}/manager/deploy/session/:sessionId`, ({ params }) => {
+    if (String(params.sessionId) !== fixtures.deploy.sessionId) {
+      return HttpResponse.json({ session: null }, { status: 404 });
+    }
+    return HttpResponse.json({ session: fixtures.deploy });
+  }),
+  http.get(`${API_BASE}/manager/deploy/preflight`, () => {
+    return HttpResponse.json({
+      walletConnected: true,
+      supportedNetwork: true,
+      sharedInfraReady: true,
+      fundsSufficient: true
+    });
   })
 ];
 

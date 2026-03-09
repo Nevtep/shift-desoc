@@ -17,6 +17,17 @@ Complete guide to the two CLI management tools for operating deployed Shift DeSo
 
 Shift DeSoc provides two complementary CLI tools for managing deployed systems:
 
+### Manager Home Deploy Wizard (Web)
+
+In addition to CLI operations, Manager Home now includes a user-signed deploy wizard designed for staged community deployment from the web app.
+
+- Route placement: wizard appears on `/` above the communities index.
+- Flow: `Preflight -> Deploy Community Stack -> Wire Roles And Configuration -> Verify Community Deployment`.
+- Authority model: transactions are user-signed; no backend deployer key path is required.
+- Shared infra policy: `accessManager`, `paramController`, and `communityRegistry` are hard preconditions.
+- Source of truth: once a community is registered, resume/completion inference must be derived from on-chain reads (CommunityRegistry/module-role checks), not deployment JSON files.
+- Verification semantics: parity with `scripts/hardhat/verify-community-deployment.ts` check set.
+
 ### 1. **Community Admin CLI** (`manage-communities.ts`)
 
 **Purpose**: Community lifecycle and configuration management

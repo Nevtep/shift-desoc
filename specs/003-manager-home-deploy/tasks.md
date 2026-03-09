@@ -17,10 +17,10 @@
 
 **Purpose**: Prepare home-page feature scaffolding and test harness touchpoints.
 
-- [ ] T001 Create home deploy component scaffold in `apps/web/components/home/deploy-wizard.tsx`
-- [ ] T002 [P] Create deploy domain type definitions in `apps/web/lib/deploy/types.ts`
-- [ ] T003 [P] Add deploy test fixture extensions for wizard scenarios in `apps/web/tests/unit/mocks/fixtures.ts`
-- [ ] T004 [P] Add MSW handler placeholders for wizard read-side mocks in `apps/web/tests/unit/mocks/handlers.ts`
+- [X] T001 Create home deploy component scaffold in `apps/web/components/home/deploy-wizard.tsx`
+- [X] T002 [P] Create deploy domain type definitions in `apps/web/lib/deploy/types.ts`
+- [X] T003 [P] Add deploy test fixture extensions for wizard scenarios in `apps/web/tests/unit/mocks/fixtures.ts`
+- [X] T004 [P] Add MSW handler placeholders for wizard read-side mocks in `apps/web/tests/unit/mocks/handlers.ts`
 
 ---
 
@@ -30,14 +30,14 @@
 
 **CRITICAL**: No user story implementation starts before this phase is complete.
 
-- [ ] T005 Implement step constants, ordering, and transition guards in `apps/web/lib/deploy/wizard-machine.ts`
-- [ ] T006 Implement local pre-registration session persistence and deployer binding in `apps/web/lib/deploy/session-store.ts`
-- [ ] T007 Implement shared-infra probe utilities (addresses/code/ABI probes) in `apps/web/lib/deploy/preflight.ts`
-- [ ] T008 Implement funds estimation with recommended volatility buffer in `apps/web/lib/deploy/preflight.ts`; use chain fee data via public/wallet client (EIP-1559 fees if available) combined with per-tx `estimateGas`, then apply the buffer.
-- [ ] T009 Implement deterministic verification check evaluators and reason mapping in `apps/web/lib/deploy/verification.ts`. Mirror the check set and semantics defined in `verify-community-deployment.ts`.
-- [ ] T010 [P] Add unit tests for wizard-machine transitions in `apps/web/tests/unit/lib/deploy/wizard-machine.test.ts`
-- [ ] T011 [P] Add unit tests for preflight probes and funds estimation in `apps/web/tests/unit/lib/deploy/preflight.test.ts`
-- [ ] T012 [P] Add unit tests for verification parity checks and failure reasons in `apps/web/tests/unit/lib/deploy/verification.test.ts`
+- [X] T005 Implement step constants, ordering, and transition guards in `apps/web/lib/deploy/wizard-machine.ts`
+- [X] T006 Implement local pre-registration session persistence and deployer binding in `apps/web/lib/deploy/session-store.ts`
+- [X] T007 Implement shared-infra probe utilities (addresses/code/ABI probes) in `apps/web/lib/deploy/preflight.ts`
+- [X] T008 Implement funds estimation with recommended volatility buffer in `apps/web/lib/deploy/preflight.ts`; use chain fee data via public/wallet client (EIP-1559 fees if available) combined with per-tx `estimateGas`, then apply the buffer.
+- [X] T009 Implement deterministic verification check evaluators and reason mapping in `apps/web/lib/deploy/verification.ts`. Mirror the check set and semantics defined in `verify-community-deployment.ts`.
+- [X] T010 [P] Add unit tests for wizard-machine transitions in `apps/web/tests/unit/lib/deploy/wizard-machine.test.ts`
+- [X] T011 [P] Add unit tests for preflight probes and funds estimation in `apps/web/tests/unit/lib/deploy/preflight.test.ts`
+- [X] T012 [P] Add unit tests for verification parity checks and failure reasons in `apps/web/tests/unit/lib/deploy/verification.test.ts`
 
 **Checkpoint**: Core deploy logic and deterministic evaluators are ready.
 
@@ -51,23 +51,23 @@
 
 ### Tests for User Story 1
 
-- [ ] T013 [P] [US1] Add wizard state/step transition and upfront explanation-content tests (multi-signature process, prerequisites, cost context) in `apps/web/tests/unit/components/deploy-wizard.test.tsx`
-- [ ] T014 [P] [US1] Add blocked-state tests (wallet disconnected, wrong network, missing shared infra, insufficient funds) in `apps/web/tests/unit/components/deploy-preflight.test.tsx`
-- [ ] T015 [P] [US1] Add verification rendering tests (per-check pass/fail with reasons) in `apps/web/tests/unit/components/deploy-verification-results.test.tsx`
-- [ ] T016 [P] [US1] Add created-state gating tests that require registration + required verification/config checks in `apps/web/tests/unit/components/deploy-created-state.test.tsx`
-- [ ] T017 [US1] Add test asserting partial progress is never rendered as "community created" in `apps/web/tests/unit/components/deploy-created-state.test.tsx`
+- [X] T013 [P] [US1] Add wizard state/step transition and upfront explanation-content tests (multi-signature process, prerequisites, cost context) in `apps/web/tests/unit/components/deploy-wizard.test.tsx`
+- [X] T014 [P] [US1] Add blocked-state tests (wallet disconnected, wrong network, missing shared infra, insufficient funds) in `apps/web/tests/unit/components/deploy-preflight.test.tsx`
+- [X] T015 [P] [US1] Add verification rendering tests (per-check pass/fail with reasons) in `apps/web/tests/unit/components/deploy-verification-results.test.tsx`
+- [X] T016 [P] [US1] Add created-state gating tests that require registration + required verification/config checks in `apps/web/tests/unit/components/deploy-created-state.test.tsx`
+- [X] T017 [US1] Add test asserting partial progress is never rendered as "community created" in `apps/web/tests/unit/components/deploy-created-state.test.tsx`
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement user-signed deployment orchestration hook (no backend signer) in `apps/web/hooks/useDeployWizard.ts`
+- [X] T018 [US1] Implement user-signed deployment orchestration hook (no backend signer) in `apps/web/hooks/useDeployWizard.ts`
 	- Map each wizard step to concrete viem/wagmi calls (`deployContract` / `writeContract`) according to the plan step model.
 	- Persist tx hashes per step in session state so resume/verification can reference them.
-- [ ] T019 [US1] Implement preflight UI with start blocking and remediation guidance in `apps/web/components/home/deploy-preflight.tsx`
-- [ ] T020 [US1] Implement step progress UI (purpose, expected tx count, live tx progress) in `apps/web/components/home/deploy-step-list.tsx`
-- [ ] T021 [US1] Implement verification results UI with deterministic check reasons in `apps/web/components/home/deploy-verification-results.tsx`
-- [ ] T022 [US1] Keep `apps/web/lib/deploy/verification.ts` as a pure evaluator of verification checks/results; enforce created-state gating in wizard control flow (`apps/web/lib/deploy/wizard-machine.ts` guard and/or `apps/web/hooks/useDeployWizard.ts` selector).
-- [ ] T023 [US1] Integrate preflight/steps/verification into wizard container in `apps/web/components/home/deploy-wizard.tsx`
-- [ ] T024 [US1] Place deploy wizard above communities index on home route in `apps/web/app/page.tsx`
+- [X] T019 [US1] Implement preflight UI with start blocking and remediation guidance in `apps/web/components/home/deploy-preflight.tsx`
+- [X] T020 [US1] Implement step progress UI (purpose, expected tx count, live tx progress) in `apps/web/components/home/deploy-step-list.tsx`
+- [X] T021 [US1] Implement verification results UI with deterministic check reasons in `apps/web/components/home/deploy-verification-results.tsx`
+- [X] T022 [US1] Keep `apps/web/lib/deploy/verification.ts` as a pure evaluator of verification checks/results; enforce created-state gating in wizard control flow (`apps/web/lib/deploy/wizard-machine.ts` guard and/or `apps/web/hooks/useDeployWizard.ts` selector).
+- [X] T023 [US1] Integrate preflight/steps/verification into wizard container in `apps/web/components/home/deploy-wizard.tsx`
+- [X] T024 [US1] Place deploy wizard above communities index on home route in `apps/web/app/page.tsx`
 
 **Checkpoint**: User Story 1 is independently functional and testable.
 
@@ -81,18 +81,18 @@
 
 ### Tests for User Story 2
 
-- [ ] T025 [P] [US2] Add resume state inference tests (pre-registration local session path) in `apps/web/tests/unit/lib/deploy/session-store.test.ts`
-- [ ] T026 [US2] Add resume authorization tests (same wallet allowed, different wallet blocked) in `apps/web/tests/unit/hooks/use-deploy-resume.test.tsx`
-- [ ] T027 [US2] Add post-registration on-chain source-of-truth tests (no local deployments JSON reliance) in `apps/web/tests/unit/hooks/use-deploy-resume.test.tsx`
-- [ ] T028 [P] [US2] Add multi-community resume-target selection tests (session id vs communityId) in `apps/web/tests/unit/hooks/use-deploy-resume-multicommunity.test.tsx`
+- [X] T025 [P] [US2] Add resume state inference tests (pre-registration local session path) in `apps/web/tests/unit/lib/deploy/session-store.test.ts`
+- [X] T026 [US2] Add resume authorization tests (same wallet allowed, different wallet blocked) in `apps/web/tests/unit/hooks/use-deploy-resume.test.tsx`
+- [X] T027 [US2] Add post-registration on-chain source-of-truth tests (no local deployments JSON reliance) in `apps/web/tests/unit/hooks/use-deploy-resume.test.tsx`
+- [X] T028 [P] [US2] Add multi-community resume-target selection tests (session id vs communityId) in `apps/web/tests/unit/hooks/use-deploy-resume-multicommunity.test.tsx`
 
 ### Implementation for User Story 2
 
-- [ ] T029 [US2] Implement resume inference hook using local pre-registration state and on-chain post-registration checks in `apps/web/hooks/useDeployResume.ts`
-- [ ] T030 [US2] Enforce deployer-wallet-only resume authorization in `apps/web/hooks/useDeployResume.ts`
-- [ ] T031 [US2] Wire resume entry points and recovery guidance into wizard UI in `apps/web/components/home/deploy-wizard.tsx`
-- [ ] T032 [US2] Reconcile session state against chain-derived status after reload in `apps/web/lib/deploy/session-store.ts`
-- [ ] T033 [US2] Harden wizard state model against multi-community hidden assumptions in `apps/web/lib/deploy/wizard-machine.ts`
+- [X] T029 [US2] Implement resume inference hook using local pre-registration state and on-chain post-registration checks in `apps/web/hooks/useDeployResume.ts`
+- [X] T030 [US2] Enforce deployer-wallet-only resume authorization in `apps/web/hooks/useDeployResume.ts`
+- [X] T031 [US2] Wire resume entry points and recovery guidance into wizard UI in `apps/web/components/home/deploy-wizard.tsx`
+- [X] T032 [US2] Reconcile session state against chain-derived status after reload in `apps/web/lib/deploy/session-store.ts`
+- [X] T033 [US2] Harden wizard state model against multi-community hidden assumptions in `apps/web/lib/deploy/wizard-machine.ts`
 
 **Checkpoint**: User Story 2 is independently functional and testable.
 
@@ -106,17 +106,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T034 [P] [US3] Add/refresh communities list state tests in `apps/web/components/communities/community-list.test.tsx`
-- [ ] T035 [P] [US3] Add baseline home-route composition test ensuring deploy wizard renders above communities index in `apps/web/tests/unit/routes/home-page.test.tsx`
-- [ ] T036 [US3] Add navigation assertion tests for `/communities/[communityId]` links in `apps/web/components/communities/community-list.test.tsx`
-- [ ] T037 [P] [US3] Add multi-community list rendering tests to prevent single-community assumptions in `apps/web/tests/unit/components/community-list-multicommunity.test.tsx`
+- [X] T034 [P] [US3] Add/refresh communities list state tests in `apps/web/components/communities/community-list.test.tsx`
+- [X] T035 [P] [US3] Add baseline home-route composition test ensuring deploy wizard renders above communities index in `apps/web/tests/unit/routes/home-page.test.tsx`
+- [X] T036 [US3] Add navigation assertion tests for `/communities/[communityId]` links in `apps/web/components/communities/community-list.test.tsx`
+- [X] T037 [P] [US3] Add multi-community list rendering tests to prevent single-community assumptions in `apps/web/tests/unit/components/community-list-multicommunity.test.tsx`
 
 ### Implementation and Regression for User Story 3
 
-- [ ] T038 [US3] Wire `apps/web/lib/graphql/queries.ts` and communities list rendering in `apps/web/components/communities/community-list.tsx` to use the aligned contract query; implement loading, empty, and error states.
-- [ ] T039 [US3] Ensure list item rendering and navigation stay compliant with home-page scope in `apps/web/components/communities/community-list.tsx`
-- [ ] T040 [US3] Add regression cases for home-route wizard+index coexistence (state transitions and no layout/order regressions) in `apps/web/tests/unit/routes/home-page.test.tsx`
-- [ ] T047 [US3] Ensure Manager Home GraphQL query contract is aligned and returns required communities-list fields in `specs/003-manager-home-deploy/contracts/manager-home.graphql` and `apps/web/lib/graphql/queries.ts`; update query or mapping if needed.
+- [X] T038 [US3] Wire `apps/web/lib/graphql/queries.ts` and communities list rendering in `apps/web/components/communities/community-list.tsx` to use the aligned contract query; implement loading, empty, and error states.
+- [X] T039 [US3] Ensure list item rendering and navigation stay compliant with home-page scope in `apps/web/components/communities/community-list.tsx`
+- [X] T040 [US3] Add regression cases for home-route wizard+index coexistence (state transitions and no layout/order regressions) in `apps/web/tests/unit/routes/home-page.test.tsx`
+- [X] T047 [US3] Ensure Manager Home GraphQL query contract is aligned and returns required communities-list fields in `specs/003-manager-home-deploy/contracts/manager-home.graphql` and `apps/web/lib/graphql/queries.ts`; update query or mapping if needed.
 
 **Checkpoint**: User Story 3 is independently functional and testable.
 
@@ -126,12 +126,12 @@
 
 **Purpose**: Final validation and required documentation/status synchronization.
 
-- [ ] T041 [P] Validate and update UI copy to canonical Shift terminology for this feature scope in `apps/web/components/home/deploy-wizard.tsx`, explicitly preserving "claims" terminology only for marketplace dispute/claim contexts.
-- [ ] T042 [P] Update Manager flow documentation for home deploy wizard behavior and terminology notes in `docs/EN/guides/MANAGEMENT_TOOLS.md`
-- [ ] T043 [P] Sync tactical feature status/risk updates in `.github/project-management/IMPLEMENTATION_STATUS.md`
-- [ ] T044 [P] Sync strategic changelog/status updates in `.github/project-management/STATUS_REVIEW.md`
-- [ ] T045 Execute quickstart verification scenarios and record outcomes in `specs/003-manager-home-deploy/quickstart.md`
-- [ ] T046 Run targeted web unit suites for wizard/resume/verification/community-list and attach command outcomes in `specs/003-manager-home-deploy/quickstart.md`; include changed-files validation confirming no `contracts/**` modifications for this feature, and include compatibility check notes confirming no ABI/event schema changes.
+- [X] T041 [P] Validate and update UI copy to canonical Shift terminology for this feature scope in `apps/web/components/home/deploy-wizard.tsx`, explicitly preserving "claims" terminology only for marketplace dispute/claim contexts.
+- [X] T042 [P] Update Manager flow documentation for home deploy wizard behavior and terminology notes in `docs/EN/guides/MANAGEMENT_TOOLS.md`
+- [X] T043 [P] Sync tactical feature status/risk updates in `.github/project-management/IMPLEMENTATION_STATUS.md`
+- [X] T044 [P] Sync strategic changelog/status updates in `.github/project-management/STATUS_REVIEW.md`
+- [X] T045 Execute quickstart verification scenarios and record outcomes in `specs/003-manager-home-deploy/quickstart.md`
+- [X] T046 Run targeted web unit suites for wizard/resume/verification/community-list and attach command outcomes in `specs/003-manager-home-deploy/quickstart.md`; include changed-files validation confirming no `contracts/**` modifications for this feature, and include compatibility check notes confirming no ABI/event schema changes.
 
 ---
 

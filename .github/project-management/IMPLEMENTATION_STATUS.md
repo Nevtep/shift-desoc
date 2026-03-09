@@ -199,3 +199,28 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 8. Keep companion documents in lockstep.
 - Confirm `.github/project-management/STATUS_REVIEW.md` still matches this file's current top risks and priorities.
 - If they diverge, update both in the same PR before merge.
+
+---
+
+## 2026-03-06 Tactical Update (Manager Home Deploy Wizard)
+
+- Added Manager Home deploy wizard scaffolding and foundational deploy domain modules in `apps/web/lib/deploy/*`, `apps/web/hooks/useDeployWizard.ts`, and `apps/web/hooks/useDeployResume.ts`.
+- Added deterministic script-parity verification evaluator and on-chain snapshot reader (`CommunityRegistry` and role/module checks) for post-registration authority.
+- Updated home route composition to render deploy wizard above communities index (`apps/web/app/page.tsx`).
+- Expanded web unit coverage for wizard machine, preflight, verification parity, created-state gating, resume authorization, multi-community resume targeting, and home-route composition.
+- Updated communities list navigation and optional-name fallback handling.
+- Validation evidence: targeted feature test set passes via `pnpm exec vitest run ...` in `apps/web`.
+
+## 2026-03-07 Tactical Update (Wizard Execution Path)
+
+- Replaced fallback throw-only deploy behavior with a default user-signed step executor in `apps/web/lib/deploy/default-step-executor.ts` and wired it in `apps/web/hooks/useDeployWizard.ts`.
+- Default wizard execution now performs concrete on-chain write attempts for `DEPLOY_STACK` and `WIRE_ROLES` using `writeContractAsync` + receipt confirmation, with deterministic step tx hash tracking.
+- Added execution-flow tests in `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx` covering successful end-to-end step sequencing and mid-flow failure persistence.
+
+## 2026-03-09 Tactical Update (Staging Deployment Policy)
+
+- Adopted explicit Base Sepolia staging policy for current development cycle:
+  - no legacy support requirements,
+  - no incremental migration path requirements,
+  - clean-slate full redeploy is expected when core architecture/behavior changes.
+- Implementation and refactor decisions from this point should optimize for secure target-state architecture rather than backward compatibility with prior staged deployments.

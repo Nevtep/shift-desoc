@@ -2,6 +2,17 @@
 
 This document provides a comprehensive reference for the five architectural layers of the Shift DeSoc protocol. Each layer builds upon the previous, creating a complete system for community governance, work verification, and economic coordination.
 
+## Staging Policy (Base Sepolia)
+
+Shift is currently operated in a staging-first mode on Base Sepolia.
+
+- No legacy support is required on Base Sepolia.
+- No incremental migration paths are required on Base Sepolia.
+- When core architecture or contract behavior changes, the expected process is full redeploy of the stack and discard of previous staged deployments.
+- New implementations should prioritize clean, secure target-state design over backward compatibility with prior staged deployments.
+
+This policy applies only to the staging environment (Base Sepolia). Production rollout policy can differ and must be defined separately.
+
 ---
 
 ## Layer 1: Community Coordination

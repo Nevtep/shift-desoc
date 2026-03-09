@@ -19,6 +19,10 @@ describe("CommunityList", () => {
     expect(await screen.findByText(fixtures.community.name)).toBeInTheDocument();
     expect(screen.getByText(`Chain ${fixtures.community.chainId}`)).toBeInTheDocument();
     expect(screen.getByText(`ID ${fixtures.community.id}`)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /View community/i })).toHaveAttribute(
+      "href",
+      `/communities/${fixtures.community.id}`
+    );
   });
 
   it("shows empty state when no communities", async () => {

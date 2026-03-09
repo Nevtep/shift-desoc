@@ -51,7 +51,7 @@ export function CommunityList() {
               <span>ID {community.id}</span>
             </div>
             <div className="space-y-1">
-              <span className="text-lg font-semibold">{community.name}</span>
+              <span className="text-lg font-semibold">{community.name ?? `Community ${community.id}`}</span>
               {community.metadataUri ? (
                 <span className="block truncate text-xs text-muted-foreground">
                   {community.metadataUri}

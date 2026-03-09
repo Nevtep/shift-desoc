@@ -225,20 +225,25 @@ const buildJurorAssignmentId = (engagementId: number, juror: Address) => `${enga
 
 ponder.on("CommunityRegistry:CommunityRegistered", async ({ event, context }) => {
   const createdAt = toDate(event.block.timestamp);
+  const communityId = Number(event.args.communityId);
+  const payload = {
+    chainId: context.network.chainId,
+    name: event.args.name,
+    metadataUri: null,
+    createdAt,
+  };
 
   await context.db
     .insert(communities)
     .values({
-      id: Number(event.args.communityId),
-      chainId: context.network.chainId,
-      name: event.args.name,
-      metadataUri: null,
-      createdAt,
+      id: communityId,
+      ...payload,
     })
-    .onConflictDoUpdate({
-      target: communities.id,
-      set: { chainId: context.network.chainId, name: event.args.name, metadataUri: null, createdAt },
-    });
+    .onConflictDoNothing();
+
+  await context.db
+    .update(communities, { id: communityId })
+    .set(payload);
 });
 
 ponder.on("RequestHub:RequestCreated", async ({ event, context }) => {

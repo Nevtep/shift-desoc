@@ -74,3 +74,63 @@ pnpm --filter @shift/web test:unit
 - [ ] Verification checks match script parity.
 - [ ] No contract changes introduced.
 - [ ] Docs and project-management status files updated in lockstep.
+
+## Execution Notes (2026-03-06)
+
+Automated validation executed:
+
+```bash
+cd apps/web
+pnpm exec vitest run \
+	tests/unit/lib/deploy/wizard-machine.test.ts \
+	tests/unit/lib/deploy/preflight.test.ts \
+	tests/unit/lib/deploy/verification.test.ts \
+	tests/unit/lib/deploy/session-store.test.ts \
+	tests/unit/components/deploy-wizard.test.tsx \
+	tests/unit/components/deploy-preflight.test.tsx \
+	tests/unit/components/deploy-verification-results.test.tsx \
+	tests/unit/components/deploy-created-state.test.tsx \
+	tests/unit/hooks/use-deploy-resume.test.tsx \
+	tests/unit/hooks/use-deploy-resume-multicommunity.test.tsx \
+	tests/unit/routes/home-page.test.tsx \
+	components/communities/community-list.test.tsx \
+	tests/unit/components/community-list-multicommunity.test.tsx
+```
+
+Result: PASS (`13 passed`, `27 passed`).
+
+Known unrelated suite issue outside this feature slice:
+- `tests/unit/components/draft-create-form.test.tsx` currently fails in full-suite runs due to missing import `../../lib/actions/registry` from `components/drafts/draft-create-form.tsx`.
+
+Compatibility validations:
+- Changed-files review confirms this feature slice does not modify `contracts/**`.
+- No ABI/event schema changes were introduced; web-side logic consumes existing deployed interfaces.
+
+Manual wallet-connected staging scenarios (`Base Sepolia`) remain pending:
+- end-to-end deploy tx flow,
+- interruption/reload resume,
+- cross-wallet resume rejection on real chain.
+
+## Execution Notes (2026-03-07)
+
+Resume action regression verification executed:
+
+```bash
+cd apps/web
+pnpm exec vitest run \
+	tests/unit/components/deploy-wizard.test.tsx \
+	tests/unit/hooks/use-deploy-resume.test.tsx \
+	tests/unit/hooks/use-deploy-resume-multicommunity.test.tsx
+```
+
+Result: PASS (`3 passed`, `7 passed`).
+
+Scenario outcomes captured from automated checks:
+- Layout/action availability: PASS. `DeployWizard` renders `Resume deploy` and keeps it enabled for connected wallets (`keeps resume deploy actionable for connected wallet`).
+- Resume authorization rules: PASS. Same-wallet resume allowed and different-wallet resume blocked (`use-deploy-resume.test.tsx`).
+- Multi-community resume targeting: PASS. Session-id/community-id target selection behavior validated (`use-deploy-resume-multicommunity.test.tsx`).
+
+Manual wallet-connected staging scenarios on Base Sepolia remain pending and require interactive wallet confirmations:
+- End-to-end deploy transaction flow.
+- Interruption/reload resume on live chain state.
+- Cross-wallet resume rejection on real chain.
