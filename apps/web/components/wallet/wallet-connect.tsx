@@ -76,8 +76,8 @@ export function WalletConnect() {
 
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm">
-      <div className="flex flex-wrap items-center gap-2 rounded-full border border-border px-3 py-1">
-        <span className="text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-2 rounded-full border border-primary pl-3 pr-[7px] py-1">
+        <span className="text-xs font-medium text-primary">
           {activeChain ? activeChain.name : "No network"}
         </span>
         {allowedChains.map((chain) => {
@@ -89,15 +89,15 @@ export function WalletConnect() {
               type="button"
               onClick={() => switchChain?.({ chainId: chain.id })}
               disabled={isActive || isPendingSwitch}
-              className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium hover:bg-muted/70 disabled:opacity-60"
+              className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-muted/70 disabled:opacity-60"
             >
               {isActive ? "Selected" : isPendingSwitch ? "Switching..." : chain.name}
             </button>
           );
         })}
       </div>
-      <div className="flex items-center gap-2 rounded-full border border-border px-3 py-1">
-        <span className="font-mono text-xs">{formatAddress(address) || "Connected"}</span>
+      <div className="flex items-center gap-2 rounded-full border border-primary pl-3 pr-[7px] py-1">
+        <span className="font-mono text-xs font-medium text-primary">{formatAddress(address) || "Connected"}</span>
         <button
           type="button"
           onClick={() => disconnect()}

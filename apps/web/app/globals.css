@@ -80,10 +80,10 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .btn-outline-pill {
-    @apply inline-flex items-center justify-center rounded-full border-2 border-secondary bg-transparent px-3 py-1 text-xs font-semibold text-secondary transition-all duration-200;
+    @apply inline-flex items-center justify-center rounded-full border border-primary bg-transparent px-3 py-1 text-xs font-semibold text-primary transition-all duration-200;
   }
   .btn-outline-pill:hover:not(:disabled) {
-    @apply border-secondaryDark text-secondaryDark;
+    @apply border-primaryDark text-primaryDark;
   }
   .btn-outline-pill:disabled {
     @apply cursor-not-allowed opacity-60;

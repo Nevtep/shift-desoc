@@ -7,6 +7,7 @@ import Link from "next/link";
 import { getEnv } from "@shift/shared";
 
 import { ShiftProviders } from "./providers";
+import { NavGovernanceDropdown } from "../components/layout/nav-governance-dropdown";
 import { WalletConnectClient } from "../components/wallet/wallet-connect-client";
 
 const inter = Inter({
@@ -52,22 +53,43 @@ export default function RootLayout({
           <div className="flex min-h-screen flex-col">
             <header className="border-b border-border bg-background/80 backdrop-blur">
               <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4 text-sm">
-                <div className="flex items-center gap-3 font-semibold">
-                  <span>Shift DeSoc</span>
-                </div>
+                <Link
+                  href="/"
+                  className="flex items-center gap-3 font-semibold transition-opacity hover:opacity-90"
+                  aria-label="Shift DeSoc - Home"
+                >
+                  <img
+                    src="/imagotipo-h.svg"
+                    alt="Shift DeSoc"
+                    className="h-[83px] w-auto"
+                  />
+                </Link>
                 <div className="flex flex-wrap items-center gap-4">
-                  <nav className="flex flex-wrap items-center gap-4 text-muted-foreground">
-                    <Link className="hover:text-foreground" href="/communities">
+                  <nav className="flex flex-wrap items-center gap-4 font-bold text-primary">
+                    <Link
+                      className="cursor-pointer transition-colors hover:text-primaryDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      href="/communities"
+                    >
                       Communities
                     </Link>
-                    <Link className="hover:text-foreground" href="/requests">
-                      Path A: Requests
+                    <NavGovernanceDropdown />
+                    <Link
+                      className="cursor-pointer transition-colors hover:text-primaryDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      href="/engagements"
+                    >
+                      Engagements
                     </Link>
-                    <Link className="hover:text-foreground" href="/engagements">
-                      Path B: Engagements
+                    <Link
+                      className="cursor-pointer transition-colors hover:text-primaryDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      href="/marketplace"
+                    >
+                      Marketplace
                     </Link>
-                    <Link className="hover:text-foreground" href="/marketplace">
-                      Path C: Marketplace
+                    <Link
+                      className="cursor-pointer transition-colors hover:text-primaryDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      href="/profile"
+                    >
+                      Profile
                     </Link>
                   </nav>
                   <WalletConnectClient />
