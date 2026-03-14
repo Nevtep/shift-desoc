@@ -92,7 +92,7 @@ export default function RootLayout({
                       Profile
                     </Link>
                   </nav>
-                  <WalletConnectClient />
+                  <WalletConnectClient showAddress />
                 </div>
               </div>
             </header>

@@ -4,7 +4,11 @@ import { useEffect, useState } from "react";
 
 import { WalletConnect } from "./wallet-connect";
 
-export function WalletConnectClient() {
+type WalletConnectClientProps = {
+  showAddress?: boolean;
+};
+
+export function WalletConnectClient({ showAddress }: WalletConnectClientProps = {}) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -13,5 +17,5 @@ export function WalletConnectClient() {
 
   if (!mounted) return null;
 
-  return <WalletConnect />;
+  return <WalletConnect showAddress={showAddress} />;
 }
