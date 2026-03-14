@@ -56,6 +56,8 @@ type Props = {
   preflight: PreflightAssessment | null;
   runPreflight: () => Promise<PreflightAssessment | null>;
   connectedAddress?: `0x${string}`;
+  designMode?: boolean;
+  onDesignModeChange?: (enabled: boolean) => void;
 };
 
 function updateField(
@@ -67,7 +69,18 @@ function updateField(
   onChange({ ...value, [key]: nextValue });
 }
 
-export function DeployConfigSteps({ value, validationErrors, onChange, onCreateCommunity, isRunning, preflight, runPreflight, connectedAddress }: Props) {
+export function DeployConfigSteps({
+  value,
+  validationErrors,
+  onChange,
+  onCreateCommunity,
+  isRunning,
+  preflight,
+  runPreflight,
+  connectedAddress,
+  designMode = false,
+  onDesignModeChange
+}: Props) {
   const [stepIndex, setStepIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const chainId = useChainId();
@@ -99,10 +112,12 @@ export function DeployConfigSteps({ value, validationErrors, onChange, onCreateC
     return false;
   })();
   const preflightPassed = !preflight || preflight.blockingReasons.length === 0;
+  const blockedByInsufficientFunds =
+    preflight?.blockingReasons.some((r) => r.toLowerCase().includes("insufficient")) ?? false;
   const canCreate =
     validationErrors.length === 0 &&
     value.treasuryStableToken.trim().length > 0 &&
-    preflightPassed;
+    (preflightPassed || (designMode && blockedByInsufficientFunds));
 
   function handleNext() {
     if (isLastStep && canCreate && onCreateCommunity) {
@@ -188,21 +203,21 @@ export function DeployConfigSteps({ value, validationErrors, onChange, onCreateC
             <p className="text-xs text-muted-foreground">
               Your community will use this currency for payments and treasury.
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {tokenOptions.map((opt) => (
                 <button
                   key={opt.address}
                   type="button"
                   onClick={() => handleSelectToken(opt.address)}
-                  className={`flex cursor-pointer items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
+                  className={`flex cursor-pointer items-center justify-between rounded-lg border border-border bg-background/80 px-3 py-2 text-left text-sm transition-colors ${
                     value.treasuryStableToken === opt.address
-                      ? "border-secondary bg-secondary/10"
-                      : "border-border hover:border-secondary/50"
+                      ? "border-primary/50"
+                      : "hover:border-primary/30"
                   }`}
                 >
                   <span>{opt.label}</span>
                   {value.treasuryStableToken === opt.address ? (
-                    <span className="text-sm font-medium text-secondary">Selected</span>
+                    <span className="text-sm font-medium text-primary">Selected</span>
                   ) : null}
                 </button>
               ))}
@@ -247,13 +262,13 @@ export function DeployConfigSteps({ value, validationErrors, onChange, onCreateC
                 <div className="grid gap-2 text-sm sm:grid-cols-2">
                   <p>
                     Wallet:{" "}
-                    <span className={preflight.walletConnected ? "text-emerald-600" : "text-destructive"}>
+                    <span className={preflight.walletConnected ? "text-primary" : "text-destructive"}>
                       {preflight.walletConnected ? "Connected" : "Disconnected"}
                     </span>
                   </p>
                   <p>
                     Network:{" "}
-                    <span className={preflight.supportedNetwork ? "text-emerald-600" : "text-destructive"}>
+                    <span className={preflight.supportedNetwork ? "text-primary" : "text-destructive"}>
                       {CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}
                       {preflight.supportedNetwork ? " (supported)" : " (unsupported)"}
                     </span>
@@ -261,7 +276,7 @@ export function DeployConfigSteps({ value, validationErrors, onChange, onCreateC
                   <p>
                     Balance: {weiToEth(preflight.funding.currentBalanceWei)} ETH on {CHAIN_NAMES[chainId] ?? `chain ${chainId}`}
                     {preflight.funding.isSufficient ? (
-                      <span className="ml-1 text-emerald-600">(sufficient)</span>
+                      <span className="ml-1 text-primary">(sufficient)</span>
                     ) : (
                       <span className="ml-1 text-destructive">(insufficient)</span>
                     )}
@@ -271,13 +286,29 @@ export function DeployConfigSteps({ value, validationErrors, onChange, onCreateC
                   </p>
                 </div>
                 {preflight.blockingReasons.length > 0 ? (
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
-                    {preflight.blockingReasons.map((reason) => (
-                      <li key={reason}>{reason}</li>
-                    ))}
-                  </ul>
+                  <>
+                    <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                      {preflight.blockingReasons.map((reason) => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                    {blockedByInsufficientFunds && onDesignModeChange ? (
+                      <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                        <p className="mb-2 text-xs text-amber-800">
+                          Sin saldo para gas? Activa el modo diseño para ver el flujo completo sin ejecutar transacciones.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => onDesignModeChange(!designMode)}
+                          className="cursor-pointer rounded-lg bg-amber-200 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-300"
+                        >
+                          {designMode ? "Desactivar modo diseño" : "Continuar en modo diseño"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
                 ) : (
-                  <p className="text-sm font-medium text-emerald-600">All checks passed. You can deploy.</p>
+                  <p className="text-sm font-medium text-primary">All checks passed. You can deploy.</p>
                 )}
               </>
             )}
@@ -308,7 +339,11 @@ export function DeployConfigSteps({ value, validationErrors, onChange, onCreateC
           disabled={isLastStep ? !canCreate || isRunning : !canGoNext || isRunning}
           className="btn-primary flex cursor-pointer items-center disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isLastStep ? "Create community" : "Next"}
+          {isLastStep
+            ? designMode
+              ? "Simular deploy (modo diseño)"
+              : "Create community"
+            : "Next"}
           {!isLastStep ? <ChevronRight className="ml-1 h-4 w-4" /> : null}
         </button>
       </div>

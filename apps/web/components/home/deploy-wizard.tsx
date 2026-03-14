@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
+import { useSearchParams } from "next/navigation";
 
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
 
 import {
   createDefaultDeploymentConfig,
@@ -65,6 +65,14 @@ function saveDraft(config: CommunityDeploymentConfig, address?: `0x${string}`, c
 }
 
 export function DeployWizard({ options }: Props) {
+  const searchParams = useSearchParams();
+  const designModeFromUrl = searchParams.get("designMode") === "1";
+  const [designMode, setDesignMode] = useState(designModeFromUrl);
+
+  useEffect(() => {
+    if (designModeFromUrl && !designMode) setDesignMode(true);
+  }, [designModeFromUrl, designMode]);
+
   const { status, address } = useAccount();
   const chainId = useChainId();
   const {
@@ -78,7 +86,7 @@ export function DeployWizard({ options }: Props) {
     run,
     setSession,
     clearAndStartOver
-  } = useDeployWizard(options);
+  } = useDeployWizard({ ...options, designMode: designMode || options?.designMode });
   const { resume, error: resumeError } = useDeployResume();
   const [config, setConfig] = useState<CommunityDeploymentConfig>(() => createDefaultDeploymentConfig());
   const [isResuming, setIsResuming] = useState(false);
@@ -205,7 +213,12 @@ export function DeployWizard({ options }: Props) {
       className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: "url(/contact-bg.webp)" }}
     >
-      <div className="absolute right-4 top-4 z-10">
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-3">
+        {designMode ? (
+          <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-medium text-amber-900">
+            Modo diseño
+          </span>
+        ) : null}
         <WalletConnect showAddress />
       </div>
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-16 sm:px-6">
@@ -220,22 +233,25 @@ export function DeployWizard({ options }: Props) {
             <>
               <div className="space-y-4 text-center">
                 <h2 className="text-2xl font-semibold">
-                  {session?.status === "failed" ? "Deployment paused" : "Deploying your community"}
+                  {session?.status === "failed"
+                    ? "Deployment paused"
+                    : (session?.steps ?? []).some(
+                        (s) => s.key === "VERIFY_DEPLOYMENT" && (s.status === "running" || s.status === "succeeded")
+                      )
+                      ? "Verification"
+                      : "Deploying your community"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {session?.status === "failed"
                     ? "An error occurred. Fix the issue and use Resume to continue."
-                    : "Confirm transactions in your wallet when prompted. Do not close this page."}
+                    : (session?.steps ?? []).some(
+                        (s) => s.key === "VERIFY_DEPLOYMENT" && (s.status === "running" || s.status === "succeeded")
+                      )
+                      ? "Running verification checks."
+                      : "Confirm transactions in your wallet when prompted. Do not close this page."}
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleStartOver}
-                    className="btn-ghost cursor-pointer"
-                  >
-                    Start over
-                  </button>
-                  {session?.status === "failed" ? (
+                {session?.status === "failed" ? (
+                  <div className="flex flex-wrap items-center justify-center gap-3">
                     <button
                       type="button"
                       disabled={!canResume || isResuming}
@@ -244,40 +260,67 @@ export function DeployWizard({ options }: Props) {
                     >
                       {isResuming ? "Resuming..." : "Resume"}
                     </button>
-                  ) : null}
-                </div>
-                {(() => {
-                  const latestHash = getLatestTxHash(session?.steps ?? []);
-                  return latestHash ? (
-                    <a
-                      href={getTxExplorerUrl(chainId, latestHash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block text-sm text-primary underline underline-offset-2 hover:text-primary/80"
-                    >
-                      View transaction on block explorer
-                    </a>
-                  ) : null;
-                })()}
+                  </div>
+                ) : null}
                 {error ? <p className="text-sm text-destructive">{error}</p> : null}
                 {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
               </div>
 
-              <div className="mt-8 flex flex-col items-center gap-6">
-                {isRunning && session?.status !== "failed" ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Waiting for transaction confirmation…
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Do not close this page. Return here after signing in your wallet.
-                    </p>
-                  </div>
-                ) : null}
-                <DeployStepList steps={session?.steps ?? []} />
+              <div className="mt-8 flex w-full flex-col items-center gap-8">
+                <DeployVerificationResults
+                  results={verificationResults}
+                  isVerifying={
+                    (session?.steps ?? []).some(
+                      (s) => s.key === "VERIFY_DEPLOYMENT" && s.status === "running"
+                    ) && verificationResults.length === 0
+                  }
+                />
+                <DeployStepList
+                  steps={session?.steps ?? []}
+                  betweenTxListAndStepper={
+                    (() => {
+                      const latestHash = getLatestTxHash(session?.steps ?? []);
+                      return latestHash ? (
+                        <a
+                          href={getTxExplorerUrl(chainId, latestHash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block text-center text-sm text-primary underline underline-offset-2 hover:text-primary/80"
+                        >
+                          View transaction on block explorer
+                        </a>
+                      ) : null;
+                    })()
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={handleStartOver}
+                  className="btn-ghost cursor-pointer"
+                >
+                  Start over
+                </button>
               </div>
             </>
+          ) : isCompleted ? (
+            <div className="mt-8 flex w-full flex-col items-center gap-8">
+              <div className="space-y-4 text-center">
+                <h2 className="text-2xl font-semibold">Verification</h2>
+                <p className="text-sm text-muted-foreground">All checks passed.</p>
+              </div>
+              <DeployVerificationResults results={verificationResults} />
+              <div className="space-y-4 text-center">
+                <p className="text-lg font-medium text-primary">Your community is ready!</p>
+                <button
+                  type="button"
+                  onClick={() => setCompletedDismissed(true)}
+                  className="btn-primary cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+              <DeployStepList steps={session?.steps ?? []} />
+            </div>
           ) : (
             <>
               <div className="space-y-4">
@@ -309,23 +352,14 @@ export function DeployWizard({ options }: Props) {
                 preflight={preflight}
                 runPreflight={runPreflight}
                 connectedAddress={address}
+                designMode={designMode}
+                onDesignModeChange={setDesignMode}
               />
               <DeployStepList steps={session?.steps ?? []} />
             </>
           )}
-          <DeployVerificationResults results={verificationResults} />
-
-          {isCompleted ? (
-            <div className="space-y-4 text-center">
-              <p className="text-lg font-medium text-emerald-600">Your community is ready!</p>
-              <button
-                type="button"
-                onClick={() => setCompletedDismissed(true)}
-                className="btn-primary cursor-pointer"
-              >
-                Done
-              </button>
-            </div>
+          {!isDeploying && !isCompleted && verificationResults.length > 0 ? (
+            <DeployVerificationResults results={verificationResults} />
           ) : null}
       </div>
     </div>

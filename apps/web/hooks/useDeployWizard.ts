@@ -18,6 +18,10 @@ import {
   probeSharedInfra,
   type FundsEstimateInput
 } from "../lib/deploy/preflight";
+import {
+  createMockStepExecutor,
+  mockReadVerificationSnapshot
+} from "../lib/deploy/mock-step-executor";
 import { readVerificationSnapshot as readVerificationSnapshotFromChain } from "../lib/deploy/onchain";
 import { clearSession as clearSessionStore, findResumeCandidate, saveSession } from "../lib/deploy/session-store";
 import type { DeploymentWizardSession, PreflightAssessment, StepKey, VerificationCheckResult } from "../lib/deploy/types";
@@ -52,6 +56,8 @@ export type UseDeployWizardOptions = {
   estimateInput?: Partial<FundsEstimateInput>;
   stepExecutor?: StepExecutor;
   readVerificationSnapshot?: VerificationSnapshotReader;
+  /** When true, bypasses preflight blocking and uses mock executor for design/demo flow. */
+  designMode?: boolean;
 };
 
 const DEFAULT_SUPPORTED_CHAIN_IDS = [84532];
@@ -68,6 +74,7 @@ function log(message: string, meta?: unknown): void {
 export function useDeployWizard(options: UseDeployWizardOptions = {}) {
   const supportedChainIds = options.supportedChainIds ?? DEFAULT_SUPPORTED_CHAIN_IDS;
   const estimateInput = options.estimateInput;
+  const designMode = options.designMode ?? false;
   const { status, address } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const chainId = useChainId();
@@ -150,11 +157,9 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
 
   const runVerification = useCallback(
     async (activeSession: DeploymentWizardSession) => {
-      if (!activeSession.communityId || !publicClient) {
-        log("Skipping verification: missing communityId or publicClient", {
-          communityId: activeSession.communityId,
-          hasPublicClient: Boolean(publicClient)
-        });
+      if (!activeSession.communityId) return [];
+      if (!publicClient && !options.designMode) {
+        log("Skipping verification: publicClient not available");
         return [];
       }
 
@@ -165,8 +170,10 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
 
       const reader =
         options.readVerificationSnapshot ??
-        (async (communityId: number, currentChainId: number) =>
-          readVerificationSnapshotFromChain(publicClient, currentChainId, communityId));
+        (options.designMode
+          ? mockReadVerificationSnapshot
+          : async (communityId: number, currentChainId: number) =>
+              readVerificationSnapshotFromChain(publicClient!, currentChainId, communityId));
       const snapshot = await reader(activeSession.communityId, chainId);
       const results = evaluateVerificationSnapshot({
         communityId: activeSession.communityId,
@@ -237,7 +244,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         return;
       }
 
-      if (assessment.blockingReasons.length > 0) {
+      if (assessment.blockingReasons.length > 0 && !designMode) {
         log("Stopping deploy: preflight is blocked", {
           blockingReasons: assessment.blockingReasons
         });
@@ -250,6 +257,11 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         saveSession(blocked);
         return;
       }
+      if (designMode && assessment.blockingReasons.length > 0) {
+        log("Design mode: bypassing preflight blocking", {
+          blockingReasons: assessment.blockingReasons
+        });
+      }
 
       if (!publicClient) {
         setError("Public client unavailable. Reconnect wallet and retry.");
@@ -258,11 +270,13 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
 
       const execute =
         options.stepExecutor ??
-        createDefaultUserSignedStepExecutor({
-          publicClient,
-          writeContractAsync: writeContractAsync as any,
-          connectedAddress: address
-        });
+        (designMode
+          ? createMockStepExecutor()
+          : createDefaultUserSignedStepExecutor({
+              publicClient,
+              writeContractAsync: writeContractAsync as any,
+              connectedAddress: address
+            }));
       log("Executor selected", {
         mode: options.stepExecutor ? "custom" : "default"
       });
@@ -294,15 +308,19 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
           txHashes: result.txHashes ?? [],
           communityId: result.communityId
         });
-        for (const txHash of result.txHashes ?? []) {
-          log("Recording tx hash", {
-            step: runningStep,
-            txHash
-          });
+        const txHashes = result.txHashes ?? [];
+        for (let i = 0; i < txHashes.length; i++) {
+          const txHash = txHashes[i];
+          log("Recording tx hash", { step: runningStep, txHash });
           active = {
             ...active,
             steps: recordStepTx(active.steps, runningStep, txHash)
           };
+          if (designMode && i < txHashes.length - 1) {
+            setSession(active);
+            saveSession(active);
+            await new Promise((r) => setTimeout(r, 400));
+          }
         }
         if (typeof result.communityId === "number") {
           active = {

@@ -1,9 +1,12 @@
-import { Check } from "lucide-react";
+"use client";
+
+import { Check, Loader2 } from "lucide-react";
 import type { DeploymentStepState } from "../../lib/deploy/types";
 import { STEP_META, WIZARD_STEP_ORDER } from "../../lib/deploy/wizard-machine";
 
 type Props = {
   steps: DeploymentStepState[];
+  betweenTxListAndStepper?: React.ReactNode;
 };
 
 const SHORT_LABELS: Record<string, string> = {
@@ -13,7 +16,56 @@ const SHORT_LABELS: Record<string, string> = {
   VERIFY_DEPLOYMENT: "Verify"
 };
 
-export function DeployStepList({ steps }: Props) {
+const TX_LABELS: Record<string, string> = {
+  DEPLOY_STACK: "Deploy transaction",
+  WIRE_ROLES: "Role configuration"
+};
+
+function TxItem({
+  index,
+  total,
+  confirmed,
+  isCurrent,
+  stepKey
+}: {
+  index: number;
+  total: number;
+  confirmed: number;
+  isCurrent: boolean;
+  stepKey: string;
+}) {
+  const done = index < confirmed;
+  const inProgress = isCurrent && index === confirmed;
+  const baseLabel = TX_LABELS[stepKey] ?? "Transaction";
+
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-lg border border-border bg-background/80 px-3 py-2 text-sm transition-colors ${
+        done
+          ? "border-primary/50"
+          : inProgress
+            ? "border-primary/50"
+            : ""
+      }`}
+    >
+      <span className="flex size-6 shrink-0 items-center justify-center">
+        {done ? (
+          <Check className="h-4 w-4 text-primary" aria-hidden />
+        ) : inProgress ? (
+          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
+        ) : (
+          <span className="text-xs font-medium text-muted-foreground">{index + 1}</span>
+        )}
+      </span>
+      <span className={done ? "font-medium text-primary" : inProgress ? "font-medium text-foreground" : "text-muted-foreground"}>
+        {baseLabel} {index + 1} of {total}
+        {done ? " — confirmed" : inProgress ? " — confirming…" : " — pending"}
+      </span>
+    </div>
+  );
+}
+
+export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
   const order = steps.length > 0 ? steps : WIZARD_STEP_ORDER.map((key) => ({
     key,
     name: STEP_META[key].name,
@@ -27,31 +79,35 @@ export function DeployStepList({ steps }: Props) {
   const idx = currentIdx < 0 ? order.length - 1 : Math.max(0, currentIdx);
 
   const currentStep = order[idx];
-  const hasTxProgress =
+  const hasTxList =
     currentStep && currentStep.expectedTxCount > 0 && currentStep.status === "running";
 
   return (
-    <section className="flex flex-col items-center gap-6 pt-2">
-      {hasTxProgress ? (
-        <div className="w-full max-w-xs rounded-lg border border-border bg-muted/30 px-4 py-2 text-center">
-          <p className="text-sm font-medium">
-            {currentStep.confirmedTxCount} of {currentStep.expectedTxCount} transactions confirmed
+    <section className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 pt-2">
+      {hasTxList ? (
+        <div className="w-full space-y-2">
+          <p className="text-center text-sm font-medium text-muted-foreground">
+            {SHORT_LABELS[currentStep.key] ?? currentStep.name}
           </p>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{
-                width: `${Math.round((currentStep.confirmedTxCount / currentStep.expectedTxCount) * 100)}%`
-              }}
-            />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {Array.from({ length: currentStep.expectedTxCount }, (_, i) => (
+              <TxItem
+                key={i}
+                index={i}
+                total={currentStep.expectedTxCount}
+                confirmed={currentStep.confirmedTxCount}
+                isCurrent={currentStep.status === "running"}
+                stepKey={currentStep.key}
+              />
+            ))}
           </div>
         </div>
       ) : null}
-      <div className="flex items-start justify-center gap-1 sm:gap-2">
+      {betweenTxListAndStepper}
+      <div className="flex w-full items-start justify-center gap-1 sm:gap-2">
         {order.map((step, i) => {
           const isDone = i < idx || (i === idx && step.status === "succeeded");
           const isCurrent = i === idx;
-          const isRunning = isCurrent && step.status === "running";
           const label = SHORT_LABELS[step.key] ?? step.name;
           return (
             <div key={step.key} className="flex items-start">
@@ -75,11 +131,6 @@ export function DeployStepList({ steps }: Props) {
                 >
                   {label}
                 </span>
-                {isRunning && step.expectedTxCount > 0 ? (
-                  <span className="text-[10px] text-muted-foreground">
-                    {step.confirmedTxCount}/{step.expectedTxCount}
-                  </span>
-                ) : null}
               </div>
               {i < order.length - 1 ? (
                 <div
