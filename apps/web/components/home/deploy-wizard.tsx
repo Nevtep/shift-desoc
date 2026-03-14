@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import Link from "next/link";
 
@@ -13,6 +13,7 @@ import {
 } from "../../lib/deploy/config";
 import { useDeployResume } from "../../hooks/useDeployResume";
 import { useDeployWizard, type UseDeployWizardOptions } from "../../hooks/useDeployWizard";
+import { useMyDeployedCommunities } from "../../hooks/useMyDeployedCommunities";
 import { WalletConnect } from "../wallet/wallet-connect";
 import { DeployConfigSteps } from "./deploy-config-steps";
 import { DeployStepList } from "./deploy-step-list";
@@ -65,6 +66,7 @@ function saveDraft(config: CommunityDeploymentConfig, address?: `0x${string}`, c
 }
 
 export function DeployWizard({ options }: Props) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const designModeFromUrl = searchParams.get("designMode") === "1";
   const [designMode, setDesignMode] = useState(designModeFromUrl);
@@ -88,16 +90,30 @@ export function DeployWizard({ options }: Props) {
     clearAndStartOver
   } = useDeployWizard({ ...options, designMode: designMode || options?.designMode });
   const { resume, error: resumeError } = useDeployResume();
+  const { hasCommunities, isLoading: isLoadingMyCommunities, refetch: refetchMyCommunities } = useMyDeployedCommunities();
   const [config, setConfig] = useState<CommunityDeploymentConfig>(() => createDefaultDeploymentConfig());
   const [isResuming, setIsResuming] = useState(false);
   const [completedDismissed, setCompletedDismissed] = useState(false);
+  const [wizardExpanded, setWizardExpanded] = useState(false);
+  const [wizardClosed, setWizardClosed] = useState(false);
   const resumeRequestIdRef = useRef(0);
 
   const isCompleted = session?.status === "completed";
-  const showFullScreen = !isCompleted || !completedDismissed;
   const isDeploying =
     session != null &&
     (session.status === "in-progress" || session.status === "preflight-blocked" || session.status === "failed");
+  const showFullScreen = !isCompleted || !completedDismissed;
+  const showHomeView =
+    status === "connected" &&
+    !isLoadingMyCommunities &&
+    !isDeploying &&
+    !isCompleted &&
+    ((hasCommunities && !wizardExpanded) || wizardClosed);
+  const showLoadingCheck =
+    status === "connected" &&
+    isLoadingMyCommunities &&
+    !isDeploying &&
+    !isCompleted;
 
   useEffect(() => {
     const draft = loadDraft(address, chainId);
@@ -110,6 +126,10 @@ export function DeployWizard({ options }: Props) {
   useEffect(() => {
     saveDraft(config, address, chainId);
   }, [address, chainId, config]);
+
+  useEffect(() => {
+    if (isCompleted) void refetchMyCommunities();
+  }, [isCompleted, refetchMyCommunities]);
 
   const configValidation = useMemo(() => validateDeploymentConfig(config), [config]);
   const canStart = useMemo(
@@ -194,18 +214,59 @@ export function DeployWizard({ options }: Props) {
   }
 
   if (!showFullScreen) {
+    const communityId = session?.communityId;
     return (
       <section className="space-y-6">
-        <p className="text-sm font-medium text-emerald-600">Your community is ready!</p>
-        <Link href="/" className="btn-primary cursor-pointer">
-          Go to home
-        </Link>
+        <p className="text-sm font-medium text-primary">Your community is ready!</p>
+        <div className="flex flex-wrap justify-end gap-3">
+          <Link href="/" className="btn-ghost cursor-pointer">
+            Go to home
+          </Link>
+          {typeof communityId === "number" ? (
+            <Link
+              href={`/communities/${communityId}`}
+              className="btn-primary cursor-pointer"
+            >
+              Go to my community
+            </Link>
+          ) : null}
+        </div>
       </section>
     );
   }
 
   if (status !== "connected") {
     return <OnboardingConnectStep fullScreen hideCloseButton />;
+  }
+
+  if (showLoadingCheck) {
+    return (
+      <section className="space-y-6">
+        <p className="text-sm text-muted-foreground">Checking your communities…</p>
+      </section>
+    );
+  }
+
+  if (showHomeView) {
+    return (
+      <section className="space-y-6">
+        <p className="text-sm text-muted-foreground">
+          {hasCommunities
+            ? "You already have communities. Create another or browse below."
+            : "Create a community or browse below."}
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setWizardClosed(false);
+            setWizardExpanded(true);
+          }}
+          className="btn-primary cursor-pointer"
+        >
+          Create community
+        </button>
+      </section>
+    );
   }
 
   return (
@@ -311,13 +372,24 @@ export function DeployWizard({ options }: Props) {
               <DeployVerificationResults results={verificationResults} />
               <div className="space-y-4 text-center">
                 <p className="text-lg font-medium text-primary">Your community is ready!</p>
-                <button
-                  type="button"
-                  onClick={() => setCompletedDismissed(true)}
-                  className="btn-primary cursor-pointer"
-                >
-                  Done
-                </button>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCompletedDismissed(true)}
+                    className="btn-ghost cursor-pointer"
+                  >
+                    Done
+                  </button>
+                  {typeof session?.communityId === "number" ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/communities/${session.communityId}`)}
+                      className="btn-primary cursor-pointer"
+                    >
+                      Go to my community
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <DeployStepList steps={session?.steps ?? []} />
             </div>
@@ -354,6 +426,10 @@ export function DeployWizard({ options }: Props) {
                 connectedAddress={address}
                 designMode={designMode}
                 onDesignModeChange={setDesignMode}
+                onExit={() => {
+                  setWizardClosed(true);
+                  setWizardExpanded(false);
+                }}
               />
               <DeployStepList steps={session?.steps ?? []} />
             </>

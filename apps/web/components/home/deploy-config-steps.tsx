@@ -58,6 +58,7 @@ type Props = {
   connectedAddress?: `0x${string}`;
   designMode?: boolean;
   onDesignModeChange?: (enabled: boolean) => void;
+  onExit?: () => void;
 };
 
 function updateField(
@@ -79,7 +80,8 @@ export function DeployConfigSteps({
   runPreflight,
   connectedAddress,
   designMode = false,
-  onDesignModeChange
+  onDesignModeChange,
+  onExit
 }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -321,15 +323,25 @@ export function DeployConfigSteps({
       ) : null}
 
       <div className="flex items-center justify-between gap-4">
-        <button
-          type="button"
-          onClick={handleBack}
-          disabled={isFirstStep}
-          className="btn-ghost flex cursor-pointer items-center disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <ChevronLeft className="mr-1 h-4 w-4" />
-          Back
-        </button>
+        {isFirstStep && onExit ? (
+          <button
+            type="button"
+            onClick={onExit}
+            className="btn-ghost flex cursor-pointer items-center"
+          >
+            Exit
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleBack}
+            disabled={isFirstStep}
+            className="btn-ghost flex cursor-pointer items-center disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Back
+          </button>
+        )}
         <span className="text-sm text-muted-foreground">
           Step {stepIndex + 1} of {CONFIG_STEPS.length}
         </span>
