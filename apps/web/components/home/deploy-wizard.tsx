@@ -159,7 +159,7 @@ export function DeployWizard({ options }: Props) {
           type="button"
           disabled={isRunning}
           onClick={() => void runPreflight()}
-          className="rounded border border-border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
+          className="btn-ghost"
         >
           Run preflight
         </button>
@@ -167,7 +167,7 @@ export function DeployWizard({ options }: Props) {
           type="button"
           disabled={!canStart}
           onClick={() => void handleStartDeploy()}
-          className="rounded bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          className="btn-primary"
         >
           Start deploy
         </button>
@@ -175,7 +175,7 @@ export function DeployWizard({ options }: Props) {
           type="button"
           disabled={!canResume || isResuming}
           onClick={() => void handleResume()}
-          className="rounded border border-border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50"
+          className="btn-ghost"
         >
           {isResuming ? "Resuming..." : "Resume deploy"}
         </button>

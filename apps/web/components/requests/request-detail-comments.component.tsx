@@ -155,7 +155,7 @@ export function RequestDetailComments({
           <button
             type="submit"
             disabled={commentDisabled}
-            className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            className="btn-primary"
           >
             {isSubmitting ? "Posting…" : "Post comment"}
           </button>

@@ -20,7 +20,20 @@ const colors = {
   // Tokens semánticos usados por la app web
   border: "#E0E0D0",
   destructive: "#B23B3B",
-  card: "#FAFAF5"
+  card: "#FAFAF5",
+  // Texto sobre fondos de color (botones)
+  primaryForeground: "#FFFFFF",
+  secondaryForeground: "#FFFFFF"
+} as const;
+
+const primary = {
+  DEFAULT: colors.primary,
+  foreground: colors.primaryForeground
+} as const;
+
+const secondary = {
+  DEFAULT: colors.secondary,
+  foreground: colors.secondaryForeground
 } as const;
 
 const muted = {
@@ -79,9 +92,9 @@ export const tailwindPreset: Partial<Config> = {
         foreground: colors.text,
         text: colors.text,
         textMedium: colors.textMedium,
-        primary: colors.primary,
+        primary,
         primaryDark: colors.primaryDark,
-        secondary: colors.secondary,
+        secondary,
         secondaryDark: colors.secondaryDark,
         accent: colors.accent,
         grey: colors.grey,

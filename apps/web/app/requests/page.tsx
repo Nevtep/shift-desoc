@@ -47,7 +47,7 @@ function CommunityFilter({ currentCommunityId }: { currentCommunityId?: string }
           placeholder="Community ID"
           className="rounded border border-border bg-background px-2 py-1 text-sm"
         />
-        <button className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground" type="submit">
+        <button className="btn-primary-sm" type="submit">
           Apply
         </button>
         <Link className="text-xs underline" href="/requests">

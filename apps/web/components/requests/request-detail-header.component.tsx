@@ -114,7 +114,7 @@ export function RequestDetailHeader({
               <button
                 type="button"
                 onClick={() => void onLinkValuableAction()}
-                className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+                className="btn-primary-sm"
                 disabled={isWriting}
               >
                 {linkedValuableActionId ? "Update link" : "Link VA"}
@@ -141,7 +141,7 @@ export function RequestDetailHeader({
               type="button"
               onClick={() => void onStatusUpdate()}
               disabled={isUpdatingStatus || isWriting}
-              className="rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+              className="btn-primary-sm"
             >
               {isUpdatingStatus ? "Updating…" : "Update status"}
             </button>

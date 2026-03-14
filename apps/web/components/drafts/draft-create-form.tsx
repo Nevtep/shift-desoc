@@ -264,7 +264,7 @@ export function DraftCreateForm() {
           <button
             type="submit"
             disabled={disabled}
-            className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            className="btn-primary"
           >
             {isPending || isUploading ? "Submitting..." : "Create draft"}
           </button>
@@ -570,7 +570,7 @@ function ActionBuilder({
         <button
           type="button"
           onClick={handleAdd}
-          className="rounded bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+          className="btn-primary-sm"
           disabled={!form.targetId || !form.functionName}
         >
           Add action
@@ -578,7 +578,7 @@ function ActionBuilder({
         <button
           type="button"
           onClick={resetForm}
-          className="rounded border border-border px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
+          className="btn-ghost"
         >
           Clear
         </button>

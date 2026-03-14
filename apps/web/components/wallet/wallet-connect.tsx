@@ -58,7 +58,7 @@ export function WalletConnect() {
               key={connector.uid}
               onClick={() => connect({ connector })}
               disabled={isConnectorPending}
-              className="rounded-full border border-border px-3 py-1 text-xs font-medium hover:border-primary disabled:opacity-60"
+              className="btn-outline-pill"
               type="button"
             >
               {isConnectorPending ? "Connecting..." : `Connect ${connector.name}`}
@@ -101,7 +101,7 @@ export function WalletConnect() {
         <button
           type="button"
           onClick={() => disconnect()}
-          className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90"
+          className="btn-primary-pill"
         >
           Disconnect
         </button>

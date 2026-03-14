@@ -353,7 +353,7 @@ function VoteForm({
         <button
           type="submit"
           disabled={!isConnected || isPending}
-          className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60"
+          className="btn-primary"
         >
           {isPending ? "Submitting..." : "Submit vote"}
         </button>
@@ -367,7 +367,7 @@ function VoteForm({
           type="button"
           disabled={!isConnected || isQueueing || !actionBundle}
           onClick={() => void handleQueue()}
-          className="rounded bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:opacity-90 disabled:opacity-60"
+          className="btn-outline"
         >
           {isQueueing ? "Queueing..." : "Queue in timelock"}
         </button>
@@ -375,7 +375,7 @@ function VoteForm({
           type="button"
           disabled={!isConnected || isExecuting || !actionBundle}
           onClick={() => void handleExecute()}
-          className="rounded bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:opacity-90 disabled:opacity-60"
+          className="btn-outline"
         >
           {isExecuting ? "Executing..." : "Execute"}
         </button>
