@@ -1,21 +1,31 @@
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
 
+// Colores alineados con marketing (tamagui.config.ts)
 const colors = {
-  background: "#F5F5E8",
+  background: "#F6F0E1",
   backgroundLight: "#FAFAF5",
   text: "#2C2C2C",
   textMedium: "#4A4A4A",
-  primary: "#4CAF50",
-  primaryDark: "#388E3C",
-  secondary: "#FF9800",
-  secondaryDark: "#F57C00",
-  accent: "#2196F3",
+  primary: "#6C8158",
+  primaryDark: "#566645",
+  secondary: "#DD8848",
+  secondaryDark: "#c4733c",
+  accent: "#B23B3B",
   grey: {
     light: "#E0E0D0",
     medium: "#8B8B7A"
   },
-  white: "#FFFFFF"
+  white: "#FFFFFF",
+  // Tokens semánticos usados por la app web
+  border: "#E0E0D0",
+  destructive: "#B23B3B",
+  card: "#FAFAF5"
+} as const;
+
+const muted = {
+  DEFAULT: colors.grey.light,
+  foreground: colors.textMedium
 } as const;
 
 const spacing = {
@@ -75,7 +85,11 @@ export const tailwindPreset: Partial<Config> = {
         secondaryDark: colors.secondaryDark,
         accent: colors.accent,
         grey: colors.grey,
-        white: colors.white
+        white: colors.white,
+        border: colors.border,
+        muted,
+        destructive: colors.destructive,
+        card: colors.card
       },
       spacing,
       borderRadius: {
@@ -90,11 +104,19 @@ export const tailwindPreset: Partial<Config> = {
       },
       fontFamily: {
         sans: [
+          "var(--font-inter)",
           "Inter",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
           "Roboto",
+          "sans-serif"
+        ],
+        heading: [
+          "var(--font-epilogue)",
+          "Epilogue",
+          "var(--font-inter)",
+          "Inter",
           "sans-serif"
         ]
       },

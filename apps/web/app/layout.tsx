@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Epilogue, Inter } from "next/font/google";
 import "./globals.css";
 
 import Link from "next/link";
@@ -7,6 +8,18 @@ import { getEnv } from "@shift/shared";
 
 import { ShiftProviders } from "./providers";
 import { WalletConnectClient } from "../components/wallet/wallet-connect-client";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
+
+const epilogue = Epilogue({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-epilogue",
+});
 
 export const metadata: Metadata = {
   title: "Shift DeSoc",
@@ -33,7 +46,7 @@ export default function RootLayout({
     (!env.NEXT_PUBLIC_INDEXER_API_URL && !env.INDEXER_API_URL);
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${epilogue.variable}`}>
       <body>
         <ShiftProviders graphqlUrl={graphqlUrl} apiBaseUrl={apiBaseUrl}>
           <div className="flex min-h-screen flex-col">
