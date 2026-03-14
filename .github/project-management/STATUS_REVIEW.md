@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Mar 05, 2026)
+# Shift DeSoc Status Review (Mar 09, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -69,6 +69,7 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-03-09: Completed `T014` (`RequestHub`) in the single-community refactor wave. Runtime now binds each `RequestHub` instance to a single community on first request (`boundCommunityId`), removes community-keyed request/rate-limit storage internals, and adds cross-community negative coverage (`testCreateRequestDifferentCommunityRevertsAfterBinding`) to enforce isolation assumptions.
 - 2026-03-09: Adopted explicit Base Sepolia staging policy: no legacy support and no incremental migration paths required. Core/security changes can assume full redeploy of staged contracts and discard of prior staged deployments. Documented in `docs/EN/Layers.md` and synchronized with implementation status tracking.
 - 2026-03-07: Manager Home deploy wizard now has a default user-signed execution path (no longer throws by default on `DEPLOY_STACK`) via `apps/web/lib/deploy/default-step-executor.ts` wired through `useDeployWizard`. Added execution-focused unit coverage (`use-deploy-wizard-execution.test.tsx`) validating sequential step completion and failure handling. Runtime success remains authority-dependent on connected wallet permissions in AccessManager-restricted writes.
 - 2026-03-06: Implemented initial Manager Home deploy wizard vertical slice in `apps/web` with home-route composition (`wizard above communities index`), foundational deploy state/preflight/session modules, resume authorization path, and deterministic verification evaluator aligned to `verify-community-deployment` semantics. Added targeted unit coverage for wizard machine, preflight, verification, resume, and home composition; targeted feature test suite passes (`pnpm exec vitest run ...`). Full web test suite still contains unrelated pre-existing `draft-create-form` import failure.

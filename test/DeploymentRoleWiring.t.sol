@@ -15,6 +15,7 @@ import {CommerceDisputes} from "contracts/modules/CommerceDisputes.sol";
 import {Marketplace} from "contracts/modules/Marketplace.sol";
 import {HousingManager} from "contracts/modules/HousingManager.sol";
 import {Roles} from "contracts/libs/Roles.sol";
+import {Errors} from "contracts/libs/Errors.sol";
 
 contract ERC20MockRole {
     string public name = "Mock";
@@ -79,7 +80,7 @@ contract DeploymentRoleWiringTest is Test {
 
         accessManager = new AccessManager(governance);
         paramController = new ParamController(governance);
-        communityRegistry = new CommunityRegistry(address(accessManager), address(paramController));
+        communityRegistry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(communityRegistry));
 
         valuableActionRegistry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance);
@@ -290,5 +291,21 @@ contract DeploymentRoleWiringTest is Test {
 
         vm.prank(buyer);
         marketplace.purchase(offerId, address(stable), stay);
+    }
+
+    function testParamControllerTimelockWiringIsEnforced() public {
+        assertEq(communityRegistry.getTimelock(communityId), governance);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, seller));
+        vm.prank(seller);
+        paramController.setGovernanceParams(communityId, 2 days, 2 days, 2 days);
+
+        vm.prank(governance);
+        paramController.setGovernanceParams(communityId, 2 days, 2 days, 2 days);
+
+        (uint256 debateWindow, uint256 voteWindow, uint256 executionDelay) = communityRegistry.getGovernanceParameters(communityId);
+        assertEq(debateWindow, 2 days);
+        assertEq(voteWindow, 2 days);
+        assertEq(executionDelay, 2 days);
     }
 }

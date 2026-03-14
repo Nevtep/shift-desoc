@@ -73,6 +73,12 @@ contract RequestHub is ReentrancyGuard {
     
     /// @notice Next comment ID  
     uint256 public nextCommentId = 1;
+
+    /// @notice Bound community for this local deployment unit (set on first request)
+    uint256 public boundCommunityId;
+
+    /// @notice True once the hub has been bound to a community
+    bool public communityBound;
     
     /// @notice All requests by ID
     mapping(uint256 => Request) public requests;
@@ -80,17 +86,17 @@ contract RequestHub is ReentrancyGuard {
     /// @notice All comments by ID
     mapping(uint256 => Comment) public comments;
     
-    /// @notice Requests by community: communityId => requestIds[]
-    mapping(uint256 => uint256[]) public communityRequests;
+    /// @notice Request IDs for the single bound community
+    uint256[] internal localRequests;
     
     /// @notice Comments by request: requestId => commentIds[]
     mapping(uint256 => uint256[]) public requestComments;
     
-    /// @notice User request count for rate limiting: communityId => user => count
-    mapping(uint256 => mapping(address => uint256)) public userRequestCount;
+    /// @notice User request count for rate limiting
+    mapping(address => uint256) public userRequestCount;
     
-    /// @notice User last post time for rate limiting: communityId => user => timestamp
-    mapping(uint256 => mapping(address => uint256)) public userLastPostTime;
+    /// @notice User last post time for rate limiting
+    mapping(address => uint256) public userLastPostTime;
 
     /// @notice Pre-approved winner for a request (set by moderators/governance)
     mapping(uint256 => address) public approvedWinner;
@@ -207,13 +213,13 @@ contract RequestHub is ReentrancyGuard {
         string calldata cid,
         string[] calldata tags
     ) external returns (uint256 requestId) {
-        _requireValidCommunity(communityId);
+        _bindOrRequireCommunity(communityId);
         
         uint256 dayStart = (block.timestamp / 1 days) * 1 days;
-        if (userLastPostTime[communityId][msg.sender] < dayStart) {
-            userRequestCount[communityId][msg.sender] = 0;
+        if (userLastPostTime[msg.sender] < dayStart) {
+            userRequestCount[msg.sender] = 0;
         }
-        _requireNotRateLimited(communityId, msg.sender);
+        _requireNotRateLimited(msg.sender);
         
         if (bytes(title).length == 0) revert Errors.InvalidInput("Title cannot be empty");
         if (bytes(cid).length == 0) revert Errors.InvalidInput("Content CID cannot be empty");
@@ -230,12 +236,12 @@ contract RequestHub is ReentrancyGuard {
         request.lastActivity = uint64(block.timestamp);
         request.tags = tags;
         
-        // Add to community requests list
-        communityRequests[communityId].push(requestId);
+        // Track requests locally for the bound community
+        localRequests.push(requestId);
         
         // Update rate limiting
-        userRequestCount[communityId][msg.sender]++;
-        userLastPostTime[communityId][msg.sender] = block.timestamp;
+        userRequestCount[msg.sender]++;
+        userLastPostTime[msg.sender] = block.timestamp;
         
         emit RequestCreated(requestId, communityId, msg.sender, title, cid, tags);
     }
@@ -256,7 +262,7 @@ contract RequestHub is ReentrancyGuard {
             revert Errors.InvalidInput("Request is not open for comments");
         }
         
-        _requireNotRateLimited(request.communityId, msg.sender);
+        _requireNotRateLimited(msg.sender);
         
         if (bytes(cid).length == 0) revert Errors.InvalidInput("Content CID cannot be empty");
         
@@ -285,7 +291,7 @@ contract RequestHub is ReentrancyGuard {
         request.commentCount++;
         
         // Update rate limiting
-        userLastPostTime[request.communityId][msg.sender] = block.timestamp;
+        userLastPostTime[msg.sender] = block.timestamp;
         
         emit CommentPosted(requestId, commentId, msg.sender, cid, parentCommentId);
     }
@@ -463,7 +469,10 @@ contract RequestHub is ReentrancyGuard {
     /// @param communityId Community ID
     /// @return requestIds Array of request IDs
     function getCommunityRequests(uint256 communityId) external view returns (uint256[] memory) {
-        return communityRequests[communityId];
+        if (!communityBound || communityId != boundCommunityId) {
+            return new uint256[](0);
+        }
+        return localRequests;
     }
     
     /// @notice Get all comments for a request
@@ -482,7 +491,11 @@ contract RequestHub is ReentrancyGuard {
         view 
         returns (uint256[] memory requestIds) 
     {
-        uint256[] memory allRequests = communityRequests[communityId];
+        if (!communityBound || communityId != boundCommunityId) {
+            return new uint256[](0);
+        }
+
+        uint256[] memory allRequests = localRequests;
         uint256[] memory matching = new uint256[](allRequests.length);
         uint256 matchCount = 0;
         
@@ -507,15 +520,20 @@ contract RequestHub is ReentrancyGuard {
                             INTERNAL HELPERS
     //////////////////////////////////////////////////////////////*/
     
-    /// @notice Require valid community
-    /// @param communityId Community ID to validate
-    function _requireValidCommunity(uint256 communityId) internal view {
-        // Delegate to community registry
-        try communityRegistry.getCommunity(communityId) returns (CommunityRegistry.Community memory) {
-            // Community exists - validation successful
-            return;
-        } catch {
-            revert Errors.InvalidInput("Community does not exist");
+    /// @notice Bind hub to a single community on first request, then enforce it
+    function _bindOrRequireCommunity(uint256 communityId) internal {
+        if (!communityBound) {
+            try communityRegistry.getCommunity(communityId) returns (CommunityRegistry.Community memory) {
+                boundCommunityId = communityId;
+                communityBound = true;
+                return;
+            } catch {
+                revert Errors.InvalidInput("Community does not exist");
+            }
+        }
+
+        if (communityId != boundCommunityId) {
+            revert Errors.InvalidInput("Community mismatch");
         }
     }
     
@@ -539,10 +557,9 @@ contract RequestHub is ReentrancyGuard {
     }
     
     /// @notice Check rate limiting for user posts
-    /// @param communityId Community ID
     /// @param user User to check
-    function _requireNotRateLimited(uint256 communityId, address user) internal view {
-        uint256 lastPost = userLastPostTime[communityId][user];
+    function _requireNotRateLimited(address user) internal view {
+        uint256 lastPost = userLastPostTime[user];
         
         // Skip rate limiting for first post (lastPost == 0)
         if (lastPost == 0) {
@@ -552,7 +569,7 @@ contract RequestHub is ReentrancyGuard {
         // Basic rate limiting: max 10 posts per day
         uint256 dayStart = (block.timestamp / 1 days) * 1 days;
         if (lastPost >= dayStart) {
-            if (userRequestCount[communityId][user] >= 10) {
+            if (userRequestCount[user] >= 10) {
                 revert Errors.InvalidInput("Rate limit exceeded");
             }
         }

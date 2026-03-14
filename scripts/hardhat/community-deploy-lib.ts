@@ -242,7 +242,6 @@ export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
   const paramController = await deploy<any>("ParamController", deployer.address);
   const communityRegistry = await deploy<any>(
     "CommunityRegistry",
-    await accessManager.getAddress(),
     await paramController.getAddress(),
   );
   await (await paramController.setCommunityRegistry(await communityRegistry.getAddress())).wait();
@@ -479,6 +478,13 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
   };
 
   await (await communityRegistry.setModuleAddresses(communityId, moduleAddresses)).wait();
+
+  const wiredTimelock = await communityRegistry.getTimelock(communityId);
+  if (wiredTimelock.toLowerCase() !== moduleAddresses.timelock.toLowerCase()) {
+    throw new Error(
+      `Timelock wiring mismatch for community ${communityId}. expected=${moduleAddresses.timelock} actual=${wiredTimelock}`,
+    );
+  }
 
   const addresses: CommunityStackAddresses = {
     ...shared,

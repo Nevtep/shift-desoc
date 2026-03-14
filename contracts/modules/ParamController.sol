@@ -18,7 +18,7 @@ contract ParamController {
     /// @notice Community registry reference (set once post-deploy)
     ICommunityRegistry public communityRegistry;
 
-    /// @notice System admin allowed to wire the registry one-time
+    /// @notice Bootstrap authority for this local deployment unit
     address public immutable systemAdmin;
 
     /// @notice Tracks whether registry has been wired
@@ -88,14 +88,15 @@ contract ParamController {
         emit CommunityRegistrySet(registry);
     }
 
-    /// @notice Restrict writes to the community timelock or bootstrap admin when timelock is unset
+    /// @notice Restrict writes to local timelock after wiring; bootstrap authority is temporary pre-handoff
     modifier onlyAuthorized(uint256 communityId) {
         if (!registrySet) revert Errors.InvalidInput("Registry not set");
         address timelock = communityRegistry.getTimelock(communityId);
 
         if (timelock == address(0)) {
-            // Bootstrap path: community admin before timelock is wired
-            if (!communityRegistry.communityAdmins(communityId, msg.sender)) {
+            // Bootstrap path: only the deployment bootstrap authority for this local unit.
+            // Community admin membership is still required to avoid bypassing registry scoping.
+            if (msg.sender != systemAdmin || !communityRegistry.communityAdmins(communityId, msg.sender)) {
                 revert Errors.NotAuthorized(msg.sender);
             }
         } else {

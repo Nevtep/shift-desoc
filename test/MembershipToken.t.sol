@@ -278,4 +278,33 @@ contract MembershipTokenTest is Test {
         assertEq(token.MINTER_ROLE(), Roles.MEMBERSHIP_TOKEN_MINTER_ROLE);
         assertEq(token.GOVERNANCE_ROLE(), Roles.MEMBERSHIP_TOKEN_GOVERNANCE_ROLE);
     }
+
+    function test_AuthorityBoundToLocalAccessManager() public view {
+        assertEq(address(token.authority()), address(accessManager));
+    }
+
+    function test_CommunityIsolationAcrossTokenInstances() public {
+        AccessManager secondaryManager = new AccessManager(admin);
+        MembershipTokenERC20Votes tokenCommunity2 = new MembershipTokenERC20Votes(
+            "Community Two Membership",
+            "MEMBER-2",
+            2,
+            address(secondaryManager)
+        );
+
+        vm.startPrank(admin, admin);
+        bytes4[] memory minterSelectors = new bytes4[](1);
+        minterSelectors[0] = tokenCommunity2.mint.selector;
+        secondaryManager.setTargetFunctionRole(address(tokenCommunity2), minterSelectors, tokenCommunity2.MINTER_ROLE());
+        vm.stopPrank();
+
+        _grantMinter(claimsContract);
+
+        vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, claimsContract));
+        vm.prank(claimsContract);
+        tokenCommunity2.mint(worker1, 1 ether, "cross-community mint");
+
+        assertEq(token.communityId(), 1);
+        assertEq(tokenCommunity2.communityId(), 2);
+    }
 }

@@ -16,7 +16,7 @@ contract ParameterIntegrationTest is Test {
     function setUp() public {
         vm.startPrank(admin);
         paramController = new ParamController(admin);
-        registry = new CommunityRegistry(admin, address(paramController));
+        registry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(registry));
         vm.stopPrank();
     }
@@ -178,5 +178,24 @@ contract ParameterIntegrationTest is Test {
         assertEq(debateWindow, 10 days);
         assertEq(voteWindow, 5 days);
         assertEq(executionDelay, 2 days);
+    }
+
+    function testPreTimelockBootstrapAuthorityIsRestrictedToSystemAdmin() public {
+        vm.prank(admin);
+        uint256 communityId = registry.registerCommunity("Bootstrapped Community", "Desc", "ipfs://metadata", 0);
+
+        // user1 is not bootstrap authority and cannot mutate pre-timelock params.
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        vm.prank(user1);
+        paramController.setGovernanceParams(communityId, 1 days, 1 days, 1 days);
+
+        // bootstrap authority can write before timelock is configured.
+        vm.prank(admin);
+        paramController.setGovernanceParams(communityId, 1 days, 1 days, 1 days);
+
+        (uint256 debateWindow, uint256 voteWindow, uint256 executionDelay) = registry.getGovernanceParameters(communityId);
+        assertEq(debateWindow, 1 days);
+        assertEq(voteWindow, 1 days);
+        assertEq(executionDelay, 1 days);
     }
 }

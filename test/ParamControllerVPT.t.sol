@@ -41,6 +41,20 @@ contract ParamControllerVPTTest is Test {
     function testConstructor() public view {
         assertEq(paramController.systemAdmin(), systemAdmin);
     }
+
+    function testSetCommunityRegistryUnauthorizedReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, unauthorizedUser));
+        vm.prank(unauthorizedUser);
+        paramController.setCommunityRegistry(address(registry));
+    }
+
+    function testSetCommunityRegistryTwiceReverts() public {
+        MockCommunityRegistry registry2 = new MockCommunityRegistry();
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Registry already set"));
+        vm.prank(systemAdmin);
+        paramController.setCommunityRegistry(address(registry2));
+    }
     
     function testConstructorZeroAddressReverts() public {
         vm.expectRevert(Errors.ZeroAddress.selector);

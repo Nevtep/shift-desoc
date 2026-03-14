@@ -55,7 +55,7 @@ contract CommunityRegistryTest is Test {
     function setUp() public {
         vm.startPrank(admin, admin);
         paramController = new ParamController(admin);
-        registry = new CommunityRegistry(admin, address(paramController));
+        registry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(registry));
         vm.stopPrank();
     }
@@ -72,10 +72,7 @@ contract CommunityRegistryTest is Test {
     function testDeploymentZeroAddress() public {
         ParamController testController = new ParamController(admin);
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new CommunityRegistry(address(0), address(testController));
-        
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        new CommunityRegistry(admin, address(0));
+        new CommunityRegistry(address(0));
     }
     
     /*//////////////////////////////////////////////////////////////

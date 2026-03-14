@@ -85,6 +85,7 @@ contract RequestHubTest is Test {
     
     // Test data
     uint256 communityId;
+    uint256 secondaryCommunityId;
     uint256 constant ACTION_ID = 1;
     string constant TITLE = "Test Request";
     string constant CID = "QmTestContentHash";
@@ -119,7 +120,7 @@ contract RequestHubTest is Test {
         
         // Deploy contracts
         ParamController paramController = new ParamController(admin);
-        communityRegistry = new CommunityRegistry(admin, address(paramController));
+        communityRegistry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(communityRegistry));
         valuableActionRegistry = new ValuableActionRegistryMock();
         token = new MockERC20();
@@ -132,6 +133,13 @@ contract RequestHubTest is Test {
             "A test community",
             "ipfs://test",
             0 // no parent community
+        );
+
+        secondaryCommunityId = communityRegistry.registerCommunity(
+            "Secondary Community",
+            "Another test community",
+            "ipfs://test-secondary",
+            0
         );
 
         communityRegistry.setModuleAddress(communityId, keccak256("treasuryVault"), treasuryVault);
@@ -214,6 +222,18 @@ contract RequestHubTest is Test {
         vm.expectRevert();
         requestHub.createRequest(999, TITLE, CID, tags);
         
+        vm.stopPrank();
+    }
+
+    function testCreateRequestDifferentCommunityRevertsAfterBinding() public {
+        vm.startPrank(user1);
+
+        requestHub.createRequest(communityId, TITLE, CID, tags);
+        vm.warp(block.timestamp + 61);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Community mismatch"));
+        requestHub.createRequest(secondaryCommunityId, "Wrong community request", CID, tags);
+
         vm.stopPrank();
     }
     

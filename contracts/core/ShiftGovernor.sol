@@ -51,7 +51,11 @@ contract ShiftGovernor is
         GovernorVotes(IVotes(token))
         Quorum(4)  // 4% quorum
         GovernorTimelockAccess(accessManager, baseDelaySeconds) 
-    {}
+    {
+        if (token == address(0) || accessManager == address(0)) {
+            revert Errors.ZeroAddress();
+        }
+    }
 
     /// @notice Set the multi-choice counting contract
     /// @param counter Address of the CountingMultiChoice contract

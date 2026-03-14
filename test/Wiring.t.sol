@@ -12,6 +12,8 @@ import {PositionManager} from "contracts/modules/PositionManager.sol";
 import {InvestmentCohortManager} from "contracts/modules/InvestmentCohortManager.sol";
 import {RequestHub} from "contracts/modules/RequestHub.sol";
 import {CredentialManager} from "contracts/modules/CredentialManager.sol";
+import {MembershipTokenERC20Votes} from "contracts/tokens/MembershipTokenERC20Votes.sol";
+import {ShiftGovernor} from "contracts/core/ShiftGovernor.sol";
 import {Types} from "contracts/libs/Types.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {Roles} from "contracts/libs/Roles.sol";
@@ -68,6 +70,8 @@ contract WiringTest is Test {
     InvestmentCohortManager investmentManager;
     RequestHub requestHub;
     CredentialManager credentialManager;
+    MembershipTokenERC20Votes membershipToken;
+    ShiftGovernor governorContract;
     AccessManager accessManager;
 
     ERC20Mock token;
@@ -91,9 +95,11 @@ contract WiringTest is Test {
         token = new ERC20Mock();
 
         paramController = new ParamController(governance);
-        communityRegistry = new CommunityRegistry(governance, address(paramController));
+        communityRegistry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(communityRegistry));
         accessManager = new AccessManager(governance);
+        membershipToken = new MembershipTokenERC20Votes("Membership", "MEM", 1, address(accessManager));
+        governorContract = new ShiftGovernor(address(membershipToken), address(accessManager), 1 days);
         valuableActionRegistry = new ValuableActionRegistry(
             address(accessManager),
             address(communityRegistry),
@@ -359,5 +365,10 @@ contract WiringTest is Test {
 
         assertEq(router.treasuryAccrual(communityId, address(token)), treasuryAfterRequest);
         assertEq(router.getClaimableInvestment(investmentTokenId, address(token)), 0);
+    }
+
+    function testGovernorUsesLocalAccessManager() public view {
+        assertEq(address(governorContract.accessManager()), address(accessManager));
+        assertEq(governorContract.baseDelaySeconds(), 1 days);
     }
 }

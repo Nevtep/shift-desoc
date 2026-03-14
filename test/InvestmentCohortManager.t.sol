@@ -14,7 +14,7 @@ import {Errors} from "contracts/libs/Errors.sol";
 import {Roles} from "contracts/libs/Roles.sol";
 
 contract CommunityRegistryMock is CommunityRegistry {
-    constructor() CommunityRegistry(address(1), address(1)) {}
+    constructor() CommunityRegistry(address(1)) {}
 }
 
 contract InvestmentCohortManagerTest is Test {

@@ -1,0 +1,174 @@
+openapi: 3.0.3
+info:
+  title: Single-Community Deploy Orchestration API
+  version: 0.1.0
+  description: |
+    Manager-facing orchestration contract for deployment workflow states.
+    This API models app/backend orchestration semantics and does not replace on-chain authority.
+servers:
+  - url: https://manager.shift.local
+paths:
+  /deploy/runs:
+    post:
+      summary: Create a new deploy run
+      operationId: createDeployRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeployRunRequest'
+      responses:
+        '201':
+          description: Run created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployWizardRun'
+  /deploy/runs/{runId}:
+    get:
+      summary: Get deploy run status
+      operationId: getDeployRun
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current run state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployWizardRun'
+  /deploy/runs/{runId}/prechecks:
+    post:
+      summary: Execute PRECHECKS
+      operationId: runPrechecks
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prechecks result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployWizardRun'
+  /deploy/runs/{runId}/deploy-stack:
+    post:
+      summary: Execute DEPLOY_STACK
+      operationId: deployStack
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stack deployed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployWizardRun'
+  /deploy/runs/{runId}/configure-access:
+    post:
+      summary: Execute CONFIGURE_ACCESS_PERMISSIONS
+      operationId: configureAccessPermissions
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Access permissions configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployWizardRun'
+  /deploy/runs/{runId}/handoff-admin:
+    post:
+      summary: Execute HANDOFF_ADMIN_TO_TIMELOCK
+      operationId: handoffAdminToTimelock
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Admin handoff complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployWizardRun'
+  /deploy/runs/{runId}/verify:
+    post:
+      summary: Execute VERIFY_DEPLOYMENT
+      operationId: verifyDeployment
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployWizardRun'
+components:
+  schemas:
+    CreateDeployRunRequest:
+      type: object
+      required: [wallet, network]
+      properties:
+        wallet:
+          type: string
+        network:
+          type: string
+        resumeRunId:
+          type: string
+          nullable: true
+    DeployWizardRun:
+      type: object
+      required: [id, state, wallet, network, startedAt, updatedAt]
+      properties:
+        id:
+          type: string
+        state:
+          type: string
+          enum:
+            - PRECHECKS
+            - DEPLOY_STACK
+            - CONFIGURE_ACCESS_PERMISSIONS
+            - HANDOFF_ADMIN_TO_TIMELOCK
+            - VERIFY_DEPLOYMENT
+            - COMPLETED
+            - FAILED
+        wallet:
+          type: string
+        network:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        errorCode:
+          type: string
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true

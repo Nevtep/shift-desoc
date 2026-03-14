@@ -54,6 +54,18 @@ contract CountingMultiChoiceTest is Test {
         counting.enableMulti(PROPOSAL_ID, NUM_OPTIONS);
     }
 
+    function testGovernorIsolationAcrossInstances() public {
+        CountingMultiChoice other = new CountingMultiChoice(voter1);
+
+        vm.prank(governor);
+        vm.expectRevert("CountingMultiChoice: only governor");
+        other.enableMulti(PROPOSAL_ID, NUM_OPTIONS);
+
+        vm.prank(voter1);
+        other.enableMulti(PROPOSAL_ID, NUM_OPTIONS);
+        assertTrue(other.isMultiEnabled(PROPOSAL_ID));
+    }
+
     function testEnableMultiInvalidOptions() public {
         vm.startPrank(governor);
         

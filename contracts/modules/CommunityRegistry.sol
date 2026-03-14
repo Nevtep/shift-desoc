@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
 import {Errors} from "../libs/Errors.sol";
 import {Roles} from "../libs/Roles.sol";
 import {ParamController} from "./ParamController.sol";
@@ -9,7 +8,7 @@ import {ParamController} from "./ParamController.sol";
 /// @title CommunityRegistry
 /// @notice Central registry for community metadata, parameters, and module addresses
 /// @dev Single source of truth for community coordination and configuration
-contract CommunityRegistry is AccessManaged {
+contract CommunityRegistry {
     
     /*//////////////////////////////////////////////////////////////
                                STRUCTS
@@ -154,10 +153,8 @@ contract CommunityRegistry is AccessManaged {
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
     
-    /// @param manager AccessManager authority
     /// @param _paramController ParamController contract address
-    constructor(address manager, address _paramController) AccessManaged(manager) {
-        if (manager == address(0)) revert Errors.ZeroAddress();
+    constructor(address _paramController) {
         if (_paramController == address(0)) revert Errors.ZeroAddress();
         paramController = ParamController(_paramController);
     }
