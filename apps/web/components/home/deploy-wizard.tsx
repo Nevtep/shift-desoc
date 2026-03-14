@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 
+import Link from "next/link";
+
 import {
   createDefaultDeploymentConfig,
   validateDeploymentConfig,
@@ -10,8 +12,7 @@ import {
 } from "../../lib/deploy/config";
 import { useDeployResume } from "../../hooks/useDeployResume";
 import { useDeployWizard, type UseDeployWizardOptions } from "../../hooks/useDeployWizard";
-import { DeployConfigForm } from "./deploy-config-form";
-import { DeployPreflight } from "./deploy-preflight";
+import { DeployConfigSteps } from "./deploy-config-steps";
 import { DeployStepList } from "./deploy-step-list";
 import { DeployVerificationResults } from "./deploy-verification-results";
 import { OnboardingConnectStep } from "./onboarding-connect-step";
@@ -46,20 +47,21 @@ export function DeployWizard({ options }: Props) {
   const chainId = useChainId();
   const {
     session,
-    preflight,
     verificationResults,
     resumeCandidate,
     error,
     isRunning,
-    runPreflight,
     run,
     setSession
   } = useDeployWizard(options);
   const { resume, error: resumeError } = useDeployResume();
   const [config, setConfig] = useState<CommunityDeploymentConfig>(() => createDefaultDeploymentConfig());
   const [isResuming, setIsResuming] = useState(false);
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [completedDismissed, setCompletedDismissed] = useState(false);
   const resumeRequestIdRef = useRef(0);
+
+  const isCompleted = session?.status === "completed";
+  const showFullScreen = !isCompleted || !completedDismissed;
 
   useEffect(() => {
     const draft = loadDraft(address, chainId);
@@ -79,6 +81,10 @@ export function DeployWizard({ options }: Props) {
     [configValidation.isValid, isRunning, status]
   );
   const canResume = useMemo(() => status === "connected" && !isRunning, [isRunning, status]);
+  const hasResumableSession = Boolean(
+    (session?.communityId ?? resumeCandidate?.communityId) && session?.status !== "completed"
+  );
+  const showResume = hasResumableSession;
 
   async function handleResume() {
     console.log("[DeployWizard] Resume button clicked", {
@@ -145,72 +151,78 @@ export function DeployWizard({ options }: Props) {
     await run(config);
   }
 
-  if (status !== "connected") {
+  if (!showFullScreen) {
     return (
       <section className="space-y-6">
-        <OnboardingConnectStep
-          fullScreen={!onboardingDismissed}
-          onClose={() => setOnboardingDismissed(true)}
-        />
+        <p className="text-sm font-medium text-emerald-600">Your community is ready!</p>
+        <Link href="/" className="btn-primary cursor-pointer">
+          Go to home
+        </Link>
       </section>
     );
   }
 
+  if (status !== "connected") {
+    return <OnboardingConnectStep fullScreen hideCloseButton />;
+  }
+
   return (
-    <section className="space-y-6">
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Create your community</h2>
-        <p className="text-sm text-muted-foreground">
-          Configure your community and follow the guided steps. You will be asked to confirm some actions from your wallet.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            disabled={isRunning}
-            onClick={() => void runPreflight()}
-            className="btn-ghost cursor-pointer"
-          >
-            Run preflight
-          </button>
-          <button
-            type="button"
-            disabled={!canStart}
-            onClick={() => void handleStartDeploy()}
-            className="btn-primary cursor-pointer"
-          >
-            Create community
-          </button>
-          <button
-            type="button"
-            disabled={!canResume || isResuming}
-            onClick={() => void handleResume()}
-            className="btn-ghost cursor-pointer"
-          >
-            {isResuming ? "Resuming..." : "Resume"}
-          </button>
-        </div>
-        {!canStart ? (
-          <p className="text-sm text-destructive">
-            Complete your community configuration to continue.
-          </p>
-        ) : null}
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
+    <div
+      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url(/contact-bg.webp)" }}
+    >
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-16 sm:px-6">
+          <div className="flex flex-col items-center gap-6">
+            <img
+              src="/imagotipo-h.svg"
+              alt="Shift DeSoc"
+              className="h-16 w-auto sm:h-20"
+            />
+          </div>
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold">Create your community</h2>
+            <p className="text-sm text-muted-foreground">
+              Configure your community and follow the guided steps. You will be asked to confirm some actions from your wallet.
+            </p>
+            {showResume ? (
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  disabled={!canResume || isResuming}
+                  onClick={() => void handleResume()}
+                  className="btn-ghost cursor-pointer"
+                >
+                  {isResuming ? "Resuming..." : "Resume"}
+                </button>
+              </div>
+            ) : null}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
+          </div>
+
+          <DeployConfigSteps
+            value={config}
+            validationErrors={configValidation.errors}
+            onChange={setConfig}
+            onCreateCommunity={() => void handleStartDeploy()}
+            isRunning={isRunning}
+          />
+          <DeployStepList steps={session?.steps ?? []} />
+          <DeployVerificationResults results={verificationResults} />
+
+          {isCompleted ? (
+            <div className="space-y-4 text-center">
+              <p className="text-lg font-medium text-emerald-600">Your community is ready!</p>
+              <button
+                type="button"
+                onClick={() => setCompletedDismissed(true)}
+                className="btn-primary cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          ) : null}
       </div>
-
-      <DeployConfigForm
-        value={config}
-        deployerAddress={address}
-        validationErrors={configValidation.errors}
-        onChange={setConfig}
-      />
-      <DeployPreflight assessment={preflight} />
-      <DeployStepList steps={session?.steps ?? []} />
-      <DeployVerificationResults results={verificationResults} />
-
-      {session?.status === "completed" ? (
-        <p className="text-sm font-medium text-emerald-600">Your community is ready!</p>
-      ) : null}
-    </section>
+    </div>
   );
 }

@@ -388,6 +388,17 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     return findResumeCandidate(address, chainId);
   }, [address, chainId]);
 
+  useEffect(() => {
+    if (!session && resumeCandidate) {
+      log("Hydrating session from resume candidate (returned from wallet or page reload)", {
+        sessionId: resumeCandidate.sessionId,
+        communityId: resumeCandidate.communityId,
+        status: resumeCandidate.status
+      });
+      setSession(resumeCandidate);
+    }
+  }, [resumeCandidate, session]);
+
   return {
     session,
     preflight,

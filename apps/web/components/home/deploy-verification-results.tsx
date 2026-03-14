@@ -5,9 +5,7 @@ type Props = {
 };
 
 export function DeployVerificationResults({ results }: Props) {
-  if (results.length === 0) {
-    return <p className="text-sm text-muted-foreground">Verification checks will appear after deployment verification.</p>;
-  }
+  if (results.length === 0) return null;
 
   return (
     <section className="card space-y-3">

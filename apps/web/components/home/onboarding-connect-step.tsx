@@ -24,9 +24,10 @@ function ConnectorIcon({ connectorId, connectorName }: { connectorId?: string; c
 type Props = {
   fullScreen?: boolean;
   onClose?: () => void;
+  hideCloseButton?: boolean;
 };
 
-export function OnboardingConnectStep({ fullScreen = true, onClose }: Props) {
+export function OnboardingConnectStep({ fullScreen = true, onClose, hideCloseButton }: Props) {
   const { connectors, connect, error: connectError, isPending } = useConnect();
 
   const content = (
@@ -75,14 +76,16 @@ export function OnboardingConnectStep({ fullScreen = true, onClose }: Props) {
         className="fixed inset-0 z-50 flex flex-col bg-background bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: "url(/contact-bg.webp)" }}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 flex size-10 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label="Close"
-        >
-          <X className="h-6 w-6" aria-hidden />
-        </button>
+        {!hideCloseButton && onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 flex size-10 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label="Close"
+          >
+            <X className="h-6 w-6" aria-hidden />
+          </button>
+        ) : null}
 
         <div className="flex min-h-screen flex-col items-center justify-center px-4 py-16 sm:px-6">
           <div className="mb-8 flex flex-col items-center gap-4">
