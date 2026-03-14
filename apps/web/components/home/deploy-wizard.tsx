@@ -13,6 +13,7 @@ import {
 } from "../../lib/deploy/config";
 import { useDeployResume } from "../../hooks/useDeployResume";
 import { useDeployWizard, type UseDeployWizardOptions } from "../../hooks/useDeployWizard";
+import { WalletConnect } from "../wallet/wallet-connect";
 import { DeployConfigSteps } from "./deploy-config-steps";
 import { DeployStepList } from "./deploy-step-list";
 import { DeployVerificationResults } from "./deploy-verification-results";
@@ -204,6 +205,9 @@ export function DeployWizard({ options }: Props) {
       className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: "url(/contact-bg.webp)" }}
     >
+      <div className="absolute right-4 top-4 z-10">
+        <WalletConnect showAddress />
+      </div>
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-16 sm:px-6">
           <div className="flex flex-col items-center gap-6">
             <img

@@ -64,7 +64,11 @@ function WalletIcon({ connectorId, connectorName, className }: { connectorId?: s
   );
 }
 
-export function WalletConnect() {
+type WalletConnectProps = {
+  showAddress?: boolean;
+};
+
+export function WalletConnect({ showAddress }: WalletConnectProps = {}) {
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -183,13 +187,21 @@ export function WalletConnect() {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex size-10 cursor-pointer items-center justify-center rounded-[8px] text-white transition-all hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className={`flex cursor-pointer items-center gap-2 rounded-[8px] text-white transition-all hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          showAddress ? "px-3 py-2" : "size-10 justify-center"
+        }`}
         style={{ backgroundImage: "linear-gradient(135deg, #e09b3f 0%, #dd8649 100%)" }}
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-label="Wallet connected"
       >
-        <Wallet className="h-5 w-5" aria-hidden />
+        <Wallet className="h-5 w-5 shrink-0" aria-hidden />
+        {showAddress && address ? (
+          <>
+            <span className="font-mono text-sm">{formatAddress(address)}</span>
+            <ChevronIcon open={isOpen} />
+          </>
+        ) : null}
       </button>
       {isOpen && (
         <div
