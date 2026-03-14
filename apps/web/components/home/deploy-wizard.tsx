@@ -14,6 +14,7 @@ import { DeployConfigForm } from "./deploy-config-form";
 import { DeployPreflight } from "./deploy-preflight";
 import { DeployStepList } from "./deploy-step-list";
 import { DeployVerificationResults } from "./deploy-verification-results";
+import { OnboardingConnectStep } from "./onboarding-connect-step";
 
 type Props = {
   options?: UseDeployWizardOptions;
@@ -57,6 +58,7 @@ export function DeployWizard({ options }: Props) {
   const { resume, error: resumeError } = useDeployResume();
   const [config, setConfig] = useState<CommunityDeploymentConfig>(() => createDefaultDeploymentConfig());
   const [isResuming, setIsResuming] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const resumeRequestIdRef = useRef(0);
 
   useEffect(() => {
@@ -143,20 +145,30 @@ export function DeployWizard({ options }: Props) {
     await run(config);
   }
 
+  if (status !== "connected") {
+    return (
+      <section className="space-y-6">
+        <OnboardingConnectStep
+          fullScreen={!onboardingDismissed}
+          onClose={() => setOnboardingDismissed(true)}
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-6">
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Community Deploy Wizard</h2>
+        <h2 className="text-2xl font-semibold">Create your community</h2>
         <p className="text-sm text-muted-foreground">
-          This guided flow executes a multi-signature sequence: preflight, deploy stack, role wiring, and deterministic verification.
-          Shared infrastructure must already exist and each transaction is signed by your connected wallet.
+          Configure your community and follow the guided steps. You will be asked to confirm some actions from your wallet.
         </p>
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             disabled={isRunning}
             onClick={() => void runPreflight()}
-            className="btn-ghost"
+            className="btn-ghost cursor-pointer"
           >
             Run preflight
           </button>
@@ -164,22 +176,22 @@ export function DeployWizard({ options }: Props) {
             type="button"
             disabled={!canStart}
             onClick={() => void handleStartDeploy()}
-            className="btn-primary"
+            className="btn-primary cursor-pointer"
           >
-            Start deploy
+            Create community
           </button>
           <button
             type="button"
             disabled={!canResume || isResuming}
             onClick={() => void handleResume()}
-            className="btn-ghost"
+            className="btn-ghost cursor-pointer"
           >
-            {isResuming ? "Resuming..." : "Resume deploy"}
+            {isResuming ? "Resuming..." : "Resume"}
           </button>
         </div>
         {!canStart ? (
           <p className="text-sm text-destructive">
-            Connect a wallet and complete valid deployment configuration before starting.
+            Complete your community configuration to continue.
           </p>
         ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -196,8 +208,8 @@ export function DeployWizard({ options }: Props) {
       <DeployStepList steps={session?.steps ?? []} />
       <DeployVerificationResults results={verificationResults} />
 
-      {session?.status ? (
-        <p className="text-xs text-muted-foreground">Session status: {session.status}</p>
+      {session?.status === "completed" ? (
+        <p className="text-sm font-medium text-emerald-600">Your community is ready!</p>
       ) : null}
     </section>
   );
