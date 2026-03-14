@@ -26,8 +26,27 @@ export function DeployStepList({ steps }: Props) {
   const currentIdx = order.findIndex((s) => s.status !== "succeeded");
   const idx = currentIdx < 0 ? order.length - 1 : Math.max(0, currentIdx);
 
+  const currentStep = order[idx];
+  const hasTxProgress =
+    currentStep && currentStep.expectedTxCount > 0 && currentStep.status === "running";
+
   return (
-    <section className="flex flex-col items-center gap-4">
+    <section className="flex flex-col items-center gap-6 pt-2">
+      {hasTxProgress ? (
+        <div className="w-full max-w-xs rounded-lg border border-border bg-muted/30 px-4 py-2 text-center">
+          <p className="text-sm font-medium">
+            {currentStep.confirmedTxCount} of {currentStep.expectedTxCount} transactions confirmed
+          </p>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-primary transition-all duration-300"
+              style={{
+                width: `${Math.round((currentStep.confirmedTxCount / currentStep.expectedTxCount) * 100)}%`
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
       <div className="flex items-start justify-center gap-1 sm:gap-2">
         {order.map((step, i) => {
           const isDone = i < idx || (i === idx && step.status === "succeeded");

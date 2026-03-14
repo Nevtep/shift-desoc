@@ -448,7 +448,11 @@ async function writeAndConfirm(
 ) {
   const gas = await resolveGasLimit(publicClient, args, account);
   const hash = await writeContractAsync({ ...args, gas, nonce });
-  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  const receipt = await publicClient.waitForTransactionReceipt({
+    hash,
+    timeout: 300_000,
+    retryCount: 24
+  });
   if (receipt.status !== "success") {
     throw new Error(`Transaction reverted for ${args.functionName} (${hash}).`);
   }

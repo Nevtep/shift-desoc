@@ -19,7 +19,7 @@ import {
   type FundsEstimateInput
 } from "../lib/deploy/preflight";
 import { readVerificationSnapshot as readVerificationSnapshotFromChain } from "../lib/deploy/onchain";
-import { findResumeCandidate, saveSession } from "../lib/deploy/session-store";
+import { clearSession as clearSessionStore, findResumeCandidate, saveSession } from "../lib/deploy/session-store";
 import type { DeploymentWizardSession, PreflightAssessment, StepKey, VerificationCheckResult } from "../lib/deploy/types";
 import {
   createInitialSession,
@@ -80,6 +80,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
   const [isRunning, setIsRunning] = useState(false);
   const hasAutoPreflightRun = useRef(false);
   const runInFlightRef = useRef(false);
+  const skipHydrationRef = useRef(false);
 
   const createSession = useCallback(() => {
     if (!address) return null;
@@ -214,12 +215,6 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
 
       log("Deployment config validation passed");
 
-      const assessment = await runPreflight();
-      if (!assessment) {
-        log("Stopping deploy: preflight did not return an assessment");
-        return;
-      }
-
       const initial = resumeSession ?? createSession();
       if (!initial) {
         log("Stopping deploy: no connected wallet session available");
@@ -229,10 +224,18 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       let active: DeploymentWizardSession = {
         ...initial,
         deploymentConfig: { ...config },
+        status: "in-progress",
         updatedAt: new Date().toISOString()
       };
       setSession(active);
       saveSession(active);
+      log("Session set before preflight so deployment screen shows immediately");
+
+      const assessment = await runPreflight();
+      if (!assessment) {
+        log("Stopping deploy: preflight did not return an assessment");
+        return;
+      }
 
       if (assessment.blockingReasons.length > 0) {
         log("Stopping deploy: preflight is blocked", {
@@ -342,10 +345,14 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
           nextStep
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown deployment error";
+        const rawMessage = err instanceof Error ? err.message : "Unknown deployment error";
+        const message =
+          /timed out|timeout/i.test(rawMessage)
+            ? "Transaction took too long to confirm. The transaction may still be pending on-chain. Use Resume to continue once it confirms."
+            : rawMessage;
         console.log(`${DEPLOY_LOG_PREFIX} Step execution threw`, {
           step: runningStep,
-          message,
+          message: rawMessage,
           error: err
         });
         active = {
@@ -389,6 +396,10 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
   }, [address, chainId]);
 
   useEffect(() => {
+    if (skipHydrationRef.current) {
+      skipHydrationRef.current = false;
+      return;
+    }
     if (!session && resumeCandidate) {
       log("Hydrating session from resume candidate (returned from wallet or page reload)", {
         sessionId: resumeCandidate.sessionId,
@@ -399,6 +410,12 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     }
   }, [resumeCandidate, session]);
 
+  const clearAndStartOver = useCallback((sessionId: string) => {
+    clearSessionStore(sessionId);
+    skipHydrationRef.current = true;
+    setSession(null);
+  }, []);
+
   return {
     session,
     preflight,
@@ -408,6 +425,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     isRunning,
     runPreflight,
     run,
-    setSession
+    setSession,
+    clearAndStartOver
   };
 }

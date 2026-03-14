@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
 import {
   createDefaultDeploymentConfig,
@@ -22,6 +23,26 @@ type Props = {
 };
 
 const FORM_DRAFT_STORAGE_KEY = "shift.manager.deploy.formDraft.v1";
+
+function getTxExplorerUrl(chainId: number, txHash: `0x${string}`): string {
+  const base =
+    chainId === 84532
+      ? "https://sepolia.basescan.org"
+      : chainId === 8453
+        ? "https://basescan.org"
+        : chainId === 11155111
+          ? "https://sepolia.etherscan.io"
+          : "https://etherscan.io";
+  return `${base}/tx/${txHash}`;
+}
+
+function getLatestTxHash(steps: { txHashes?: `0x${string}`[] }[]): `0x${string}` | null {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    const hashes = steps[i]?.txHashes;
+    if (hashes?.length) return hashes[hashes.length - 1];
+  }
+  return null;
+}
 
 function loadDraft(address?: `0x${string}`, chainId?: number): CommunityDeploymentConfig | null {
   if (!address || !chainId || typeof window === "undefined") return null;
@@ -47,12 +68,15 @@ export function DeployWizard({ options }: Props) {
   const chainId = useChainId();
   const {
     session,
+    preflight,
     verificationResults,
     resumeCandidate,
     error,
     isRunning,
+    runPreflight,
     run,
-    setSession
+    setSession,
+    clearAndStartOver
   } = useDeployWizard(options);
   const { resume, error: resumeError } = useDeployResume();
   const [config, setConfig] = useState<CommunityDeploymentConfig>(() => createDefaultDeploymentConfig());
@@ -62,6 +86,9 @@ export function DeployWizard({ options }: Props) {
 
   const isCompleted = session?.status === "completed";
   const showFullScreen = !isCompleted || !completedDismissed;
+  const isDeploying =
+    session != null &&
+    (session.status === "in-progress" || session.status === "preflight-blocked" || session.status === "failed");
 
   useEffect(() => {
     const draft = loadDraft(address, chainId);
@@ -151,6 +178,12 @@ export function DeployWizard({ options }: Props) {
     await run(config);
   }
 
+  function handleStartOver() {
+    if (session?.sessionId) {
+      clearAndStartOver(session.sessionId);
+    }
+  }
+
   if (!showFullScreen) {
     return (
       <section className="space-y-6">
@@ -179,35 +212,103 @@ export function DeployWizard({ options }: Props) {
               className="h-16 w-auto sm:h-20"
             />
           </div>
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold">Create your community</h2>
-            <p className="text-sm text-muted-foreground">
-              Configure your community and follow the guided steps. You will be asked to confirm some actions from your wallet.
-            </p>
-            {showResume ? (
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  disabled={!canResume || isResuming}
-                  onClick={() => void handleResume()}
-                  className="btn-ghost cursor-pointer"
-                >
-                  {isResuming ? "Resuming..." : "Resume"}
-                </button>
+          {isDeploying ? (
+            <>
+              <div className="space-y-4 text-center">
+                <h2 className="text-2xl font-semibold">
+                  {session?.status === "failed" ? "Deployment paused" : "Deploying your community"}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {session?.status === "failed"
+                    ? "An error occurred. Fix the issue and use Resume to continue."
+                    : "Confirm transactions in your wallet when prompted. Do not close this page."}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleStartOver}
+                    className="btn-ghost cursor-pointer"
+                  >
+                    Start over
+                  </button>
+                  {session?.status === "failed" ? (
+                    <button
+                      type="button"
+                      disabled={!canResume || isResuming}
+                      onClick={() => void handleResume()}
+                      className="btn-primary cursor-pointer"
+                    >
+                      {isResuming ? "Resuming..." : "Resume"}
+                    </button>
+                  ) : null}
+                </div>
+                {(() => {
+                  const latestHash = getLatestTxHash(session?.steps ?? []);
+                  return latestHash ? (
+                    <a
+                      href={getTxExplorerUrl(chainId, latestHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-sm text-primary underline underline-offset-2 hover:text-primary/80"
+                    >
+                      View transaction on block explorer
+                    </a>
+                  ) : null;
+                })()}
+                {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
               </div>
-            ) : null}
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
-          </div>
 
-          <DeployConfigSteps
-            value={config}
-            validationErrors={configValidation.errors}
-            onChange={setConfig}
-            onCreateCommunity={() => void handleStartDeploy()}
-            isRunning={isRunning}
-          />
-          <DeployStepList steps={session?.steps ?? []} />
+              <div className="mt-8 flex flex-col items-center gap-6">
+                {isRunning && session?.status !== "failed" ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Waiting for transaction confirmation…
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Do not close this page. Return here after signing in your wallet.
+                    </p>
+                  </div>
+                ) : null}
+                <DeployStepList steps={session?.steps ?? []} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-4">
+                <h2 className="text-2xl font-semibold">Create your community</h2>
+                <p className="text-sm text-muted-foreground">
+                  Configure your community and follow the guided steps. You will be asked to confirm some actions from your wallet.
+                </p>
+                {showResume ? (
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      disabled={!canResume || isResuming}
+                      onClick={() => void handleResume()}
+                      className="btn-ghost cursor-pointer"
+                    >
+                      {isResuming ? "Resuming..." : "Resume"}
+                    </button>
+                  </div>
+                ) : null}
+                {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
+              </div>
+              <DeployConfigSteps
+                value={config}
+                validationErrors={configValidation.errors}
+                onChange={setConfig}
+                onCreateCommunity={() => void handleStartDeploy()}
+                isRunning={isRunning}
+                preflight={preflight}
+                runPreflight={runPreflight}
+                connectedAddress={address}
+              />
+              <DeployStepList steps={session?.steps ?? []} />
+            </>
+          )}
           <DeployVerificationResults results={verificationResults} />
 
           {isCompleted ? (

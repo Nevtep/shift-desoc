@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useChainId } from "wagmi";
 import type { CommunityDeploymentConfig } from "../../lib/deploy/config";
+import type { PreflightAssessment } from "../../lib/deploy/types";
 
 const STABLE_TOKENS_BY_CHAIN: Record<number, { label: string; address: string }[]> = {
   84532: [{ label: "USDC (Base Sepolia)", address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" }],
@@ -13,8 +14,38 @@ const STABLE_TOKENS_BY_CHAIN: Record<number, { label: string; address: string }[
 const CONFIG_STEPS = [
   { key: "name", title: "Community name", description: "Give your community a name" },
   { key: "description", title: "Description", description: "Describe your community's purpose" },
-  { key: "currency", title: "Currency", description: "Choose the stable currency for payments and treasury" }
+  { key: "currency", title: "Currency", description: "Choose the stable currency for payments and treasury" },
+  { key: "ready", title: "Ready to deploy", description: "Verify your wallet has enough ETH for gas fees" }
 ] as const;
+
+function weiToEth(wei: bigint): string {
+  const eth = Number(wei) / 1e18;
+  return eth >= 1 ? eth.toFixed(2) : eth.toFixed(4);
+}
+
+const CHAIN_NAMES: Record<number, string> = {
+  84532: "Base Sepolia",
+  8453: "Base",
+  11155111: "Ethereum Sepolia",
+  1: "Ethereum"
+};
+
+const KNOWN_TEST_ADDRESSES = [
+  "0xabc1230000000000000000000000000000000000",
+  "0x000000000000000000000000000000000000dead",
+  "0x000000000000000000000000000000000000beef"
+];
+
+function isLikelyMockAddress(addr: string | undefined): boolean {
+  if (!addr) return false;
+  const lower = addr.toLowerCase();
+  return KNOWN_TEST_ADDRESSES.some((a) => lower === a.toLowerCase());
+}
+
+function shortenAddress(addr: string): string {
+  if (addr.length < 12) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
 
 type Props = {
   value: CommunityDeploymentConfig;
@@ -22,6 +53,9 @@ type Props = {
   onChange: (next: CommunityDeploymentConfig) => void;
   onCreateCommunity?: () => void;
   isRunning?: boolean;
+  preflight: PreflightAssessment | null;
+  runPreflight: () => Promise<PreflightAssessment | null>;
+  connectedAddress?: `0x${string}`;
 };
 
 function updateField(
@@ -33,19 +67,42 @@ function updateField(
   onChange({ ...value, [key]: nextValue });
 }
 
-export function DeployConfigSteps({ value, validationErrors, onChange, onCreateCommunity, isRunning }: Props) {
+export function DeployConfigSteps({ value, validationErrors, onChange, onCreateCommunity, isRunning, preflight, runPreflight, connectedAddress }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const chainId = useChainId();
   const tokenOptions = STABLE_TOKENS_BY_CHAIN[chainId] ?? STABLE_TOKENS_BY_CHAIN[84532];
   const currentStep = CONFIG_STEPS[stepIndex];
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === CONFIG_STEPS.length - 1;
+  const isPreflightStep = currentStep.key === "ready";
+  const walletAddr = connectedAddress ?? preflight?.connectedAddress;
+  const likelyMock = isLikelyMockAddress(walletAddr);
+
+  useEffect(() => {
+    if (isPreflightStep) void runPreflight();
+  }, [isPreflightStep, runPreflight]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await runPreflight();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [runPreflight]);
+
   const canGoNext = (() => {
     if (stepIndex === 0) return value.communityName.trim().length > 0;
     if (stepIndex === 1) return value.communityDescription.trim().length > 0;
-    return value.treasuryStableToken.trim().length > 0;
+    if (stepIndex === 2) return value.treasuryStableToken.trim().length > 0;
+    return false;
   })();
-  const canCreate = validationErrors.length === 0 && value.treasuryStableToken.trim().length > 0;
+  const preflightPassed = !preflight || preflight.blockingReasons.length === 0;
+  const canCreate =
+    validationErrors.length === 0 &&
+    value.treasuryStableToken.trim().length > 0 &&
+    preflightPassed;
 
   function handleNext() {
     if (isLastStep && canCreate && onCreateCommunity) {
@@ -152,6 +209,80 @@ export function DeployConfigSteps({ value, validationErrors, onChange, onCreateC
             </div>
           </div>
         )}
+
+        {currentStep.key === "ready" && (
+          <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+            {!preflight && !isRefreshing ? (
+              <p className="text-sm text-muted-foreground">Checking wallet and network…</p>
+            ) : (
+              <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Preflight check</span>
+                <button
+                  type="button"
+                  disabled={isRefreshing}
+                  onClick={() => void handleRefresh()}
+                  className="flex items-center gap-1.5 text-xs text-primary underline hover:no-underline disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isRefreshing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      Refreshing…
+                    </>
+                  ) : (
+                    "Refresh"
+                  )}
+                </button>
+              </div>
+              {likelyMock && walletAddr ? (
+                <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  ⚠️ Test/mock address detected: {walletAddr}. Data may not be from a real wallet.
+                </p>
+              ) : null}
+              {walletAddr && !likelyMock ? (
+                <p className="break-all text-xs text-muted-foreground font-mono" title={walletAddr}>
+                  Wallet: {shortenAddress(walletAddr)} — {walletAddr}
+                </p>
+              ) : null}
+                <div className="grid gap-2 text-sm sm:grid-cols-2">
+                  <p>
+                    Wallet:{" "}
+                    <span className={preflight.walletConnected ? "text-emerald-600" : "text-destructive"}>
+                      {preflight.walletConnected ? "Connected" : "Disconnected"}
+                    </span>
+                  </p>
+                  <p>
+                    Network:{" "}
+                    <span className={preflight.supportedNetwork ? "text-emerald-600" : "text-destructive"}>
+                      {CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}
+                      {preflight.supportedNetwork ? " (supported)" : " (unsupported)"}
+                    </span>
+                  </p>
+                  <p>
+                    Balance: {weiToEth(preflight.funding.currentBalanceWei)} ETH on {CHAIN_NAMES[chainId] ?? `chain ${chainId}`}
+                    {preflight.funding.isSufficient ? (
+                      <span className="ml-1 text-emerald-600">(sufficient)</span>
+                    ) : (
+                      <span className="ml-1 text-destructive">(insufficient)</span>
+                    )}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Required: ~{weiToEth(preflight.funding.requiredWei)} ETH for gas
+                  </p>
+                </div>
+                {preflight.blockingReasons.length > 0 ? (
+                  <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                    {preflight.blockingReasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm font-medium text-emerald-600">All checks passed. You can deploy.</p>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {validationErrors.length > 0 && currentStep.key === "currency" ? (
@@ -174,7 +305,7 @@ export function DeployConfigSteps({ value, validationErrors, onChange, onCreateC
         <button
           type="button"
           onClick={handleNext}
-          disabled={!canGoNext || (isLastStep && !canCreate) || isRunning}
+          disabled={isLastStep ? !canCreate || isRunning : !canGoNext || isRunning}
           className="btn-primary flex cursor-pointer items-center disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLastStep ? "Create community" : "Next"}
