@@ -21,7 +21,7 @@ export function RequestListItem({ request, communityName }: { request: RequestNo
       : null;
 
   return (
-    <li className="rounded-lg border border-border p-4 shadow-sm">
+    <li className="card">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">

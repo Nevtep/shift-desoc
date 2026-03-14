@@ -77,7 +77,7 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <div className="rounded-lg border border-border p-4 shadow-sm">
+        <div className="card">
           <h2 className="text-lg font-medium">Metadata</h2>
           <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -153,7 +153,7 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
         {draft.reviews.length ? (
           <ul className="space-y-2 text-sm">
             {draft.reviews.map((review) => (
-              <li key={review.id} className="rounded border border-border p-3">
+              <li key={review.id} className="card-tight">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium">{review.reviewer}</span>
                   <span className="text-xs text-muted-foreground">{review.stance}</span>
@@ -248,7 +248,7 @@ function DraftEscalateForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-border p-4 shadow-sm">
+    <form onSubmit={handleSubmit} className="card">
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-base font-semibold">Escalate to Proposal</h3>
@@ -332,7 +332,7 @@ function VersionEntry({ version }: { version: VersionNode }) {
   const snapshotDoc = useMemo(() => (isIpfsDocumentResponse(data) ? data : null), [data]);
 
   return (
-    <li className="rounded border border-border p-3">
+    <li className="card-tight">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-col text-xs text-muted-foreground">
           <span>Contributor: {version.contributor}</span>

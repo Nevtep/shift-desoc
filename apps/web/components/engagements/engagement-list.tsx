@@ -45,7 +45,7 @@ export function EngagementList({ communityId }: EngagementListProps) {
 
 function EngagementListItem({ engagement }: { engagement: EngagementNode }) {
   return (
-    <li className="rounded-lg border border-border p-4 shadow-sm">
+    <li className="card">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span>Valuable Action {engagement.valuableActionId}</span>

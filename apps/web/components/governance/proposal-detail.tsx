@@ -88,7 +88,7 @@ export function ProposalDetail({ proposalId }: ProposalDetailProps) {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <div className="rounded-lg border border-border p-4 shadow-sm">
+        <div className="card">
           <h2 className="text-lg font-medium">Metadata</h2>
           <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
             <MetadataItem label="Community" value={String(proposal.communityId)} />
@@ -273,7 +273,7 @@ function VoteForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-border p-4 shadow-sm">
+    <form onSubmit={handleSubmit} className="card">
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-base font-semibold">Cast Vote</h3>

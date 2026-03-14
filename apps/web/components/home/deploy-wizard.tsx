@@ -144,50 +144,47 @@ export function DeployWizard({ options }: Props) {
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
-      <div className="space-y-2">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Manager Home</p>
+    <section className="space-y-6">
+      <div className="space-y-4">
         <h2 className="text-2xl font-semibold">Community Deploy Wizard</h2>
         <p className="text-sm text-muted-foreground">
           This guided flow executes a multi-signature sequence: preflight, deploy stack, role wiring, and deterministic verification.
           Shared infrastructure must already exist and each transaction is signed by your connected wallet.
         </p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            disabled={isRunning}
+            onClick={() => void runPreflight()}
+            className="btn-ghost"
+          >
+            Run preflight
+          </button>
+          <button
+            type="button"
+            disabled={!canStart}
+            onClick={() => void handleStartDeploy()}
+            className="btn-primary"
+          >
+            Start deploy
+          </button>
+          <button
+            type="button"
+            disabled={!canResume || isResuming}
+            onClick={() => void handleResume()}
+            className="btn-ghost"
+          >
+            {isResuming ? "Resuming..." : "Resume deploy"}
+          </button>
+        </div>
+        {!canStart ? (
+          <p className="text-sm text-destructive">
+            Connect a wallet and complete valid deployment configuration before starting.
+          </p>
+        ) : null}
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
       </div>
-
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          disabled={isRunning}
-          onClick={() => void runPreflight()}
-          className="btn-ghost"
-        >
-          Run preflight
-        </button>
-        <button
-          type="button"
-          disabled={!canStart}
-          onClick={() => void handleStartDeploy()}
-          className="btn-primary"
-        >
-          Start deploy
-        </button>
-        <button
-          type="button"
-          disabled={!canResume || isResuming}
-          onClick={() => void handleResume()}
-          className="btn-ghost"
-        >
-          {isResuming ? "Resuming..." : "Resume deploy"}
-        </button>
-      </div>
-
-      {!canStart ? (
-        <p className="text-sm text-destructive">
-          Connect a wallet and complete valid deployment configuration before starting.
-        </p>
-      ) : null}
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
 
       <DeployConfigForm
         value={config}

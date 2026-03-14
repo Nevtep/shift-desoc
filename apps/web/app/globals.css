@@ -88,4 +88,18 @@ h1, h2, h3, h4, h5, h6 {
   .btn-outline-pill:disabled {
     @apply cursor-not-allowed opacity-60;
   }
+
+  /* Cards: estilo Principios de marketing (sin hover) */
+  .card {
+    @apply rounded-2xl p-6;
+    background-color: rgba(246, 240, 225, 0.88);
+    border: 1px solid rgba(86, 102, 69, 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  .card-tight {
+    @apply rounded-2xl p-4;
+    background-color: rgba(246, 240, 225, 0.88);
+    border: 1px solid rgba(86, 102, 69, 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
 }

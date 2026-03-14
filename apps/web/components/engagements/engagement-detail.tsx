@@ -56,7 +56,7 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <div className="rounded-lg border border-border p-4 shadow-sm">
+        <div className="card">
           <h2 className="text-lg font-medium">Metadata</h2>
           <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
             <MetadataItem label="Valuable Action" value={engagement.valuableActionId} />
@@ -191,7 +191,7 @@ function VerifyEngagementForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-border p-4 shadow-sm">
+    <form onSubmit={handleSubmit} className="card">
       <div className="flex items-center justify-between gap-2">
         <div className="space-y-1">
           <h3 className="text-base font-semibold">Verify Engagement</h3>
@@ -276,7 +276,7 @@ function EvidenceManifest({ manifest }: { manifest: IpfsDocumentResponse }) {
   return (
     <ul className="space-y-2 text-sm">
       {evidence.map((item, index) => (
-        <li key={`${item.cid ?? index}`} className="rounded border border-border p-3">
+        <li key={`${item.cid ?? index}`} className="card-tight">
           <p className="font-medium">{item.title ?? `Evidence ${index + 1}`}</p>
           <p className="text-xs text-muted-foreground">Type: {item.type ?? "unknown"}</p>
           {item.description ? <p className="mt-1 text-sm text-muted-foreground">{item.description}</p> : null}

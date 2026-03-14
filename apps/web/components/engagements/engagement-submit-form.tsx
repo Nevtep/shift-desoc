@@ -90,7 +90,7 @@ export function EngagementSubmitForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card p-4 shadow-sm">
+    <form onSubmit={handleSubmit} className="card">
       <div className="space-y-1">
         <h2 className="text-base font-semibold">Submit Engagement</h2>
         <p className="text-sm text-muted-foreground">

@@ -20,7 +20,7 @@ export default async function ReservationDetailPage({ params }: PageProps) {
           housing events.
         </p>
       </header>
-      <section className="rounded-lg border border-border p-4 shadow-sm">
+      <section className="card">
         <h2 className="text-lg font-medium">Stay Details</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Nightly schedule, participants, and token flows display here once data is available.

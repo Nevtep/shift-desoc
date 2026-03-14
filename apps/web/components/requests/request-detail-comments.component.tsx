@@ -71,7 +71,7 @@ export function RequestDetailComments({
           const isModeratorAuthor = isSelf && isModerator;
 
           return (
-            <li key={comment.id} className={`rounded border border-border p-3 ${depth ? "ml-4" : ""}`}>
+            <li key={comment.id} className={`card-tight ${depth ? "ml-4" : ""}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{comment.author}</span>

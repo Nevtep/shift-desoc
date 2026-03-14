@@ -50,7 +50,7 @@ export function RequestDetailHeader({
 }: RequestDetailHeaderProps) {
   return (
     <section className="space-y-3">
-      <div className="rounded-lg border border-border p-4 shadow-sm">
+      <div className="card">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-medium">{title}</h2>
           <span className="text-xs text-muted-foreground">ID {requestId}</span>

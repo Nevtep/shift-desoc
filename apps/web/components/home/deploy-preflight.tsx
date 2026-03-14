@@ -16,7 +16,7 @@ export function DeployPreflight({ assessment }: Props) {
   const { funding, sharedInfra } = assessment;
 
   return (
-    <section className="space-y-3 rounded-lg border border-border p-4">
+    <section className="card space-y-3">
       <h3 className="text-base font-semibold">Preflight</h3>
       <div className="grid gap-2 text-sm sm:grid-cols-2">
         <p>
@@ -36,7 +36,7 @@ export function DeployPreflight({ assessment }: Props) {
         <p>Required: {weiToEth(funding.requiredWei)} ETH</p>
         <p>Current: {weiToEth(funding.currentBalanceWei)} ETH</p>
       </div>
-      <div className="space-y-1 rounded border border-border p-3 text-xs text-muted-foreground">
+      <div className="card-tight space-y-1 text-xs text-muted-foreground">
         <p className="font-medium text-foreground">Shared infra details</p>
         <p>
           AccessManager: {sharedInfra.accessManager.address ?? "not resolved"} ({sharedInfra.accessManager.abiProbePassed ? "probe ok" : "probe failed"})

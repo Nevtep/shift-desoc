@@ -21,7 +21,7 @@ function updateField(
 
 export function DeployConfigForm({ value, deployerAddress, validationErrors, onChange }: Props) {
   return (
-    <section className="space-y-3 rounded-lg border border-border p-4">
+    <section className="card space-y-3">
       <h3 className="text-base font-semibold">Deployment Configuration</h3>
       <p className="text-sm text-muted-foreground">
         Configure the community before starting deployment. Start deploy is enabled only after required fields are valid.

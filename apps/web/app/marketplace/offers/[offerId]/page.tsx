@@ -26,13 +26,13 @@ export default async function OfferDetailPage({ params }: PageProps) {
         </p>
       </header>
       <section className="space-y-4">
-        <div className="rounded-lg border border-border p-4 shadow-sm">
+        <div className="card">
           <h2 className="text-lg font-medium">Order History</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Order and reservation history will render using GraphQL queries.
           </p>
         </div>
-        <div className="rounded-lg border border-border p-4 shadow-sm">
+        <div className="card">
           <h2 className="text-lg font-medium">Disputes</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Dispute timelines and outcomes appear once the dispute events are ingested.

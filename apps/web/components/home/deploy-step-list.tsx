@@ -8,14 +8,14 @@ type Props = {
 export function DeployStepList({ steps }: Props) {
   if (steps.length === 0) {
     return (
-      <section className="space-y-3 rounded-lg border border-border p-4">
+      <section className="card space-y-3">
         <h3 className="text-base font-semibold">Deployment Steps</h3>
         <p className="text-sm text-muted-foreground">
           Before you start, this is the full sequence the wizard will execute. Each step will show live transaction progress after deployment begins.
         </p>
         <ul className="space-y-2">
           {WIZARD_STEP_ORDER.map((key) => (
-            <li key={key} className="rounded border border-border p-3">
+            <li key={key} className="card-tight">
               <div className="flex items-center justify-between">
                 <p className="font-medium">{STEP_META[key].name}</p>
                 <p className="text-xs uppercase text-muted-foreground">upcoming</p>
@@ -30,11 +30,11 @@ export function DeployStepList({ steps }: Props) {
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-border p-4">
+    <section className="card space-y-3">
       <h3 className="text-base font-semibold">Deployment Steps</h3>
       <ul className="space-y-2">
         {steps.map((step) => (
-          <li key={step.key} className="rounded border border-border p-3">
+          <li key={step.key} className="card-tight">
             <div className="flex items-center justify-between">
               <p className="font-medium">{step.name}</p>
               <p className="text-xs uppercase text-muted-foreground">{step.status}</p>

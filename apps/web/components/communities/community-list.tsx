@@ -43,7 +43,7 @@ export function CommunityList() {
       {communities.map((community) => (
         <li
           key={community.id}
-          className="rounded-lg border border-border p-4 shadow-sm transition hover:border-primary"
+          className="card block"
         >
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">

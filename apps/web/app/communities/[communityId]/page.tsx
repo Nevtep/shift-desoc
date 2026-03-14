@@ -25,7 +25,7 @@ export default async function CommunityDetailPage({ params }: PageParams) {
         </p>
       </header>
       <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border border-border p-4 shadow-sm">
+        <div className="card">
           <h2 className="text-lg font-medium">Core Modules</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Links to requests, drafts, governance, and engagements for this community.
@@ -58,7 +58,7 @@ export default async function CommunityDetailPage({ params }: PageParams) {
             </li>
           </ul>
         </div>
-        <div className="rounded-lg border border-border p-4 shadow-sm">
+        <div className="card">
           <h2 className="text-lg font-medium">Governance Windows</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Voting delay, voting period, quorum, and timelock delays will be displayed once the

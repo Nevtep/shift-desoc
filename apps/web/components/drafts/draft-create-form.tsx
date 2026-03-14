@@ -198,7 +198,7 @@ export function DraftCreateForm() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+    <div className="card">
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-1">
           <h2 className="text-base font-semibold">Create Draft</h2>
@@ -590,14 +590,14 @@ function ActionBuilder({
 function ActionsTable({ actions, onRemove }: { actions: PreparedAction[]; onRemove: (index: number) => void }) {
   if (!actions.length) {
     return (
-      <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+      <div className="card-tight bg-muted/30 text-sm text-muted-foreground">
         No actions added yet. Add governed actions above to queue calls for Timelock execution.
       </div>
     );
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-border p-3">
+    <div className="card-tight space-y-2">
       <h3 className="text-sm font-semibold">Actions queued ({actions.length})</h3>
       <div className="space-y-2 text-sm">
         {actions.map((action, idx) => (

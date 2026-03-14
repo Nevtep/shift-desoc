@@ -36,7 +36,7 @@ export default async function DraftsPage({ searchParams }: PageProps) {
 
 function CommunityFilter({ currentCommunityId }: { currentCommunityId?: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-4 text-sm text-muted-foreground">
+    <div className="card flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
       <span>Filtering by community:</span>
       <form className="flex flex-wrap items-center gap-2" action="/drafts" method="get">
         <input

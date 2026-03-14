@@ -64,7 +64,7 @@ export function DraftList({ communityId }: DraftListProps) {
 
 function DraftListItem({ draft }: { draft: DraftNode }) {
   return (
-    <li className="rounded-lg border border-border p-4 shadow-sm">
+    <li className="card">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span>Request {draft.requestId}</span>

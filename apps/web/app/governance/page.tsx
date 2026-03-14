@@ -16,7 +16,7 @@ export default function GovernancePage() {
       </header>
       <div className="grid gap-4 sm:grid-cols-2">
         <Link
-          className="rounded-lg border border-border p-4 shadow-sm transition hover:border-primary"
+          className="card block"
           href="/governance/proposals"
         >
           <div className="space-y-2">
@@ -27,7 +27,7 @@ export default function GovernancePage() {
           </div>
         </Link>
         <Link
-          className="rounded-lg border border-border p-4 shadow-sm transition hover:border-primary"
+          className="card block"
           href={"/governance/activity" as Route}
         >
           <div className="space-y-2">

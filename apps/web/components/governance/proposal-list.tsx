@@ -102,7 +102,7 @@ export function ProposalList({ communityId }: ProposalListProps) {
 
 function ProposalListItem({ proposal }: { proposal: ProposalNode }) {
   return (
-    <li className="rounded-lg border border-border p-4 shadow-sm">
+    <li className="card">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span>Community {proposal.communityId}</span>

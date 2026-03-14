@@ -10,11 +10,11 @@ export function DeployVerificationResults({ results }: Props) {
   }
 
   return (
-    <section className="space-y-3 rounded-lg border border-border p-4">
+    <section className="card space-y-3">
       <h3 className="text-base font-semibold">Verification Results</h3>
       <ul className="space-y-2 text-sm">
         {results.map((result) => (
-          <li key={result.key} className="rounded border border-border p-3">
+          <li key={result.key} className="card-tight">
             <div className="flex items-center justify-between gap-2">
               <span>{result.label}</span>
               <span className={result.passed ? "text-emerald-600" : "text-destructive"}>
