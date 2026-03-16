@@ -305,26 +305,24 @@ contract CommunityRegistryTest is Test {
     function testGrantCommunityRoleUnauthorized() public {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
+        bytes32 moderatorRole = registry.MODERATOR_ROLE();
         
         // Ensure user2 definitely does not have any admin privileges
         assertFalse(registry.communityAdmins(communityId, user2), "user2 should not be community admin");
-        
-        // TODO: Fix authorization test - currently has Foundry vm.prank() context issues
-        // For now, skip this test as core functionality works (see other role tests)
-        // vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user2));
-        // vm.prank(user2);
-        // registry.grantCommunityRole(communityId, moderator, registry.MODERATOR_ROLE());
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user2));
+        vm.prank(user2);
+        registry.grantCommunityRole(communityId, moderator, moderatorRole);
     }
     
     function testGrantCommunityRoleZeroAddress() public {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
-        
-        // TODO: Fix zero address validation test - currently has Foundry vm.prank() context issues  
-        // For now, skip this test as core functionality works (see other role tests)
-        // vm.expectRevert(Errors.ZeroAddress.selector);
-        // vm.prank(user1);
-        // registry.grantCommunityRole(communityId, address(0), registry.MODERATOR_ROLE());
+        bytes32 moderatorRole = registry.MODERATOR_ROLE();
+
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        vm.prank(user1);
+        registry.grantCommunityRole(communityId, address(0), moderatorRole);
     }
     
     function testGrantCommunityRoleInvalidRole() public {

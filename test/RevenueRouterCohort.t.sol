@@ -93,7 +93,7 @@ contract CohortRegistryMock2 {
     }
     function setInvestmentWeight(uint256 tokenId, uint256 weight) external { tokenWeight[tokenId] = weight; }
 
-    function getActiveCohorts(uint256) external view returns (uint256[] memory) { return active; }
+    function getActiveCohorts() external view returns (uint256[] memory) { return active; }
     function getCohort(uint256 cohortId) external view returns (Cohort memory c) {
         CohortData memory data = cohorts[cohortId];
         c.id = cohortId; c.communityId = data.communityId; c.investedTotal = data.investedTotal; c.active = data.active;
@@ -123,15 +123,20 @@ contract SBTMock is IValuableActionSBT {
     function ownerOf(uint256 tokenId) external view returns (address) { return owners[tokenId]; }
 
     // Unused interface
-    function mintEngagement(address, uint256, Types.EngagementSubtype, bytes32, bytes calldata) external pure returns (uint256) { revert("unused"); }
-    function mintPosition(address, uint256, bytes32, uint32, bytes calldata) external pure returns (uint256) { revert("unused"); }
-    function mintInvestment(address, uint256, uint32, bytes calldata) external pure returns (uint256) { revert("unused"); }
+    function mintEngagement(address, Types.EngagementSubtype, bytes32, bytes calldata) external pure returns (uint256) { revert("unused"); }
+    function mintPosition(address, bytes32, uint32, bytes calldata) external pure returns (uint256) { revert("unused"); }
+    function mintInvestment(address to, uint256 cohortId, uint32 weight, bytes calldata) external returns (uint256 tokenId) {
+        uint256 localCommunityId = 1;
+        tokenId = _mintInvestment(to, localCommunityId, cohortId, weight);
+    }
+    function mintRoleFromPosition(address, bytes32, uint32, uint64, uint64, uint8, bytes calldata) external pure returns (uint256) { revert("unused"); }
+    function setEndedAt(uint256, uint64) external pure { revert("unused"); }
+    function closePositionToken(uint256, uint8) external pure { revert("unused"); }
+
+    // Legacy helper kept for local tests that still pass explicit communityId.
     function mintInvestment(address to, uint256 communityId, uint256 cohortId, uint32 weight, bytes calldata) external returns (uint256 tokenId) {
         tokenId = _mintInvestment(to, communityId, cohortId, weight);
     }
-    function mintRoleFromPosition(address, uint256, bytes32, uint32, uint64, uint64, uint8, bytes calldata) external pure returns (uint256) { revert("unused"); }
-    function setEndedAt(uint256, uint64) external pure { revert("unused"); }
-    function closePositionToken(uint256, uint8) external pure { revert("unused"); }
 
     function _mintInvestment(address to, uint256 communityId, uint256 cohortId, uint32 weight) private returns (uint256 tokenId) {
         tokenId = nextId++;
@@ -176,7 +181,7 @@ contract RevenueRouterCohortTest is Test {
         token = new ERC20Simple();
 
         accessManager = new AccessManager(admin);
-        router = new RevenueRouter(address(accessManager), address(paramController), address(cohorts), address(sbt));
+        router = new RevenueRouter(address(accessManager), address(paramController), address(cohorts), address(sbt), COMMUNITY_ID);
 
         vm.startPrank(admin, admin);
         bytes4[] memory adminSelectors = new bytes4[](4);

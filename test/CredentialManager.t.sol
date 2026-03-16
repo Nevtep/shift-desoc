@@ -56,9 +56,9 @@ contract CredentialManagerTest is Test {
     function setUp() public {
         communityRegistry = new CommunityRegistryMock();
         accessManager = new AccessManager(governance);
-        registry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance);
-        sbt = new ValuableActionSBT(address(accessManager));
-        manager = new CredentialManager(address(accessManager), address(registry), address(sbt));
+        registry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance, COMMUNITY_ID);
+        sbt = new ValuableActionSBT(address(accessManager), COMMUNITY_ID);
+        manager = new CredentialManager(address(accessManager), address(registry), address(sbt), COMMUNITY_ID);
 
         communityRegistry.setModuleAddresses(
             COMMUNITY_ID,
@@ -95,8 +95,17 @@ contract CredentialManagerTest is Test {
         accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(registry), 0);
         accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(manager), 0);
         accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(manager), 0);
+        bytes4[] memory credentialApproverSelectors = new bytes4[](1);
+        credentialApproverSelectors[0] = manager.approveApplication.selector;
+        accessManager.setTargetFunctionRole(
+            address(manager),
+            credentialApproverSelectors,
+            Roles.CREDENTIAL_MANAGER_APPROVER_ROLE
+        );
+        accessManager.grantRole(Roles.CREDENTIAL_MANAGER_APPROVER_ROLE, verifier, 0);
+        accessManager.grantRole(Roles.CREDENTIAL_MANAGER_APPROVER_ROLE, governance, 0);
         registry.setIssuanceModule(address(manager), true);
-        manager.defineCourse(COURSE_ID, COMMUNITY_ID, verifier, true);
+        manager.defineCourse(COURSE_ID, verifier, true);
         vm.stopPrank();
     }
 
@@ -150,6 +159,11 @@ contract CredentialManagerTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Course inactive"));
         vm.prank(user);
         manager.applyForCredential(COURSE_ID, "");
+    }
+
+    function testConstructorZeroCommunityReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Invalid communityId"));
+        new CredentialManager(address(accessManager), address(registry), address(sbt), 0);
     }
 
     function testPendingApplicationEnforced() public {

@@ -182,7 +182,7 @@ contract DraftsManagerTest is Test {
         accessManager.grantRole(accessManager.ADMIN_ROLE(), timelock, 0);
         
         // Deploy DraftsManager
-        draftsManager = new DraftsManager(address(communityRegistry), address(governor), address(accessManager));
+        draftsManager = new DraftsManager(address(communityRegistry), address(governor), address(accessManager), COMMUNITY_ID);
 
         bytes4[] memory adminSelectors = new bytes4[](2);
         adminSelectors[0] = DraftsManager.updateGovernor.selector;
@@ -238,19 +238,25 @@ contract DraftsManagerTest is Test {
     
     function testConstructor() public view {
         assertEq(draftsManager.communityRegistry(), address(communityRegistry));
+        assertEq(draftsManager.communityId(), COMMUNITY_ID);
         assertEq(draftsManager.governor(), address(governor));
         assertEq(draftsManager.getDraftsCount(), 0);
     }
     
     function testConstructorZeroAddressReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new DraftsManager(address(0), address(governor), address(accessManager));
+        new DraftsManager(address(0), address(governor), address(accessManager), COMMUNITY_ID);
         
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new DraftsManager(address(communityRegistry), address(0), address(accessManager));
+        new DraftsManager(address(communityRegistry), address(0), address(accessManager), COMMUNITY_ID);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
-        new DraftsManager(address(communityRegistry), address(governor), address(0));
+        new DraftsManager(address(communityRegistry), address(governor), address(0), COMMUNITY_ID);
+    }
+
+    function testConstructorZeroCommunityReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Invalid communityId"));
+        new DraftsManager(address(communityRegistry), address(governor), address(accessManager), 0);
     }
     
     /* ======== DRAFT CREATION TESTS ======== */
@@ -260,7 +266,7 @@ contract DraftsManagerTest is Test {
         emit DraftCreated(0, COMMUNITY_ID, REQUEST_ID, user1, testActions.actionsHash, VERSION_CID);
         
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         assertEq(draftId, 0);
         assertEq(draftsManager.getDraftsCount(), 1);
@@ -314,7 +320,7 @@ contract DraftsManagerTest is Test {
         tampered.actionsHash = bytes32(uint256(123));
 
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, tampered, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, tampered, VERSION_CID);
 
         (,,,, DraftsManager.ActionBundle memory actions,,,,,,) = draftsManager.getDraft(draftId);
         assertEq(actions.actionsHash, testActions.actionsHash);
@@ -334,12 +340,12 @@ contract DraftsManagerTest is Test {
 
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Actions length mismatch"));
-        draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, badActions, VERSION_CID);
+        draftsManager.createDraft(REQUEST_ID, badActions, VERSION_CID);
     }
     
     function testCreateDraftWithoutRequest() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, 0, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(0, testActions, VERSION_CID);
         
         (,uint256 requestId,,,,,,,,,) = draftsManager.getDraft(draftId);
         assertEq(requestId, 0);
@@ -350,41 +356,55 @@ contract DraftsManagerTest is Test {
     }
 
     function testCreateDraftRevertsForMissingCommunity() public {
+        DraftsManager missingCommunityManager =
+            new DraftsManager(address(communityRegistry), address(governor), address(accessManager), COMMUNITY_ID + 99);
+
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Community does not exist"));
         vm.prank(user1);
-        draftsManager.createDraft(COMMUNITY_ID + 1, REQUEST_ID, testActions, VERSION_CID);
+        missingCommunityManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
+    }
+
+    function testGetDraftsByCommunityMismatchedCommunityReturnsEmpty() public {
+        vm.prank(user1);
+        draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
+
+        uint256[] memory drafts = draftsManager.getDraftsByCommunity(COMMUNITY_ID + 1);
+        assertEq(drafts.length, 0);
     }
 
     function testCreateDraftRevertsWhenRequestHubNotConfigured() public {
         uint256 communityWithoutHub = COMMUNITY_ID + 2;
         communityRegistry.addCommunity(communityWithoutHub, address(0));
 
+        DraftsManager noHubManager =
+            new DraftsManager(address(communityRegistry), address(governor), address(accessManager), communityWithoutHub);
+
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "RequestHub not set"));
         vm.prank(user1);
-        draftsManager.createDraft(communityWithoutHub, REQUEST_ID, testActions, VERSION_CID);
+        noHubManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
     }
 
     function testCreateDraftRevertsForMissingRequest() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Request does not exist"));
         vm.prank(user1);
-        draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 50, testActions, VERSION_CID);
+        draftsManager.createDraft(REQUEST_ID + 50, testActions, VERSION_CID);
     }
     
     function testCreateDraftEmptyVersionCIDReverts() public {
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Version CID cannot be empty"));
-        draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, "");
+        draftsManager.createDraft(REQUEST_ID, testActions, "");
     }
     
     function testCreateMultipleDrafts() public {
         // Create first draft
         vm.prank(user1);
-        uint256 draft1 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, "version1");
+        uint256 draft1 = draftsManager.createDraft(REQUEST_ID, testActions, "version1");
         
         // Create second draft
         requestHub.addRequest(REQUEST_ID + 1, COMMUNITY_ID, user2);
         vm.prank(user2);
-        uint256 draft2 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 1, testActions, "version2");
+        uint256 draft2 = draftsManager.createDraft(REQUEST_ID + 1, testActions, "version2");
         
         assertEq(draft1, 0);
         assertEq(draft2, 1);
@@ -401,7 +421,7 @@ contract DraftsManagerTest is Test {
     
     function testAddContributor() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.expectEmit(true, true, true, true);
         emit ContributorAdded(draftId, user2, user1);
@@ -424,7 +444,7 @@ contract DraftsManagerTest is Test {
     
     function testAddContributorByContributor() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Add user2 as contributor
         vm.prank(user1);
@@ -439,7 +459,7 @@ contract DraftsManagerTest is Test {
     
     function testAddContributorUnauthorizedReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(DraftsManager.NotAuthorized.selector, user2));
@@ -448,7 +468,7 @@ contract DraftsManagerTest is Test {
     
     function testAddContributorZeroAddressReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.ZeroAddress.selector));
@@ -457,7 +477,7 @@ contract DraftsManagerTest is Test {
     
     function testAddContributorAlreadyExistsReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Add user2
         vm.prank(user1);
@@ -476,7 +496,7 @@ contract DraftsManagerTest is Test {
     
     function testAddContributorWrongStatusReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Submit for review
         vm.prank(user1);
@@ -494,7 +514,7 @@ contract DraftsManagerTest is Test {
     
     function testRemoveContributor() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Add contributors
         vm.prank(user1);
@@ -520,7 +540,7 @@ contract DraftsManagerTest is Test {
     
     function testRemoveContributorNotFoundReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(DraftsManager.ContributorNotFound.selector, user2));
@@ -531,7 +551,7 @@ contract DraftsManagerTest is Test {
     
     function testSnapshotVersion() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         string memory newVersionCID = "QmNewVersion";
         
@@ -549,7 +569,7 @@ contract DraftsManagerTest is Test {
     
     function testSnapshotVersionByContributor() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Add contributor
         vm.prank(user1);
@@ -565,7 +585,7 @@ contract DraftsManagerTest is Test {
     
     function testSnapshotVersionEmptyCIDReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Version CID cannot be empty"));
@@ -574,7 +594,7 @@ contract DraftsManagerTest is Test {
     
     function testSnapshotVersionUnauthorizedReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user2);
         vm.expectRevert(abi.encodeWithSelector(DraftsManager.NotAuthorized.selector, user2));
@@ -585,7 +605,7 @@ contract DraftsManagerTest is Test {
     
     function testSubmitForReview() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.expectEmit(true, true, true, true);
         emit DraftStatusChanged(draftId, DraftsManager.DraftStatus.DRAFTING, DraftsManager.DraftStatus.REVIEW, user1);
@@ -600,7 +620,7 @@ contract DraftsManagerTest is Test {
     
     function testSubmitReview() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
@@ -633,7 +653,7 @@ contract DraftsManagerTest is Test {
     
     function testSubmitMultipleReviews() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
@@ -660,7 +680,7 @@ contract DraftsManagerTest is Test {
     
     function testSubmitReviewContributorReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Add contributor
         vm.prank(user1);
@@ -682,7 +702,7 @@ contract DraftsManagerTest is Test {
     
     function testSubmitReviewAlreadyReviewedReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
@@ -698,7 +718,7 @@ contract DraftsManagerTest is Test {
     
     function testRetractReview() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
@@ -727,7 +747,7 @@ contract DraftsManagerTest is Test {
     
     function testFinalizeForProposal() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
@@ -758,7 +778,7 @@ contract DraftsManagerTest is Test {
     
     function testFinalizeForProposalReviewPeriodNotMetReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
@@ -781,7 +801,7 @@ contract DraftsManagerTest is Test {
     
     function testFinalizeForProposalInsufficientReviewsReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
@@ -799,7 +819,7 @@ contract DraftsManagerTest is Test {
     
     function testFinalizeForProposalInsufficientSupportReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         vm.prank(user1);
         draftsManager.submitForReview(draftId);
@@ -826,7 +846,7 @@ contract DraftsManagerTest is Test {
     
     function testEscalateToProposal() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Complete review process
         vm.prank(user1);
@@ -859,7 +879,7 @@ contract DraftsManagerTest is Test {
     
     function testEscalateToProposalMultiChoice() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Complete review process
         vm.prank(user1);
@@ -890,7 +910,7 @@ contract DraftsManagerTest is Test {
     
     function testEscalateToProposalInvalidOptionsReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Complete review process quickly
         _completeReviewProcess(draftId);
@@ -904,7 +924,7 @@ contract DraftsManagerTest is Test {
     
     function testUpdateProposalOutcome() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         _completeReviewProcess(draftId);
         
@@ -914,7 +934,6 @@ contract DraftsManagerTest is Test {
         vm.expectEmit(true, true, true, true);
         emit ProposalOutcomeUpdated(draftId, proposalId, DraftsManager.DraftStatus.WON);
         
-        // TODO: This should be called by governance, but we don't have authorization checks yet
         vm.prank(timelock);
         draftsManager.updateProposalOutcome(draftId, DraftsManager.DraftStatus.WON);
         
@@ -924,7 +943,7 @@ contract DraftsManagerTest is Test {
     
     function testUpdateProposalOutcomeInvalidOutcomeReverts() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         _completeReviewProcess(draftId);
         
@@ -948,7 +967,7 @@ contract DraftsManagerTest is Test {
 
     function testUpdateProposalOutcomeAuthorizedByContributor() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
 
         vm.prank(user1);
         draftsManager.addContributor(draftId, user2);
@@ -1038,7 +1057,7 @@ contract DraftsManagerTest is Test {
     
     function testIsContributor() public {
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // Author is a contributor
         assertTrue(draftsManager.isContributor(draftId, user1));
@@ -1057,15 +1076,17 @@ contract DraftsManagerTest is Test {
     function testGetDraftsByMappings() public {
         // Create drafts for different scenarios
         vm.prank(user1);
-        uint256 draft1 = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draft1 = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         _addRequest(REQUEST_ID + 1, COMMUNITY_ID, user1);
         vm.prank(user1);
-        draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID + 1, testActions, VERSION_CID);
+        draftsManager.createDraft(REQUEST_ID + 1, testActions, VERSION_CID);
         
         _addCommunity(COMMUNITY_ID + 1);
+        _addRequest(REQUEST_ID + 2, COMMUNITY_ID + 1, user2);
         vm.prank(user2);
-        uint256 draft3 = draftsManager.createDraft(COMMUNITY_ID + 1, REQUEST_ID, testActions, VERSION_CID);
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Community mismatch"));
+        draftsManager.createDraft(REQUEST_ID + 2, testActions, VERSION_CID);
         
         // Add user2 as contributor to draft1
         vm.prank(user1);
@@ -1076,20 +1097,19 @@ contract DraftsManagerTest is Test {
         assertEq(community1Drafts.length, 2);
         
         uint256[] memory community2Drafts = draftsManager.getDraftsByCommunity(COMMUNITY_ID + 1);
-        assertEq(community2Drafts.length, 1);
-        assertEq(community2Drafts[0], draft3);
+        assertEq(community2Drafts.length, 0);
         
         // Test request mappings
         uint256[] memory request1Drafts = draftsManager.getDraftsByRequest(REQUEST_ID);
-        assertEq(request1Drafts.length, 2);
+        assertEq(request1Drafts.length, 1);
+        assertEq(request1Drafts[0], draft1);
         
         // Test author mappings
         uint256[] memory user1Drafts = draftsManager.getDraftsByAuthor(user1);
         assertEq(user1Drafts.length, 2);
         
         uint256[] memory user2Drafts = draftsManager.getDraftsByAuthor(user2);
-        assertEq(user2Drafts.length, 1);
-        assertEq(user2Drafts[0], draft3);
+        assertEq(user2Drafts.length, 0);
         
         // Test contributor mappings
         uint256[] memory user2ContribDrafts = draftsManager.getDraftsByContributor(user2);
@@ -1102,7 +1122,7 @@ contract DraftsManagerTest is Test {
     function testEndToEndDraftWorkflow() public {
         // 1. Create draft
         vm.prank(user1);
-        uint256 draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        uint256 draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
         
         // 2. Add contributors
         vm.prank(user1);
@@ -1175,7 +1195,7 @@ contract DraftsManagerTest is Test {
 
     function _escalateDraft() internal returns (uint256 draftId) {
         vm.prank(user1);
-        draftId = draftsManager.createDraft(COMMUNITY_ID, REQUEST_ID, testActions, VERSION_CID);
+        draftId = draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
 
         _completeReviewProcess(draftId);
 

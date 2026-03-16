@@ -97,28 +97,29 @@ contract WiringTest is Test {
         paramController = new ParamController(governance);
         communityRegistry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(communityRegistry));
+        communityId = communityRegistry.registerCommunity("Comm", "Desc", "ipfs://meta", 0);
         accessManager = new AccessManager(governance);
         membershipToken = new MembershipTokenERC20Votes("Membership", "MEM", 1, address(accessManager));
         governorContract = new ShiftGovernor(address(membershipToken), address(accessManager), 1 days);
         valuableActionRegistry = new ValuableActionRegistry(
             address(accessManager),
             address(communityRegistry),
-            governance
+            governance,
+            communityId
         );
-        sbt = new ValuableActionSBT(address(accessManager));
-        cohortRegistry = new CohortRegistry(address(accessManager));
-        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt));
-        positionManager = new PositionManager(address(accessManager), address(valuableActionRegistry), address(sbt));
+        sbt = new ValuableActionSBT(address(accessManager), communityId);
+        cohortRegistry = new CohortRegistry(address(accessManager), communityId);
+        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt), communityId);
+        positionManager = new PositionManager(address(accessManager), address(valuableActionRegistry), address(sbt), communityId);
         investmentManager = new InvestmentCohortManager(
             address(accessManager),
             address(cohortRegistry),
             address(valuableActionRegistry),
-            address(sbt)
+            address(sbt),
+            communityId
         );
         requestHub = new RequestHub(address(communityRegistry), address(valuableActionRegistry));
-        credentialManager = new CredentialManager(address(accessManager), address(valuableActionRegistry), address(sbt));
-
-        communityId = communityRegistry.registerCommunity("Comm", "Desc", "ipfs://meta", 0);
+        credentialManager = new CredentialManager(address(accessManager), address(valuableActionRegistry), address(sbt), communityId);
 
         communityRegistry.setModuleAddress(communityId, keccak256("governor"), governance);
         communityRegistry.setModuleAddress(communityId, keccak256("timelock"), governance);
@@ -127,15 +128,34 @@ contract WiringTest is Test {
 
         // Wire SBT manager + issuance allowlists
         vm.startPrank(governance, governance);
-        bytes4[] memory registryAdminSelectors = new bytes4[](7);
+        bytes4[] memory registryAdminSelectors = new bytes4[](6);
         registryAdminSelectors[0] = valuableActionRegistry.setValuableActionSBT.selector;
         registryAdminSelectors[1] = valuableActionRegistry.setIssuanceModule.selector;
         registryAdminSelectors[2] = valuableActionRegistry.setCommunityNarrowing.selector;
         registryAdminSelectors[3] = valuableActionRegistry.setCommunityIssuanceModule.selector;
-        registryAdminSelectors[4] = valuableActionRegistry.setModerator.selector;
-        registryAdminSelectors[5] = valuableActionRegistry.addFounder.selector;
-        registryAdminSelectors[6] = valuableActionRegistry.setIssuancePaused.selector;
+        registryAdminSelectors[4] = valuableActionRegistry.addFounder.selector;
+        registryAdminSelectors[5] = valuableActionRegistry.setIssuancePaused.selector;
         accessManager.setTargetFunctionRole(address(valuableActionRegistry), registryAdminSelectors, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory registryModeratorSelectors = new bytes4[](1);
+        registryModeratorSelectors[0] = valuableActionRegistry.setModerator.selector;
+        accessManager.setTargetFunctionRole(
+            address(valuableActionRegistry),
+            registryModeratorSelectors,
+            Roles.VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE
+        );
+
+        bytes4[] memory registryIssuerSelectors = new bytes4[](5);
+        registryIssuerSelectors[0] = valuableActionRegistry.issueEngagement.selector;
+        registryIssuerSelectors[1] = valuableActionRegistry.issuePosition.selector;
+        registryIssuerSelectors[2] = valuableActionRegistry.issueInvestment.selector;
+        registryIssuerSelectors[3] = valuableActionRegistry.closePositionToken.selector;
+        registryIssuerSelectors[4] = valuableActionRegistry.issueRoleFromPosition.selector;
+        accessManager.setTargetFunctionRole(
+            address(valuableActionRegistry),
+            registryIssuerSelectors,
+            Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE
+        );
 
         bytes4[] memory cohortAdminSelectors = new bytes4[](2);
         cohortAdminSelectors[0] = cohortRegistry.createCohort.selector;
@@ -174,6 +194,14 @@ contract WiringTest is Test {
         credentialSelectors[1] = credentialManager.setCourseActive.selector;
         credentialSelectors[2] = credentialManager.revokeCredential.selector;
         accessManager.setTargetFunctionRole(address(credentialManager), credentialSelectors, accessManager.ADMIN_ROLE());
+        bytes4[] memory credentialApproverSelectors = new bytes4[](1);
+        credentialApproverSelectors[0] = credentialManager.approveApplication.selector;
+        accessManager.setTargetFunctionRole(
+            address(credentialManager),
+            credentialApproverSelectors,
+            Roles.CREDENTIAL_MANAGER_APPROVER_ROLE
+        );
+        accessManager.grantRole(Roles.CREDENTIAL_MANAGER_APPROVER_ROLE, governance, 0);
 
         // Router roles
         bytes4[] memory routerAdminSelectors = new bytes4[](4);
@@ -210,6 +238,7 @@ contract WiringTest is Test {
         accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(investmentManager), 0);
         accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(requestHub), 0);
         accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(credentialManager), 0);
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE, governance, 0);
         accessManager.grantRole(Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE, address(positionManager), 0);
         accessManager.grantRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, distributor, 0);
         valuableActionRegistry.setIssuanceModule(address(positionManager), true);
@@ -227,7 +256,7 @@ contract WiringTest is Test {
 
         // Position type setup
         vm.prank(governance);
-        positionManager.definePositionType(ROLE_TYPE, communityId, 10, true);
+        positionManager.definePositionType(ROLE_TYPE, 10, true);
 
         // Valuable action for RequestHub one-shot
         Types.ValuableAction memory action = Types.ValuableAction({
@@ -258,7 +287,7 @@ contract WiringTest is Test {
         });
 
         vm.startPrank(governance, governance);
-        valuableActionId = valuableActionRegistry.proposeValuableAction(communityId, action, PROPOSAL_REF);
+        valuableActionId = valuableActionRegistry.proposeValuableAction(action, PROPOSAL_REF);
         valuableActionRegistry.activateFromGovernance(valuableActionId, PROPOSAL_REF);
         communityRegistry.grantCommunityRole(communityId, governance, communityRegistry.MODERATOR_ROLE());
         vm.stopPrank();
@@ -301,7 +330,6 @@ contract WiringTest is Test {
         // ---- Investment flow ----
         vm.prank(governance);
         uint256 cohortId = investmentManager.createCohort(
-            communityId,
             15000,
             1,
             bytes32("terms"),
@@ -350,7 +378,7 @@ contract WiringTest is Test {
 
         // ---- Credential flow ----
         vm.prank(governance);
-        credentialManager.defineCourse(COURSE_ID, communityId, governance, true);
+        credentialManager.defineCourse(COURSE_ID, governance, true);
 
         vm.prank(credentialApplicant);
         uint256 credAppId = credentialManager.applyForCredential(COURSE_ID, bytes("evidence"));

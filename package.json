@@ -26,7 +26,7 @@
     "deploy:verify-community": "npx hardhat run scripts/hardhat/verify-community-deployment.ts",
     "forge:test": "forge test -vvv",
     "forge:build": "forge build && node scripts/copy-ponder-abis.js && node scripts/copy-web-abis.js",
-    "forge:cov": "forge coverage --report lcov",
+    "forge:cov": "forge coverage --report lcov --ir-minimum",
     "cov:gate": "bash ./scripts/check-coverage.sh",
     "build": "npm run forge:build && npm run hh:compile",
     "test": "npm run forge:test",

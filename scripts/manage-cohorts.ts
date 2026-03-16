@@ -206,8 +206,7 @@ class CohortManager {
     console.log(`\n📋 Active Cohorts for Community ${communityId}`);
 
     try {
-      const activeCohortIds =
-        await this.cohortRegistry.getActiveCohorts(communityId);
+      const activeCohortIds = await this.cohortRegistry.getActiveCohorts();
 
       if (activeCohortIds.length === 0) {
         console.log("   No active cohorts found");

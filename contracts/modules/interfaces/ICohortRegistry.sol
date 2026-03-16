@@ -18,7 +18,7 @@ interface ICohortRegistry {
         bytes32 termsHash;
     }
 
-    function getActiveCohorts(uint256 communityId) external view returns (uint256[] memory);
+    function getActiveCohorts() external view returns (uint256[] memory);
     function getCohort(uint256 cohortId) external view returns (Cohort memory);
     function isCohortActive(uint256 cohortId) external view returns (bool);
     function getCohortCommunity(uint256 cohortId) external view returns (uint256);

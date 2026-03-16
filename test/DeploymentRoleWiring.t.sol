@@ -82,28 +82,39 @@ contract DeploymentRoleWiringTest is Test {
         paramController = new ParamController(governance);
         communityRegistry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(communityRegistry));
-
-        valuableActionRegistry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance);
-        sbt = new ValuableActionSBT(address(accessManager));
-        cohortRegistry = new CohortRegistry(address(accessManager));
-        revenueRouter = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt));
-        positionManager = new PositionManager(address(accessManager), address(valuableActionRegistry), address(sbt));
-        credentialManager = new CredentialManager(address(accessManager), address(valuableActionRegistry), address(sbt));
-        commerceDisputes = new CommerceDisputes(address(accessManager));
-        marketplace = new Marketplace(address(accessManager), address(commerceDisputes), address(revenueRouter));
-        housingManager = new HousingManager(address(accessManager), address(stable));
-
         communityId = communityRegistry.registerCommunity("Comm", "Desc", "", 0);
+
+        valuableActionRegistry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance, communityId);
+        sbt = new ValuableActionSBT(address(accessManager), communityId);
+        cohortRegistry = new CohortRegistry(address(accessManager), communityId);
+        revenueRouter = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt), communityId);
+        positionManager = new PositionManager(address(accessManager), address(valuableActionRegistry), address(sbt), communityId);
+        credentialManager = new CredentialManager(address(accessManager), address(valuableActionRegistry), address(sbt), communityId);
+        commerceDisputes = new CommerceDisputes(address(accessManager), communityId);
+        marketplace = new Marketplace(address(accessManager), address(commerceDisputes), address(revenueRouter), communityId);
+        housingManager = new HousingManager(address(accessManager), address(stable), communityId);
+
         communityRegistry.setModuleAddress(communityId, keccak256("timelock"), governance);
         communityRegistry.setModuleAddress(communityId, keccak256("governor"), governance);
         communityRegistry.setModuleAddress(communityId, keccak256("valuableActionRegistry"), address(valuableActionRegistry));
         communityRegistry.setModuleAddress(communityId, keccak256("treasuryVault"), treasury);
 
-        bytes4[] memory registryAdmin = new bytes4[](3);
+        bytes4[] memory registryAdmin = new bytes4[](2);
         registryAdmin[0] = valuableActionRegistry.setValuableActionSBT.selector;
         registryAdmin[1] = valuableActionRegistry.setIssuanceModule.selector;
-        registryAdmin[2] = valuableActionRegistry.setModerator.selector;
         accessManager.setTargetFunctionRole(address(valuableActionRegistry), registryAdmin, accessManager.ADMIN_ROLE());
+
+        bytes4[] memory registryModerator = new bytes4[](1);
+        registryModerator[0] = valuableActionRegistry.setModerator.selector;
+        accessManager.setTargetFunctionRole(address(valuableActionRegistry), registryModerator, Roles.VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE);
+
+        bytes4[] memory registryIssuer = new bytes4[](5);
+        registryIssuer[0] = valuableActionRegistry.issueEngagement.selector;
+        registryIssuer[1] = valuableActionRegistry.issuePosition.selector;
+        registryIssuer[2] = valuableActionRegistry.issueInvestment.selector;
+        registryIssuer[3] = valuableActionRegistry.closePositionToken.selector;
+        registryIssuer[4] = valuableActionRegistry.issueRoleFromPosition.selector;
+        accessManager.setTargetFunctionRole(address(valuableActionRegistry), registryIssuer, Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE);
 
         bytes4[] memory sbtMgr = new bytes4[](1);
         sbtMgr[0] = sbt.mintEngagement.selector;
@@ -124,6 +135,9 @@ contract DeploymentRoleWiringTest is Test {
         courseAdmin[0] = credentialManager.defineCourse.selector;
         courseAdmin[1] = credentialManager.setCourseActive.selector;
         accessManager.setTargetFunctionRole(address(credentialManager), courseAdmin, accessManager.ADMIN_ROLE());
+        bytes4[] memory courseApprover = new bytes4[](1);
+        courseApprover[0] = credentialManager.approveApplication.selector;
+        accessManager.setTargetFunctionRole(address(credentialManager), courseApprover, Roles.CREDENTIAL_MANAGER_APPROVER_ROLE);
 
         bytes4[] memory marketAdmin = new bytes4[](1);
         marketAdmin[0] = marketplace.setCommunityActive.selector;
@@ -146,6 +160,7 @@ contract DeploymentRoleWiringTest is Test {
         commerceDisputes.setDisputeReceiver(address(marketplace));
 
         valuableActionRegistry.setValuableActionSBT(address(sbt));
+        accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE, governance, 0);
         accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(valuableActionRegistry), 0);
     }
 
@@ -174,7 +189,7 @@ contract DeploymentRoleWiringTest is Test {
         accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(positionManager), 0);
 
         positionManager.setRevenueRouter(address(revenueRouter));
-        positionManager.definePositionType(ROLE_TYPE, communityId, 10, true);
+        positionManager.definePositionType(ROLE_TYPE, 10, true);
 
         vm.prank(applicant);
         uint256 appId = positionManager.applyForPosition(ROLE_TYPE, bytes("evidence"));
@@ -224,7 +239,9 @@ contract DeploymentRoleWiringTest is Test {
         marketplace.openOrderDispute(orderId, "evidence");
 
         bytes4[] memory openSel = new bytes4[](1);
-        openSel[0] = commerceDisputes.openDispute.selector;
+        openSel[0] = bytes4(
+            keccak256("openDispute(uint8,uint256,address,address,uint256,string)")
+        );
         accessManager.setTargetFunctionRole(address(commerceDisputes), openSel, Roles.COMMERCE_DISPUTES_CALLER_ROLE);
         accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, address(marketplace), 0);
 
@@ -238,7 +255,8 @@ contract DeploymentRoleWiringTest is Test {
         accessManager.setTargetFunctionRole(address(sbt), mintSel, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
         accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(valuableActionRegistry), 0);
 
-        credentialManager.defineCourse(COURSE_ID, communityId, verifier, true);
+        credentialManager.defineCourse(COURSE_ID, verifier, true);
+        accessManager.grantRole(Roles.CREDENTIAL_MANAGER_APPROVER_ROLE, verifier, 0);
 
         vm.prank(applicant);
         uint256 appId = credentialManager.applyForCredential(COURSE_ID, bytes("proof"));

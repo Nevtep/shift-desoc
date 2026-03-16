@@ -34,3 +34,9 @@ Deliver single-community internals across deploy stack contracts with per-commun
 - Wizard states match required sequence
 - No migration/backfill required for Base Sepolia staging
 - Docs/status files updated consistently
+
+## Latest Validation Evidence (T033)
+- `pnpm forge:test`: PASS (`479 passed, 0 failed, 0 skipped`).
+- `pnpm forge:cov`: FAIL in this workspace due Foundry coverage compiler Yul stack-depth exception.
+- `pnpm cov:gate`: PASS via fallback path in `scripts/check-coverage.sh` (core-contract threshold checks passed).
+- `pnpm hh:compile`: PASS (`Compiled 117 Solidity files successfully`).

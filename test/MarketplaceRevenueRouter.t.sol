@@ -106,7 +106,7 @@ contract CohortRegistryMock {
         tokenWeight[tokenId] = weight;
     }
 
-    function getActiveCohorts(uint256) external view returns (uint256[] memory) {
+    function getActiveCohorts() external view returns (uint256[] memory) {
         return activeCohorts;
     }
 
@@ -160,15 +160,20 @@ contract ValuableActionSBTMock is IValuableActionSBT {
     }
 
     // Interface compliance
-    function mintEngagement(address, uint256, Types.EngagementSubtype, bytes32, bytes calldata) external pure returns (uint256) { revert("unused"); }
-    function mintPosition(address, uint256, bytes32, uint32, bytes calldata) external pure returns (uint256) { revert("unused"); }
-    function mintInvestment(address, uint256, uint32, bytes calldata) external pure returns (uint256) { revert("unused"); }
+    function mintEngagement(address, Types.EngagementSubtype, bytes32, bytes calldata) external pure returns (uint256) { revert("unused"); }
+    function mintPosition(address, bytes32, uint32, bytes calldata) external pure returns (uint256) { revert("unused"); }
+    function mintInvestment(address to, uint256 cohortId, uint32 weight, bytes calldata) external returns (uint256 tokenId) {
+        uint256 localCommunityId = 1;
+        tokenId = _mintInvestment(to, localCommunityId, cohortId, weight);
+    }
+    function mintRoleFromPosition(address, bytes32, uint32, uint64, uint64, uint8, bytes calldata) external pure returns (uint256) { revert("unused"); }
+    function setEndedAt(uint256, uint64) external pure { revert("unused"); }
+    function closePositionToken(uint256, uint8) external pure { revert("unused"); }
+
+    // Legacy helper kept for local tests that still pass explicit communityId.
     function mintInvestment(address to, uint256 communityId, uint256 cohortId, uint32 weight, bytes calldata) external returns (uint256 tokenId) {
         tokenId = _mintInvestment(to, communityId, cohortId, weight);
     }
-    function mintRoleFromPosition(address, uint256, bytes32, uint32, uint64, uint64, uint8, bytes calldata) external pure returns (uint256) { revert("unused"); }
-    function setEndedAt(uint256, uint64) external pure { revert("unused"); }
-    function closePositionToken(uint256, uint8) external pure { revert("unused"); }
 
     function mintInvestment(address to, uint256 communityId, uint256 cohortId, uint32 weight) external returns (uint256 tokenId) {
         tokenId = _mintInvestment(to, communityId, cohortId, weight);
@@ -224,7 +229,7 @@ contract MarketplaceRevenueRouterTest is Test {
         token = new MockERC20();
 
         accessManager = new AccessManager(admin);
-        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt));
+        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt), COMMUNITY_ID);
 
         vm.startPrank(admin, admin);
         bytes4[] memory adminSelectors = new bytes4[](4);
@@ -392,8 +397,8 @@ contract MarketplaceSettlementRegressionTest is Test {
         token = new MockERC20();
 
         accessManager = new AccessManager(admin);
-        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt));
-        marketplace = new Marketplace(address(accessManager), address(0), address(router));
+        router = new RevenueRouter(address(accessManager), address(paramController), address(cohortRegistry), address(sbt), COMMUNITY_ID);
+        marketplace = new Marketplace(address(accessManager), address(0), address(router), COMMUNITY_ID);
 
         vm.startPrank(admin, admin);
 

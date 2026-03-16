@@ -100,65 +100,65 @@ contract TreasuryAdapterTest is Test {
         requestHub = new RequestHubMock();
         vaultAdapter = new VaultAdapterMock();
         manager = new AccessManager(governance);
-        adapter = new TreasuryAdapter(address(manager), address(registry));
+        adapter = new TreasuryAdapter(address(manager), address(registry), COMMUNITY_ID);
 
         registry.setTreasuryVault(vault);
         token.mint(vault, 1_000 ether);
 
-        adapter.setTokenAllowed(COMMUNITY_ID, address(token), true);
-        adapter.setDestinationAllowed(COMMUNITY_ID, destination, true);
-        adapter.setDestinationAllowed(COMMUNITY_ID, address(requestHub), true);
-        adapter.setDestinationAllowed(COMMUNITY_ID, address(vaultAdapter), true);
-        adapter.setVaultAdapterAllowed(COMMUNITY_ID, address(vaultAdapter), true);
-        adapter.setCapBps(COMMUNITY_ID, address(token), 1_000); // 10%
+        adapter.setTokenAllowed(address(token), true);
+        adapter.setDestinationAllowed(destination, true);
+        adapter.setDestinationAllowed(address(requestHub), true);
+        adapter.setDestinationAllowed(address(vaultAdapter), true);
+        adapter.setVaultAdapterAllowed(address(vaultAdapter), true);
+        adapter.setCapBps(address(token), 1_000); // 10%
     }
 
     function testPolicySettersGovernanceOnly() public {
         address attacker = address(0xBAD);
         vm.prank(attacker);
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, attacker));
-        adapter.setTokenAllowed(COMMUNITY_ID, address(token), false);
+        adapter.setTokenAllowed(address(token), false);
     }
 
     function testMaxSpendPerTxUsesVaultBalance() public view {
-        uint256 maxSpend = adapter.maxSpendPerTx(COMMUNITY_ID, address(token));
+        uint256 maxSpend = adapter.maxSpendPerTx(address(token));
         assertEq(maxSpend, 100 ether);
     }
 
     function testValidateSpendHappyPath() public view {
-        (bool ok, bytes32 reason) = adapter.validateSpend(COMMUNITY_ID, address(token), destination, 50 ether);
+        (bool ok, bytes32 reason) = adapter.validateSpend(address(token), destination, 50 ether);
         assertTrue(ok);
         assertEq(reason, adapter.REASON_OK());
     }
 
     function testValidateSpendReasons() public {
         registry.setTreasuryVault(address(0));
-        (bool okTreasury, bytes32 reasonTreasury) = adapter.validateSpend(COMMUNITY_ID, address(token), destination, 1 ether);
+        (bool okTreasury, bytes32 reasonTreasury) = adapter.validateSpend(address(token), destination, 1 ether);
         assertFalse(okTreasury);
         assertEq(reasonTreasury, adapter.REASON_TREASURY_NOT_SET());
 
         registry.setTreasuryVault(vault);
-        (bool okToken, bytes32 reasonToken) = adapter.validateSpend(COMMUNITY_ID, address(0xDEAD), destination, 1 ether);
+        (bool okToken, bytes32 reasonToken) = adapter.validateSpend(address(0xDEAD), destination, 1 ether);
         assertFalse(okToken);
         assertEq(reasonToken, adapter.REASON_TOKEN_NOT_ALLOWED());
 
-        (bool okDest, bytes32 reasonDest) = adapter.validateSpend(COMMUNITY_ID, address(token), address(0xBAAD), 1 ether);
+        (bool okDest, bytes32 reasonDest) = adapter.validateSpend(address(token), address(0xBAAD), 1 ether);
         assertFalse(okDest);
         assertEq(reasonDest, adapter.REASON_DEST_NOT_ALLOWED());
 
-        adapter.setCapBps(COMMUNITY_ID, address(token), 0);
-        (bool okCap, bytes32 reasonCap) = adapter.validateSpend(COMMUNITY_ID, address(token), destination, 1 ether);
+        adapter.setCapBps(address(token), 0);
+        (bool okCap, bytes32 reasonCap) = adapter.validateSpend(address(token), destination, 1 ether);
         assertFalse(okCap);
         assertEq(reasonCap, adapter.REASON_CAP_NOT_SET());
 
-        adapter.setCapBps(COMMUNITY_ID, address(token), 500); // 5%
-        (bool okAmt, bytes32 reasonAmt) = adapter.validateSpend(COMMUNITY_ID, address(token), destination, 60 ether);
+        adapter.setCapBps(address(token), 500); // 5%
+        (bool okAmt, bytes32 reasonAmt) = adapter.validateSpend(address(token), destination, 60 ether);
         assertFalse(okAmt);
         assertEq(reasonAmt, adapter.REASON_AMOUNT_EXCEEDS_CAP());
     }
 
     function testBuildErc20TransferTxSuccess() public view {
-        (address target, uint256 value, bytes memory data) = adapter.buildERC20TransferTx(COMMUNITY_ID, address(token), destination, 50 ether);
+        (address target, uint256 value, bytes memory data) = adapter.buildERC20TransferTx(address(token), destination, 50 ether);
         assertEq(target, address(token));
         assertEq(value, 0);
         bytes memory expected = abi.encodeCall(IERC20.transfer, (destination, 50 ether));
@@ -168,11 +168,11 @@ contract TreasuryAdapterTest is Test {
     function testBuildErc20TransferTxRevertsOnValidation() public {
         registry.setTreasuryVault(address(0));
         vm.expectRevert(abi.encodeWithSelector(TreasuryAdapter.TxValidationFailed.selector, adapter.REASON_TREASURY_NOT_SET()));
-        adapter.buildERC20TransferTx(COMMUNITY_ID, address(token), destination, 10 ether);
+        adapter.buildERC20TransferTx(address(token), destination, 10 ether);
     }
 
     function testBuildRequestBountyTx() public view {
-        (address target, uint256 value, bytes memory data) = adapter.buildSetRequestBountyTx(COMMUNITY_ID, address(requestHub), 1, address(token), 20 ether);
+        (address target, uint256 value, bytes memory data) = adapter.buildSetRequestBountyTx(address(requestHub), 1, address(token), 20 ether);
         assertEq(target, address(requestHub));
         assertEq(value, 0);
         bytes memory expected = abi.encodeCall(RequestHubLike.addBounty, (1, address(token), 20 ether));
@@ -180,13 +180,13 @@ contract TreasuryAdapterTest is Test {
     }
 
     function testBuildRequestBountyTxRevertsWhenNotAllowed() public {
-        adapter.setDestinationAllowed(COMMUNITY_ID, address(requestHub), false);
+        adapter.setDestinationAllowed(address(requestHub), false);
         vm.expectRevert(abi.encodeWithSelector(TreasuryAdapter.TxValidationFailed.selector, adapter.REASON_DEST_NOT_ALLOWED()));
-        adapter.buildSetRequestBountyTx(COMMUNITY_ID, address(requestHub), 1, address(token), 20 ether);
+        adapter.buildSetRequestBountyTx(address(requestHub), 1, address(token), 20 ether);
     }
 
     function testBuildVaultDepositTx() public view {
-        (address target, uint256 value, bytes memory data) = adapter.buildVaultDepositTx(COMMUNITY_ID, address(vaultAdapter), address(token), 50 ether, bytes("params"));
+        (address target, uint256 value, bytes memory data) = adapter.buildVaultDepositTx(address(vaultAdapter), address(token), 50 ether, bytes("params"));
         assertEq(target, address(vaultAdapter));
         assertEq(value, 0);
         bytes memory expected = abi.encodeCall(IInvestmentVaultAdapter.deposit, (address(token), 50 ether, bytes("params")));
@@ -194,14 +194,14 @@ contract TreasuryAdapterTest is Test {
     }
 
     function testBuildVaultDepositTxRevertsAdapterNotAllowed() public {
-        adapter.setVaultAdapterAllowed(COMMUNITY_ID, address(vaultAdapter), false);
+        adapter.setVaultAdapterAllowed(address(vaultAdapter), false);
         vm.expectRevert(abi.encodeWithSelector(TreasuryAdapter.TxValidationFailed.selector, adapter.REASON_ADAPTER_NOT_ALLOWED()));
-        adapter.buildVaultDepositTx(COMMUNITY_ID, address(vaultAdapter), address(token), 10 ether, bytes("params"));
+        adapter.buildVaultDepositTx(address(vaultAdapter), address(token), 10 ether, bytes("params"));
     }
 
     function testBuildVaultWithdrawTx() public {
-        adapter.setDestinationAllowed(COMMUNITY_ID, address(this), true);
-        (address target, uint256 value, bytes memory data) = adapter.buildVaultWithdrawTx(COMMUNITY_ID, address(vaultAdapter), address(token), 50 ether, address(this), bytes("params"));
+        adapter.setDestinationAllowed(address(this), true);
+        (address target, uint256 value, bytes memory data) = adapter.buildVaultWithdrawTx(address(vaultAdapter), address(token), 50 ether, address(this), bytes("params"));
         assertEq(target, address(vaultAdapter));
         assertEq(value, 0);
         bytes memory expected = abi.encodeCall(IInvestmentVaultAdapter.withdraw, (address(token), 50 ether, address(this), bytes("params")));

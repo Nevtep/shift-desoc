@@ -62,7 +62,6 @@ contract MockValuableActionSBT {
 
     function mintEngagement(
         address to,
-        uint256,
         Types.EngagementSubtype subtype,
         bytes32 actionTypeId,
         bytes calldata metadata
@@ -73,7 +72,6 @@ contract MockValuableActionSBT {
 
     function mintPosition(
         address to,
-        uint256,
         bytes32 positionTypeId,
         uint32,
         bytes calldata metadata
@@ -84,7 +82,6 @@ contract MockValuableActionSBT {
 
     function mintInvestment(
         address to,
-        uint256,
         uint256 cohortId,
         uint32,
         bytes calldata metadata
@@ -143,13 +140,14 @@ contract EngagementsTest is Test {
     function setUp() public {
         // Deploy core VPT infrastructure
         accessManager = new AccessManager(governance);
-        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI);
-        verifierElection = new VerifierElection(address(accessManager), address(vpt));
+        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI, COMMUNITY_ID);
+        verifierElection = new VerifierElection(address(accessManager), address(vpt), COMMUNITY_ID);
         paramController = new ParamController(governance);
         verifierManager = new VerifierManager(
             address(accessManager),
             address(verifierElection),
-            address(paramController)
+            address(paramController),
+            COMMUNITY_ID
         );
 
         // Deploy action registry and membership token
@@ -157,7 +155,8 @@ contract EngagementsTest is Test {
         actionRegistry = new ValuableActionRegistry(
             address(accessManager),
             address(communityRegistry),
-            governance
+            governance,
+            COMMUNITY_ID
         );
         membershipToken = new MembershipTokenERC20Votes("Test Community Token", "TCT", COMMUNITY_ID, address(accessManager));
         valuableActionSBT = new MockValuableActionSBT();
@@ -186,8 +185,12 @@ contract EngagementsTest is Test {
         accessManager.setTargetFunctionRole(address(verifierElection), electionSelectors, accessManager.ADMIN_ROLE());
 
         bytes4[] memory managerCallerSelectors = new bytes4[](2);
-        managerCallerSelectors[0] = verifierManager.selectJurors.selector;
-        managerCallerSelectors[1] = verifierManager.reportFraud.selector;
+            managerCallerSelectors[0] = bytes4(
+                keccak256("selectJurors(uint256,uint256,uint256,bool)")
+            );
+            managerCallerSelectors[1] = bytes4(
+                keccak256("reportFraud(uint256,address[],string)")
+            );
         accessManager.setTargetFunctionRole(
             address(verifierManager),
             managerCallerSelectors,
@@ -196,9 +199,9 @@ contract EngagementsTest is Test {
 
         // Configure VPT selectors (default admin role sufficient)
         bytes4[] memory vptSelectors = new bytes4[](3);
-        vptSelectors[0] = vpt.initializeCommunity.selector;
-        vptSelectors[1] = vpt.mint.selector;
-        vptSelectors[2] = vpt.burn.selector;
+        vptSelectors[0] = bytes4(keccak256("initializeCommunity(string)"));
+        vptSelectors[1] = bytes4(keccak256("mint(address,uint256,string)"));
+        vptSelectors[2] = bytes4(keccak256("burn(address,uint256,string)"));
         accessManager.setTargetFunctionRole(address(vpt), vptSelectors, accessManager.ADMIN_ROLE());
 
         // Configure membership token minter selectors and grant role to engagements later
@@ -248,7 +251,7 @@ contract EngagementsTest is Test {
 
         // Initialize VPT system
         vm.startPrank(governance);
-        vpt.initializeCommunity(COMMUNITY_ID, "metadata");
+        vpt.initializeCommunity("metadata");
         accessManager.grantRole(accessManager.ADMIN_ROLE(), address(verifierElection), 0);
 
         // Set up verifiers with power tokens
@@ -266,7 +269,7 @@ contract EngagementsTest is Test {
         weights[3] = 150;
         weights[4] = 250;
 
-        verifierElection.setVerifierSet(COMMUNITY_ID, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet(verifiers, weights, REASON_CID);
 
         // Configure verification params
         paramController.setUint256(COMMUNITY_ID, verifierManager.VERIFIER_PANEL_SIZE(), 3);
@@ -304,7 +307,7 @@ contract EngagementsTest is Test {
             deprecationWarning: 0
         });
 
-        uint256 actionId1 = actionRegistry.proposeValuableAction(COMMUNITY_ID, action1, PROPOSAL_REF_1);
+        uint256 actionId1 = actionRegistry.proposeValuableAction(action1, PROPOSAL_REF_1);
         actionRegistry.activateFromGovernance(actionId1, PROPOSAL_REF_1);
 
         Types.ValuableAction memory action2 = Types.ValuableAction({
@@ -333,7 +336,7 @@ contract EngagementsTest is Test {
             activationDelay: 0,
             deprecationWarning: 604800
         });
-        actionRegistry.proposeValuableAction(COMMUNITY_ID, action2, PROPOSAL_REF_2);
+        actionRegistry.proposeValuableAction(action2, PROPOSAL_REF_2);
         vm.stopPrank();
     }
 
@@ -364,6 +367,18 @@ contract EngagementsTest is Test {
 
         vm.expectRevert(Errors.ZeroAddress.selector);
         new Engagements(governance, address(actionRegistry), address(verifierManager), address(valuableActionSBT), address(0), COMMUNITY_ID);
+    }
+
+    function testConstructorZeroCommunityIdReverts() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Invalid communityId"));
+        new Engagements(
+            governance,
+            address(actionRegistry),
+            address(verifierManager),
+            address(valuableActionSBT),
+            address(membershipToken),
+            0
+        );
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -404,7 +419,7 @@ contract EngagementsTest is Test {
         assertFalse(resolved);
 
         for (uint256 i = 0; i < jurors.length; i++) {
-            assertTrue(verifierManager.hasVerifierPower(jurors[i], COMMUNITY_ID));
+            assertTrue(verifierManager.hasVerifierPower(jurors[i]));
         }
     }
 
@@ -449,7 +464,7 @@ contract EngagementsTest is Test {
         });
 
         vm.startPrank(governance);
-        uint256 actionId = actionRegistry.proposeValuableAction(COMMUNITY_ID, action, bytes32("proposal-fail-jurors"));
+        uint256 actionId = actionRegistry.proposeValuableAction(action, bytes32("proposal-fail-jurors"));
         actionRegistry.activateFromGovernance(actionId, bytes32("proposal-fail-jurors"));
         vm.stopPrank();
 
@@ -502,7 +517,7 @@ contract EngagementsTest is Test {
         });
 
         vm.startPrank(governance);
-        uint256 actionId = actionRegistry.proposeValuableAction(COMMUNITY_ID, action, bytes32("proposal-max-concurrent"));
+        uint256 actionId = actionRegistry.proposeValuableAction(action, bytes32("proposal-max-concurrent"));
         actionRegistry.activateFromGovernance(actionId, bytes32("proposal-max-concurrent"));
         vm.stopPrank();
 
@@ -604,7 +619,7 @@ contract EngagementsTest is Test {
         });
 
         vm.startPrank(governance);
-        uint256 actionId = actionRegistry.proposeValuableAction(COMMUNITY_ID, action, bytes32("proposal-jurors-min"));
+        uint256 actionId = actionRegistry.proposeValuableAction(action, bytes32("proposal-jurors-min"));
         actionRegistry.activateFromGovernance(actionId, bytes32("proposal-jurors-min"));
         vm.stopPrank();
 
@@ -711,7 +726,7 @@ contract EngagementsTest is Test {
         });
 
         vm.startPrank(governance);
-        uint256 actionId = actionRegistry.proposeValuableAction(COMMUNITY_ID, action, bytes32("proposal-gas-trend"));
+        uint256 actionId = actionRegistry.proposeValuableAction(action, bytes32("proposal-gas-trend"));
         actionRegistry.activateFromGovernance(actionId, bytes32("proposal-gas-trend"));
         vm.stopPrank();
 

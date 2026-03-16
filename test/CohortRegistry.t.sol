@@ -23,7 +23,7 @@ contract CohortRegistryTest is Test {
 
     function setUp() public {
         accessManager = new AccessManager(governance);
-        registry = new CohortRegistry(address(accessManager));
+        registry = new CohortRegistry(address(accessManager), COMMUNITY_ID);
 
         vm.startPrank(governance);
 
@@ -50,7 +50,7 @@ contract CohortRegistryTest is Test {
 
     function testCreateCohortStoresState() public {
         vm.prank(governance);
-        uint256 cohortId = registry.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = registry.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         CohortRegistry.Cohort memory cohort = registry.getCohort(cohortId);
         assertEq(cohort.id, cohortId);
@@ -60,7 +60,7 @@ contract CohortRegistryTest is Test {
         assertEq(cohort.termsHash, TERMS_HASH);
         assertTrue(cohort.active);
 
-        uint256[] memory active = registry.getActiveCohorts(COMMUNITY_ID);
+        uint256[] memory active = registry.getActiveCohorts();
         assertEq(active.length, 1);
         assertEq(active[0], cohortId);
     }
@@ -68,12 +68,12 @@ contract CohortRegistryTest is Test {
     function testCreateCohortInvalidScheduleReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Invalid schedule"));
         vm.prank(governance);
-        registry.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 10, 5, true);
+        registry.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 10, 5, true);
     }
 
     function testAddInvestmentRequiresAuthorizedRecorder() public {
         vm.prank(governance);
-        uint256 cohortId = registry.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = registry.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, address(this)));
         registry.addInvestment(cohortId, address(1), 100, 1);
@@ -88,7 +88,7 @@ contract CohortRegistryTest is Test {
 
     function testAddInvestmentInactiveCohortReverts() public {
         vm.prank(governance);
-        uint256 cohortId = registry.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, false);
+        uint256 cohortId = registry.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cohort is not active"));
         vm.prank(recorder);
@@ -97,12 +97,12 @@ contract CohortRegistryTest is Test {
 
     function testMarkRecoveredCompletesCohort() public {
         vm.prank(governance);
-        uint256 cohortId = registry.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = registry.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         vm.prank(recorder);
         registry.addInvestment(cohortId, address(1), 1000, 1);
 
-        uint256[] memory activeBefore = registry.getActiveCohorts(COMMUNITY_ID);
+        uint256[] memory activeBefore = registry.getActiveCohorts();
         assertEq(activeBefore.length, 1);
 
         vm.expectEmit(true, true, true, true);
@@ -115,13 +115,13 @@ contract CohortRegistryTest is Test {
         assertFalse(cohort.active);
         assertEq(cohort.recoveredTotal, 1500);
 
-        uint256[] memory activeAfter = registry.getActiveCohorts(COMMUNITY_ID);
+        uint256[] memory activeAfter = registry.getActiveCohorts();
         assertEq(activeAfter.length, 0);
     }
 
     function testMarkRecoveredUnauthorizedReverts() public {
         vm.prank(governance);
-        uint256 cohortId = registry.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = registry.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, address(this)));
         registry.markRecovered(cohortId, 1);
@@ -131,7 +131,7 @@ contract CohortRegistryTest is Test {
         uint32 priority = 3;
 
         vm.prank(governance);
-        uint256 cohortId = registry.createCohort(COMMUNITY_ID, TARGET_ROI, priority, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = registry.createCohort(TARGET_ROI, priority, TERMS_HASH, 0, 0, true);
 
         vm.prank(recorder);
         registry.addInvestment(cohortId, address(1), 1000, 1);

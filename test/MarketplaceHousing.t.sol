@@ -62,9 +62,9 @@ contract MarketplaceHousingTest is Test {
 
         // Deploy system contracts
         accessManager = new AccessManager(owner);
-        disputes = new CommerceDisputes(address(accessManager));
-        marketplace = new Marketplace(address(accessManager), address(disputes), address(0));
-        housing = new HousingManager(address(accessManager), address(usdc));
+        disputes = new CommerceDisputes(address(accessManager), COMMUNITY_ID);
+        marketplace = new Marketplace(address(accessManager), address(disputes), address(0), COMMUNITY_ID);
+        housing = new HousingManager(address(accessManager), address(usdc), COMMUNITY_ID);
 
         bytes4[] memory marketplaceAdmin = new bytes4[](4);
         marketplaceAdmin[0] = marketplace.setCommunityActive.selector;
@@ -92,7 +92,9 @@ contract MarketplaceHousingTest is Test {
         accessManager.setTargetFunctionRole(address(disputes), disputesAdmin, accessManager.ADMIN_ROLE());
 
         bytes4[] memory disputeCaller = new bytes4[](1);
-        disputeCaller[0] = disputes.openDispute.selector;
+        disputeCaller[0] = bytes4(
+            keccak256("openDispute(uint8,uint256,address,address,uint256,string)")
+        );
         accessManager.setTargetFunctionRole(address(disputes), disputeCaller, Roles.COMMERCE_DISPUTES_CALLER_ROLE);
 
         // Configure disputes system
@@ -569,7 +571,7 @@ contract HousingManagerReentrancyTest is Test {
     function setUp() public {
         maliciousToken = new MaliciousERC20();
         accessManager = new AccessManager(owner);
-        housing = new HousingManager(address(accessManager), address(maliciousToken));
+        housing = new HousingManager(address(accessManager), address(maliciousToken), COMMUNITY_ID);
 
         bytes4[] memory housingAdmin = new bytes4[](1);
         housingAdmin[0] = housing.createUnit.selector;

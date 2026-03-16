@@ -21,7 +21,6 @@ contract VerifierElectionTest is Test {
     address public unauthorizedUser = makeAddr("unauthorized");
     
     uint256 public constant COMMUNITY_ID_1 = 1;
-    uint256 public constant COMMUNITY_ID_2 = 2;
     string public constant BASE_URI = "https://api.shift.com/metadata/";
     string public constant REASON_CID = "QmTestReasonHash";
     
@@ -32,8 +31,8 @@ contract VerifierElectionTest is Test {
     
     function setUp() public {
         accessManager = new AccessManager(verifier1); // temporary admin; updated below
-        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI);
-        verifierElection = new VerifierElection(address(accessManager), address(vpt));
+        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI, COMMUNITY_ID_1);
+        verifierElection = new VerifierElection(address(accessManager), address(vpt), COMMUNITY_ID_1);
         
         vm.startPrank(verifier1);
         accessManager.grantRole(accessManager.ADMIN_ROLE(), timelock, 0);
@@ -46,20 +45,19 @@ contract VerifierElectionTest is Test {
 
         // Configure VPT function roles
         bytes4[] memory vptSelectors = new bytes4[](6);
-        vptSelectors[0] = vpt.initializeCommunity.selector;
-        vptSelectors[1] = vpt.mint.selector;
-        vptSelectors[2] = vpt.burn.selector;
-        vptSelectors[3] = vpt.batchMint.selector;
-        vptSelectors[4] = vpt.batchBurn.selector;
-        vptSelectors[5] = vpt.adminTransfer.selector;
+        vptSelectors[0] = bytes4(keccak256("initializeCommunity(string)"));
+        vptSelectors[1] = bytes4(keccak256("mint(address,uint256,string)"));
+        vptSelectors[2] = bytes4(keccak256("burn(address,uint256,string)"));
+        vptSelectors[3] = bytes4(keccak256("batchMint(address[],uint256[],string)"));
+        vptSelectors[4] = bytes4(keccak256("batchBurn(address[],uint256[],string)"));
+        vptSelectors[5] = bytes4(keccak256("adminTransfer(address,address,uint256,string)"));
         accessManager.setTargetFunctionRole(address(vpt), vptSelectors, accessManager.ADMIN_ROLE());
         accessManager.grantRole(accessManager.ADMIN_ROLE(), address(verifierElection), 0);
         vm.stopPrank();
 
         // Initialize communities
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata1");
-        vpt.initializeCommunity(COMMUNITY_ID_2, "metadata2");
+        vpt.initializeCommunity("metadata1");
         vm.stopPrank();
     }
     
@@ -73,12 +71,15 @@ contract VerifierElectionTest is Test {
     
     function testConstructorZeroTimelockReverts() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new VerifierElection(address(0), address(vpt));
+        new VerifierElection(address(0), address(vpt), COMMUNITY_ID_1);
     }
     
     function testConstructorZeroVPTReverts() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new VerifierElection(address(accessManager), address(0));
+        new VerifierElection(address(accessManager), address(0), COMMUNITY_ID_1);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Invalid communityId"));
+        new VerifierElection(address(accessManager), address(vpt), 0);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -100,7 +101,7 @@ contract VerifierElectionTest is Test {
         emit VerifierSetUpdated(COMMUNITY_ID_1, 3, 450, REASON_CID);
         
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         
         // Verify balances were set correctly
         assertEq(vpt.balanceOf(verifier1, COMMUNITY_ID_1), 100);
@@ -114,7 +115,7 @@ contract VerifierElectionTest is Test {
             uint256 totalPower,
             uint64 lastUpdated,
             string memory lastReasonCID
-        ) = verifierElection.getVerifierSet(COMMUNITY_ID_1);
+        ) = verifierElection.getVerifierSet();
         
         assertEq(returnedVerifiers.length, 3);
         assertEq(returnedVerifiers[0], verifier1);
@@ -132,7 +133,7 @@ contract VerifierElectionTest is Test {
         
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
     }
     
     function testSetVerifierSetArrayLengthMismatchReverts() public {
@@ -141,7 +142,7 @@ contract VerifierElectionTest is Test {
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Array length mismatch"));
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
     }
     
     function testSetVerifierSetEmptyArrayReverts() public {
@@ -150,7 +151,7 @@ contract VerifierElectionTest is Test {
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Empty verifier set"));
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
     }
     
     function testSetVerifierSetZeroPowerReverts() public {
@@ -164,7 +165,7 @@ contract VerifierElectionTest is Test {
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Zero power not allowed"));
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
     }
     
     function testSetVerifierSetUpdateExisting() public {
@@ -178,7 +179,7 @@ contract VerifierElectionTest is Test {
         weights1[1] = 150;
         
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers1, weights1, REASON_CID);
+        verifierElection.setVerifierSet( verifiers1, weights1, REASON_CID);
         
         // Update set - change weights and add new verifier
         address[] memory verifiers2 = new address[](3);
@@ -192,7 +193,7 @@ contract VerifierElectionTest is Test {
         weights2[2] = 300; // New verifier3
         
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers2, weights2, REASON_CID);
+        verifierElection.setVerifierSet( verifiers2, weights2, REASON_CID);
         
         assertEq(vpt.balanceOf(verifier1, COMMUNITY_ID_1), 200);
         assertEq(vpt.balanceOf(verifier2, COMMUNITY_ID_1), 100);
@@ -212,7 +213,7 @@ contract VerifierElectionTest is Test {
         weights1[2] = 200;
         
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers1, weights1, REASON_CID);
+        verifierElection.setVerifierSet( verifiers1, weights1, REASON_CID);
         
         // Remove verifier2 from the set
         address[] memory verifiers2 = new address[](2);
@@ -224,7 +225,7 @@ contract VerifierElectionTest is Test {
         weights2[1] = 200;
         
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers2, weights2, REASON_CID);
+        verifierElection.setVerifierSet( verifiers2, weights2, REASON_CID);
         
         // verifier2 should have zero power now
         assertEq(vpt.balanceOf(verifier1, COMMUNITY_ID_1), 100);
@@ -249,7 +250,7 @@ contract VerifierElectionTest is Test {
         weights[2] = 200;
         
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         
         // Ban verifier1 and verifier2
         address[] memory offenders = new address[](2);
@@ -260,16 +261,16 @@ contract VerifierElectionTest is Test {
         emit VerifiersBanned(COMMUNITY_ID_1, offenders, REASON_CID);
         
         vm.prank(timelock);
-        verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
+        verifierElection.banVerifiers( offenders, REASON_CID);
         
         // Check that their power was burned and they are marked as banned
         assertEq(vpt.balanceOf(verifier1, COMMUNITY_ID_1), 0);
         assertEq(vpt.balanceOf(verifier2, COMMUNITY_ID_1), 0);
         assertEq(vpt.balanceOf(verifier3, COMMUNITY_ID_1), 200); // Unchanged
         
-        (bool isBanned1, uint64 bannedAt1) = verifierElection.getBanInfo(COMMUNITY_ID_1, verifier1);
-        (bool isBanned2, ) = verifierElection.getBanInfo(COMMUNITY_ID_1, verifier2);
-        (bool isBanned3, ) = verifierElection.getBanInfo(COMMUNITY_ID_1, verifier3);
+        (bool isBanned1, uint64 bannedAt1) = verifierElection.getBanInfo( verifier1);
+        (bool isBanned2, ) = verifierElection.getBanInfo( verifier2);
+        (bool isBanned3, ) = verifierElection.getBanInfo( verifier3);
         
         assertTrue(isBanned1);
         assertTrue(isBanned2);
@@ -283,7 +284,7 @@ contract VerifierElectionTest is Test {
         
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
-        verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
+        verifierElection.banVerifiers( offenders, REASON_CID);
     }
     
     function testBanVerifiersEmptyArrayReverts() public {
@@ -291,7 +292,7 @@ contract VerifierElectionTest is Test {
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "No offenders provided"));
         vm.prank(timelock);
-        verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
+        verifierElection.banVerifiers( offenders, REASON_CID);
     }
     
     function testUnbanVerifier() public {
@@ -303,20 +304,20 @@ contract VerifierElectionTest is Test {
         uint256[] memory weights = new uint256[](1);
         weights[0] = 100;
         
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         
         address[] memory offenders = new address[](1);
         offenders[0] = verifier1;
-        verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
+        verifierElection.banVerifiers( offenders, REASON_CID);
         
         // Now unban
         vm.expectEmit(true, true, false, true);
         emit VerifierUnbanned(COMMUNITY_ID_1, verifier1, REASON_CID);
         
-        verifierElection.unbanVerifier(COMMUNITY_ID_1, verifier1, REASON_CID);
+        verifierElection.unbanVerifier( verifier1, REASON_CID);
         vm.stopPrank();
         
-        (bool isBanned, uint64 bannedAt) = verifierElection.getBanInfo(COMMUNITY_ID_1, verifier1);
+        (bool isBanned, uint64 bannedAt) = verifierElection.getBanInfo( verifier1);
         assertFalse(isBanned);
         assertEq(bannedAt, 0);
     }
@@ -324,7 +325,7 @@ contract VerifierElectionTest is Test {
     function testUnbanVerifierNotBannedReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Verifier not banned"));
         vm.prank(timelock);
-        verifierElection.unbanVerifier(COMMUNITY_ID_1, verifier1, REASON_CID);
+        verifierElection.unbanVerifier( verifier1, REASON_CID);
     }
     
     function testSetVerifierSetBannedVerifierReverts() public {
@@ -336,11 +337,11 @@ contract VerifierElectionTest is Test {
         uint256[] memory weights1 = new uint256[](1);
         weights1[0] = 100;
         
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers1, weights1, REASON_CID);
+        verifierElection.setVerifierSet( verifiers1, weights1, REASON_CID);
         
         address[] memory offenders = new address[](1);
         offenders[0] = verifier1;
-        verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
+        verifierElection.banVerifiers( offenders, REASON_CID);
         vm.stopPrank();
         
         // Try to assign power to banned verifier
@@ -351,7 +352,7 @@ contract VerifierElectionTest is Test {
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cannot assign power to banned verifier"));
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers2, weights2, REASON_CID);
+        verifierElection.setVerifierSet( verifiers2, weights2, REASON_CID);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -367,17 +368,17 @@ contract VerifierElectionTest is Test {
         uint256[] memory weights = new uint256[](1);
         weights[0] = 100;
         
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         
         vm.expectEmit(true, true, false, true);
         emit VerifierPowerAdjusted(COMMUNITY_ID_1, verifier1, 100, 200, REASON_CID);
         
-        verifierElection.adjustVerifierPower(COMMUNITY_ID_1, verifier1, 200, REASON_CID);
+        verifierElection.adjustVerifierPower( verifier1, 200, REASON_CID);
         vm.stopPrank();
         
         assertEq(vpt.balanceOf(verifier1, COMMUNITY_ID_1), 200);
         
-        (, , uint256 totalPower, ,) = verifierElection.getVerifierSet(COMMUNITY_ID_1);
+        (, , uint256 totalPower, ,) = verifierElection.getVerifierSet();
         assertEq(totalPower, 200);
     }
     
@@ -390,16 +391,16 @@ contract VerifierElectionTest is Test {
         uint256[] memory weights = new uint256[](1);
         weights[0] = 100;
         
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         
         address[] memory offenders = new address[](1);
         offenders[0] = verifier1;
-        verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
+        verifierElection.banVerifiers( offenders, REASON_CID);
         vm.stopPrank();
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cannot adjust power of banned verifier"));
         vm.prank(timelock);
-        verifierElection.adjustVerifierPower(COMMUNITY_ID_1, verifier1, 200, REASON_CID);
+        verifierElection.adjustVerifierPower( verifier1, 200, REASON_CID);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -408,7 +409,7 @@ contract VerifierElectionTest is Test {
     
     function testGetVerifierStatus() public {
         // Test non-verifier first
-        (bool isVerifier1, uint256 power1, bool isBanned1) = verifierElection.getVerifierStatus(COMMUNITY_ID_1, verifier1);
+        (bool isVerifier1, uint256 power1, bool isBanned1) = verifierElection.getVerifierStatus( verifier1);
         assertFalse(isVerifier1);
         assertEq(power1, 0);
         assertFalse(isBanned1);
@@ -421,10 +422,10 @@ contract VerifierElectionTest is Test {
         uint256[] memory weights = new uint256[](1);
         weights[0] = 100;
         
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         vm.stopPrank();
         
-        (bool isVerifier2, uint256 power2, bool isBanned2) = verifierElection.getVerifierStatus(COMMUNITY_ID_1, verifier1);
+        (bool isVerifier2, uint256 power2, bool isBanned2) = verifierElection.getVerifierStatus( verifier1);
         assertTrue(isVerifier2);
         assertEq(power2, 100);
         assertFalse(isBanned2);
@@ -444,15 +445,15 @@ contract VerifierElectionTest is Test {
         weights[1] = 150;
         weights[2] = 200;
         
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         
         // Ban verifier2
         address[] memory offenders = new address[](1);
         offenders[0] = verifier2;
-        verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
+        verifierElection.banVerifiers( offenders, REASON_CID);
         vm.stopPrank();
         
-        (address[] memory eligible, uint256[] memory eligiblePowers) = verifierElection.getEligibleVerifiers(COMMUNITY_ID_1);
+        (address[] memory eligible, uint256[] memory eligiblePowers) = verifierElection.getEligibleVerifiers();
         
         assertEq(eligible.length, 2); // Only verifier1 and verifier3 should be eligible
         assertEq(eligible[0], verifier1);
@@ -474,10 +475,10 @@ contract VerifierElectionTest is Test {
         weights[1] = 150;
         weights[2] = 200;
         
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         
         // Burn one verifier's power to test active vs total count
-        verifierElection.adjustVerifierPower(COMMUNITY_ID_1, verifier2, 0, REASON_CID);
+        verifierElection.adjustVerifierPower( verifier2, 0, REASON_CID);
         vm.stopPrank();
         
         (
@@ -485,69 +486,12 @@ contract VerifierElectionTest is Test {
             uint256 activeVerifiers,
             uint256 totalPower,
             uint256 averagePower
-        ) = verifierElection.getCommunityStats(COMMUNITY_ID_1);
+        ) = verifierElection.getCommunityStats();
         
         assertEq(totalVerifiers, 3); // All verifiers in the set
         assertEq(activeVerifiers, 2); // Only those with power > 0
         assertEq(totalPower, 300); // 100 + 0 + 200
         assertEq(averagePower, 150); // 300 / 2 active verifiers
-    }
-    
-    /*//////////////////////////////////////////////////////////////
-                         MULTI-COMMUNITY TESTS
-    //////////////////////////////////////////////////////////////*/
-    
-    function testMultipleCommunities() public {
-        vm.startPrank(timelock);
-        
-        // Set verifiers for community 1
-        address[] memory verifiers1 = new address[](2);
-        verifiers1[0] = verifier1;
-        verifiers1[1] = verifier2;
-        
-        uint256[] memory weights1 = new uint256[](2);
-        weights1[0] = 100;
-        weights1[1] = 150;
-        
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers1, weights1, REASON_CID);
-        
-        // Set different verifiers for community 2
-        address[] memory verifiers2 = new address[](2);
-        verifiers2[0] = verifier2; // Same verifier in both communities
-        verifiers2[1] = verifier3;
-        
-        uint256[] memory weights2 = new uint256[](2);
-        weights2[0] = 200;
-        weights2[1] = 300;
-        
-        verifierElection.setVerifierSet(COMMUNITY_ID_2, verifiers2, weights2, REASON_CID);
-        vm.stopPrank();
-        
-        // Verify verifier2 has different power in different communities
-        assertEq(vpt.balanceOf(verifier2, COMMUNITY_ID_1), 150);
-        assertEq(vpt.balanceOf(verifier2, COMMUNITY_ID_2), 200);
-        
-        // Verify verifier1 only has power in community 1
-        assertEq(vpt.balanceOf(verifier1, COMMUNITY_ID_1), 100);
-        assertEq(vpt.balanceOf(verifier1, COMMUNITY_ID_2), 0);
-        
-        // Ban verifier2 in community 1 only
-        address[] memory offenders = new address[](1);
-        offenders[0] = verifier2;
-        
-        vm.prank(timelock);
-        verifierElection.banVerifiers(COMMUNITY_ID_1, offenders, REASON_CID);
-        
-        // Check ban status is community-specific
-        (bool isBanned1, ) = verifierElection.getBanInfo(COMMUNITY_ID_1, verifier2);
-        (bool isBanned2, ) = verifierElection.getBanInfo(COMMUNITY_ID_2, verifier2);
-        
-        assertTrue(isBanned1); // Banned in community 1
-        assertFalse(isBanned2); // Not banned in community 2
-        
-        // Power should be zero in community 1 but intact in community 2
-        assertEq(vpt.balanceOf(verifier2, COMMUNITY_ID_1), 0);
-        assertEq(vpt.balanceOf(verifier2, COMMUNITY_ID_2), 200);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -569,14 +513,14 @@ contract VerifierElectionTest is Test {
         }
         
         vm.prank(timelock);
-        verifierElection.setVerifierSet(COMMUNITY_ID_1, verifiers, weights, REASON_CID);
+        verifierElection.setVerifierSet( verifiers, weights, REASON_CID);
         
         // Verify all verifiers got the correct power
         for (uint256 i = 0; i < numVerifiers; i++) {
             assertEq(vpt.balanceOf(verifiers[i], COMMUNITY_ID_1), weights[i]);
         }
         
-        (, , uint256 totalPower, ,) = verifierElection.getVerifierSet(COMMUNITY_ID_1);
+        (, , uint256 totalPower, ,) = verifierElection.getVerifierSet();
         assertEq(totalPower, expectedTotalPower);
     }
 }

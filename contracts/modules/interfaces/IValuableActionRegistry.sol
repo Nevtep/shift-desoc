@@ -17,14 +17,12 @@ interface IValuableActionRegistry {
     function isValuableActionActive(uint256 id) external view returns (bool);
     
     /// @notice Issue an engagement token
-    /// @param communityId Community identifier
     /// @param to Address to receive the token
     /// @param subtype Engagement subtype
     /// @param actionTypeId Action type identifier
     /// @param metadata Additional metadata
     /// @return tokenId Minted token ID
     function issueEngagement(
-        uint256 communityId,
         address to,
         Types.EngagementSubtype subtype,
         bytes32 actionTypeId,

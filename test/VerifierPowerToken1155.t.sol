@@ -28,16 +28,16 @@ contract VerifierPowerToken1155Test is Test {
     
     function setUp() public {
         accessManager = new AccessManager(timelock);
-        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI);
+        vpt = new VerifierPowerToken1155(address(accessManager), BASE_URI, COMMUNITY_ID_1);
 
         vm.startPrank(timelock);
         bytes4[] memory selectors = new bytes4[](6);
-        selectors[0] = vpt.initializeCommunity.selector;
-        selectors[1] = vpt.mint.selector;
-        selectors[2] = vpt.burn.selector;
-        selectors[3] = vpt.batchMint.selector;
-        selectors[4] = vpt.batchBurn.selector;
-        selectors[5] = vpt.adminTransfer.selector;
+        selectors[0] = bytes4(keccak256("initializeCommunity(string)"));
+        selectors[1] = bytes4(keccak256("mint(address,uint256,string)"));
+        selectors[2] = bytes4(keccak256("burn(address,uint256,string)"));
+        selectors[3] = bytes4(keccak256("batchMint(address[],uint256[],string)"));
+        selectors[4] = bytes4(keccak256("batchBurn(address[],uint256[],string)"));
+        selectors[5] = bytes4(keccak256("adminTransfer(address,address,uint256,string)"));
         accessManager.setTargetFunctionRole(address(vpt), selectors, accessManager.ADMIN_ROLE());
         vm.stopPrank();
     }
@@ -54,7 +54,10 @@ contract VerifierPowerToken1155Test is Test {
     
     function testConstructorZeroAddressReverts() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        new VerifierPowerToken1155(address(0), BASE_URI);
+        new VerifierPowerToken1155(address(0), BASE_URI, COMMUNITY_ID_1);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Invalid communityId"));
+        new VerifierPowerToken1155(address(accessManager), BASE_URI, 0);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -68,24 +71,24 @@ contract VerifierPowerToken1155Test is Test {
         emit CommunityInitialized(COMMUNITY_ID_1, metadataURI);
         
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, metadataURI);
+        vpt.initializeCommunity(metadataURI);
         
-        assertTrue(vpt.communityInitialized(COMMUNITY_ID_1));
+        assertTrue(vpt.communityInitialized());
     }
     
     function testInitializeCommunityNonTimelockReverts() public {
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
     }
     
     function testInitializeCommunityTwiceReverts() public {
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Community already initialized"));
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata2");
+        vpt.initializeCommunity("metadata2");
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -95,7 +98,7 @@ contract VerifierPowerToken1155Test is Test {
     function testMint() public {
         // Initialize community first
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
         
         uint256 amount = 100;
         
@@ -103,44 +106,44 @@ contract VerifierPowerToken1155Test is Test {
         emit VerifierGranted(user1, COMMUNITY_ID_1, amount, REASON_CID);
         
         vm.prank(timelock);
-        vpt.mint(user1, COMMUNITY_ID_1, amount, REASON_CID);
+        vpt.mint(user1, amount, REASON_CID);
         
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), amount);
-        assertEq(vpt.totalSupply(COMMUNITY_ID_1), amount);
-        assertTrue(vpt.hasVerifierPower(user1, COMMUNITY_ID_1));
+        assertEq(vpt.totalSupply(), amount);
+        assertTrue(vpt.hasVerifierPower(user1));
     }
     
     function testMintNonTimelockReverts() public {
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
         
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.mint(user1, 100, REASON_CID);
     }
     
     function testMintZeroAddressReverts() public {
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
         
         vm.expectRevert(Errors.ZeroAddress.selector);
         vm.prank(timelock);
-        vpt.mint(address(0), COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.mint(address(0), 100, REASON_CID);
     }
     
     function testMintZeroAmountReverts() public {
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
         
         vm.expectRevert(abi.encodeWithSelector(VerifierPowerToken1155.InvalidAmount.selector, 0));
         vm.prank(timelock);
-        vpt.mint(user1, COMMUNITY_ID_1, 0, REASON_CID);
+        vpt.mint(user1, 0, REASON_CID);
     }
     
     function testMintUninitializedCommunityReverts() public {
         vm.expectRevert(abi.encodeWithSelector(VerifierPowerToken1155.CommunityNotInitialized.selector, COMMUNITY_ID_1));
         vm.prank(timelock);
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.mint(user1, 100, REASON_CID);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -150,8 +153,8 @@ contract VerifierPowerToken1155Test is Test {
     function testBurn() public {
         // Setup: mint tokens first
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
         vm.stopPrank();
         
         uint256 burnAmount = 30;
@@ -160,32 +163,32 @@ contract VerifierPowerToken1155Test is Test {
         emit VerifierRevoked(user1, COMMUNITY_ID_1, burnAmount, REASON_CID);
         
         vm.prank(timelock);
-        vpt.burn(user1, COMMUNITY_ID_1, burnAmount, REASON_CID);
+        vpt.burn(user1, burnAmount, REASON_CID);
         
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), 70);
-        assertEq(vpt.totalSupply(COMMUNITY_ID_1), 70);
-        assertTrue(vpt.hasVerifierPower(user1, COMMUNITY_ID_1)); // Still has power
+        assertEq(vpt.totalSupply(), 70);
+        assertTrue(vpt.hasVerifierPower(user1)); // Still has power
     }
     
     function testBurnAllTokens() public {
         // Setup: mint tokens first
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
         vm.stopPrank();
         
         vm.prank(timelock);
-        vpt.burn(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.burn(user1, 100, REASON_CID);
         
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), 0);
-        assertEq(vpt.totalSupply(COMMUNITY_ID_1), 0);
-        assertFalse(vpt.hasVerifierPower(user1, COMMUNITY_ID_1));
+        assertEq(vpt.totalSupply(), 0);
+        assertFalse(vpt.hasVerifierPower(user1));
     }
     
     function testBurnInsufficientBalanceReverts() public {
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 50, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 50, REASON_CID);
         vm.stopPrank();
         
         vm.expectRevert(abi.encodeWithSelector(
@@ -193,18 +196,18 @@ contract VerifierPowerToken1155Test is Test {
             user1, COMMUNITY_ID_1, 100, 50
         ));
         vm.prank(timelock);
-        vpt.burn(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.burn(user1, 100, REASON_CID);
     }
     
     function testBurnNonTimelockReverts() public {
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
         vm.stopPrank();
         
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
-        vpt.burn(user1, COMMUNITY_ID_1, 50, REASON_CID);
+        vpt.burn(user1, 50, REASON_CID);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -213,7 +216,7 @@ contract VerifierPowerToken1155Test is Test {
     
     function testBatchMint() public {
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
         
         address[] memory users = new address[](3);
         users[0] = user1;
@@ -226,30 +229,30 @@ contract VerifierPowerToken1155Test is Test {
         amounts[2] = 150;
         
         vm.prank(timelock);
-        vpt.batchMint(users, COMMUNITY_ID_1, amounts, REASON_CID);
+        vpt.batchMint(users, amounts, REASON_CID);
         
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), 100);
         assertEq(vpt.balanceOf(user2, COMMUNITY_ID_1), 200);
         assertEq(vpt.balanceOf(user3, COMMUNITY_ID_1), 150);
-        assertEq(vpt.totalSupply(COMMUNITY_ID_1), 450);
+        assertEq(vpt.totalSupply(), 450);
     }
     
     function testBatchMintArrayLengthMismatchReverts() public {
         vm.prank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
         
         address[] memory users = new address[](2);
         uint256[] memory amounts = new uint256[](3);
         
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Array length mismatch"));
         vm.prank(timelock);
-        vpt.batchMint(users, COMMUNITY_ID_1, amounts, REASON_CID);
+        vpt.batchMint(users, amounts, REASON_CID);
     }
     
     function testBatchBurn() public {
         // Setup: mint tokens first
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
+        vpt.initializeCommunity("metadata");
         
         address[] memory users = new address[](2);
         users[0] = user1;
@@ -259,19 +262,19 @@ contract VerifierPowerToken1155Test is Test {
         mintAmounts[0] = 100;
         mintAmounts[1] = 150;
         
-        vpt.batchMint(users, COMMUNITY_ID_1, mintAmounts, REASON_CID);
+        vpt.batchMint(users, mintAmounts, REASON_CID);
         
         // Now burn some
         uint256[] memory burnAmounts = new uint256[](2);
         burnAmounts[0] = 30;
         burnAmounts[1] = 50;
         
-        vpt.batchBurn(users, COMMUNITY_ID_1, burnAmounts, REASON_CID);
+        vpt.batchBurn(users, burnAmounts, REASON_CID);
         vm.stopPrank();
         
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), 70);
         assertEq(vpt.balanceOf(user2, COMMUNITY_ID_1), 100);
-        assertEq(vpt.totalSupply(COMMUNITY_ID_1), 170);
+        assertEq(vpt.totalSupply(), 170);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -280,8 +283,8 @@ contract VerifierPowerToken1155Test is Test {
     
     function testTransferReverts() public {
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
         vm.stopPrank();
         
         vm.expectRevert(VerifierPowerToken1155.TransfersDisabled.selector);
@@ -291,8 +294,8 @@ contract VerifierPowerToken1155Test is Test {
     
     function testBatchTransferReverts() public {
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
         vm.stopPrank();
         
         uint256[] memory ids = new uint256[](1);
@@ -307,26 +310,26 @@ contract VerifierPowerToken1155Test is Test {
     
     function testAdminTransfer() public {
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
         
-        vpt.adminTransfer(user1, user2, COMMUNITY_ID_1, 30, REASON_CID);
+        vpt.adminTransfer(user1, user2, 30, REASON_CID);
         vm.stopPrank();
         
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), 70);
         assertEq(vpt.balanceOf(user2, COMMUNITY_ID_1), 30);
-        assertEq(vpt.totalSupply(COMMUNITY_ID_1), 100);
+        assertEq(vpt.totalSupply(), 100);
     }
     
     function testAdminTransferNonTimelockReverts() public {
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
         vm.stopPrank();
         
         vm.expectRevert();
         vm.prank(unauthorizedUser);
-        vpt.adminTransfer(user1, user2, COMMUNITY_ID_1, 30, REASON_CID);
+        vpt.adminTransfer(user1, user2, 30, REASON_CID);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -335,12 +338,12 @@ contract VerifierPowerToken1155Test is Test {
     
     function testGetCommunityStats() public {
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
-        vpt.mint(user2, COMMUNITY_ID_1, 200, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
+        vpt.mint(user2, 200, REASON_CID);
         vm.stopPrank();
         
-        (uint256 totalVerifiers, uint256 totalPower, uint256 averagePower) = vpt.getCommunityStats(COMMUNITY_ID_1);
+        (uint256 totalVerifiers, uint256 totalPower, uint256 averagePower) = vpt.getCommunityStats();
         
         assertEq(totalVerifiers, 0); // Note: This is expected as tracking is TODO
         assertEq(totalPower, 300);
@@ -348,38 +351,29 @@ contract VerifierPowerToken1155Test is Test {
     }
     
     function testHasVerifierPower() public {
-        assertFalse(vpt.hasVerifierPower(user1, COMMUNITY_ID_1));
+        assertFalse(vpt.hasVerifierPower(user1));
         
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, 1, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 1, REASON_CID);
         vm.stopPrank();
         
-        assertTrue(vpt.hasVerifierPower(user1, COMMUNITY_ID_1));
-        assertFalse(vpt.hasVerifierPower(user2, COMMUNITY_ID_1));
+        assertTrue(vpt.hasVerifierPower(user1));
+        assertFalse(vpt.hasVerifierPower(user2));
     }
     
     /*//////////////////////////////////////////////////////////////
                          MULTI-COMMUNITY TESTS
     //////////////////////////////////////////////////////////////*/
     
-    function testMultipleCommunities() public {
+    function testSingleCommunityMismatchBehavior() public {
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata1");
-        vpt.initializeCommunity(COMMUNITY_ID_2, "metadata2");
-        
-        vpt.mint(user1, COMMUNITY_ID_1, 100, REASON_CID);
-        vpt.mint(user1, COMMUNITY_ID_2, 200, REASON_CID);
-        vpt.mint(user2, COMMUNITY_ID_1, 150, REASON_CID);
+        vpt.initializeCommunity("metadata1");
+        vpt.mint(user1, 100, REASON_CID);
         vm.stopPrank();
-        
+
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), 100);
-        assertEq(vpt.balanceOf(user1, COMMUNITY_ID_2), 200);
-        assertEq(vpt.balanceOf(user2, COMMUNITY_ID_1), 150);
-        assertEq(vpt.balanceOf(user2, COMMUNITY_ID_2), 0);
-        
-        assertEq(vpt.totalSupply(COMMUNITY_ID_1), 250);
-        assertEq(vpt.totalSupply(COMMUNITY_ID_2), 200);
+        assertEq(vpt.totalSupply(), 100);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -424,17 +418,17 @@ contract VerifierPowerToken1155Test is Test {
         vm.assume(burnAmount > 0 && burnAmount <= amount1);
         
         vm.startPrank(timelock);
-        vpt.initializeCommunity(COMMUNITY_ID_1, "metadata");
-        vpt.mint(user1, COMMUNITY_ID_1, amount1, REASON_CID);
-        vpt.mint(user2, COMMUNITY_ID_1, amount2, REASON_CID);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, amount1, REASON_CID);
+        vpt.mint(user2, amount2, REASON_CID);
         
-        uint256 totalBefore = vpt.totalSupply(COMMUNITY_ID_1);
+        uint256 totalBefore = vpt.totalSupply();
         assertEq(totalBefore, amount1 + amount2);
         
-        vpt.burn(user1, COMMUNITY_ID_1, burnAmount, REASON_CID);
+        vpt.burn(user1, burnAmount, REASON_CID);
         vm.stopPrank();
         
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), amount1 - burnAmount);
-        assertEq(vpt.totalSupply(COMMUNITY_ID_1), totalBefore - burnAmount);
+        assertEq(vpt.totalSupply(), totalBefore - burnAmount);
     }
 }

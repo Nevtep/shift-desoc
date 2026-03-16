@@ -11,6 +11,7 @@ import {Roles} from "../contracts/libs/Roles.sol";
 contract ValuableActionSBTTest is Test {
     ValuableActionSBT public valuableActionSBT;
     AccessManager public accessManager;
+    uint256 public constant COMMUNITY_ID = 1;
 
     address public owner = makeAddr("owner");
     address public manager = makeAddr("manager");
@@ -20,7 +21,7 @@ contract ValuableActionSBTTest is Test {
 
     function setUp() public {
         accessManager = new AccessManager(owner);
-        valuableActionSBT = new ValuableActionSBT(address(accessManager));
+        valuableActionSBT = new ValuableActionSBT(address(accessManager), COMMUNITY_ID);
 
         vm.startPrank(owner);
         bytes4[] memory selectors = new bytes4[](6);
@@ -49,7 +50,10 @@ contract ValuableActionSBTTest is Test {
 
     function testConstructorZeroAddressReverts() public {
         vm.expectRevert();
-        new ValuableActionSBT(address(0));
+        new ValuableActionSBT(address(0), COMMUNITY_ID);
+
+        vm.expectRevert();
+        new ValuableActionSBT(address(accessManager), 0);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -61,7 +65,6 @@ contract ValuableActionSBTTest is Test {
         vm.prank(manager);
         uint256 tokenId = valuableActionSBT.mintEngagement(
             alice,
-            1,
             Types.EngagementSubtype.WORK,
             bytes32("ACTION1"),
             metadata
@@ -70,7 +73,7 @@ contract ValuableActionSBTTest is Test {
         assertEq(tokenId, 1);
         ValuableActionSBT.TokenData memory data = valuableActionSBT.getTokenData(tokenId);
         assertEq(uint256(data.kind), uint256(ValuableActionSBT.TokenKind.WORK));
-        assertEq(data.communityId, 1);
+        assertEq(data.communityId, COMMUNITY_ID);
         assertEq(data.actionTypeId, bytes32("ACTION1"));
         assertEq(data.roleTypeId, bytes32(0));
         assertEq(data.cohortId, 0);
@@ -85,7 +88,6 @@ contract ValuableActionSBTTest is Test {
         vm.prank(manager);
         uint256 tokenId = valuableActionSBT.mintEngagement(
             alice,
-            2,
             Types.EngagementSubtype.ROLE,
             bytes32("ROLE-ADMIN"),
             ""
@@ -100,15 +102,11 @@ contract ValuableActionSBTTest is Test {
     function testMintEngagementInvalidInputsRevert() public {
         vm.prank(manager);
         vm.expectRevert();
-        valuableActionSBT.mintEngagement(address(0), 1, Types.EngagementSubtype.WORK, bytes32("A"), "");
+        valuableActionSBT.mintEngagement(address(0), Types.EngagementSubtype.WORK, bytes32("A"), "");
 
         vm.prank(manager);
         vm.expectRevert();
-        valuableActionSBT.mintEngagement(alice, 0, Types.EngagementSubtype.WORK, bytes32("A"), "");
-
-        vm.prank(manager);
-        vm.expectRevert();
-        valuableActionSBT.mintEngagement(alice, 1, Types.EngagementSubtype.WORK, bytes32(0), "");
+        valuableActionSBT.mintEngagement(alice, Types.EngagementSubtype.WORK, bytes32(0), "");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -116,11 +114,11 @@ contract ValuableActionSBTTest is Test {
     //////////////////////////////////////////////////////////////*/
     function testMintPositionStoresData() public {
         vm.prank(manager);
-        uint256 tokenId = valuableActionSBT.mintPosition(alice, 3, bytes32("POSITION"), 50, bytes("meta"));
+        uint256 tokenId = valuableActionSBT.mintPosition(alice, bytes32("POSITION"), 50, bytes("meta"));
 
         ValuableActionSBT.TokenData memory data = valuableActionSBT.getTokenData(tokenId);
         assertEq(uint256(data.kind), uint256(ValuableActionSBT.TokenKind.POSITION));
-        assertEq(data.communityId, 3);
+        assertEq(data.communityId, COMMUNITY_ID);
         assertEq(data.roleTypeId, bytes32("POSITION"));
         assertEq(data.points, 50);
     }
@@ -128,11 +126,7 @@ contract ValuableActionSBTTest is Test {
     function testMintPositionInvalidInputsRevert() public {
         vm.prank(manager);
         vm.expectRevert();
-        valuableActionSBT.mintPosition(alice, 0, bytes32("POSITION"), 1, "");
-
-        vm.prank(manager);
-        vm.expectRevert();
-        valuableActionSBT.mintPosition(alice, 1, bytes32(0), 1, "");
+        valuableActionSBT.mintPosition(alice, bytes32(0), 1, "");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -140,11 +134,11 @@ contract ValuableActionSBTTest is Test {
     //////////////////////////////////////////////////////////////*/
     function testMintInvestmentStoresData() public {
         vm.prank(manager);
-        uint256 tokenId = valuableActionSBT.mintInvestment(bob, 4, 1, 100, bytes("invest"));
+        uint256 tokenId = valuableActionSBT.mintInvestment(bob, 1, 100, bytes("invest"));
 
         ValuableActionSBT.TokenData memory data = valuableActionSBT.getTokenData(tokenId);
         assertEq(uint256(data.kind), uint256(ValuableActionSBT.TokenKind.INVESTMENT));
-        assertEq(data.communityId, 4);
+        assertEq(data.communityId, COMMUNITY_ID);
         assertEq(data.cohortId, 1);
         assertEq(data.weight, 100);
     }
@@ -152,11 +146,7 @@ contract ValuableActionSBTTest is Test {
     function testMintInvestmentInvalidInputsRevert() public {
         vm.prank(manager);
         vm.expectRevert();
-        valuableActionSBT.mintInvestment(bob, 0, 1, 1, "");
-
-        vm.prank(manager);
-        vm.expectRevert();
-        valuableActionSBT.mintInvestment(bob, 1, 0, 1, "");
+        valuableActionSBT.mintInvestment(bob, 0, 1, "");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -164,7 +154,7 @@ contract ValuableActionSBTTest is Test {
     //////////////////////////////////////////////////////////////*/
     function testUpdateTokenURI() public {
         vm.prank(manager);
-        uint256 tokenId = valuableActionSBT.mintEngagement(alice, 1, Types.EngagementSubtype.WORK, bytes32("ACTION1"), "");
+        uint256 tokenId = valuableActionSBT.mintEngagement(alice, Types.EngagementSubtype.WORK, bytes32("ACTION1"), "");
 
         vm.prank(manager);
         valuableActionSBT.updateTokenURI(tokenId, "ipfs://example");
@@ -174,7 +164,7 @@ contract ValuableActionSBTTest is Test {
 
     function testSetEndedAt() public {
         vm.prank(manager);
-        uint256 tokenId = valuableActionSBT.mintPosition(alice, 1, bytes32("POSITION"), 10, "");
+        uint256 tokenId = valuableActionSBT.mintPosition(alice, bytes32("POSITION"), 10, "");
 
         vm.prank(manager);
         valuableActionSBT.setEndedAt(tokenId, 1234);
@@ -194,7 +184,7 @@ contract ValuableActionSBTTest is Test {
     //////////////////////////////////////////////////////////////*/
     function testSoulboundTransferReverts() public {
         vm.prank(manager);
-        uint256 tokenId = valuableActionSBT.mintEngagement(alice, 1, Types.EngagementSubtype.WORK, bytes32("ACTION1"), "");
+        uint256 tokenId = valuableActionSBT.mintEngagement(alice, Types.EngagementSubtype.WORK, bytes32("ACTION1"), "");
 
         vm.prank(alice);
         vm.expectRevert(ValuableActionSBT.Soulbound.selector);
@@ -203,7 +193,7 @@ contract ValuableActionSBTTest is Test {
 
     function testSoulboundApproveReverts() public {
         vm.prank(manager);
-        uint256 tokenId = valuableActionSBT.mintEngagement(alice, 1, Types.EngagementSubtype.WORK, bytes32("ACTION1"), "");
+        uint256 tokenId = valuableActionSBT.mintEngagement(alice, Types.EngagementSubtype.WORK, bytes32("ACTION1"), "");
 
         vm.prank(alice);
         vm.expectRevert(ValuableActionSBT.Soulbound.selector);
@@ -212,7 +202,7 @@ contract ValuableActionSBTTest is Test {
 
     function testSoulboundSetApprovalForAllReverts() public {
         vm.prank(manager);
-        valuableActionSBT.mintEngagement(alice, 1, Types.EngagementSubtype.WORK, bytes32("ACTION1"), "");
+        valuableActionSBT.mintEngagement(alice, Types.EngagementSubtype.WORK, bytes32("ACTION1"), "");
 
         vm.prank(alice);
         vm.expectRevert(ValuableActionSBT.Soulbound.selector);

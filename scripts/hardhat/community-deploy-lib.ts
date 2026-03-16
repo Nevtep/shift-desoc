@@ -307,17 +307,19 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
 
   const countingMultiChoice = await deploy<any>("CountingMultiChoice", await governor.getAddress());
 
-  const verifierPowerToken = await deploy<any>("VerifierPowerToken1155", shared.accessManager, "");
+  const verifierPowerToken = await deploy<any>("VerifierPowerToken1155", shared.accessManager, "", nextCommunityId);
   const verifierElection = await deploy<any>(
     "VerifierElection",
     shared.accessManager,
     await verifierPowerToken.getAddress(),
+    nextCommunityId,
   );
   const verifierManager = await deploy<any>(
     "VerifierManager",
     shared.accessManager,
     await verifierElection.getAddress(),
     shared.paramController,
+    nextCommunityId,
   );
 
   const valuableActionRegistry = await deploy<any>(
@@ -325,8 +327,9 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     shared.accessManager,
     shared.communityRegistry,
     await timelock.getAddress(),
+    nextCommunityId,
   );
-  const valuableActionSBT = await deploy<any>("ValuableActionSBT", shared.accessManager);
+  const valuableActionSBT = await deploy<any>("ValuableActionSBT", shared.accessManager, nextCommunityId);
   const engagements = await deploy<any>(
     "Engagements",
     shared.accessManager,
@@ -341,21 +344,24 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     shared.accessManager,
     await valuableActionRegistry.getAddress(),
     await valuableActionSBT.getAddress(),
+    nextCommunityId,
   );
   const credentialManager = await deploy<any>(
     "CredentialManager",
     shared.accessManager,
     await valuableActionRegistry.getAddress(),
     await valuableActionSBT.getAddress(),
+    nextCommunityId,
   );
 
-  const cohortRegistry = await deploy<any>("CohortRegistry", shared.accessManager);
+  const cohortRegistry = await deploy<any>("CohortRegistry", shared.accessManager, nextCommunityId);
   const investmentCohortManager = await deploy<any>(
     "InvestmentCohortManager",
     shared.accessManager,
     await cohortRegistry.getAddress(),
     await valuableActionRegistry.getAddress(),
     await valuableActionSBT.getAddress(),
+    nextCommunityId,
   );
   const revenueRouter = await deploy<any>(
     "RevenueRouter",
@@ -363,6 +369,7 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     shared.paramController,
     await cohortRegistry.getAddress(),
     await valuableActionSBT.getAddress(),
+    nextCommunityId,
   );
 
   const communityToken = await deploy<any>(
@@ -377,7 +384,7 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     shared.accessManager,
   );
 
-  const treasuryAdapter = await deploy<any>("TreasuryAdapter", shared.accessManager, shared.communityRegistry);
+  const treasuryAdapter = await deploy<any>("TreasuryAdapter", shared.accessManager, shared.communityRegistry, nextCommunityId);
   const requestHub = await deploy<any>(
     "RequestHub",
     shared.communityRegistry,
@@ -388,20 +395,23 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     shared.communityRegistry,
     await governor.getAddress(),
     shared.accessManager,
+    nextCommunityId,
   );
-  const commerceDisputes = await deploy<any>("CommerceDisputes", shared.accessManager);
+  const commerceDisputes = await deploy<any>("CommerceDisputes", shared.accessManager, nextCommunityId);
   const marketplace = await deploy<any>(
     "Marketplace",
     shared.accessManager,
     await commerceDisputes.getAddress(),
     await revenueRouter.getAddress(),
+    nextCommunityId,
   );
   const housingManager = await deploy<any>(
     "HousingManager",
     shared.accessManager,
     requireAddress(config.treasuryStableToken, "treasuryStableToken"),
+    nextCommunityId,
   );
-  const projectFactory = await deploy<any>("ProjectFactory");
+  const projectFactory = await deploy<any>("ProjectFactory", nextCommunityId);
 
   const registerTx = await communityRegistry.registerCommunity(
     config.communityName,
@@ -581,13 +591,24 @@ export async function wireCommunityRoles(
     valuableActionRegistry.interface.getFunction("setIssuanceModule").selector,
     valuableActionRegistry.interface.getFunction("setCommunityNarrowing").selector,
     valuableActionRegistry.interface.getFunction("setCommunityIssuanceModule").selector,
-    valuableActionRegistry.interface.getFunction("setModerator").selector,
     valuableActionRegistry.interface.getFunction("addFounder").selector,
     valuableActionRegistry.interface.getFunction("proposeValuableAction").selector,
     valuableActionRegistry.interface.getFunction("activateFromGovernance").selector,
     valuableActionRegistry.interface.getFunction("update").selector,
     valuableActionRegistry.interface.getFunction("deactivate").selector,
   ], adminRole);
+
+  await setRole(addresses.valuableActionRegistry, [
+    valuableActionRegistry.interface.getFunction("setModerator").selector,
+  ], Roles.VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE);
+
+  await setRole(addresses.valuableActionRegistry, [
+    valuableActionRegistry.interface.getFunction("issueEngagement").selector,
+    valuableActionRegistry.interface.getFunction("issuePosition").selector,
+    valuableActionRegistry.interface.getFunction("issueInvestment").selector,
+    valuableActionRegistry.interface.getFunction("closePositionToken").selector,
+    valuableActionRegistry.interface.getFunction("issueRoleFromPosition").selector,
+  ], Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE);
 
   await setRole(addresses.engagements, [
     engagements.interface.getFunction("revoke").selector,
@@ -646,8 +667,10 @@ export async function wireCommunityRoles(
     credentialManager.interface.getFunction("defineCourse").selector,
     credentialManager.interface.getFunction("setCourseActive").selector,
     credentialManager.interface.getFunction("revokeCredential").selector,
-    credentialManager.interface.getFunction("approveApplication").selector,
   ], adminRole);
+  await setRole(addresses.credentialManager, [
+    credentialManager.interface.getFunction("approveApplication").selector,
+  ], Roles.CREDENTIAL_MANAGER_APPROVER_ROLE);
 
   await setRole(addresses.revenueRouter, [
     revenueRouter.interface.getFunction("setCommunityTreasury").selector,
@@ -694,6 +717,7 @@ export async function wireCommunityRoles(
   await grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, addresses.positionManager);
   await grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, addresses.investmentCohortManager);
   await grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, addresses.credentialManager);
+  await grantRole(Roles.VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE, addresses.timelock);
 
   await setRole(addresses.commerceDisputes, [
     commerceDisputes.interface.getFunction("setDisputeReceiver").selector,
@@ -745,16 +769,16 @@ export async function wireCommunityRoles(
   await (await valuableActionRegistry.setIssuanceModule(addresses.positionManager, true)).wait();
   await (await valuableActionRegistry.setIssuanceModule(addresses.investmentCohortManager, true)).wait();
   await (await valuableActionRegistry.setIssuanceModule(addresses.credentialManager, true)).wait();
-  await (await valuableActionRegistry.addFounder(config.founderAddress, communityId)).wait();
+  await (await valuableActionRegistry.addFounder(config.founderAddress)).wait();
 
   await (await positionManager.setRevenueRouter(addresses.revenueRouter)).wait();
   await (await revenueRouter.setCommunityTreasury(communityId, config.treasuryVault)).wait();
   for (const token of config.supportedTokens) {
     await (await revenueRouter.setSupportedToken(communityId, token, true)).wait();
-    await (await treasuryAdapter.setTokenAllowed(communityId, token, true)).wait();
-    await (await treasuryAdapter.setCapBps(communityId, token, 1000)).wait();
+    await (await treasuryAdapter.setTokenAllowed(token, true)).wait();
+    await (await treasuryAdapter.setCapBps(token, 1000)).wait();
   }
-  await (await treasuryAdapter.setDestinationAllowed(communityId, addresses.requestHub, true)).wait();
+  await (await treasuryAdapter.setDestinationAllowed(addresses.requestHub, true)).wait();
 
   await (await commerceDisputes.setDisputeReceiver(addresses.marketplace)).wait();
   await (await marketplace.setCommunityActive(communityId, true)).wait();

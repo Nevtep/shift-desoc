@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "ponder dev",
     "start": "ponder start",
-    "build": "ponder codegen"
+    "build": "ponder codegen",
+    "docker:start": "sh -c 'docker start shift-indexer-postgres || docker run -d --name shift-indexer-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=ponder -p 5432:5432 -v shift-indexer-postgres-data:/var/lib/postgresql/data postgres:18'"
   },
   "dependencies": {
     "@ponder/core": "^0.7.17",

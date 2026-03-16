@@ -60,9 +60,9 @@ contract MarketplaceDisputesTest is Test {
 
         // Deploy system contracts
         accessManager = new AccessManager(owner);
-        disputes = new CommerceDisputes(address(accessManager));
-        marketplace = new Marketplace(address(accessManager), address(disputes), address(0)); // No RevenueRouter for now
-        housing = new HousingManager(address(accessManager), address(usdc));
+        disputes = new CommerceDisputes(address(accessManager), COMMUNITY_ID);
+        marketplace = new Marketplace(address(accessManager), address(disputes), address(0), COMMUNITY_ID); // No RevenueRouter for now
+        housing = new HousingManager(address(accessManager), address(usdc), COMMUNITY_ID);
 
         bytes4[] memory marketplaceAdmin = new bytes4[](4);
         marketplaceAdmin[0] = marketplace.setCommunityActive.selector;
@@ -90,7 +90,9 @@ contract MarketplaceDisputesTest is Test {
         accessManager.setTargetFunctionRole(address(disputes), disputesAdmin, accessManager.ADMIN_ROLE());
 
         bytes4[] memory disputeCaller = new bytes4[](1);
-        disputeCaller[0] = disputes.openDispute.selector;
+        disputeCaller[0] = bytes4(
+            keccak256("openDispute(uint8,uint256,address,address,uint256,string)")
+        );
         accessManager.setTargetFunctionRole(address(disputes), disputeCaller, Roles.COMMERCE_DISPUTES_CALLER_ROLE);
 
         // Configure marketplace
@@ -327,7 +329,7 @@ contract MarketplaceDisputesTest is Test {
 
     function test_PaySellerOutcomeFallsBackWhenRouterTokenUnsupported() public {
         RevenueRouter unsupportedRouter =
-            new RevenueRouter(address(accessManager), address(0x10), address(0x11), address(0x12));
+            new RevenueRouter(address(accessManager), address(0x10), address(0x11), address(0x12), COMMUNITY_ID);
         marketplace.setRevenueRouter(address(unsupportedRouter));
 
         uint64 checkIn = uint64(block.timestamp + 1 days);

@@ -60,7 +60,6 @@ contract ValuableActionRegistryMock {
     }
 
     function issueEngagement(
-        uint256,
         address,
         Types.EngagementSubtype,
         bytes32,

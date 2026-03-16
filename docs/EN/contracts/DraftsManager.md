@@ -62,7 +62,6 @@ Dev       Feedback   Proposal    Voting
 
 ```solidity
 function createDraft(
-    uint256 communityId,
     uint256 requestId,      // Optional: 0 if standalone
     ActionBundle calldata actions,
     string calldata versionCID
@@ -71,13 +70,13 @@ function createDraft(
 
 **Creates new collaborative draft** with initial version and governance actions.
 
-- **Community Integration**: Links to specific community context
+- **Community Integration**: Uses immutable `communityId` set at deployment
 - **Request Linking**: Optional connection to RequestHub discussions
 - **Action Definition**: Specifies exact governance actions to execute
 - **Version Tracking**: Immutable IPFS content versioning
 
 **Validation**:
-- Fetches module addresses via `CommunityRegistry.getCommunityModules`, reverting if the community does not exist or RequestHub is unset.
+- Fetches module addresses via `CommunityRegistry.getCommunityModules(communityId)`, reverting if the configured community does not exist or RequestHub is unset.
 - If `requestId > 0`, requires the RequestHub to recognize the request (bubbling `Request does not exist`).
 - Recomputes `actionsHash` to guard against tampering.
 
@@ -242,7 +241,7 @@ if (multiChoice) {
 - **Permission Inheritance**: Uses community role system
 - **Configuration Binding**: Community-specific thresholds
 - **Cross-Community Coordination**: Supports alliance workflows
-**Validation**: Community existence and RequestHub configuration are enforced via `CommunityRegistry.getCommunityModules`, and optional request linkage is validated via `RequestHub.getRequest`.
+**Validation**: Community existence and RequestHub configuration are enforced via `CommunityRegistry.getCommunityModules(communityId)`, and optional request linkage is validated via `RequestHub.getRequest`.
 
 ## 📊 Economic Model
 

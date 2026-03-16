@@ -38,10 +38,10 @@ contract InvestmentCohortManagerTest is Test {
     function setUp() public {
         accessManager = new AccessManager(governance);
         communityRegistry = new CommunityRegistryMock();
-        cohortRegistry = new CohortRegistry(address(accessManager));
-        registry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance);
-        sbt = new ValuableActionSBT(address(accessManager));
-        manager = new InvestmentCohortManager(address(accessManager), address(cohortRegistry), address(registry), address(sbt));
+        cohortRegistry = new CohortRegistry(address(accessManager), COMMUNITY_ID);
+        registry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance, COMMUNITY_ID);
+        sbt = new ValuableActionSBT(address(accessManager), COMMUNITY_ID);
+        manager = new InvestmentCohortManager(address(accessManager), address(cohortRegistry), address(registry), address(sbt), COMMUNITY_ID);
 
         vm.startPrank(governance);
         // CohortRegistry admin and ops wiring
@@ -93,7 +93,7 @@ contract InvestmentCohortManagerTest is Test {
 
     function testCreateCohort() public {
         vm.prank(governance);
-        uint256 cohortId = manager.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = manager.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         CohortRegistry.Cohort memory cohort = cohortRegistry.getCohort(cohortId);
         assertEq(cohort.communityId, COMMUNITY_ID);
@@ -105,7 +105,7 @@ contract InvestmentCohortManagerTest is Test {
 
     function testIssueInvestmentRecordsCohort() public {
         vm.prank(governance);
-        uint256 cohortId = manager.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = manager.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         vm.prank(moderator);
         uint256 tokenId = manager.issueInvestment(investor, cohortId, 500, bytes("meta"));
@@ -124,7 +124,7 @@ contract InvestmentCohortManagerTest is Test {
 
     function testSetCohortActive() public {
         vm.prank(governance);
-        uint256 cohortId = manager.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = manager.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         vm.prank(governance);
         manager.setCohortActive(cohortId, false);
@@ -139,7 +139,7 @@ contract InvestmentCohortManagerTest is Test {
         uint64 endAt = uint64(block.timestamp + 1);
 
         vm.prank(governance);
-        uint256 cohortId = manager.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, endAt, true);
+        uint256 cohortId = manager.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, endAt, true);
 
         vm.warp(endAt + 1);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cohort expired"));
@@ -149,7 +149,7 @@ contract InvestmentCohortManagerTest is Test {
 
     function testIssueInvestmentRejectsInactiveCohort() public {
         vm.prank(governance);
-        uint256 cohortId = manager.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, false);
+        uint256 cohortId = manager.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, false);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Cohort inactive"));
         vm.prank(governance);
@@ -159,10 +159,10 @@ contract InvestmentCohortManagerTest is Test {
     function testUnauthorizedReverts() public {
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, investor));
         vm.prank(investor);
-        manager.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        manager.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         vm.prank(governance);
-        uint256 cohortId = manager.createCohort(COMMUNITY_ID, TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
+        uint256 cohortId = manager.createCohort(TARGET_ROI, PRIORITY, TERMS_HASH, 0, 0, true);
 
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, investor));
         vm.prank(investor);

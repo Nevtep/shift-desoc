@@ -37,7 +37,6 @@ interface IValuableActionSBT {
     /// @return tokenId Minted token ID
     function mintEngagement(
         address to,
-        uint256 communityId,
         Types.EngagementSubtype subtype,
         bytes32 actionTypeId,
         bytes calldata metadata
@@ -51,7 +50,6 @@ interface IValuableActionSBT {
     /// @return tokenId Minted token ID
     function mintPosition(
         address to,
-        uint256 communityId,
         bytes32 positionTypeId,
         uint32 points,
         bytes calldata metadata
@@ -65,7 +63,6 @@ interface IValuableActionSBT {
     /// @return tokenId Minted token ID
     function mintInvestment(
         address to,
-        uint256 communityId,
         uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
@@ -74,7 +71,6 @@ interface IValuableActionSBT {
     /// @notice Mint a role record derived from a position lifecycle
     function mintRoleFromPosition(
         address to,
-        uint256 communityId,
         bytes32 roleTypeId,
         uint32 points,
         uint64 issuedAt,

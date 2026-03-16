@@ -72,9 +72,9 @@ contract PositionManagerTest is Test {
     function setUp() public {
         communityRegistry = new CommunityRegistryMock();
         accessManager = new AccessManager(governance);
-        registry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance);
-        sbt = new ValuableActionSBT(address(accessManager));
-        manager = new PositionManager(address(accessManager), address(registry), address(sbt));
+        registry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance, COMMUNITY_ID);
+        sbt = new ValuableActionSBT(address(accessManager), COMMUNITY_ID);
+        manager = new PositionManager(address(accessManager), address(registry), address(sbt), COMMUNITY_ID);
         router = new RevenueRouterMock();
 
         communityRegistry.setModuleAddresses(
@@ -111,7 +111,7 @@ contract PositionManagerTest is Test {
         accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(manager), 0);
         registry.setIssuanceModule(address(manager), true);
         manager.setRevenueRouter(address(router));
-        manager.definePositionType(ROLE_TYPE, COMMUNITY_ID, 10, true);
+        manager.definePositionType(ROLE_TYPE, 10, true);
         vm.stopPrank();
 
         vm.startPrank(governance, governance);
@@ -128,9 +128,9 @@ contract PositionManagerTest is Test {
     function testDefinePositionTypeByModerator() public {
         bytes32 newRole = bytes32("role:new");
         vm.prank(moderator);
-        manager.definePositionType(newRole, COMMUNITY_ID, 5, true);
+        manager.definePositionType(newRole, 5, true);
 
-        (,, uint32 points, bool active) = manager.positionTypes(newRole);
+        (, uint32 points, bool active) = manager.positionTypes(newRole);
         assertEq(points, 5);
         assertTrue(active);
     }
@@ -218,7 +218,7 @@ contract PositionManagerTest is Test {
     function testUnauthorizedActionsRevert() public {
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, user));
         vm.prank(user);
-        manager.definePositionType(bytes32("x"), COMMUNITY_ID, 1, true);
+        manager.definePositionType(bytes32("x"), 1, true);
 
         vm.prank(user);
         uint256 appId = manager.applyForPosition(ROLE_TYPE, bytes("evidence"));

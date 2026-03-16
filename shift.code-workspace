@@ -3,5 +3,20 @@
         {
             "path": "."
         }
-    ]
+    ],
+    "settings": {
+        "chat.tools.terminal.autoApprove": {
+            "git rev-parse": true,
+            "awk": true,
+            "/^perl -0pi -e 's/setVerifierSet\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*,/setVerifierSet\\(/g; s/banVerifiers\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*,/banVerifiers\\(/g; s/unbanVerifier\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*,/unbanVerifier\\(/g; s/adjustVerifierPower\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*,/adjustVerifierPower\\(/g; s/getVerifierSet\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*\\\\\\)/getVerifierSet\\(\\)/g; s/getVerifierStatus\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*,/getVerifierStatus\\(/g; s/getEligibleVerifiers\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*\\\\\\)/getEligibleVerifiers\\(\\)/g; s/getBanInfo\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*,/getBanInfo\\(/g; s/getCommunityStats\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*\\\\\\)/getCommunityStats\\(\\)/g; s/bannedVerifiers\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*,/bannedVerifiers\\(/g; s/bannedTimestamp\\\\\\(\\\\s\\*COMMUNITY_ID_1\\\\s\\*,/bannedTimestamp\\(/g' test/VerifierElection\\.t\\.sol$/": {
+                "approve": true,
+                "matchCommandLine": true
+            },
+            "/^perl -0pi -e 's/selectJurors\\\\\\(\\\\s\\*\\(\\[\\^,\\]\\+\\)\\\\s\\*,\\\\s\\*COMMUNITY_ID_\\[0-9\\]\\+\\\\s\\*,/selectJurors\\(\\$1,/g; s/reportFraud\\\\\\(\\\\s\\*\\(\\[\\^,\\]\\+\\)\\\\s\\*,\\\\s\\*COMMUNITY_ID_\\[0-9\\]\\+\\\\s\\*,/reportFraud\\(\\$1,/g; s/hasVerifierPower\\\\\\(\\\\s\\*\\(\\[\\^,\\]\\+\\)\\\\s\\*,\\\\s\\*COMMUNITY_ID_\\[0-9\\]\\+\\\\s\\*\\\\\\)/hasVerifierPower\\(\\$1\\)/g; s/getEligibleVerifierCount\\\\\\(\\\\s\\*COMMUNITY_ID_\\[0-9\\]\\+\\\\s\\*\\\\\\)/getEligibleVerifierCount\\(\\)/g; s/getVerifierPower\\\\\\(\\\\s\\*\\(\\[\\^,\\]\\+\\)\\\\s\\*,\\\\s\\*COMMUNITY_ID_\\[0-9\\]\\+\\\\s\\*\\\\\\)/getVerifierPower\\(\\$1\\)/g' test/VerifierManager\\.t\\.sol$/": {
+                "approve": true,
+                "matchCommandLine": true
+            },
+            "printf": true
+        }
+    }
 }
