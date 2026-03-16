@@ -92,6 +92,8 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
 
     // ============ State ============
 
+    uint256 public immutable communityId;
+
     mapping(uint256 => Offer) public offers;
     uint256 public nextOfferId = 1;
 
@@ -104,9 +106,8 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
     // Module references
     CommerceDisputes public commerceDisputes;
     RevenueRouter public revenueRouter;
-    mapping(uint256 => address) public communityTokens; // communityId => token address
-
-    mapping(uint256 => bool) public communityActive; // communityId => active
+    address internal _communityToken;
+    bool internal _communityActive;
 
     // ============ Events ============
 
@@ -170,19 +171,25 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
 
     // ============ Constructor ============
 
-    constructor(address manager, address _commerceDisputes, address _revenueRouter) AccessManaged(manager) {
+    constructor(address manager, address _commerceDisputes, address _revenueRouter, uint256 _communityId)
+        AccessManaged(manager)
+    {
+        if (_communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
         commerceDisputes = CommerceDisputes(_commerceDisputes);
         revenueRouter = RevenueRouter(_revenueRouter);
+        communityId = _communityId;
     }
 
     // ============ Admin Functions ============
 
-    function setCommunityActive(uint256 communityId, bool active) external restricted {
-        communityActive[communityId] = active;
+    function setCommunityActive(uint256 communityId_, bool active) external restricted {
+        _requireBoundCommunity(communityId_);
+        _communityActive = active;
     }
 
-    function setCommunityToken(uint256 communityId, address token) external restricted {
-        communityTokens[communityId] = token;
+    function setCommunityToken(uint256 communityId_, address token) external restricted {
+        _requireBoundCommunity(communityId_);
+        _communityToken = token;
     }
 
     function setCommerceDisputes(address _commerceDisputes) external restricted {
@@ -200,7 +207,7 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
      * @dev Seller must approve Marketplace to manage productContract resources if applicable
      */
     function createOffer(
-        uint256 communityId,
+        uint256 communityId_,
         OfferKind kind,
         address productContract,
         uint256 productId,
@@ -213,7 +220,8 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
         uint256 cohortTag,
         string calldata metadataURI
     ) external returns (uint256 offerId) {
-        if (!communityActive[communityId]) revert CommunityNotActive(communityId);
+        _requireBoundCommunity(communityId_);
+        if (!_communityActive) revert CommunityNotActive(communityId_);
         if (communityTokenDiscountBps > BPS_DENOMINATOR) revert InvalidDiscount();
 
         offerId = nextOfferId++;
@@ -312,7 +320,7 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
         returns (uint256 finalPrice)
     {
         // Validate payment token is accepted
-        bool isCommunityToken = paymentToken == communityTokens[offer.communityId];
+        bool isCommunityToken = paymentToken == _communityToken;
         bool isStablecoin = paymentToken == offer.stablecoin;
 
         if (isCommunityToken && !offer.acceptCommunityToken) {
@@ -392,7 +400,7 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
     function _settleToSeller(Order storage order, Offer storage offer) internal {
         bool shouldRoute = false;
         if (address(revenueRouter) != address(0)) {
-            shouldRoute = revenueRouter.supportedTokens(offer.communityId, order.paymentToken);
+            shouldRoute = revenueRouter.supportedTokens(communityId, order.paymentToken);
         }
 
         // Route settlement through RevenueRouter for cohort distribution when token is supported
@@ -406,7 +414,7 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
             // - Treasury base allocation
             // - Investor cohorts based on unrecovered amounts
             // - Spillover handling
-            revenueRouter.routeRevenue(offer.communityId, order.paymentToken, order.amount);
+            revenueRouter.routeRevenue(communityId, order.paymentToken, order.amount);
         } else {
             // Fallback: direct transfer to seller when routing is unavailable/incompatible
             IERC20(order.paymentToken).safeTransfer(offer.seller, order.amount);
@@ -447,7 +455,6 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
 
         // Create dispute in CommerceDisputes
         uint256 disputeId = commerceDisputes.openDispute(
-            offer.communityId,
             CommerceDisputes.DisputeType.MARKETPLACE_ORDER,
             orderId,
             order.buyer,
@@ -523,5 +530,18 @@ contract Marketplace is IDisputeReceiver, ReentrancyGuard, AccessManaged {
     function canSettle(uint256 orderId) external view returns (bool) {
         Order storage order = orders[orderId];
         return order.status == OrderStatus.FULFILLED && block.timestamp > order.fulfilledAt + DISPUTE_WINDOW;
+    }
+
+    function communityTokens(uint256 communityId_) external view returns (address) {
+        if (communityId_ != communityId) return address(0);
+        return _communityToken;
+    }
+
+    function communityActive(uint256 communityId_) external view returns (bool) {
+        if (communityId_ != communityId) return false;
+        return _communityActive;
+    }
+    function _requireBoundCommunity(uint256 communityId_) internal view {
+        if (communityId_ != communityId) revert Errors.InvalidInput("Community mismatch");
     }
 }

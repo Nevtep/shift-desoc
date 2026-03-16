@@ -21,6 +21,8 @@ library Roles {
     uint64 public constant COMMERCE_DISPUTES_CALLER_ROLE = 13;
     uint64 public constant HOUSING_MARKETPLACE_CALLER_ROLE = 14;
     uint64 public constant VERIFIER_MANAGER_CALLER_ROLE = 15;
+    uint64 public constant CREDENTIAL_MANAGER_APPROVER_ROLE = 16;
+    uint64 public constant VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE = 17;
 
     // CommunityRegistry roles (bytes32) kept here for single-source-of-truth
     bytes32 public constant COMMUNITY_GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");

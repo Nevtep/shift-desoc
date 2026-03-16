@@ -117,6 +117,7 @@ contract Engagements is AccessManaged {
         if (_verifierManager == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionSBT == address(0)) revert Errors.ZeroAddress();
         if (_membershipToken == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid communityId");
 
         actionRegistry = ValuableActionRegistry(_actionRegistry);
         verifierManager = _verifierManager;
@@ -136,6 +137,9 @@ contract Engagements is AccessManaged {
         Types.ValuableAction memory action = actionRegistry.getValuableAction(typeId);
         if (!actionRegistry.isValuableActionActive(typeId)) {
             revert Errors.InvalidInput("Action type is not active");
+        }
+        if (actionRegistry.communityByActionId(typeId) != communityId) {
+            revert Errors.InvalidInput("Action type community mismatch");
         }
         
         // Check cooldown period
@@ -169,7 +173,6 @@ contract Engagements is AccessManaged {
 
         address[] memory selectedJurors = IVerifierManager(verifierManager).selectJurors(
             engagementId,
-            communityId,
             action.panelSize,
             uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, engagementId))),
             false // Use community configuration for weighting
@@ -290,7 +293,7 @@ contract Engagements is AccessManaged {
             
             engagement.status = Types.EngagementStatus.Revoked;
             
-            // TODO: Handle SBT burning or ParticipantPoints deduction
+            // Revocation currently updates status only; token-side penalties are governance-driven.
             
             emit EngagementRevoked(engagementId, msg.sender);
         }
@@ -354,7 +357,6 @@ contract Engagements is AccessManaged {
 
                 IValuableActionSBT(valuableActionSBT).mintEngagement(
                     engagement.participant,
-                    communityId,
                     _mapCategoryToSubtype(valuableAction.category),
                     bytes32(engagement.typeId),
                     metadata
@@ -425,7 +427,7 @@ contract Engagements is AccessManaged {
 
             // Report to VerifierManager for governance review
             try IVerifierManager(verifierManager).reportFraud(
-                engagementId, communityId, offenders, evidenceCID
+                engagementId, offenders, evidenceCID
             ) {
                 reportSucceeded = true;
             } catch {

@@ -2,8 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
-import {IAccessManaged} from "@openzeppelin/contracts/access/manager/IAccessManaged.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {Errors} from "../libs/Errors.sol";
 import {Types} from "../libs/Types.sol";
 import {ValuableActionRegistry} from "./ValuableActionRegistry.sol";
@@ -31,7 +29,6 @@ contract CredentialManager is AccessManaged {
                                    STRUCTS
     //////////////////////////////////////////////////////////////*/
     struct Course {
-        uint256 communityId;
         address verifier;
         bool active;
         bool exists;
@@ -40,7 +37,6 @@ contract CredentialManager is AccessManaged {
     struct CredentialApplication {
         address applicant;
         bytes32 courseId;
-        uint256 communityId;
         uint8 status; // 1 = pending, 2 = approved, 3 = revoked
         uint256 tokenId;
     }
@@ -48,12 +44,14 @@ contract CredentialManager is AccessManaged {
     /*//////////////////////////////////////////////////////////////
                                    STORAGE
     //////////////////////////////////////////////////////////////*/
+    /// @dev Numeric constants keep wire/storage compatibility with existing tests and consumers.
     uint8 private constant STATUS_PENDING = 1;
     uint8 private constant STATUS_APPROVED = 2;
     uint8 private constant STATUS_REVOKED = 3;
 
     ValuableActionRegistry public immutable valuableActionRegistry;
     ValuableActionSBT public immutable sbt;
+    uint256 public immutable communityId;
 
     mapping(bytes32 => Course) public courses;
     mapping(uint256 => CredentialApplication) public applications;
@@ -68,28 +66,30 @@ contract CredentialManager is AccessManaged {
     /*//////////////////////////////////////////////////////////////
                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address manager, address _valuableActionRegistry, address _sbt) AccessManaged(manager) {
+    constructor(address manager, address _valuableActionRegistry, address _sbt, uint256 _communityId)
+        AccessManaged(manager)
+    {
         if (manager == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_sbt == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid communityId");
 
         valuableActionRegistry = ValuableActionRegistry(_valuableActionRegistry);
         sbt = ValuableActionSBT(_sbt);
+        communityId = _communityId;
     }
 
     /*//////////////////////////////////////////////////////////////
                                COURSE MANAGEMENT
     //////////////////////////////////////////////////////////////*/
-    function defineCourse(bytes32 courseId, uint256 communityId, address verifier, bool active)
+    function defineCourse(bytes32 courseId, address verifier, bool active)
         external
         restricted
     {
         if (courseId == bytes32(0)) revert Errors.InvalidInput("Missing courseId");
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (verifier == address(0)) revert Errors.ZeroAddress();
         if (courses[courseId].exists) revert Errors.InvalidInput("Course already exists");
-
-        courses[courseId] = Course({communityId: communityId, verifier: verifier, active: active, exists: true});
+        courses[courseId] = Course({verifier: verifier, active: active, exists: true});
 
         emit CourseDefined(courseId, communityId, verifier, active);
     }
@@ -105,6 +105,7 @@ contract CredentialManager is AccessManaged {
                               APPLICATION FLOW
     //////////////////////////////////////////////////////////////*/
     function applyForCredential(bytes32 courseId, bytes calldata evidence) external returns (uint256 appId) {
+        evidence; // Evidence can be verified off-chain; empty payload is permitted.
         Course memory course = courses[courseId];
         if (!course.exists) revert Errors.InvalidInput("Unknown courseId");
         if (!course.active) revert Errors.InvalidInput("Course inactive");
@@ -115,25 +116,20 @@ contract CredentialManager is AccessManaged {
         applications[appId] = CredentialApplication({
             applicant: msg.sender,
             courseId: courseId,
-            communityId: course.communityId,
             status: STATUS_PENDING,
             tokenId: 0
         });
 
         pendingApplicationId[courseId][msg.sender] = appId;
-        emit CredentialApplied(appId, msg.sender, courseId, course.communityId);
-        // Evidence can be verified off-chain; empty payload is permitted for now
+        emit CredentialApplied(appId, msg.sender, courseId, communityId);
     }
 
-    function approveApplication(uint256 appId) external returns (uint256 tokenId) {
+    function approveApplication(uint256 appId) external restricted returns (uint256 tokenId) {
         CredentialApplication storage application = applications[appId];
         if (application.status != STATUS_PENDING) revert Errors.InvalidInput("Application not pending");
         if (application.applicant == address(0)) revert Errors.InvalidInput("Application not found");
 
         Course memory course = courses[application.courseId];
-        if (msg.sender != course.verifier) {
-            _requireAuthorized(this.approveApplication.selector);
-        }
         if (!course.active) revert Errors.InvalidInput("Course inactive");
         if (hasCredential[application.courseId][application.applicant]) {
             revert Errors.InvalidInput("Credential already issued");
@@ -141,7 +137,6 @@ contract CredentialManager is AccessManaged {
 
         bytes memory metadata = abi.encode(application.courseId, appId);
         tokenId = valuableActionRegistry.issueEngagement(
-            course.communityId,
             application.applicant,
             Types.EngagementSubtype.CREDENTIAL,
             application.courseId,
@@ -155,7 +150,7 @@ contract CredentialManager is AccessManaged {
         applicationIdByToken[tokenId] = appId;
         issuanceMetadata[tokenId] = metadata;
 
-        emit CredentialIssued(appId, tokenId, application.applicant, application.courseId, course.communityId);
+        emit CredentialIssued(appId, tokenId, application.applicant, application.courseId, communityId);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -163,6 +158,9 @@ contract CredentialManager is AccessManaged {
     //////////////////////////////////////////////////////////////*/
     function revokeCredential(uint256 tokenId, bytes32 courseId, bytes calldata reason) external restricted {
         ValuableActionSBT.TokenData memory data = sbt.getTokenData(tokenId);
+        if (data.communityId != communityId) {
+            revert Errors.InvalidInput("Community mismatch");
+        }
         if (data.kind != ValuableActionSBT.TokenKind.CREDENTIAL) revert Errors.InvalidInput("Not a credential token");
         if (data.actionTypeId != courseId) revert Errors.InvalidInput("Course mismatch");
         if (data.endedAt != 0) revert Errors.InvalidInput("Credential already closed");
@@ -192,13 +190,4 @@ contract CredentialManager is AccessManaged {
         return applications[appId];
     }
 
-    /*//////////////////////////////////////////////////////////////
-                               INTERNALS
-    //////////////////////////////////////////////////////////////*/
-    function _requireAuthorized(bytes4 selector) internal view {
-        (bool immediate,) = IAccessManager(authority()).canCall(msg.sender, address(this), selector);
-        if (!immediate) {
-            revert IAccessManaged.AccessManagedUnauthorized(msg.sender);
-        }
-    }
 }

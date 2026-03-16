@@ -8,11 +8,11 @@ import {IParamController} from "./interfaces/IParamController.sol";
 
 /// @notice Interface for VerifierElection contract
 interface IVerifierElection {
-    function getEligibleVerifiers(uint256 communityId) external view returns (
+    function getEligibleVerifiers() external view returns (
         address[] memory eligibleVerifiers,
         uint256[] memory eligiblePowers
     );
-    function getVerifierStatus(uint256 communityId, address verifier) external view returns (
+    function getVerifierStatus(address verifier) external view returns (
         bool isVerifier,
         uint256 power,
         bool isBanned
@@ -26,6 +26,7 @@ contract VerifierManager is IVerifierManager, AccessManaged {
     /// @notice Core contracts
     IVerifierElection public immutable verifierElection;
     IParamController public immutable paramController;
+    uint256 public immutable communityId;
     
     /// @notice Parameter keys for community configuration
     bytes32 public constant USE_VPT_WEIGHTING = keccak256("USE_VPT_WEIGHTING");
@@ -67,30 +68,40 @@ contract VerifierManager is IVerifierManager, AccessManaged {
     constructor(
         address manager,
         address _verifierElection,
-        address _paramController
+        address _paramController,
+        uint256 _communityId
     ) AccessManaged(manager) {
         if (manager == address(0)) revert Errors.ZeroAddress();
         if (_verifierElection == address(0)) revert Errors.ZeroAddress();
         if (_paramController == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         
         verifierElection = IVerifierElection(_verifierElection);
         paramController = IParamController(_paramController);
+        communityId = _communityId;
     }
     
     /// @notice Select M jurors from N available verifiers using VPT eligibility
     /// @param engagementId Engagement ID requiring verification
-    /// @param communityId Community identifier for verifier pool
     /// @param panelSize Total number of jurors to select (N)
     /// @param seed Randomness seed for selection
     /// @param useWeighting Whether to use VPT amounts as weights in selection
     /// @return selectedJurors Array of selected juror addresses
     function selectJurors(
         uint256 engagementId,
-        uint256 communityId,
         uint256 panelSize,
         uint256 seed,
         bool useWeighting
     ) external restricted returns (address[] memory selectedJurors) {
+        return _selectJurors(engagementId, panelSize, seed, useWeighting);
+    }
+
+    function _selectJurors(
+        uint256 engagementId,
+        uint256 panelSize,
+        uint256 seed,
+        bool useWeighting
+    ) internal returns (address[] memory selectedJurors) {
         if (panelSize == 0) revert Errors.InvalidInput("Panel size cannot be zero");
         if (selections[engagementId].completed) {
             revert Errors.InvalidInput("Jurors already selected for engagement");
@@ -98,7 +109,7 @@ contract VerifierManager is IVerifierManager, AccessManaged {
         
         // Get eligible verifiers from VerifierElection
         (address[] memory eligibleVerifiers, uint256[] memory eligiblePowers) = 
-            verifierElection.getEligibleVerifiers(communityId);
+            verifierElection.getEligibleVerifiers();
         
         if (eligibleVerifiers.length == 0) {
             revert Errors.InsufficientVerifiers(0, panelSize);
@@ -119,11 +130,11 @@ contract VerifierManager is IVerifierManager, AccessManaged {
         }
         
         // Perform selection
-        uint256 entropySeed = _deriveEntropySeed(seed, engagementId, communityId);
+        uint256 entropySeed = _deriveEntropySeed(seed, engagementId);
         uint256[] memory selectedPowers;
         if (shouldUseWeighting) {
             (selectedJurors, selectedPowers) = _weightedSelection(
-                eligibleVerifiers, eligiblePowers, panelSize, entropySeed, communityId
+                eligibleVerifiers, eligiblePowers, panelSize, entropySeed
             );
         } else {
             (selectedJurors, selectedPowers) = _uniformSelection(
@@ -147,15 +158,21 @@ contract VerifierManager is IVerifierManager, AccessManaged {
     /// @notice Report fraud and initiate governance process for banning
     /// @dev This replaces the old bond slashing mechanism
     /// @param engagementId Engagement ID where fraud was detected
-    /// @param communityId Community identifier
     /// @param offenders Array of juror addresses that voted incorrectly
     /// @param evidenceCID IPFS hash with fraud evidence
     function reportFraud(
         uint256 engagementId,
-        uint256 communityId,
         address[] calldata offenders,
         string calldata evidenceCID
     ) external restricted {
+        _reportFraud(engagementId, offenders, evidenceCID);
+    }
+
+    function _reportFraud(
+        uint256 engagementId,
+        address[] calldata offenders,
+        string calldata evidenceCID
+    ) internal {
         if (offenders.length == 0) revert Errors.InvalidInput("No offenders provided");
         if (!selections[engagementId].completed) {
             revert Errors.InvalidInput("No jury selection for engagement");
@@ -186,27 +203,36 @@ contract VerifierManager is IVerifierManager, AccessManaged {
     
     /// @notice Check if address has verifier power for community
     /// @param verifier Address to check
-    /// @param communityId Community identifier
     /// @return True if verifier has power > 0 and is not banned
-    function hasVerifierPower(address verifier, uint256 communityId) external view returns (bool) {
-        (bool isVerifier, , bool isBanned) = verifierElection.getVerifierStatus(communityId, verifier);
+    function hasVerifierPower(address verifier) external view returns (bool) {
+        return _hasVerifierPower(verifier);
+    }
+
+    function _hasVerifierPower(address verifier) internal view returns (bool) {
+        (bool isVerifier, , bool isBanned) = verifierElection.getVerifierStatus(verifier);
         return isVerifier && !isBanned;
     }
     
     /// @notice Get eligible verifier count for a community
-    /// @param communityId Community identifier
     /// @return Number of eligible verifiers (power > 0, not banned)
-    function getEligibleVerifierCount(uint256 communityId) external view returns (uint256) {
-        (address[] memory eligibleVerifiers, ) = verifierElection.getEligibleVerifiers(communityId);
+    function getEligibleVerifierCount() external view returns (uint256) {
+        return _getEligibleVerifierCount();
+    }
+
+    function _getEligibleVerifierCount() internal view returns (uint256) {
+        (address[] memory eligibleVerifiers, ) = verifierElection.getEligibleVerifiers();
         return eligibleVerifiers.length;
     }
     
     /// @notice Get verifier power amount
     /// @param verifier Address to check
-    /// @param communityId Community identifier
     /// @return power Amount of verifier power tokens
-    function getVerifierPower(address verifier, uint256 communityId) external view returns (uint256 power) {
-        (, power, ) = verifierElection.getVerifierStatus(communityId, verifier);
+    function getVerifierPower(address verifier) external view returns (uint256 power) {
+        return _getVerifierPower(verifier);
+    }
+
+    function _getVerifierPower(address verifier) internal view returns (uint256 power) {
+        (, power, ) = verifierElection.getVerifierStatus(verifier);
         return power;
     }
     
@@ -235,8 +261,7 @@ contract VerifierManager is IVerifierManager, AccessManaged {
         address[] memory verifiers,
         uint256[] memory powers,
         uint256 panelSize,
-        uint256 seed,
-        uint256 communityId
+        uint256 seed
     ) internal view returns (address[] memory selected, uint256[] memory selectedPowers) {
         selected = new address[](panelSize);
         selectedPowers = new uint256[](panelSize);
@@ -322,7 +347,7 @@ contract VerifierManager is IVerifierManager, AccessManaged {
     }
 
     /// @notice Build a stronger, domain-separated entropy seed for juror selection
-    function _deriveEntropySeed(uint256 seed, uint256 engagementId, uint256 communityId) internal view returns (uint256) {
+    function _deriveEntropySeed(uint256 seed, uint256 engagementId) internal view returns (uint256) {
         return uint256(
             keccak256(
                 abi.encode(
@@ -337,4 +362,5 @@ contract VerifierManager is IVerifierManager, AccessManaged {
             )
         );
     }
+
 }

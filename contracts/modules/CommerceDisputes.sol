@@ -13,7 +13,7 @@ import {Errors} from "../libs/Errors.sol";
  * MVP Implementation Notes:
  * - Supports two outcomes: REFUND_BUYER, PAY_SELLER
  * - Governance overrides NOT supported in v1
- * - Finalization is admin-only (TODO: integrate with verifier/juror system)
+ * - Finalization is admin-only in v1
  * - Single receiver model (Marketplace only for now)
  */
 contract CommerceDisputes is AccessManaged {
@@ -40,7 +40,6 @@ contract CommerceDisputes is AccessManaged {
 
     struct Dispute {
         uint256 disputeId;
-        uint256 communityId;
         DisputeType disputeType;
         uint256 relatedId; // orderId for MARKETPLACE_ORDER, reservationId for HOUSING
         address buyer;
@@ -51,10 +50,12 @@ contract CommerceDisputes is AccessManaged {
         DisputeStatus status;
         uint64 createdAt;
         uint64 resolvedAt;
-        // TODO: Add juror selection, voting rounds, timestamps when verifier integration complete
+        // Future extension point: juror rounds/timestamps can be added with verifier integration.
     }
 
     // ============ State ============
+
+    uint256 public immutable communityId;
 
     mapping(uint256 => Dispute) public disputes;
     uint256 public nextDisputeId = 1;
@@ -95,8 +96,10 @@ contract CommerceDisputes is AccessManaged {
 
     // ============ Constructor ============
 
-    constructor(address manager) AccessManaged(manager) {
+    constructor(address manager, uint256 _communityId) AccessManaged(manager) {
         if (manager == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
+        communityId = _communityId;
     }
 
     // ============ Admin Functions ============
@@ -114,19 +117,16 @@ contract CommerceDisputes is AccessManaged {
     // ============ Core Dispute Functions ============
 
     /**
-     * @notice Open a new dispute for a commerce transaction
+     * @notice Open a new dispute scoped to this contract's immutable community
      * @dev Only callable by authorized modules (e.g. Marketplace)
-     * @param communityId Community where transaction occurred
      * @param disputeType Type of dispute (order, reservation, etc)
      * @param relatedId ID of the disputed resource (orderId, reservationId)
      * @param buyer Buyer/guest address
      * @param seller Seller/host address
      * @param amount Escrowed amount in dispute
      * @param evidenceURI IPFS or other reference to dispute evidence
-     * @return disputeId The created dispute ID
-     */
+     * @return disputeId The created dispute ID     */
     function openDispute(
-        uint256 communityId,
         DisputeType disputeType,
         uint256 relatedId,
         address buyer,
@@ -134,6 +134,17 @@ contract CommerceDisputes is AccessManaged {
         uint256 amount,
         string calldata evidenceURI
     ) external restricted returns (uint256 disputeId) {
+        return _openDispute(disputeType, relatedId, buyer, seller, amount, evidenceURI);
+    }
+
+    function _openDispute(
+        DisputeType disputeType,
+        uint256 relatedId,
+        address buyer,
+        address seller,
+        uint256 amount,
+        string calldata evidenceURI
+    ) internal returns (uint256 disputeId) {
         // Prevent duplicate disputes for same resource
         uint256 existing = activeDisputeFor[disputeType][relatedId];
         if (existing != 0 && disputes[existing].status == DisputeStatus.OPEN) {
@@ -144,7 +155,6 @@ contract CommerceDisputes is AccessManaged {
 
         disputes[disputeId] = Dispute({
             disputeId: disputeId,
-            communityId: communityId,
             disputeType: disputeType,
             relatedId: relatedId,
             buyer: buyer,
@@ -164,7 +174,7 @@ contract CommerceDisputes is AccessManaged {
 
     /**
      * @notice Finalize a dispute with an outcome
-     * @dev MVP: Admin-only. TODO: Integrate with verifier/juror voting system
+    * @dev MVP: Admin-only in v1
      * @param disputeId The dispute to finalize
      * @param outcome The resolution (REFUND_BUYER or PAY_SELLER)
      */
@@ -228,4 +238,5 @@ contract CommerceDisputes is AccessManaged {
         uint256 disputeId = activeDisputeFor[disputeType][relatedId];
         return disputeId != 0 && disputes[disputeId].status == DisputeStatus.OPEN;
     }
+
 }

@@ -29,28 +29,30 @@ contract InvestmentCohortManager is AccessManaged {
     CohortRegistry public immutable cohortRegistry;
     ValuableActionRegistry public immutable valuableActionRegistry;
     ValuableActionSBT public immutable sbt;
+    uint256 public immutable communityId;
 
     /*//////////////////////////////////////////////////////////////
                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address manager, address _cohortRegistry, address _valuableActionRegistry, address _sbt)
+    constructor(address manager, address _cohortRegistry, address _valuableActionRegistry, address _sbt, uint256 _communityId)
         AccessManaged(manager)
     {
         if (manager == address(0)) revert Errors.ZeroAddress();
         if (_cohortRegistry == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_sbt == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid communityId");
 
         cohortRegistry = CohortRegistry(_cohortRegistry);
         valuableActionRegistry = ValuableActionRegistry(_valuableActionRegistry);
         sbt = ValuableActionSBT(_sbt);
+        communityId = _communityId;
     }
 
     /*//////////////////////////////////////////////////////////////
                                COHORT LIFECYCLE
     //////////////////////////////////////////////////////////////*/
     function createCohort(
-        uint256 communityId,
         uint16 targetRoiBps,
         uint32 priorityWeight,
         bytes32 termsHash,
@@ -58,7 +60,7 @@ contract InvestmentCohortManager is AccessManaged {
         uint64 endAt,
         bool active
     ) external restricted returns (uint256 cohortId) {
-        cohortId = cohortRegistry.createCohort(communityId, targetRoiBps, priorityWeight, termsHash, startAt, endAt, active);
+        cohortId = cohortRegistry.createCohort(targetRoiBps, priorityWeight, termsHash, startAt, endAt, active);
         emit CohortCreated(cohortId, communityId, active);
     }
 
@@ -82,7 +84,7 @@ contract InvestmentCohortManager is AccessManaged {
             revert Errors.InvalidInput("Cohort expired");
         }
 
-        tokenId = valuableActionRegistry.issueInvestment(cohort.communityId, to, cohortId, weight, metadata);
+        tokenId = valuableActionRegistry.issueInvestment(to, cohortId, weight, metadata);
 
         // Record investment amount/weight in registry for downstream eligibility
         cohortRegistry.addInvestment(cohortId, to, weight, tokenId);

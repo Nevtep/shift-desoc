@@ -9,6 +9,9 @@ import {Roles} from "contracts/libs/Roles.sol";
 /// @notice Manages investment cohorts with immutable terms and Target ROI tracking
 /// @dev Investment cohorts guarantee Target ROI returns with priority weighting and spillover mechanics
 contract CohortRegistry is AccessManaged {
+    /// @notice Immutable community scope for this registry instance
+    uint256 public immutable communityId;
+
     /// @notice Cohort data structure with immutable terms
     struct Cohort {
         uint256 id;                 // Unique cohort identifier
@@ -30,7 +33,7 @@ contract CohortRegistry is AccessManaged {
     mapping(uint256 => mapping(address => uint256)) public investedBy; // [cohortId][investor] = amount
     mapping(uint256 => uint256) public investmentByToken; // tokenId => amount
     mapping(uint256 => uint256) public tokenCohort;       // tokenId => cohortId
-    mapping(uint256 => uint256[]) public activeCohortsByCommunity;
+    uint256[] internal localActiveCohorts;
     mapping(uint256 => address[]) public cohortInvestors; // [cohortId] = investor addresses
     
     /// @notice Global state
@@ -63,18 +66,18 @@ contract CohortRegistry is AccessManaged {
 
     /// @notice Constructor
     /// @param manager AccessManager address for governance-controlled operations
-    constructor(address manager) AccessManaged(manager) {
+    constructor(address manager, uint256 _communityId) AccessManaged(manager) {
         if (manager == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
+        communityId = _communityId;
     }
     
     /// @notice Create a new investment cohort with immutable terms
-    /// @param communityId Community identifier
     /// @param targetRoiBps Target ROI in basis points (e.g., 15000 = 150%)
     /// @param priorityWeight Priority weight for distribution (higher = faster recovery)
     /// @param termsHash Immutable hash of cohort terms
     /// @return cohortId Unique cohort identifier
     function createCohort(
-        uint256 communityId,
         uint16 targetRoiBps,
         uint32 priorityWeight,
         bytes32 termsHash,
@@ -82,7 +85,6 @@ contract CohortRegistry is AccessManaged {
         uint64 endAt,
         bool active
     ) external restricted returns (uint256 cohortId) {
-        if (communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
         if (targetRoiBps < 10000) revert Errors.InvalidInput("Target ROI must be >= 100%");
         if (priorityWeight == 0) revert Errors.InvalidInput("Priority weight must be > 0");
         if (termsHash == bytes32(0)) revert Errors.InvalidInput("Terms hash cannot be empty");
@@ -104,7 +106,7 @@ contract CohortRegistry is AccessManaged {
             termsHash: termsHash
         });
         if (active) {
-            activeCohortsByCommunity[communityId].push(cohortId);
+            localActiveCohorts.push(cohortId);
         }
         
         emit CohortCreated(communityId, cohortId, targetRoiBps, priorityWeight, termsHash);
@@ -157,7 +159,7 @@ contract CohortRegistry is AccessManaged {
         uint256 targetTotal = cohort.investedTotal * cohort.targetRoiBps / 10000;
         if (cohort.recoveredTotal >= targetTotal) {
             cohort.active = false;
-            _removeFromActiveCohorts(cohort.communityId, cohortId);
+            _removeFromActiveCohorts(cohortId);
             emit CohortCompleted(cohortId, cohort.recoveredTotal);
         }
         
@@ -174,9 +176,9 @@ contract CohortRegistry is AccessManaged {
 
         cohort.active = active;
         if (active) {
-            activeCohortsByCommunity[cohort.communityId].push(cohortId);
+            localActiveCohorts.push(cohortId);
         } else {
-            _removeFromActiveCohorts(cohort.communityId, cohortId);
+            _removeFromActiveCohorts(cohortId);
         }
     }
     
@@ -200,13 +202,13 @@ contract CohortRegistry is AccessManaged {
         return cohorts[cohortId].communityId;
     }
     
-    /// @notice Get active cohorts for a community
-    /// @param communityId Community identifier
+    /// @notice Get active cohorts for this contract's bound community
     /// @return Array of active cohort IDs
-    function getActiveCohorts(uint256 communityId) external view returns (uint256[] memory) {
-        return activeCohortsByCommunity[communityId];
+    function getActiveCohorts() external view returns (uint256[] memory) {
+        return localActiveCohorts;
     }
-    
+
+
     /// @notice Get investors in a cohort
     /// @param cohortId Cohort identifier
     /// @return Array of investor addresses
@@ -283,14 +285,12 @@ contract CohortRegistry is AccessManaged {
     }
     
     /// @notice Remove cohort from active list (internal helper)
-    /// @param communityId Community identifier
     /// @param cohortId Cohort identifier to remove
-    function _removeFromActiveCohorts(uint256 communityId, uint256 cohortId) internal {
-        uint256[] storage activeCohorts = activeCohortsByCommunity[communityId];
+    function _removeFromActiveCohorts(uint256 cohortId) internal {
+        uint256[] storage activeCohorts = localActiveCohorts;
         
         for (uint256 i = 0; i < activeCohorts.length; i++) {
             if (activeCohorts[i] == cohortId) {
-                // Move last element to position i and pop
                 activeCohorts[i] = activeCohorts[activeCohorts.length - 1];
                 activeCohorts.pop();
                 break;

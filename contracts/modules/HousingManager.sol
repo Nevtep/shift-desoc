@@ -29,6 +29,8 @@ import {Errors} from "../libs/Errors.sol";
  * - Discounts: Community members (ValuableActionSBT holders) get lower rates
  */
 contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged, ReentrancyGuard {
+    uint256 public immutable communityId;
+
     // ============ Constants ============
 
     uint256 public constant BPS_DENOMINATOR = 10_000;
@@ -152,10 +154,12 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged, Reentra
 
     // ============ Constructor ============
 
-    constructor(address manager, address _stablecoin) ERC1155("") AccessManaged(manager) {
+    constructor(address manager, address _stablecoin, uint256 _communityId) ERC1155("") AccessManaged(manager) {
         if (_stablecoin == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
 
         stablecoin = _stablecoin;
+        communityId = _communityId;
     }
 
     // ============ Unit Management ============
@@ -165,13 +169,14 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged, Reentra
      * @dev Mints UnitToken (ERC1155) to owner
      */
     function createUnit(
-        uint256 communityId,
+        uint256 communityId_,
         address unitOwner,
         string calldata metadataURI,
         uint256 basePrice,
         uint256 capacity,
         uint256 cancellationPolicyBps
     ) external restricted returns (uint256 unitId) {
+        _requireBoundCommunity(communityId_);
         unitId = nextUnitId++;
 
         units[unitId] = Unit({
@@ -470,6 +475,9 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged, Reentra
 
     function getInvestorStake(uint256 unitId, address investor) external view returns (uint256) {
         return investorStakes[unitId][investor];
+    }
+    function _requireBoundCommunity(uint256 communityId_) internal view {
+        if (communityId_ != communityId) revert Errors.InvalidInput("Community mismatch");
     }
 }
 

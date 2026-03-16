@@ -59,6 +59,7 @@ contract DraftsManager is AccessManaged {
     }
 
     struct Draft {
+        /// @notice Stored for compatibility with existing events/query consumers.
         uint256 communityId;           // Source community
         uint256 requestId;             // Source request (optional)
         address author;                // Original creator
@@ -77,6 +78,7 @@ contract DraftsManager is AccessManaged {
     /* ======== STATE VARIABLES ======== */
 
     address public immutable communityRegistry;
+    uint256 public immutable communityId;
     address public governor;
     
     // Draft storage
@@ -87,8 +89,10 @@ contract DraftsManager is AccessManaged {
     uint256 public minReviewsForEscalation = 3;  // Minimum reviews needed
     uint256 public supportThresholdBps = 6000;   // 60% support needed (basis points)
     
+    // Local draft index for the bound community
+    uint256[] internal localDrafts;
+
     // Mappings for efficient queries
-    mapping(uint256 => uint256[]) public communityDrafts;    // communityId => draftIds
     mapping(uint256 => uint256[]) public requestDrafts;      // requestId => draftIds
     mapping(address => uint256[]) public authorDrafts;       // author => draftIds
     mapping(address => uint256[]) public contributorDrafts;  // contributor => draftIds
@@ -185,7 +189,7 @@ contract DraftsManager is AccessManaged {
         }
         _;
     }
-
+    /// @dev Outcome updates are limited to draft contributors or the community timelock.
     modifier onlyOutcomeUpdater(uint256 draftId) {
         Draft storage draft = _drafts[draftId];
         if (msg.sender == draft.author || draft.isContributor[msg.sender]) {
@@ -224,7 +228,7 @@ contract DraftsManager is AccessManaged {
         return keccak256(abi.encode(actions.targets, actions.values, actions.calldatas));
     }
 
-    function _getRequestHub(uint256 communityId) internal view returns (address requestHub) {
+    function _getRequestHub() internal view returns (address requestHub) {
         ICommunityRegistry.ModuleAddresses memory modules = ICommunityRegistry(communityRegistry)
             .getCommunityModules(communityId);
         requestHub = modules.requestHub;
@@ -233,28 +237,30 @@ contract DraftsManager is AccessManaged {
         }
     }
 
-    /* ======== CONSTRUCTOR ======== */
 
-    constructor(address _communityRegistry, address _governor, address manager) AccessManaged(manager) {
+    /* ======== CONSTRUCTOR ======== */
+    constructor(address _communityRegistry, address _governor, address manager, uint256 _communityId) AccessManaged(manager) {
         if (_communityRegistry == address(0) || _governor == address(0) || manager == address(0)) {
             revert Errors.ZeroAddress();
         }
+        if (_communityId == 0) {
+            revert Errors.InvalidInput("Invalid communityId");
+        }
         communityRegistry = _communityRegistry;
         governor = _governor;
+        communityId = _communityId;
     }
 
     /* ======== CORE FUNCTIONS ======== */
 
     /**
      * @notice Create a new collaborative draft
-     * @param communityId The community this draft belongs to
      * @param requestId Optional source request (0 if none)
      * @param actions The governance actions bundle
      * @param versionCID Initial IPFS content
      * @return draftId The created draft ID
      */
     function createDraft(
-        uint256 communityId,
         uint256 requestId,
         ActionBundle calldata actions,
         string calldata versionCID
@@ -262,11 +268,13 @@ contract DraftsManager is AccessManaged {
         if (bytes(versionCID).length == 0) {
             revert Errors.InvalidInput("Version CID cannot be empty");
         }
-
-        address requestHub = _getRequestHub(communityId);
+        address requestHub = _getRequestHub();
 
         if (requestId > 0) {
-            IRequestHub(requestHub).getRequest(requestId);
+            IRequestHub.Request memory request = IRequestHub(requestHub).getRequest(requestId);
+            if (request.communityId != communityId) {
+                revert Errors.InvalidInput("Community mismatch");
+            }
         }
 
         bytes32 actionsHash = _validateAndHashActions(actions);
@@ -286,8 +294,8 @@ contract DraftsManager is AccessManaged {
         // Add initial version
         draft.versionCIDs.push(versionCID);
         
-        // Update mappings
-        communityDrafts[communityId].push(draftId);
+        // Update local and query mappings
+        localDrafts.push(draftId);
         if (requestId > 0) {
             requestDrafts[requestId].push(draftId);
         }
@@ -581,7 +589,7 @@ contract DraftsManager is AccessManaged {
      * @param draftId The draft ID
      */
     function getDraft(uint256 draftId) external view draftExists(draftId) returns (
-        uint256 communityId,
+        uint256 draftCommunityId,
         uint256 requestId,
         address author,
         address[] memory contributors,
@@ -671,11 +679,14 @@ contract DraftsManager is AccessManaged {
 
     /**
      * @notice Get drafts by community
-     * @param communityId The community ID
+    * @param communityId_ The community ID
      * @return Array of draft IDs
      */
-    function getDraftsByCommunity(uint256 communityId) external view returns (uint256[] memory) {
-        return communityDrafts[communityId];
+    function getDraftsByCommunity(uint256 communityId_) external view returns (uint256[] memory) {
+        if (communityId_ != communityId) {
+            return new uint256[](0);
+        }
+        return localDrafts;
     }
 
     /**

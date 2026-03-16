@@ -54,14 +54,20 @@ contract ValuableActionSBT is ERC721URIStorage, AccessManaged {
                                  STORAGE
     //////////////////////////////////////////////////////////////*/
     uint256 public nextTokenId = 1;
+    uint256 public immutable communityId;
     mapping(uint256 => TokenData) private _tokenData;
     mapping(uint256 => bytes) private _tokenRawMetadata;
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address accessManager) ERC721("Shift ValuableAction SBT", "SHIFT-SBT") AccessManaged(accessManager) {
+    constructor(address accessManager, uint256 _communityId)
+        ERC721("Shift ValuableAction SBT", "SHIFT-SBT")
+        AccessManaged(accessManager)
+    {
         if (accessManager == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+        communityId = _communityId;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -71,13 +77,11 @@ contract ValuableActionSBT is ERC721URIStorage, AccessManaged {
     /// @notice Mint an engagement SBT (WORK/ROLE/CREDENTIAL)
     function mintEngagement(
         address to,
-        uint256 communityId,
         Types.EngagementSubtype subtype,
         bytes32 actionTypeId,
         bytes calldata metadata
     ) external restricted returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (actionTypeId == bytes32(0)) revert Errors.InvalidInput("Invalid actionTypeId");
 
         TokenKind kind = _mapSubtypeToKind(subtype);
@@ -104,13 +108,11 @@ contract ValuableActionSBT is ERC721URIStorage, AccessManaged {
     /// @notice Mint a position SBT
     function mintPosition(
         address to,
-        uint256 communityId,
         bytes32 positionTypeId,
         uint32 points,
         bytes calldata metadata
     ) external restricted returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (positionTypeId == bytes32(0)) revert Errors.InvalidInput("Invalid positionTypeId");
 
         tokenId = _mintTypedToken(
@@ -136,7 +138,6 @@ contract ValuableActionSBT is ERC721URIStorage, AccessManaged {
     /// @notice Mint a role record derived from a position lifecycle
     function mintRoleFromPosition(
         address to,
-        uint256 communityId,
         bytes32 roleTypeId,
         uint32 points,
         uint64 issuedAt,
@@ -145,7 +146,6 @@ contract ValuableActionSBT is ERC721URIStorage, AccessManaged {
         bytes calldata metadata
     ) external restricted returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (roleTypeId == bytes32(0)) revert Errors.InvalidInput("Invalid roleTypeId");
         if (issuedAt == 0) revert Errors.InvalidInput("Invalid issuedAt");
         if (endedAt < issuedAt) revert Errors.InvalidInput("Invalid endedAt");
@@ -173,13 +173,11 @@ contract ValuableActionSBT is ERC721URIStorage, AccessManaged {
     /// @notice Mint an investment SBT
     function mintInvestment(
         address to,
-        uint256 communityId,
         uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
     ) external restricted returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (cohortId == 0) revert Errors.InvalidInput("Invalid cohortId");
 
         tokenId = _mintTypedToken(

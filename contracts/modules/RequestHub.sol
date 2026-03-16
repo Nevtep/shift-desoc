@@ -430,7 +430,6 @@ contract RequestHub is ReentrancyGuard {
         }
 
         engagementTokenId = valuableActionRegistry.issueEngagement(
-            request.communityId,
             winner,
             Types.EngagementSubtype.WORK,
             bytes32(request.linkedValuableAction),
@@ -494,6 +493,28 @@ contract RequestHub is ReentrancyGuard {
         if (!communityBound || communityId != boundCommunityId) {
             return new uint256[](0);
         }
+
+        return _getRequestsByTag(tag);
+    }
+
+    /// @notice Get requests by tag for the bound immutable community context
+    function getRequestsByTag(string calldata tag)
+        external
+        view
+        returns (uint256[] memory requestIds)
+    {
+        if (!communityBound) {
+            return new uint256[](0);
+        }
+
+        return _getRequestsByTag(tag);
+    }
+
+    function _getRequestsByTag(string calldata tag)
+        internal
+        view
+        returns (uint256[] memory requestIds)
+    {
 
         uint256[] memory allRequests = localRequests;
         uint256[] memory matching = new uint256[](allRequests.length);

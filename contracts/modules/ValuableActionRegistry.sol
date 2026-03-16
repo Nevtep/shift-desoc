@@ -2,10 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
-import {IAccessManager} from "@openzeppelin/contracts/access/manager/IAccessManager.sol";
 import {Types} from "../libs/Types.sol";
 import {Errors} from "../libs/Errors.sol";
-import {Roles} from "../libs/Roles.sol";
 import {CommunityRegistry} from "./CommunityRegistry.sol";
 import {IValuableActionSBT} from "../core/interfaces/IValuableActionSBT.sol";
 
@@ -43,12 +41,15 @@ contract ValuableActionRegistry is AccessManaged {
 
     /// @notice Counter for valuable action IDs
     uint256 public lastId;
+
+    /// @notice Immutable community scope for this registry instance
+    uint256 public immutable communityId;
     
     /// @notice Mapping from valuable action ID to configuration
     mapping(uint256 => Types.ValuableAction) public valuableActionsById;
 
-    /// @notice Mapping from valuable action ID to communityId
-    mapping(uint256 => uint256) public communityByActionId;
+    /// @notice Community affiliation by action is constant in single-community mode
+    /// @dev Exposed through `communityByActionId(uint256)` for ABI compatibility.
     
     /// @notice Mapping from address to moderator status
     mapping(address => bool) public isModerator;
@@ -65,11 +66,11 @@ contract ValuableActionRegistry is AccessManaged {
     /// @notice Global allowlist for modules that can call issuance functions
     mapping(address => bool) public isIssuanceModule;
 
-    /// @notice Optional per-community allowlist narrowing (communityId => module => allowed)
-    mapping(uint256 => mapping(address => bool)) public isCommunityIssuanceModule;
+    /// @notice Optional allowlist narrowing for this community instance
+    mapping(address => bool) internal _isCommunityIssuanceModule;
 
-    /// @notice Toggle to enforce community-level narrowing
-    mapping(uint256 => bool) public communityNarrowingEnabled;
+    /// @notice Toggle to enforce local narrowing
+    bool internal _communityNarrowingEnabled;
 
     /// @notice Pause switch for issuance
     bool public issuancePaused;
@@ -80,27 +81,9 @@ contract ValuableActionRegistry is AccessManaged {
     /// @notice CommunityRegistry for resolving per-community module addresses
     CommunityRegistry public immutable communityRegistry;
     
-    /// @notice System for founder verification (bootstrap security)
-    mapping(address => mapping(uint256 => bool)) public founderWhitelist;  // founder => communityId => verified
-    mapping(uint256 => address[]) public communityFounders;               // communityId => founders list
-
-    /// @notice Only moderators can call this function
-    modifier onlyModerator() { 
-        if (!isModerator[msg.sender]) revert Errors.NotAuthorized(msg.sender); 
-        _; 
-    }
-    
-    /// @notice Only modules allowed to issue SBTs
-    modifier onlyIssuer(uint256 communityId) {
-        (bool hasRole,) = IAccessManager(authority()).hasRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, msg.sender);
-        if (!hasRole) {
-            revert Errors.NotAuthorized(msg.sender);
-        }
-        if (communityNarrowingEnabled[communityId] && !isCommunityIssuanceModule[communityId][msg.sender]) {
-            revert Errors.NotAuthorized(msg.sender);
-        }
-        _;
-    }
+    /// @notice System for founder verification (single-community bootstrap security)
+    mapping(address => bool) internal _founderWhitelist;
+    address[] internal _communityFounders;
 
     /// @notice Ensure issuance is not paused and SBT set
     modifier issuanceEnabled() {
@@ -113,11 +96,14 @@ contract ValuableActionRegistry is AccessManaged {
     /// @param manager AccessManager authority
     /// @param _communityRegistry CommunityRegistry contract address
     /// @param initialModerator Address to seed as initial moderator
-    constructor(address manager, address _communityRegistry, address initialModerator) AccessManaged(manager) {
+    /// @param _communityId Immutable community scope for this registry instance
+    constructor(address manager, address _communityRegistry, address initialModerator, uint256 _communityId) AccessManaged(manager) {
         if (manager == address(0)) revert Errors.ZeroAddress();
         if (_communityRegistry == address(0)) revert Errors.ZeroAddress();
         if (initialModerator == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         communityRegistry = CommunityRegistry(_communityRegistry);
+        communityId = _communityId;
         
         // Seed first moderator so updates can be performed via AccessManager.execute
         isModerator[initialModerator] = true;
@@ -146,19 +132,17 @@ contract ValuableActionRegistry is AccessManaged {
     }
 
     /// @notice Toggle community-level narrowing for issuance modules
-    /// @param communityId Community identifier
     /// @param enabled Whether narrowing is enabled
-    function setCommunityNarrowing(uint256 communityId, bool enabled) external restricted {
-        communityNarrowingEnabled[communityId] = enabled;
+    function setCommunityNarrowing(bool enabled) external restricted {
+        _communityNarrowingEnabled = enabled;
     }
 
     /// @notice Allow or disallow a module for a specific community (only applies if narrowing is enabled)
-    /// @param communityId Community identifier
     /// @param module Module address
     /// @param allowed Whether the module is allowed
-    function setCommunityIssuanceModule(uint256 communityId, address module, bool allowed) external restricted {
+    function setCommunityIssuanceModule(address module, bool allowed) external restricted {
         if (module == address(0)) revert Errors.ZeroAddress();
-        isCommunityIssuanceModule[communityId][module] = allowed;
+        _isCommunityIssuanceModule[module] = allowed;
     }
 
     /// @notice Set moderator status for an address
@@ -173,23 +157,20 @@ contract ValuableActionRegistry is AccessManaged {
 
     /// @notice Add founder to whitelist for community bootstrap
     /// @param founder Address to add as founder
-    /// @param communityId Community ID to grant founder privileges for
-    function addFounder(address founder, uint256 communityId) external restricted {
+    function addFounder(address founder) external restricted {
         if (founder == address(0)) revert Errors.ZeroAddress();
         
-        if (!founderWhitelist[founder][communityId]) {
-            founderWhitelist[founder][communityId] = true;
-            communityFounders[communityId].push(founder);
+        if (!_founderWhitelist[founder]) {
+            _founderWhitelist[founder] = true;
+            _communityFounders.push(founder);
         }
     }
 
     /// @notice Propose a new valuable action (must be executed via governance/Timelock)
-    /// @param communityId Community ID this action belongs to
     /// @param params Valuable action configuration
     /// @param proposalRef Arbitrary governance reference that ties creation and activation
     /// @return valuableActionId The ID of the created valuable action
     function proposeValuableAction(
-        uint256 communityId,
         Types.ValuableAction calldata params,
         bytes32 proposalRef
     ) external payable restricted returns (uint256 valuableActionId) {
@@ -208,7 +189,6 @@ contract ValuableActionRegistry is AccessManaged {
         
         valuableActionId = ++lastId;
         valuableActionsById[valuableActionId] = params;
-        communityByActionId[valuableActionId] = communityId;
 
         pendingValuableActions[valuableActionId] = proposalRef;
         proposalRefUsed[proposalRef] = true;
@@ -263,17 +243,15 @@ contract ValuableActionRegistry is AccessManaged {
     /// @param actionTypeId Identifier for the engagement action definition
     /// @param metadata Arbitrary metadata payload (schema defined by metadataSchemaId)
     function issueEngagement(
-        uint256 communityId,
         address to,
         Types.EngagementSubtype subtype,
         bytes32 actionTypeId,
         bytes calldata metadata
-    ) external issuanceEnabled onlyIssuer(communityId) returns (uint256 tokenId) {
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+    ) external restricted issuanceEnabled returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (actionTypeId == bytes32(0)) revert Errors.InvalidInput("Missing actionTypeId");
 
-        tokenId = IValuableActionSBT(valuableActionSBT).mintEngagement(to, communityId, subtype, actionTypeId, metadata);
+        tokenId = IValuableActionSBT(valuableActionSBT).mintEngagement(to, subtype, actionTypeId, metadata);
         emit EngagementIssued(to, tokenId, subtype, actionTypeId);
     }
 
@@ -283,18 +261,16 @@ contract ValuableActionRegistry is AccessManaged {
     /// @param points Points weight for revenue routing
     /// @param metadata Arbitrary metadata payload (schema defined by manager)
     function issuePosition(
-        uint256 communityId,
         address to,
         bytes32 positionTypeId,
         uint32 points,
         bytes calldata metadata
-    ) external issuanceEnabled onlyIssuer(communityId) returns (uint256 tokenId) {
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+    ) external restricted issuanceEnabled returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (positionTypeId == bytes32(0)) revert Errors.InvalidInput("Missing positionTypeId");
         if (points == 0) revert Errors.InvalidInput("Points cannot be zero");
 
-        tokenId = IValuableActionSBT(valuableActionSBT).mintPosition(to, communityId, positionTypeId, points, metadata);
+        tokenId = IValuableActionSBT(valuableActionSBT).mintPosition(to, positionTypeId, points, metadata);
         emit PositionIssued(to, tokenId, positionTypeId, points);
     }
 
@@ -304,27 +280,24 @@ contract ValuableActionRegistry is AccessManaged {
     /// @param weight Weight used for revenue share in cohort
     /// @param metadata Arbitrary metadata payload (schema defined by manager)
     function issueInvestment(
-        uint256 communityId,
         address to,
         uint256 cohortId,
         uint32 weight,
         bytes calldata metadata
-    ) external issuanceEnabled onlyIssuer(communityId) returns (uint256 tokenId) {
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+    ) external restricted issuanceEnabled returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (cohortId == 0) revert Errors.InvalidInput("Missing cohortId");
         if (weight == 0) revert Errors.InvalidInput("Weight cannot be zero");
 
-        tokenId = IValuableActionSBT(valuableActionSBT).mintInvestment(to, communityId, cohortId, weight, metadata);
+        tokenId = IValuableActionSBT(valuableActionSBT).mintInvestment(to, cohortId, weight, metadata);
         emit InvestmentIssued(to, tokenId, cohortId, weight);
     }
 
     /// @notice Close a position token and stamp outcome
     function closePositionToken(
-        uint256 communityId,
         uint256 positionTokenId,
         uint8 outcome
-    ) external issuanceEnabled onlyIssuer(communityId) {
+    ) external restricted issuanceEnabled {
         IValuableActionSBT.TokenData memory data = IValuableActionSBT(valuableActionSBT).getTokenData(positionTokenId);
         if (data.kind != IValuableActionSBT.TokenKind.POSITION) revert Errors.InvalidInput("Not a position token");
         if (data.communityId != communityId) revert Errors.InvalidInput("Community mismatch");
@@ -335,7 +308,6 @@ contract ValuableActionRegistry is AccessManaged {
 
     /// @notice Issue a role record derived from a closed position
     function issueRoleFromPosition(
-        uint256 communityId,
         address to,
         bytes32 roleTypeId,
         uint32 points,
@@ -343,8 +315,7 @@ contract ValuableActionRegistry is AccessManaged {
         uint64 endedAt,
         uint8 closeOutcome,
         bytes calldata metadata
-    ) external issuanceEnabled onlyIssuer(communityId) returns (uint256 tokenId) {
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+    ) external restricted issuanceEnabled returns (uint256 tokenId) {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (roleTypeId == bytes32(0)) revert Errors.InvalidInput("Missing roleTypeId");
         if (issuedAt == 0) revert Errors.InvalidInput("Missing issuedAt");
@@ -352,7 +323,6 @@ contract ValuableActionRegistry is AccessManaged {
 
         tokenId = IValuableActionSBT(valuableActionSBT).mintRoleFromPosition(
             to,
-            communityId,
             roleTypeId,
             points,
             issuedAt,
@@ -400,10 +370,28 @@ contract ValuableActionRegistry is AccessManaged {
     }
 
     /// @notice Get founders for a community
-    /// @param communityId Community ID
+    /// @param communityId_ Community ID
     /// @return founders Array of founder addresses
-    function getCommunityFounders(uint256 communityId) external view returns (address[] memory founders) {
-        return communityFounders[communityId];
+    function getCommunityFounders(uint256 communityId_) external view returns (address[] memory founders) {
+        communityId_; // Compatibility parameter is intentionally ignored in single-community mode.
+        return _communityFounders;
+    }
+
+    function founderWhitelist(address founder, uint256) external view returns (bool) {
+        return _founderWhitelist[founder];
+    }
+
+    function isCommunityIssuanceModule(uint256, address module) external view returns (bool) {
+        return _isCommunityIssuanceModule[module];
+    }
+
+    function communityNarrowingEnabled(uint256) external view returns (bool) {
+        return _communityNarrowingEnabled;
+    }
+
+    function communityByActionId(uint256 valuableActionId) external view returns (uint256) {
+        if (!_exists(valuableActionId)) revert Errors.InvalidValuableAction(valuableActionId);
+        return communityId;
     }
 
     /// @dev Validate valuable action configuration

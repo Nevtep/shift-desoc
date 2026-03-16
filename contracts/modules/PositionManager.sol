@@ -34,7 +34,6 @@ contract PositionManager is AccessManaged {
     //////////////////////////////////////////////////////////////*/
     struct PositionType {
         bytes32 roleTypeId;
-        uint256 communityId;
         uint32 points;
         bool active;
     }
@@ -42,7 +41,6 @@ contract PositionManager is AccessManaged {
     struct PositionApplication {
         address applicant;
         bytes32 roleTypeId;
-        uint256 communityId;
         bytes evidence;
         uint8 status; // 1 = pending, 2 = approved, 3 = rejected (reserved)
         uint256 positionTokenId;
@@ -62,6 +60,7 @@ contract PositionManager is AccessManaged {
 
     ValuableActionRegistry public immutable valuableActionRegistry;
     IValuableActionSBT public immutable valuableActionSBT;
+    uint256 public immutable communityId;
     IRevenueRouter public revenueRouter;
 
     mapping(bytes32 => PositionType) public positionTypes;
@@ -71,13 +70,17 @@ contract PositionManager is AccessManaged {
     /*//////////////////////////////////////////////////////////////
                                  CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
-    constructor(address manager, address _valuableActionRegistry, address _valuableActionSBT) AccessManaged(manager) {
+    constructor(address manager, address _valuableActionRegistry, address _valuableActionSBT, uint256 _communityId)
+        AccessManaged(manager)
+    {
         if (manager == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
         if (_valuableActionSBT == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid communityId");
 
         valuableActionRegistry = ValuableActionRegistry(_valuableActionRegistry);
         valuableActionSBT = IValuableActionSBT(_valuableActionSBT);
+        communityId = _communityId;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -92,17 +95,15 @@ contract PositionManager is AccessManaged {
     /*//////////////////////////////////////////////////////////////
                             POSITION TYPE MGMT
     //////////////////////////////////////////////////////////////*/
-    function definePositionType(bytes32 roleTypeId, uint256 communityId, uint32 points, bool active)
+    function definePositionType(bytes32 roleTypeId, uint32 points, bool active)
         external
         restricted
     {
         if (roleTypeId == bytes32(0)) revert Errors.InvalidInput("Missing roleTypeId");
-        if (communityId == 0) revert Errors.InvalidInput("Invalid communityId");
         if (points == 0) revert Errors.InvalidInput("Points cannot be zero");
 
         positionTypes[roleTypeId] = PositionType({
             roleTypeId: roleTypeId,
-            communityId: communityId,
             points: points,
             active: active
         });
@@ -122,13 +123,12 @@ contract PositionManager is AccessManaged {
         applications[appId] = PositionApplication({
             applicant: msg.sender,
             roleTypeId: roleTypeId,
-            communityId: positionType.communityId,
             evidence: evidence,
             status: STATUS_PENDING,
             positionTokenId: 0
         });
 
-        emit PositionApplied(appId, msg.sender, roleTypeId, positionType.communityId);
+        emit PositionApplied(appId, msg.sender, roleTypeId, communityId);
     }
 
     function approveApplication(uint256 appId, bytes calldata metadata)
@@ -145,7 +145,6 @@ contract PositionManager is AccessManaged {
         if (!positionType.active) revert Errors.InvalidInput("Position type inactive");
 
         positionTokenId = valuableActionRegistry.issuePosition(
-            positionType.communityId,
             application.applicant,
             application.roleTypeId,
             positionType.points,
@@ -176,14 +175,13 @@ contract PositionManager is AccessManaged {
         address holder = IERC721(address(valuableActionSBT)).ownerOf(positionTokenId);
         uint64 endedAt = uint64(block.timestamp);
 
-        valuableActionRegistry.closePositionToken(data.communityId, positionTokenId, uint8(outcome));
+        valuableActionRegistry.closePositionToken(positionTokenId, uint8(outcome));
 
         if (address(revenueRouter) == address(0)) revert Errors.InvalidInput("RevenueRouter not set");
         revenueRouter.unregisterPosition(positionTokenId);
 
         if (outcome == CloseOutcome.SUCCESS) {
             roleTokenId = valuableActionRegistry.issueRoleFromPosition(
-                data.communityId,
                 holder,
                 data.roleTypeId,
                 data.points,

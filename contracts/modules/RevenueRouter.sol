@@ -20,21 +20,23 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
     uint256 public constant MAX_BPS = 10_000;
     uint256 private constant INDEX_SCALE = 1e18;
 
+    uint256 public immutable communityId;
+
 
     IParamController public paramController;
     ICohortRegistry public cohortRegistry;
     IValuableActionSBT public valuableActionSBT;
 
-    mapping(uint256 => address) public communityTreasuries;
-    mapping(uint256 => mapping(address => bool)) public supportedTokens;
-    mapping(uint256 => mapping(address => uint256)) public treasuryAccrual; // community => token => amount
+    address internal _communityTreasury;
+    mapping(address => bool) internal _supportedTokens;
+    mapping(address => uint256) internal _treasuryAccrual;
 
     // Position accounting
     mapping(uint256 => bool) public positionRegistered; // tokenId => registered
     mapping(uint256 => uint256) public positionCommunity; // tokenId => communityId
     mapping(uint256 => uint32) public positionPoints; // tokenId => points
-    mapping(uint256 => uint256) public activePositionPoints; // communityId => total points
-    mapping(uint256 => mapping(address => uint256)) public positionsIndex; // communityId => token => index
+    uint256 internal _activePositionPoints;
+    mapping(address => uint256) internal _positionsIndex;
     mapping(uint256 => mapping(address => uint256)) public positionIndexPaid; // tokenId => token => index snapshot
 
     // Cohort (investment) accounting
@@ -54,28 +56,34 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
     event PositionRegistered(uint256 indexed tokenId, uint256 indexed communityId, uint32 points);
     event PositionUnregistered(uint256 indexed tokenId, uint256 indexed communityId, uint32 points);
 
-    constructor(address manager, address _paramController, address _cohortRegistry, address _sbt) AccessManaged(manager) {
+    constructor(address manager, address _paramController, address _cohortRegistry, address _sbt, uint256 _communityId)
+        AccessManaged(manager)
+    {
         if (_paramController == address(0) || _cohortRegistry == address(0) || _sbt == address(0) || manager == address(0)) {
             revert Errors.ZeroAddress();
         }
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid community");
         paramController = IParamController(_paramController);
         cohortRegistry = ICohortRegistry(_cohortRegistry);
         valuableActionSBT = IValuableActionSBT(_sbt);
+        communityId = _communityId;
     }
 
     /*//////////////////////////////////////////////////////////////
                                     ADMIN ACTIONS
     //////////////////////////////////////////////////////////////*/
-    function setCommunityTreasury(uint256 communityId, address treasury) external restricted {
+    function setCommunityTreasury(uint256 communityId_, address treasury) external restricted {
+        _requireBoundCommunity(communityId_);
         if (treasury == address(0)) revert Errors.ZeroAddress();
-        address old = communityTreasuries[communityId];
-        communityTreasuries[communityId] = treasury;
+        address old = _communityTreasury;
+        _communityTreasury = treasury;
         emit CommunityTreasuryUpdated(communityId, old, treasury);
     }
 
-    function setSupportedToken(uint256 communityId, address token, bool supported) external restricted {
+    function setSupportedToken(uint256 communityId_, address token, bool supported) external restricted {
+        _requireBoundCommunity(communityId_);
         if (token == address(0)) revert Errors.ZeroAddress();
-        supportedTokens[communityId][token] = supported;
+        _supportedTokens[token] = supported;
         emit TokenSupportUpdated(communityId, token, supported);
     }
 
@@ -102,41 +110,42 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         if (data.kind != IValuableActionSBT.TokenKind.POSITION) revert Errors.InvalidInput("Not position token");
         if (data.endedAt != 0) revert Errors.InvalidInput("Position ended");
         if (data.points == 0) revert Errors.InvalidInput("Zero points");
-        if (data.communityId == 0) revert Errors.InvalidInput("Invalid community");
+        if (data.communityId != communityId) revert Errors.InvalidInput("Community mismatch");
 
         positionRegistered[tokenId] = true;
-        positionCommunity[tokenId] = data.communityId;
+        positionCommunity[tokenId] = communityId;
         positionPoints[tokenId] = data.points;
-        activePositionPoints[data.communityId] += data.points;
+        _activePositionPoints += data.points;
 
-        emit PositionRegistered(tokenId, data.communityId, data.points);
+        emit PositionRegistered(tokenId, communityId, data.points);
     }
 
     function unregisterPosition(uint256 tokenId) external restricted {
         if (!positionRegistered[tokenId]) revert Errors.InvalidInput("Not registered");
-        uint256 communityId = positionCommunity[tokenId];
+        uint256 communityId_ = positionCommunity[tokenId];
         uint32 points = positionPoints[tokenId];
 
         positionRegistered[tokenId] = false;
         positionCommunity[tokenId] = 0;
         positionPoints[tokenId] = 0;
-        if (points > 0 && activePositionPoints[communityId] >= points) {
-            activePositionPoints[communityId] -= points;
+        if (points > 0 && _activePositionPoints >= points) {
+            _activePositionPoints -= points;
         }
 
-        emit PositionUnregistered(tokenId, communityId, points);
+        emit PositionUnregistered(tokenId, communityId_, points);
     }
 
     /*//////////////////////////////////////////////////////////////
                                   REVENUE ROUTING
     //////////////////////////////////////////////////////////////*/
-    function routeRevenue(uint256 communityId, address token, uint256 amount)
+    function routeRevenue(uint256 communityId_, address token, uint256 amount)
         external
         restricted
         nonReentrant
     {
+        _requireBoundCommunity(communityId_);
         if (amount == 0) revert Errors.InvalidInput("Zero amount");
-        if (!supportedTokens[communityId][token]) revert Errors.InvalidInput("Unsupported token");
+        if (!_supportedTokens[token]) revert Errors.InvalidInput("Unsupported token");
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -150,13 +159,13 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         uint256 positionsPool = (amount * minPositionsBps) / MAX_BPS;
         uint256 remaining = amount - treasuryShare - positionsPool;
 
-        (uint256 positionsUsed, uint256 positionsUnallocated) = _accruePositions(communityId, token, positionsPool);
+        (uint256 positionsUsed, uint256 positionsUnallocated) = _accruePositions(token, positionsPool);
 
-        uint256 cohortDistributed = _distributeToCohorts(communityId, token, remaining);
+        uint256 cohortDistributed = _distributeToCohorts(token, remaining);
 
         uint256 spilloverPool = remaining - cohortDistributed + positionsUnallocated;
         (uint256 spillToTreasury, uint256 spillToPositionsUsed, uint256 spillPositionsUnallocated) =
-            _handleSpillover(communityId, token, spilloverTarget, splitBps, spilloverPool);
+            _handleSpillover(token, spilloverTarget, splitBps, spilloverPool);
 
         uint256 treasuryAllocated = treasuryShare + spillToTreasury;
         uint256 positionsAllocated = positionsUsed + spillToPositionsUsed;
@@ -168,33 +177,33 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
 
         uint256 sumAllocated = treasuryAllocated + positionsAllocated + cohortDistributed;
         uint256 remainder = amount > sumAllocated ? amount - sumAllocated : 0;
-        treasuryAccrual[communityId][token] += treasuryAllocated + remainder;
+        _treasuryAccrual[token] += treasuryAllocated + remainder;
 
         emit TreasuryAllocated(communityId, token, treasuryAllocated + remainder);
-        emit PositionsAllocated(communityId, token, positionsAllocated, positionsIndex[communityId][token]);
+        emit PositionsAllocated(communityId, token, positionsAllocated, _positionsIndex[token]);
         emit CohortsAllocated(communityId, token, cohortDistributed);
         emit RevenueDistributed(communityId, token, amount);
     }
 
-    function _accruePositions(uint256 communityId, address token, uint256 amount)
+    function _accruePositions(address token, uint256 amount)
         internal
         returns (uint256 used, uint256 unused)
     {
-        uint256 totalPoints = activePositionPoints[communityId];
+        uint256 totalPoints = _activePositionPoints;
         if (amount == 0) return (0, 0);
         if (totalPoints == 0) return (0, amount);
 
         uint256 deltaIndex = (amount * INDEX_SCALE) / totalPoints;
-        positionsIndex[communityId][token] += deltaIndex;
+        _positionsIndex[token] += deltaIndex;
         return (amount, 0);
     }
 
-    function _distributeToCohorts(uint256 communityId, address token, uint256 pool)
+    function _distributeToCohorts(address token, uint256 pool)
         internal
         returns (uint256 distributed)
     {
         if (pool == 0) return 0;
-        uint256[] memory active = cohortRegistry.getActiveCohorts(communityId);
+        uint256[] memory active = cohortRegistry.getActiveCohorts();
         if (active.length == 0) return 0;
 
         uint256 totalWeight = 0;
@@ -222,7 +231,6 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
     }
 
     function _handleSpillover(
-        uint256 communityId,
         address token,
         uint8 spilloverTarget,
         uint16 splitBps,
@@ -231,7 +239,7 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         if (amount == 0) return (0, 0, 0);
 
         if (spilloverTarget == 0) {
-            (uint256 usedPositions, uint256 unusedPositions) = _accruePositions(communityId, token, amount);
+            (uint256 usedPositions, uint256 unusedPositions) = _accruePositions(token, amount);
             emit SpilloverAllocated(communityId, token, amount - unusedPositions, 0);
             return (0, usedPositions, unusedPositions);
         }
@@ -244,7 +252,7 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         uint256 toTreasurySplit = (amount * splitBps) / MAX_BPS;
         uint256 toPositionsSplit = amount - toTreasurySplit;
 
-        (uint256 splitUsed, uint256 splitUnused) = _accruePositions(communityId, token, toPositionsSplit);
+        (uint256 splitUsed, uint256 splitUnused) = _accruePositions(token, toPositionsSplit);
         emit SpilloverAllocated(communityId, token, toTreasurySplit + splitUsed, 2);
         return (toTreasurySplit, splitUsed, splitUnused);
     }
@@ -256,12 +264,12 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         if (to == address(0)) revert Errors.ZeroAddress();
         IValuableActionSBT.TokenData memory data = valuableActionSBT.getTokenData(tokenId);
         if (data.kind != IValuableActionSBT.TokenKind.POSITION) revert Errors.InvalidInput("Not position token");
+        if (data.communityId != communityId) revert Errors.InvalidInput("Community mismatch");
         address tokenOwner = _ownerOf(tokenId);
         if (msg.sender != tokenOwner) revert Errors.NotAuthorized(msg.sender);
 
-        uint256 communityId = data.communityId;
         uint32 points = data.points;
-        uint256 accruedIndex = positionsIndex[communityId][token];
+        uint256 accruedIndex = _positionsIndex[token];
         uint256 paidIndex = positionIndexPaid[tokenId][token];
         uint256 deltaIndex = accruedIndex - paidIndex;
         uint256 claimable = (uint256(points) * deltaIndex) / INDEX_SCALE;
@@ -296,17 +304,18 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         IERC20(token).safeTransfer(to, claimable);
     }
 
-    function withdrawTreasury(uint256 communityId, address token, uint256 amount, address to) external nonReentrant {
+    function withdrawTreasury(uint256 communityId_, address token, uint256 amount, address to) external nonReentrant {
+        _requireBoundCommunity(communityId_);
         if (to == address(0)) revert Errors.ZeroAddress();
-        address treasury = communityTreasuries[communityId];
+        address treasury = _communityTreasury;
         if (treasury == address(0)) revert Errors.ZeroAddress();
         if (msg.sender != treasury) revert Errors.NotAuthorized(msg.sender);
         if (amount == 0) revert Errors.InvalidInput("Zero amount");
-        if (treasuryAccrual[communityId][token] < amount) {
-            revert Errors.InsufficientBalance(address(this), amount, treasuryAccrual[communityId][token]);
+        if (_treasuryAccrual[token] < amount) {
+            revert Errors.InsufficientBalance(address(this), amount, _treasuryAccrual[token]);
         }
 
-        treasuryAccrual[communityId][token] -= amount;
+        _treasuryAccrual[token] -= amount;
         IERC20(token).safeTransfer(to, amount);
         emit TreasuryAllocated(communityId, token, amount);
     }
@@ -317,9 +326,10 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
     function getClaimablePosition(uint256 tokenId, address token) external view returns (uint256) {
         IValuableActionSBT.TokenData memory data = valuableActionSBT.getTokenData(tokenId);
         if (data.kind != IValuableActionSBT.TokenKind.POSITION) return 0;
-        uint256 communityId = data.communityId;
+        // Position token data is authoritative for community and points.
+        if (data.communityId != communityId) return 0;
         uint32 points = data.points;
-        uint256 deltaIndex = positionsIndex[communityId][token] - positionIndexPaid[tokenId][token];
+        uint256 deltaIndex = _positionsIndex[token] - positionIndexPaid[tokenId][token];
         return (uint256(points) * deltaIndex) / INDEX_SCALE;
     }
 
@@ -340,5 +350,39 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         (bool ok, bytes memory res) = address(valuableActionSBT).staticcall(abi.encodeWithSignature("ownerOf(uint256)", tokenId));
         if (!ok || res.length == 0) revert Errors.InvalidInput("ownerOf failed");
         owner = abi.decode(res, (address));
+    }
+    /// Compatibility getters retain historical community-keyed read shape.
+    /// @notice Compatibility getter preserving historical community-keyed read shape.
+    function communityTreasuries(uint256 communityId_) external view returns (address) {
+        if (communityId_ != communityId) return address(0);
+        return _communityTreasury;
+    }
+
+    /// @notice Compatibility getter preserving historical community-keyed read shape.
+    function supportedTokens(uint256 communityId_, address token) external view returns (bool) {
+        if (communityId_ != communityId) return false;
+        return _supportedTokens[token];
+    }
+
+    /// @notice Compatibility getter preserving historical community-keyed read shape.
+    function treasuryAccrual(uint256 communityId_, address token) external view returns (uint256) {
+        if (communityId_ != communityId) return 0;
+        return _treasuryAccrual[token];
+    }
+
+    /// @notice Compatibility getter preserving historical community-keyed read shape.
+    function activePositionPoints(uint256 communityId_) external view returns (uint256) {
+        if (communityId_ != communityId) return 0;
+        return _activePositionPoints;
+    }
+
+    /// @notice Compatibility getter preserving historical community-keyed read shape.
+    function positionsIndex(uint256 communityId_, address token) external view returns (uint256) {
+        if (communityId_ != communityId) return 0;
+        return _positionsIndex[token];
+    }
+
+    function _requireBoundCommunity(uint256 communityId_) internal view {
+        if (communityId_ != communityId) revert Errors.InvalidInput("Community mismatch");
     }
 }

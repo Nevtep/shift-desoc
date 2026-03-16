@@ -11,6 +11,8 @@ import {CommunityRegistry} from "./CommunityRegistry.sol";
 /// @dev Does not custody funds or execute transfers; returns Safe-ready payloads only
 contract TreasuryAdapter is AccessManaged {
 
+    uint256 public immutable communityId;
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -42,47 +44,49 @@ contract TreasuryAdapter is AccessManaged {
 
     CommunityRegistry public immutable communityRegistry;
 
-    mapping(uint256 => mapping(address => bool)) public tokenAllowed;
-    mapping(uint256 => mapping(address => bool)) public destinationAllowed;
-    mapping(uint256 => mapping(address => bool)) public vaultAdapterAllowed;
-    mapping(uint256 => mapping(address => uint16)) public capBps; // 0 = disabled
+    mapping(address => bool) internal _tokenAllowed;
+    mapping(address => bool) internal _destinationAllowed;
+    mapping(address => bool) internal _vaultAdapterAllowed;
+    mapping(address => uint16) internal _capBps; // 0 = disabled
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address manager, address _communityRegistry) AccessManaged(manager) {
+    constructor(address manager, address _communityRegistry, uint256 _communityId) AccessManaged(manager) {
         if (manager == address(0)) revert Errors.ZeroAddress();
         if (_communityRegistry == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Community ID cannot be zero");
         communityRegistry = CommunityRegistry(_communityRegistry);
+        communityId = _communityId;
     }
 
     /*//////////////////////////////////////////////////////////////
                              ADMIN ACTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function setTokenAllowed(uint256 communityId, address token, bool allowed) external restricted {
+    function setTokenAllowed(address token, bool allowed) external restricted {
         if (token == address(0)) revert Errors.ZeroAddress();
-        tokenAllowed[communityId][token] = allowed;
+        _tokenAllowed[token] = allowed;
         emit PolicyUpdated(communityId, bytes32("TOKEN"), token, allowed ? 1 : 0);
     }
 
-    function setDestinationAllowed(uint256 communityId, address target, bool allowed) external restricted {
+    function setDestinationAllowed(address target, bool allowed) external restricted {
         if (target == address(0)) revert Errors.ZeroAddress();
-        destinationAllowed[communityId][target] = allowed;
+        _destinationAllowed[target] = allowed;
         emit PolicyUpdated(communityId, bytes32("DEST"), target, allowed ? 1 : 0);
     }
 
-    function setVaultAdapterAllowed(uint256 communityId, address adapter, bool allowed) external restricted {
+    function setVaultAdapterAllowed(address adapter, bool allowed) external restricted {
         if (adapter == address(0)) revert Errors.ZeroAddress();
-        vaultAdapterAllowed[communityId][adapter] = allowed;
+        _vaultAdapterAllowed[adapter] = allowed;
         emit PolicyUpdated(communityId, bytes32("ADAPTER"), adapter, allowed ? 1 : 0);
     }
 
-    function setCapBps(uint256 communityId, address token, uint16 capBpsValue) external restricted {
+    function setCapBps(address token, uint16 capBpsValue) external restricted {
         if (token == address(0)) revert Errors.ZeroAddress();
         if (capBpsValue > 10_000) revert Errors.InvalidInput("cap too high");
-        capBps[communityId][token] = capBpsValue;
+        _capBps[token] = capBpsValue;
         emit PolicyUpdated(communityId, bytes32("CAP_BPS"), token, capBpsValue);
     }
 
@@ -90,23 +94,23 @@ contract TreasuryAdapter is AccessManaged {
                           VIEW HELPERS
     //////////////////////////////////////////////////////////////*/
 
-    function maxSpendPerTx(uint256 communityId, address token) public view returns (uint256) {
-        address treasuryVault = _getTreasuryVault(communityId);
-        uint16 cap = capBps[communityId][token];
+    function maxSpendPerTx(address token) public view returns (uint256) {
+        address treasuryVault = _getTreasuryVault();
+        uint16 cap = _capBps[token];
         if (treasuryVault == address(0) || cap == 0) return 0;
         uint256 balance = IERC20(token).balanceOf(treasuryVault);
         return (balance * cap) / 10_000;
     }
 
-    function validateSpend(uint256 communityId, address token, address to, uint256 amount) public view returns (bool ok, bytes32 reason) {
-        address treasuryVault = _getTreasuryVault(communityId);
+    function validateSpend(address token, address to, uint256 amount) public view returns (bool ok, bytes32 reason) {
+        address treasuryVault = _getTreasuryVault();
         if (treasuryVault == address(0)) return (false, REASON_TREASURY_NOT_SET);
-        if (!tokenAllowed[communityId][token]) return (false, REASON_TOKEN_NOT_ALLOWED);
-        if (!destinationAllowed[communityId][to]) return (false, REASON_DEST_NOT_ALLOWED);
-        uint16 cap = capBps[communityId][token];
+        if (!_tokenAllowed[token]) return (false, REASON_TOKEN_NOT_ALLOWED);
+        if (!_destinationAllowed[to]) return (false, REASON_DEST_NOT_ALLOWED);
+        uint16 cap = _capBps[token];
         if (cap == 0) return (false, REASON_CAP_NOT_SET);
 
-        uint256 maxSpend = maxSpendPerTx(communityId, token);
+        uint256 maxSpend = maxSpendPerTx(token);
         if (amount > maxSpend) return (false, REASON_AMOUNT_EXCEEDS_CAP);
 
         return (true, REASON_OK);
@@ -116,12 +120,12 @@ contract TreasuryAdapter is AccessManaged {
                           TX BUILDERS
     //////////////////////////////////////////////////////////////*/
 
-    function buildERC20TransferTx(uint256 communityId, address token, address to, uint256 amount)
+    function buildERC20TransferTx(address token, address to, uint256 amount)
         external
         view
         returns (address target, uint256 value, bytes memory data)
     {
-        (bool ok, bytes32 reason) = validateSpend(communityId, token, to, amount);
+        (bool ok, bytes32 reason) = validateSpend(token, to, amount);
         if (!ok) revert TxValidationFailed(reason);
         target = token;
         value = 0;
@@ -129,26 +133,26 @@ contract TreasuryAdapter is AccessManaged {
     }
 
     /// @notice Build calldata to add or top-up a bounty in RequestHub (no funds move here)
-    function buildSetRequestBountyTx(uint256 communityId, address requestHub, uint256 requestId, address token, uint256 amount)
+    function buildSetRequestBountyTx(address requestHub, uint256 requestId, address token, uint256 amount)
         external
         view
         returns (address target, uint256 value, bytes memory data)
     {
-        if (!tokenAllowed[communityId][token]) revert TxValidationFailed(REASON_TOKEN_NOT_ALLOWED);
-        if (!destinationAllowed[communityId][requestHub]) revert TxValidationFailed(REASON_DEST_NOT_ALLOWED);
-        if (_getTreasuryVault(communityId) == address(0)) revert TxValidationFailed(REASON_TREASURY_NOT_SET);
+        if (!_tokenAllowed[token]) revert TxValidationFailed(REASON_TOKEN_NOT_ALLOWED);
+        if (!_destinationAllowed[requestHub]) revert TxValidationFailed(REASON_DEST_NOT_ALLOWED);
+        if (_getTreasuryVault() == address(0)) revert TxValidationFailed(REASON_TREASURY_NOT_SET);
         target = requestHub;
         value = 0;
         data = abi.encodeCall(RequestHubLike.addBounty, (requestId, token, amount));
     }
 
-    function buildVaultDepositTx(uint256 communityId, address adapter, address token, uint256 amount, bytes calldata params)
+    function buildVaultDepositTx(address adapter, address token, uint256 amount, bytes calldata params)
         external
         view
         returns (address target, uint256 value, bytes memory data)
     {
-        _validateAdapter(communityId, adapter);
-        (bool ok, bytes32 reason) = validateSpend(communityId, token, adapter, amount);
+        _validateAdapter(adapter);
+        (bool ok, bytes32 reason) = validateSpend(token, adapter, amount);
         if (!ok) revert TxValidationFailed(reason);
         target = adapter;
         value = 0;
@@ -156,16 +160,15 @@ contract TreasuryAdapter is AccessManaged {
     }
 
     function buildVaultWithdrawTx(
-        uint256 communityId,
         address adapter,
         address token,
         uint256 amount,
         address to,
         bytes calldata params
     ) external view returns (address target, uint256 value, bytes memory data) {
-        _validateAdapter(communityId, adapter);
+        _validateAdapter(adapter);
         // destination allowlist applies to receiver of withdrawn funds
-        (bool ok, bytes32 reason) = validateSpend(communityId, token, to, amount);
+        (bool ok, bytes32 reason) = validateSpend(token, to, amount);
         if (!ok) revert TxValidationFailed(reason);
         target = adapter;
         value = 0;
@@ -175,13 +178,28 @@ contract TreasuryAdapter is AccessManaged {
     /*//////////////////////////////////////////////////////////////
                           INTERNAL HELPERS
     //////////////////////////////////////////////////////////////*/
-
-    function _getTreasuryVault(uint256 communityId) internal view returns (address) {
+    function _getTreasuryVault() internal view returns (address) {
         return communityRegistry.getCommunityModules(communityId).treasuryVault;
     }
 
-    function _validateAdapter(uint256 communityId, address adapter) internal view {
-        if (!vaultAdapterAllowed[communityId][adapter]) revert TxValidationFailed(REASON_ADAPTER_NOT_ALLOWED);
+    function _validateAdapter(address adapter) internal view {
+        if (!_vaultAdapterAllowed[adapter]) revert TxValidationFailed(REASON_ADAPTER_NOT_ALLOWED);
+    }
+
+    function tokenAllowed(address token) external view returns (bool) {
+        return _tokenAllowed[token];
+    }
+
+    function destinationAllowed(address destination) external view returns (bool) {
+        return _destinationAllowed[destination];
+    }
+
+    function vaultAdapterAllowed(address adapter) external view returns (bool) {
+        return _vaultAdapterAllowed[adapter];
+    }
+
+    function capBps(address token) external view returns (uint16) {
+        return _capBps[token];
     }
 }
 

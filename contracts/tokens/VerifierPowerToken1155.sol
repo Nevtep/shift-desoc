@@ -9,11 +9,14 @@ import {Errors} from "contracts/libs/Errors.sol";
 /// @notice Per-community verifier power token using ERC-1155 with AccessManager authority
 /// @dev Token ID represents communityId; AccessManager binds which roles can mint/burn/transfer
 contract VerifierPowerToken1155 is ERC1155, AccessManaged {
-    /// @notice Total supply per community for tracking
-    mapping(uint256 => uint256) public totalSupply;
-    
-    /// @notice Track if a community has been initialized
-    mapping(uint256 => bool) public communityInitialized;
+    /// @notice Immutable community scope for this token instance.
+    uint256 public immutable communityId;
+
+    /// @notice Total verifier power supply for the bound community.
+    uint256 internal _totalSupply;
+
+    /// @notice Community initialization flag for the bound community.
+    bool internal _communityInitialized;
     
     /// @notice Events for verifier power changes
     event VerifierGranted(address indexed to, uint256 indexed communityId, uint256 amount, string reasonCID);
@@ -29,57 +32,56 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
     /// @notice Constructor
     /// @param manager Address of the AccessManager authority
     /// @param uri Base metadata URI for the tokens
-    constructor(address manager, string memory uri) ERC1155(uri) AccessManaged(manager) {
+    constructor(address manager, string memory uri, uint256 _communityId) ERC1155(uri) AccessManaged(manager) {
         if (manager == address(0)) revert Errors.ZeroAddress();
+        if (_communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+        communityId = _communityId;
     }
     
-    /// @notice Initialize a new community with metadata
-    /// @param communityId Community identifier 
-    /// @param metadataURI IPFS hash containing community verifier metadata
-    function initializeCommunity(
-        uint256 communityId, 
-        string calldata metadataURI
-    ) external restricted {
-        if (communityInitialized[communityId]) {
+    /// @notice Initialize this token's immutable community with metadata
+    function initializeCommunity(string calldata metadataURI) external restricted {
+        _initializeCommunity(metadataURI);
+    }
+
+    function _initializeCommunity(string calldata metadataURI) internal {
+        if (_communityInitialized) {
             revert Errors.InvalidInput("Community already initialized");
         }
-        
-        communityInitialized[communityId] = true;
+
+        _communityInitialized = true;
         emit CommunityInitialized(communityId, metadataURI);
     }
     
-    /// @notice Mint verifier power tokens (AccessManager-authorized)
-    /// @param to Address to mint tokens to
-    /// @param communityId Community identifier (token ID)
-    /// @param amount Amount of verifier power to mint
-    /// @param reasonCID IPFS hash explaining reason for granting verifier power
+    /// @notice Mint verifier power for this token's immutable community
     function mint(
-        address to, 
-        uint256 communityId, 
-        uint256 amount, 
+        address to,
+        uint256 amount,
         string calldata reasonCID
     ) external restricted {
+        _mintPower(to, amount, reasonCID);
+    }
+
+    function _mintPower(address to, uint256 amount, string calldata reasonCID) internal {
         if (to == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert InvalidAmount(amount);
-        if (!communityInitialized[communityId]) revert CommunityNotInitialized(communityId);
+        if (!_communityInitialized) revert CommunityNotInitialized(communityId);
         
-        totalSupply[communityId] += amount;
+        _totalSupply += amount;
         _mint(to, communityId, amount, "");
         
         emit VerifierGranted(to, communityId, amount, reasonCID);
     }
     
-    /// @notice Burn verifier power tokens (AccessManager-authorized)
-    /// @param from Address to burn tokens from
-    /// @param communityId Community identifier (token ID)
-    /// @param amount Amount of verifier power to burn
-    /// @param reasonCID IPFS hash explaining reason for revoking verifier power
+    /// @notice Burn verifier power for this token's immutable community
     function burn(
-        address from, 
-        uint256 communityId, 
+        address from,
         uint256 amount,
         string calldata reasonCID
     ) external restricted {
+        _burnPower(from, amount, reasonCID);
+    }
+
+    function _burnPower(address from, uint256 amount, string calldata reasonCID) internal {
         if (from == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert InvalidAmount(amount);
         
@@ -88,25 +90,28 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
             revert InsufficientBalance(from, communityId, amount, currentBalance);
         }
         
-        totalSupply[communityId] -= amount;
+        _totalSupply -= amount;
         _burn(from, communityId, amount);
         
         emit VerifierRevoked(from, communityId, amount, reasonCID);
     }
     
-    /// @notice Batch mint to multiple addresses (AccessManager-authorized)
-    /// @param to Array of addresses to mint to
-    /// @param communityId Community identifier
-    /// @param amounts Array of amounts to mint
-    /// @param reasonCID IPFS hash explaining the batch operation
+    /// @notice Batch mint verifier power for this token's immutable community
     function batchMint(
         address[] calldata to,
-        uint256 communityId,
         uint256[] calldata amounts,
         string calldata reasonCID
     ) external restricted {
+        _batchMintPower(to, amounts, reasonCID);
+    }
+
+    function _batchMintPower(
+        address[] calldata to,
+        uint256[] calldata amounts,
+        string calldata reasonCID
+    ) internal {
         if (to.length != amounts.length) revert Errors.InvalidInput("Array length mismatch");
-        if (!communityInitialized[communityId]) revert CommunityNotInitialized(communityId);
+        if (!_communityInitialized) revert CommunityNotInitialized(communityId);
         
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < to.length; i++) {
@@ -119,20 +124,23 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
             emit VerifierGranted(to[i], communityId, amounts[i], reasonCID);
         }
         
-        totalSupply[communityId] += totalAmount;
+        _totalSupply += totalAmount;
     }
     
-    /// @notice Batch burn from multiple addresses (AccessManager-authorized)
-    /// @param from Array of addresses to burn from
-    /// @param communityId Community identifier
-    /// @param amounts Array of amounts to burn
-    /// @param reasonCID IPFS hash explaining the batch operation
+    /// @notice Batch burn verifier power for this token's immutable community
     function batchBurn(
         address[] calldata from,
-        uint256 communityId,
         uint256[] calldata amounts,
         string calldata reasonCID
     ) external restricted {
+        _batchBurnPower(from, amounts, reasonCID);
+    }
+
+    function _batchBurnPower(
+        address[] calldata from,
+        uint256[] calldata amounts,
+        string calldata reasonCID
+    ) internal {
         if (from.length != amounts.length) revert Errors.InvalidInput("Array length mismatch");
         
         uint256 totalAmount = 0;
@@ -151,7 +159,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
             emit VerifierRevoked(from[i], communityId, amounts[i], reasonCID);
         }
         
-        totalSupply[communityId] -= totalAmount;
+        _totalSupply -= totalAmount;
     }
     
     /// @notice Disable regular transfers - only AccessManager-authorized transfers allowed via adminTransfer
@@ -178,19 +186,22 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         revert TransfersDisabled();
     }
     
-    /// @notice Administrative transfer by authorized governance (for governance decisions)
-    /// @param from Source address
-    /// @param to Destination address  
-    /// @param communityId Community identifier
-    /// @param amount Amount to transfer
-    /// @param reasonCID IPFS hash explaining the transfer
+    /// @notice Administrative transfer for this token's immutable community
     function adminTransfer(
         address from,
         address to,
-        uint256 communityId,
         uint256 amount,
         string calldata reasonCID
     ) external restricted {
+        _adminTransferPower(from, to, amount, reasonCID);
+    }
+
+    function _adminTransferPower(
+        address from,
+        address to,
+        uint256 amount,
+        string calldata reasonCID
+    ) internal {
         if (from == address(0) || to == address(0)) revert Errors.ZeroAddress();
         if (amount == 0) revert InvalidAmount(amount);
         
@@ -206,12 +217,17 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         emit VerifierGranted(to, communityId, amount, reasonCID);
     }
     
-    /// @notice Check if address has any verifier power for community
-    /// @param account Address to check
-    /// @param communityId Community identifier
-    /// @return True if account has > 0 tokens for community
-    function hasVerifierPower(address account, uint256 communityId) external view returns (bool) {
+    /// @notice Check if address has verifier power in this token's immutable community
+    function hasVerifierPower(address account) public view returns (bool) {
         return balanceOf(account, communityId) > 0;
+    }
+
+    function totalSupply() external view returns (uint256) {
+        return _totalSupply;
+    }
+
+    function communityInitialized() external view returns (bool) {
+        return _communityInitialized;
     }
     
     /// @notice Get all addresses with verifier power for a community (view only - gas intensive)
@@ -237,24 +253,24 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         powers = new uint256[](0);
         hasMore = false;
         
-        // TODO: Implement efficient verifier enumeration using event indexing
-        // or maintain an auxiliary mapping of communityId => verifier addresses
+        // Future enhancement: implement efficient verifier enumeration using event indexing
+        // or maintain an auxiliary mapping of communityId => verifier addresses.
     }
     
-    /// @notice Get verifier power statistics for a community
-    /// @param communityId Community identifier
+    /// @notice Get verifier power statistics for this token's immutable community
     /// @return totalVerifiers Total number of verifiers (would need tracking)
     /// @return totalPower Total verifier power distributed
     /// @return averagePower Average power per verifier
-    function getCommunityStats(uint256 communityId) external view returns (
+    function getCommunityStats() external view returns (
         uint256 totalVerifiers,
         uint256 totalPower,
         uint256 averagePower
     ) {
-        totalPower = totalSupply[communityId];
+        totalPower = _totalSupply;
         
         // Note: totalVerifiers would need auxiliary tracking for efficiency
-        totalVerifiers = 0; // TODO: Implement verifier counting
+        // Verifier counting requires an auxiliary indexed set to keep this call efficient.
+        totalVerifiers = 0;
         averagePower = totalVerifiers > 0 ? totalPower / totalVerifiers : 0;
     }
     
@@ -263,5 +279,5 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
     function setURI(string calldata newURI) external restricted {
         _setURI(newURI);
     }
-    
+
 }
