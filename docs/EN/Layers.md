@@ -13,6 +13,22 @@ Shift is currently operated in a staging-first mode on Base Sepolia.
 
 This policy applies only to the staging environment (Base Sepolia). Production rollout policy can differ and must be defined separately.
 
+### Staging Deploy Sequence (Manager Wizard)
+
+For Base Sepolia staging, community deployment follows this fixed state machine:
+
+1. `PRECHECKS`
+2. `DEPLOY_STACK`
+3. `CONFIGURE_ACCESS_PERMISSIONS`
+4. `HANDOFF_ADMIN_TO_TIMELOCK`
+5. `VERIFY_DEPLOYMENT`
+
+Completion is blocked unless timelock handoff is confirmed and verification checks pass.
+
+Step semantics are strict in staging:
+- `DEPLOY_STACK` deploys per-community bytecode only (governance, verification, economic, commerce, coordination) via shared layer factories.
+- `CONFIGURE_ACCESS_PERMISSIONS` performs `registerCommunity`, ParamController policy writes, `setModuleAddresses`, and role/permission wiring.
+
 ---
 
 ## Layer 1: Community Coordination

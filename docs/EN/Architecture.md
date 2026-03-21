@@ -20,6 +20,9 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 
 - **Current stage (staging/test)**: Active on Base Sepolia; Base mainnet is the launch target. All privileged operations remain timelock-gated; ParamController is the policy source; no staking for verifiers; TreasuryAdapter guardrails stay intact.
 - **Access control posture (Jan 2026)**: Timelock holds AccessManager admin; deploy-complete wires per-function roles across verification, economic, and commerce modules so privileged mutations execute via governance.
+- **Manager deploy state contract (Mar 2026)**: Staging deployments execute `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> HANDOFF_ADMIN_TO_TIMELOCK -> VERIFY_DEPLOYMENT`; completion is blocked unless handoff and verification both pass.
+    - `DEPLOY_STACK`: bytecode deployment only through layer factories.
+    - `CONFIGURE_ACCESS_PERMISSIONS`: registry + policy + module wiring + runtime role grants.
 - **Achieved milestones**:
     - **Q3 2025**: Alpha contract suite and research completed; staging deployment to Base Sepolia.
     - **Q4 2025**: Marketing site live and basic admin tool shipped.
@@ -49,7 +52,7 @@ For step-by-step lifecycle walkthroughs, see [docs/EN/Flows.md](docs/EN/Flows.md
 │ │- Metadata        │  │- Discussions    │  │- Proposals      │  │- Dynamic Parameters    │ │
 │ │- Parameters      │  │- Moderation     │  │- Collaboration  │  │- Governance Control    │ │
 │ │- Module Registry │  │- Tagging        │  │- Version Ctrl   │  │- Emergency Override    │ │
-│ │- Cross-Community │  │- Event Stream   │  │- Escalation     │  │- Migration Support     │ │
+│ │- Cross-Community │  │- Event Stream   │  │- Escalation     │  │- Clean-Slate Staging   │ │
 │ └──────────────────┘  └─────────────────┘  └─────────────────┘  └─────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```

@@ -33,9 +33,14 @@ describe("useDeployWizard execution flow", () => {
                 communityId: 77
               };
             }
-            if (step === "WIRE_ROLES") {
+            if (step === "CONFIGURE_ACCESS_PERMISSIONS") {
               return {
                 txHashes: ["0x2000000000000000000000000000000000000000000000000000000000000002"]
+              };
+            }
+            if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
+              return {
+                txHashes: ["0x3000000000000000000000000000000000000000000000000000000000000003"]
               };
             }
             return {};
@@ -84,7 +89,7 @@ describe("useDeployWizard execution flow", () => {
                 communityId: 77
               };
             }
-            if (step === "WIRE_ROLES") {
+            if (step === "CONFIGURE_ACCESS_PERMISSIONS") {
               throw new Error("wire failed");
             }
             return {};
@@ -98,7 +103,7 @@ describe("useDeployWizard execution flow", () => {
     });
 
     expect(result.current.session?.status).toBe("failed");
-    expect(result.current.session?.lastError?.stepKey).toBe("WIRE_ROLES");
+    expect(result.current.session?.lastError?.stepKey).toBe("CONFIGURE_ACCESS_PERMISSIONS");
     expect(result.current.error).toBe("wire failed");
   });
 
@@ -123,9 +128,14 @@ describe("useDeployWizard execution flow", () => {
                 communityId: 77
               };
             }
-            if (step === "WIRE_ROLES") {
+            if (step === "CONFIGURE_ACCESS_PERMISSIONS") {
               return {
                 txHashes: ["0x2000000000000000000000000000000000000000000000000000000000000002"]
+              };
+            }
+            if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
+              return {
+                txHashes: ["0x3000000000000000000000000000000000000000000000000000000000000003"]
               };
             }
             return {};
@@ -162,6 +172,94 @@ describe("useDeployWizard execution flow", () => {
     });
 
     expect(executedSteps[firstRunLength]).toBe("PRECHECKS");
+    expect(result.current.session?.status).toBe("completed");
+  });
+
+  it("ignores incompatible legacy resume sessions and starts fresh", async () => {
+    mockWagmiHooks({
+      connected: true,
+      address: "0xabc1230000000000000000000000000000000000",
+      chainId: 84532
+    });
+
+    const executedSteps: string[] = [];
+
+    const { result } = renderHook(
+      () =>
+        useDeployWizard({
+          stepExecutor: async (step) => {
+            executedSteps.push(step);
+            if (step === "DEPLOY_STACK") {
+              return {
+                txHashes: ["0x1000000000000000000000000000000000000000000000000000000000000001"],
+                communityId: 88
+              };
+            }
+            if (step === "CONFIGURE_ACCESS_PERMISSIONS") {
+              return {
+                txHashes: ["0x2000000000000000000000000000000000000000000000000000000000000002"]
+              };
+            }
+            if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
+              return {
+                txHashes: ["0x3000000000000000000000000000000000000000000000000000000000000003"]
+              };
+            }
+            return {};
+          },
+          readVerificationSnapshot: async () => ({
+            modules: { valuableActionRegistryMatches: true },
+            vptInitialized: true,
+            roles: {
+              rrPositionManager: true,
+              rrDistributor: true,
+              commerceDisputesCaller: true,
+              housingMarketplaceCaller: true,
+              vaIssuerRequestHub: true
+            },
+            marketplaceActive: true,
+            revenueTreasurySet: true
+          })
+        }),
+      { wrapper: TestWrapper }
+    );
+
+    const incompatibleLegacySession = {
+      sessionId: "legacy-session",
+      deployerAddress: "0xabc1230000000000000000000000000000000000",
+      chainId: 84532,
+      targetType: "registered" as const,
+      status: "failed" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      steps: [
+        {
+          key: "PRECHECKS" as const,
+          name: "Preflight",
+          purpose: "",
+          status: "succeeded" as const,
+          expectedTxCount: 0,
+          confirmedTxCount: 0,
+          txHashes: [] as `0x${string}`[]
+        },
+        {
+          key: "DEPLOY_STACK" as const,
+          name: "Deploy Community Stack",
+          purpose: "",
+          status: "failed" as const,
+          expectedTxCount: 8,
+          confirmedTxCount: 0,
+          txHashes: [] as `0x${string}`[]
+        }
+      ],
+      communityId: 88
+    };
+
+    await act(async () => {
+      await result.current.run(validConfig(), incompatibleLegacySession as any);
+    });
+
+    expect(executedSteps[0]).toBe("PRECHECKS");
     expect(result.current.session?.status).toBe("completed");
   });
 });

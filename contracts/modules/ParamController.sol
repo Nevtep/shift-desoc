@@ -8,6 +8,26 @@ import {ICommunityRegistry} from "contracts/modules/interfaces/ICommunityRegistr
 /// @notice Manages community parameters including verification settings and fee schedules
 /// @dev Provides governance-controlled parameter management for community-specific configurations
 contract ParamController {
+    /// @notice Batch bootstrap config passed from CommunityRegistry during one-tx community creation
+    struct BootstrapConfig {
+        uint256 verifierPanelSize;
+        uint256 verifierMin;
+        uint256 maxPanelsPerEpoch;
+        bool useVPTWeighting;
+        uint256 maxWeightPerVerifier;
+        uint256 cooldownAfterFraud;
+        uint256 debateWindow;
+        uint256 voteWindow;
+        uint256 executionDelay;
+        uint256 minSeniority;
+        uint256 minSBTs;
+        uint256 proposalThreshold;
+        uint16 minTreasuryBps;
+        uint16 minPositionsBps;
+        uint8 spilloverTarget;
+        uint16 spilloverSplitBpsToTreasury;
+    }
+
     /// @notice Fee period structure for time-based fee changes
     struct FeePeriod { 
         uint64 start; 
@@ -449,5 +469,71 @@ contract ParamController {
         address[] memory emptyAssets = new address[](0);
         addressArrayParams[communityId][BACKING_ASSETS] = emptyAssets;
         emit AddressArrayParamSet(communityId, BACKING_ASSETS, emptyAssets);
+    }
+
+    /// @notice Batch bootstrap community parameters in one call (registry-only)
+    /// @param communityId Community identifier
+    /// @param deployerAdmin Expected bootstrap admin for this community
+    /// @param config Full bootstrap parameter bundle
+    function bootstrapConfigureFromRegistry(
+        uint256 communityId,
+        address deployerAdmin,
+        BootstrapConfig calldata config
+    ) external onlyCommunityRegistry {
+        address timelock = communityRegistry.getTimelock(communityId);
+        if (timelock != address(0)) revert Errors.InvalidInput("Timelock already set");
+        if (!communityRegistry.communityAdmins(communityId, deployerAdmin)) revert Errors.NotAuthorized(deployerAdmin);
+
+        if (config.verifierMin > config.verifierPanelSize) revert Errors.InvalidInput("Min cannot exceed panel size");
+        if (config.verifierPanelSize == 0) revert Errors.InvalidInput("Panel size cannot be zero");
+        if (config.minTreasuryBps + config.minPositionsBps > 10000) {
+            revert Errors.InvalidInput("Guarantees exceed 100%");
+        }
+        if (config.spilloverTarget > 2) {
+            revert Errors.InvalidInput("Invalid spillover target");
+        }
+        if (config.spilloverTarget == 2 && config.spilloverSplitBpsToTreasury > 10000) {
+            revert Errors.InvalidInput("Split bps > 100%");
+        }
+
+        uintParams[communityId][VERIFIER_PANEL_SIZE] = config.verifierPanelSize;
+        uintParams[communityId][VERIFIER_MIN] = config.verifierMin;
+        uintParams[communityId][MAX_PANELS_PER_EPOCH] = config.maxPanelsPerEpoch;
+        uintParams[communityId][MAX_WEIGHT_PER_VERIFIER] = config.maxWeightPerVerifier;
+        uintParams[communityId][COOLDOWN_AFTER_FRAUD] = config.cooldownAfterFraud;
+        boolParams[communityId][USE_VPT_WEIGHTING] = config.useVPTWeighting;
+
+        emit UintParamSet(communityId, VERIFIER_PANEL_SIZE, config.verifierPanelSize);
+        emit UintParamSet(communityId, VERIFIER_MIN, config.verifierMin);
+        emit UintParamSet(communityId, MAX_PANELS_PER_EPOCH, config.maxPanelsPerEpoch);
+        emit UintParamSet(communityId, MAX_WEIGHT_PER_VERIFIER, config.maxWeightPerVerifier);
+        emit UintParamSet(communityId, COOLDOWN_AFTER_FRAUD, config.cooldownAfterFraud);
+        emit BoolParamSet(communityId, USE_VPT_WEIGHTING, config.useVPTWeighting);
+
+        uintParams[communityId][DEBATE_WINDOW] = config.debateWindow;
+        uintParams[communityId][VOTE_WINDOW] = config.voteWindow;
+        uintParams[communityId][EXECUTION_DELAY] = config.executionDelay;
+
+        emit UintParamSet(communityId, DEBATE_WINDOW, config.debateWindow);
+        emit UintParamSet(communityId, VOTE_WINDOW, config.voteWindow);
+        emit UintParamSet(communityId, EXECUTION_DELAY, config.executionDelay);
+
+        uintParams[communityId][MIN_SENIORITY] = config.minSeniority;
+        uintParams[communityId][MIN_SBTS] = config.minSBTs;
+        uintParams[communityId][PROPOSAL_THRESHOLD] = config.proposalThreshold;
+
+        emit UintParamSet(communityId, MIN_SENIORITY, config.minSeniority);
+        emit UintParamSet(communityId, MIN_SBTS, config.minSBTs);
+        emit UintParamSet(communityId, PROPOSAL_THRESHOLD, config.proposalThreshold);
+
+        uintParams[communityId][MIN_TREASURY_BPS] = config.minTreasuryBps;
+        uintParams[communityId][MIN_POSITIONS_BPS] = config.minPositionsBps;
+        uintParams[communityId][SPILLOVER_TARGET] = config.spilloverTarget;
+        uintParams[communityId][SPILLOVER_SPLIT_BPS_TREASURY] = config.spilloverSplitBpsToTreasury;
+
+        emit UintParamSet(communityId, MIN_TREASURY_BPS, config.minTreasuryBps);
+        emit UintParamSet(communityId, MIN_POSITIONS_BPS, config.minPositionsBps);
+        emit UintParamSet(communityId, SPILLOVER_TARGET, config.spilloverTarget);
+        emit UintParamSet(communityId, SPILLOVER_SPLIT_BPS_TREASURY, config.spilloverSplitBpsToTreasury);
     }
 }

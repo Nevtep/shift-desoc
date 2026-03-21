@@ -63,6 +63,7 @@ contract DeploymentRoleWiringTest is Test {
     ERC20MockRole stable;
 
     uint256 communityId;
+    uint256 communityIdTwo;
 
     address governance = address(this);
     address distributor = address(0xD1);
@@ -83,6 +84,7 @@ contract DeploymentRoleWiringTest is Test {
         communityRegistry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(communityRegistry));
         communityId = communityRegistry.registerCommunity("Comm", "Desc", "", 0);
+        communityIdTwo = communityRegistry.registerCommunity("Comm 2", "Desc 2", "", 0);
 
         valuableActionRegistry = new ValuableActionRegistry(address(accessManager), address(communityRegistry), governance, communityId);
         sbt = new ValuableActionSBT(address(accessManager), communityId);
@@ -325,5 +327,65 @@ contract DeploymentRoleWiringTest is Test {
         assertEq(debateWindow, 2 days);
         assertEq(voteWindow, 2 days);
         assertEq(executionDelay, 2 days);
+    }
+
+    function testPostHandoffDeployerRestrictedWritesFail() public {
+        address timelockAdmin = address(0xA11CE);
+        uint64 adminRole = accessManager.ADMIN_ROLE();
+
+        accessManager.grantRole(adminRole, timelockAdmin, 0);
+        accessManager.revokeRole(adminRole, governance);
+
+        (bool timelockHasAdmin,) = accessManager.hasRole(adminRole, timelockAdmin);
+        (bool governanceHasAdmin,) = accessManager.hasRole(adminRole, governance);
+        assertTrue(timelockHasAdmin);
+        assertFalse(governanceHasAdmin);
+
+        vm.expectRevert();
+        revenueRouter.setSupportedToken(communityId, address(stable), false);
+
+        vm.prank(timelockAdmin);
+        revenueRouter.setSupportedToken(communityId, address(stable), false);
+    }
+
+    function testCrossCommunityPrivilegedMutationFails() public {
+        vm.expectRevert();
+        revenueRouter.setSupportedToken(communityIdTwo, address(stable), true);
+
+        vm.expectRevert();
+        marketplace.setCommunityActive(communityIdTwo, true);
+    }
+
+    function testPostHandoffManagerRestrictedWritesFail() public {
+        address timelockAdmin = address(0xB0B);
+        uint64 adminRole = accessManager.ADMIN_ROLE();
+
+        accessManager.grantRole(adminRole, timelockAdmin, 0);
+        accessManager.revokeRole(adminRole, governance);
+
+        vm.prank(distributor);
+        vm.expectRevert();
+        revenueRouter.setSupportedToken(communityId, address(stable), false);
+    }
+
+    function testPostHandoffBootstrapAdminCannotBeReclaimed() public {
+        address timelockAdmin = address(0xCAFE);
+        uint64 adminRole = accessManager.ADMIN_ROLE();
+
+        accessManager.grantRole(adminRole, timelockAdmin, 0);
+        accessManager.revokeRole(adminRole, governance);
+
+        vm.prank(governance);
+        vm.expectRevert();
+        accessManager.grantRole(adminRole, governance, 0);
+
+        vm.prank(governance);
+        vm.expectRevert();
+        accessManager.revokeRole(adminRole, timelockAdmin);
+
+        (bool timelockHasAdmin,) = accessManager.hasRole(adminRole, timelockAdmin);
+        (bool governanceHasAdmin,) = accessManager.hasRole(adminRole, governance);
+        assertTrue(timelockHasAdmin);
+        assertFalse(governanceHasAdmin);
     }
 }

@@ -106,6 +106,99 @@ contract CommunityRegistryTest is Test {
         // Note: Parameters are now managed by ParamController
         // They need to be set separately via initializeDefaultParameters or ParamController directly
     }
+
+    function testBootstrapCommunitySingleTxWiresParamsAndModules() public {
+        CommunityRegistry.BootstrapParams memory bootstrapParams = CommunityRegistry.BootstrapParams({
+            verifierPanelSize: 5,
+            verifierMin: 3,
+            maxPanelsPerEpoch: 20,
+            useVPTWeighting: true,
+            maxWeightPerVerifier: 1000,
+            cooldownAfterFraud: 86400,
+            debateWindow: 7200,
+            voteWindow: 86400,
+            executionDelay: 21600,
+            minSeniority: 0,
+            minSBTs: 0,
+            proposalThreshold: 0,
+            minTreasuryBps: 1000,
+            minPositionsBps: 2000,
+            spilloverTarget: 1,
+            spilloverSplitBpsToTreasury: 5000
+        });
+
+        CommunityRegistry.ModuleAddresses memory modules = CommunityRegistry.ModuleAddresses({
+            governor: address(0x1001),
+            timelock: address(0),
+            requestHub: address(0x1002),
+            draftsManager: address(0x1003),
+            engagementsManager: address(0x1004),
+            valuableActionRegistry: address(0x1005),
+            verifierPowerToken: address(0x1006),
+            verifierElection: address(0x1007),
+            verifierManager: address(0x1008),
+            valuableActionSBT: address(0x1009),
+            treasuryVault: address(0x1010),
+            treasuryAdapter: address(0x1011),
+            communityToken: address(0x1012),
+            paramController: address(paramController)
+        });
+
+        vm.prank(user1);
+        uint256 communityId = registry.bootstrapCommunity(
+            "Bootstrap Community",
+            "One tx bootstrap",
+            "ipfs://bootstrap",
+            0,
+            bootstrapParams,
+            modules
+        );
+
+        assertEq(communityId, 1);
+        assertTrue(registry.communityAdmins(communityId, user1));
+
+        (
+            uint256 panelSize,
+            uint256 verifierMin,
+            uint256 maxPanels,
+            bool weighting,
+            uint256 maxWeight,
+            uint256 cooldown
+        ) = paramController.getVerifierParams(communityId);
+        assertEq(panelSize, 5);
+        assertEq(verifierMin, 3);
+        assertEq(maxPanels, 20);
+        assertTrue(weighting);
+        assertEq(maxWeight, 1000);
+        assertEq(cooldown, 86400);
+
+        (uint256 debateWindow, uint256 voteWindow, uint256 executionDelay) = paramController.getGovernanceParams(communityId);
+        assertEq(debateWindow, 7200);
+        assertEq(voteWindow, 86400);
+        assertEq(executionDelay, 21600);
+
+        (uint256 minSeniority, uint256 minSBTs, uint256 proposalThreshold) = paramController.getEligibilityParams(communityId);
+        assertEq(minSeniority, 0);
+        assertEq(minSBTs, 0);
+        assertEq(proposalThreshold, 0);
+
+        (
+            uint16 minTreasuryBps,
+            uint16 minPositionsBps,
+            uint8 spilloverTarget,
+            uint16 spilloverSplit
+        ) = paramController.getRevenuePolicy(communityId);
+        assertEq(minTreasuryBps, 1000);
+        assertEq(minPositionsBps, 2000);
+        assertEq(spilloverTarget, 1);
+        assertEq(spilloverSplit, 5000);
+
+        CommunityRegistry.ModuleAddresses memory wired = registry.getCommunityModules(communityId);
+        assertEq(wired.governor, modules.governor);
+        assertEq(wired.requestHub, modules.requestHub);
+        assertEq(wired.treasuryAdapter, modules.treasuryAdapter);
+        assertEq(wired.paramController, modules.paramController);
+    }
     
     function testRegisterCommunityEmptyName() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Community name cannot be empty"));

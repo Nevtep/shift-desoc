@@ -22,7 +22,7 @@ Shift DeSoc provides two complementary CLI tools for managing deployed systems:
 In addition to CLI operations, Manager Home now includes a user-signed deploy wizard designed for staged community deployment from the web app.
 
 - Route placement: wizard appears on `/` above the communities index.
-- Flow: `Preflight -> Deploy Community Stack -> Wire Roles And Configuration -> Verify Community Deployment`.
+- Flow: `Preflight -> Deploy Contract Layers -> Wire Registry/Policy/Permissions -> Handoff Admin -> Verify Community Deployment`.
 - Authority model: transactions are user-signed; no backend deployer key path is required.
 - Shared infra policy: `accessManager`, `paramController`, and `communityRegistry` are hard preconditions.
 - Source of truth: once a community is registered, resume/completion inference must be derived from on-chain reads (CommunityRegistry/module-role checks), not deployment JSON files.

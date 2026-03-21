@@ -464,7 +464,7 @@ The system is designed around the concept of **communities** — each community 
 | **Type-Safe Storage** | Separate mappings for uint256, bool, and address[] parameters. |
 | **Fee Scheduling** | Time-based fee periods with start/end/bps for dynamic fee transitions. |
 | **Batch Parameter Setting** | Dedicated batch-setters for verifier params, governance params, eligibility params, revenue policy, and cohort params. |
-| **Registry Bootstrap** | One-time wiring of CommunityRegistry; before timelock is set, community admins can configure parameters. |
+| **Registry Bootstrap** | One-time wiring of CommunityRegistry and ParamController before enforced handoff to timelock admin authority. |
 | **Validation** | Minimum guarantees cannot exceed 100%, panel size/min consistency checks, etc. |
 
 #### Managed Parameters
@@ -572,7 +572,7 @@ The system is designed around the concept of **communities** — each community 
 - **AccessManager**: All privileged operations use OpenZeppelin `AccessManaged`. A single `AccessManager` instance governs the entire system.
 - **15 System Roles**: Defined in `Roles.sol` (uint64), covering revenue routing, investment recording, SBT management, token minting, commerce, housing, and verifier management.
 - **3 Community Roles**: Governance, Moderator, Curator (bytes32), managed per-community in `CommunityRegistry`.
-- **Bootstrap Path**: Before timelock is wired, community admins can configure parameters.
+- **Bootstrap Path**: Bootstrap writes are limited to deploy steps and must end with AccessManager admin handoff to timelock.
 
 ### Error Handling
 

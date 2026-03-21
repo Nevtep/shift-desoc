@@ -3,11 +3,25 @@ import {
   CommunityDeployConfig,
   defaultCommunityDeployConfig,
   deployCommunityStack,
-  loadDeploymentFile,
-  saveDeploymentFile,
 } from "./community-deploy-lib";
 
-const { ethers, network } = hre;
+const { ethers } = hre;
+
+async function sumGasUsedBetween(startBlock: number, endBlock: number): Promise<bigint> {
+  let total = 0n;
+  for (let blockNumber = startBlock + 1; blockNumber <= endBlock; blockNumber++) {
+    const block = await ethers.provider.getBlock(blockNumber, true);
+    const txs = Array.isArray(block?.transactions) ? block.transactions : [];
+    for (const tx of txs) {
+      const hash = typeof tx === "string" ? tx : tx.hash;
+      const receipt = await ethers.provider.getTransactionReceipt(hash);
+      if (receipt?.gasUsed) {
+        total += receipt.gasUsed;
+      }
+    }
+  }
+  return total;
+}
 
 function parseBool(value: string | undefined, fallback: boolean): boolean {
   if (value === undefined) return fallback;
@@ -23,6 +37,7 @@ function parseAddresses(csv: string | undefined): string[] {
 }
 
 async function main() {
+  const startBlock = await ethers.provider.getBlockNumber();
   const [deployer] = await ethers.getSigners();
   const base = defaultCommunityDeployConfig(deployer.address);
 
@@ -59,32 +74,11 @@ async function main() {
 
   const result = await deployCommunityStack(config);
 
-  const existing = loadDeploymentFile(network.name);
-  saveDeploymentFile(
-    {
-      network: network.name,
-      timestamp: new Date().toISOString(),
-      deployer: deployer.address,
-      communityId: result.communityId,
-      addresses: {
-        ...(existing?.addresses ?? {}),
-        ...result.addresses,
-      },
-      configuration: {
-        communityName: config.communityName,
-        votingDelay: config.votingDelay,
-        votingPeriod: config.votingPeriod,
-        executionDelay: config.executionDelay,
-        minTreasuryBps: config.minTreasuryBps,
-        minPositionsBps: config.minPositionsBps,
-        supportedTokens: config.supportedTokens,
-      },
-      startBlock: existing?.startBlock,
-    },
-    network.name,
-  );
+  const endBlock = await ethers.provider.getBlockNumber();
+  const totalGasUsed = await sumGasUsedBetween(startBlock, endBlock);
 
   console.log(`✅ Community stack deployed (communityId=${result.communityId})`);
+  console.log(`⛽ Total gas used (script scope): ${totalGasUsed.toString()}`);
 }
 
 main().catch((error) => {

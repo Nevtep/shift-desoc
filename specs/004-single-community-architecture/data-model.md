@@ -188,7 +188,7 @@
 - Contract: `contracts/modules/VerifierManager.sol`
 - Refactor evidence:
   - Added constructor immutable `communityId` and bound all mutable entrypoints (`selectJurors`, `reportFraud`) to local community scope via explicit mismatch guard.
-  - Kept interface compatibility by preserving `communityId` function parameters while returning zero/false for mismatched community reads (`hasVerifierPower`, `getEligibleVerifierCount`, `getVerifierPower`).
+  - Updated interface signatures to local-community reads (`hasVerifierPower(address)`, `getEligibleVerifierCount()`, `getVerifierPower(address)`) and removed redundant `communityId` parameters from VerifierManager entrypoints.
   - Updated deployment wiring and constructor propagation so each VerifierManager instance is deployed with explicit local community scope.
 - Test evidence:
   - `test/VerifierManager.t.sol:testSelectJurorsNoEligibleVerifiers`

@@ -16,7 +16,8 @@ describe("wizard-machine", () => {
     expect(steps.map((s) => s.key)).toEqual([
       "PRECHECKS",
       "DEPLOY_STACK",
-      "WIRE_ROLES",
+      "CONFIGURE_ACCESS_PERMISSIONS",
+      "HANDOFF_ADMIN_TO_TIMELOCK",
       "VERIFY_DEPLOYMENT"
     ]);
   });

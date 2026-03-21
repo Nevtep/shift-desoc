@@ -11,15 +11,58 @@ type Props = {
 
 const SHORT_LABELS: Record<string, string> = {
   PRECHECKS: "Preflight",
-  DEPLOY_STACK: "Deploy",
-  WIRE_ROLES: "Wire Roles",
+  DEPLOY_STACK: "Deploy Layers",
+  CONFIGURE_ACCESS_PERMISSIONS: "Wire Registry",
+  HANDOFF_ADMIN_TO_TIMELOCK: "Handoff",
   VERIFY_DEPLOYMENT: "Verify"
 };
 
 const TX_LABELS: Record<string, string> = {
-  DEPLOY_STACK: "Deploy transaction",
-  WIRE_ROLES: "Role configuration"
+  DEPLOY_STACK: "Layer deployment",
+  CONFIGURE_ACCESS_PERMISSIONS: "Permission and registry wiring",
+  HANDOFF_ADMIN_TO_TIMELOCK: "Admin handoff"
 };
+
+const DEPLOY_LAYER_LABELS = [
+  "AccessManager",
+  "Governance layer",
+  "Verification layer",
+  "Economic layer",
+  "Commerce layer",
+  "Coordination layer"
+];
+
+const ACCESS_WIRING_LABELS = [
+  "Set ValuableActionRegistry selector roles",
+  "Set VerifierPowerToken admin selector roles",
+  "Set VerifierPowerToken election-power selector roles",
+  "Set RevenueRouter selector roles",
+  "Set TreasuryAdapter selector roles",
+  "Set Marketplace selector roles",
+  "Grant verifier election power role",
+  "Grant position manager role",
+  "Grant revenue distributor role",
+  "Grant commerce disputes caller role",
+  "Grant housing marketplace caller role",
+  "Grant ValuableAction issuer role",
+  "Initialize verifier community state",
+  "Link ValuableActionSBT to registry",
+  "Allow RequestHub issuance module",
+  "Whitelist founder",
+  "Set community treasury",
+  "Allow supported token in RevenueRouter",
+  "Allow token in TreasuryAdapter",
+  "Set TreasuryAdapter token cap",
+  "Allow RequestHub treasury destination",
+  "Activate marketplace for community",
+  "Link community token in marketplace"
+];
+
+const HANDOFF_LABELS = [
+  "Grant timelock admin role",
+  "Revoke deployer admin role",
+  "Revoke bootstrap coordinator admin role"
+];
 
 function TxItem({
   index,
@@ -36,7 +79,14 @@ function TxItem({
 }) {
   const done = index < confirmed;
   const inProgress = isCurrent && index === confirmed;
-  const baseLabel = TX_LABELS[stepKey] ?? "Transaction";
+  const baseLabel =
+    stepKey === "DEPLOY_STACK"
+      ? DEPLOY_LAYER_LABELS[index] ?? TX_LABELS[stepKey] ?? "Transaction"
+      : stepKey === "CONFIGURE_ACCESS_PERMISSIONS"
+        ? ACCESS_WIRING_LABELS[index] ?? TX_LABELS[stepKey] ?? "Transaction"
+        : stepKey === "HANDOFF_ADMIN_TO_TIMELOCK"
+          ? HANDOFF_LABELS[index] ?? TX_LABELS[stepKey] ?? "Transaction"
+      : TX_LABELS[stepKey] ?? "Transaction";
 
   return (
     <div
@@ -86,9 +136,14 @@ export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
     <section className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 pt-2">
       {hasTxList ? (
         <div className="w-full space-y-2">
-          <p className="text-center text-sm font-medium text-muted-foreground">
-            {SHORT_LABELS[currentStep.key] ?? currentStep.name}
-          </p>
+          <div className="space-y-1 text-center">
+            <p className="text-sm font-medium text-muted-foreground">
+              {SHORT_LABELS[currentStep.key] ?? currentStep.name}
+            </p>
+            <p className="text-xs text-muted-foreground/90">
+              {currentStep.purpose ?? STEP_META[currentStep.key].purpose}
+            </p>
+          </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {Array.from({ length: currentStep.expectedTxCount }, (_, i) => (
               <TxItem
@@ -111,7 +166,7 @@ export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
           const label = SHORT_LABELS[step.key] ?? step.name;
           return (
             <div key={step.key} className="flex items-start">
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex max-w-[6.5rem] flex-col items-center gap-1 text-center sm:max-w-[8rem]">
                 <div
                   className={`flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-colors sm:size-10 ${
                     isDone
@@ -124,12 +179,20 @@ export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
                   {isDone ? <Check className="h-4 w-4 sm:h-5 sm:w-5" /> : i + 1}
                 </div>
                 <span
-                  className={`max-w-[4rem] truncate text-[10px] sm:max-w-[5rem] sm:text-xs ${
+                  className={`max-w-[6rem] truncate text-[10px] sm:max-w-[8rem] sm:text-xs ${
                     isCurrent ? "font-semibold text-foreground" : "text-muted-foreground"
                   }`}
                   title={step.name}
                 >
                   {label}
+                </span>
+                <span
+                  className={`line-clamp-2 text-[9px] leading-tight sm:text-[10px] ${
+                    isCurrent ? "text-foreground/80" : "text-muted-foreground/80"
+                  }`}
+                  title={step.purpose ?? STEP_META[step.key].purpose}
+                >
+                  {step.purpose ?? STEP_META[step.key].purpose}
                 </span>
               </div>
               {i < order.length - 1 ? (

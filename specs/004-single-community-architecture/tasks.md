@@ -5,23 +5,40 @@
 
 **Tests**: Required across contracts, deploy flow, Manager Wizard, and indexer/app compatibility where impacted.
 
+## Coverage Map (T001)
+
+| Requirement Set | Coverage Tasks |
+|-----------------|----------------|
+| `FR-001..FR-003` | `T009-T033` |
+| `FR-004` | `T005`, `T039-T043` |
+| `FR-005` | `T004`, `T005`, `T035`, `T036`, `T038`, `T040`, `T042` |
+| `FR-006` | `T006`, `T009-T032`, `T047-T056` |
+| `FR-007` | `T002`, `T037`, `T044-T046` |
+| `FR-008..FR-011` | `T009-T032`, `T048-T056` |
+| `FR-012` | `T060-T064` |
+| `SI-001..SI-002` | `T004`, `T006`, `T012`, `T035`, `T036`, `T038`, `T040` |
+| `SI-003..SI-006` | `T006`, `T009-T033`, `T047-T056` |
+| `SC-001..SC-003` | `T003`, `T004`, `T006`, `T009-T038`, `T047-T056` |
+| `SC-004..SC-007` | `T002`, `T005`, `T007`, `T039-T046`, `T057-T059` |
+| `SC-008` | `T060-T064` |
+
 ## Format: `[ID] [P?] [Story] Description`
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-- [ ] T001 Build cross-layer impact checklist from `specs/004-single-community-architecture/plan.md` and map FR/SI/SC coverage in `specs/004-single-community-architecture/tasks.md` (FR-001..FR-011, SI-001..SI-006, SC-001..SC-007) [Owner: PM/Architecture] [DoD: Coverage map complete and referenced by task IDs]
-- [ ] T002 Define feature flags/guards for strict staging mode (no migration/backfill/mixed-mode) in `apps/web/lib/deploy/default-step-executor.ts` and `scripts/hardhat/community-deploy-lib.ts` (FR-007, SC-006) [Owner: Web+Scripts] [DoD: Runtime guards and test assertions block legacy paths]
-- [ ] T003 [P] Establish validation command checklist in `specs/004-single-community-architecture/quickstart.md` for Foundry/Hardhat/ABI sync (SC-001, SC-007) [Owner: DevEx] [DoD: Commands validated and documented]
+- [X] T001 Build cross-layer impact checklist from `specs/004-single-community-architecture/plan.md` and map FR/SI/SC coverage in `specs/004-single-community-architecture/tasks.md` (FR-001..FR-011, SI-001..SI-006, SC-001..SC-007) [Owner: PM/Architecture] [DoD: Coverage map complete and referenced by task IDs]
+- [X] T002 Define feature flags/guards for strict staging mode (no migration/backfill/mixed-mode) in `apps/web/lib/deploy/default-step-executor.ts` and `scripts/hardhat/community-deploy-lib.ts` (FR-007, SC-006) [Owner: Web+Scripts] [DoD: Runtime guards and test assertions block legacy paths]
+- [X] T003 [P] Establish validation command checklist in `specs/004-single-community-architecture/quickstart.md` for Foundry/Hardhat/ABI sync (SC-001, SC-007) [Owner: DevEx] [DoD: Commands validated and documented]
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [ ] T004 Implement authority model baseline (bootstrap vs post-handoff) in `scripts/hardhat/community-deploy-lib.ts` and `test/DeploymentRoleWiring.t.sol` (FR-005, SI-001, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Pre-handoff deployer actions pass; post-handoff direct restricted writes fail]
-- [ ] T005 [P] Remove proposal-driven deploy wiring path from runtime orchestration in `apps/web/lib/deploy/default-step-executor.ts` and `apps/web/hooks/useDeployWizard.ts` (FR-004, FR-005, SC-004) [Owner: Web] [DoD: No proposal-wiring branch remains for deploy bootstrap]
-- [ ] T006 [P] Add two-community isolation baseline tests in `test/Wiring.t.sol` and `test/DeploymentRoleWiring.t.sol` (FR-006, SI-003, SC-002) [Owner: Contracts] [DoD: Unauthorized cross-community privileged mutations fail]
-- [ ] T007 Define ABI/event delta checklist for refactor wave in `specs/004-single-community-architecture/contracts/deploy-orchestration.openapi.yaml` and `specs/004-single-community-architecture/plan.md` (MR-002, SC-007) [Owner: Contracts+Indexer] [DoD: Contract/event change checkpoints documented and linked to tasks]
-- [ ] T008 Lock migration/backfill exclusion in workflow docs `specs/004-single-community-architecture/spec.md` and `specs/004-single-community-architecture/quickstart.md` (CM-002, SP-001..SP-004, SC-006) [Owner: Architecture] [DoD: Explicit exclusion language present and validated]
+- [X] T004 Implement authority model baseline (bootstrap vs post-handoff) in `scripts/hardhat/community-deploy-lib.ts` and `test/DeploymentRoleWiring.t.sol` (FR-005, SI-001, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Pre-handoff deployer actions pass; post-handoff direct restricted writes fail]
+- [X] T005 [P] Remove proposal-driven deploy wiring path from runtime orchestration in `apps/web/lib/deploy/default-step-executor.ts` and `apps/web/hooks/useDeployWizard.ts` (FR-004, FR-005, SC-004) [Owner: Web] [DoD: No proposal-wiring branch remains for deploy bootstrap]
+- [X] T006 [P] Add two-community isolation baseline tests in `test/Wiring.t.sol` and `test/DeploymentRoleWiring.t.sol` (FR-006, SI-003, SC-002) [Owner: Contracts] [DoD: Unauthorized cross-community privileged mutations fail]
+- [X] T007 Define ABI/event delta checklist for refactor wave in `specs/004-single-community-architecture/contracts/deploy-orchestration.openapi.yaml` and `specs/004-single-community-architecture/plan.md` (MR-002, SC-007) [Owner: Contracts+Indexer] [DoD: Contract/event change checkpoints documented and linked to tasks]
+- [X] T008 Lock migration/backfill exclusion in workflow docs `specs/004-single-community-architecture/spec.md` and `specs/004-single-community-architecture/quickstart.md` (CM-002, SP-001..SP-004, SC-006) [Owner: Architecture] [DoD: Explicit exclusion language present and validated]
 
 **Checkpoint**: Foundational authority and policy baseline complete.
 
@@ -76,11 +93,11 @@ Single-community DoD rule for US1 refactor tasks:
 
 **Independent Test**: Fresh deploy run reaches verified state, and post-handoff direct restricted writes fail.
 
-- [ ] T034 [US2] [scripts] Deploy per-community `AccessManager` and `ParamController` in `scripts/hardhat/community-deploy-lib.ts` and `scripts/hardhat/deploy-shared-infra.ts` boundaries (FR-002, FR-007, SC-003, SC-006) [Owner: Scripts] [DoD: Community deploy outputs local AM/PC addresses, no shared PC assumption]
-- [ ] T035 [US2] [scripts] Implement selector permission bootstrap in local AccessManager in `scripts/hardhat/community-deploy-lib.ts` and verify via `test/DeploymentRoleWiring.t.sol` (FR-005, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Bootstrap selectors configured and validated]
-- [ ] T036 [US2] [scripts] Implement and verify admin handoff to community timelock in `scripts/hardhat/community-deploy-lib.ts`; add assertions in `test/DeploymentRoleWiring.t.sol` (FR-005, SI-001, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Handoff tx confirmed and deploy completion blocked on failure]
-- [ ] T037 [US2] [scripts] Update deployment metadata outputs in `deployments/*.json` handling inside `scripts/hardhat/community-deploy-lib.ts` to avoid legacy dependency reads (FR-007, SC-006, SC-007) [Owner: Scripts] [DoD: Fresh deployments do not require prior staged data]
-- [ ] T038 [US2] [contracts] Add post-handoff negative tests for deployer/manager restricted writes in `test/DeploymentRoleWiring.t.sol` and `test/Wiring.t.sol` (SI-001, SI-002, SC-005) [Owner: Contracts] [DoD: Direct restricted writes fail after handoff]
+- [X] T034 [US2] [scripts] Deploy per-community `AccessManager` with shared `ParamController`/`CommunityRegistry` boundaries in `scripts/hardhat/community-deploy-lib.ts` and `scripts/hardhat/deploy-shared-infra.ts` (FR-002, FR-007, SC-003, SC-006) [Owner: Scripts] [DoD: Community deploy outputs local AM address while shared infra remains limited to PC/CR]
+- [X] T035 [US2] [scripts] Implement selector permission bootstrap in local AccessManager in `scripts/hardhat/community-deploy-lib.ts` and verify via `test/DeploymentRoleWiring.t.sol` (FR-005, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Bootstrap selectors configured and validated]
+- [X] T036 [US2] [scripts] Implement and verify admin handoff to community timelock in `scripts/hardhat/community-deploy-lib.ts`; add assertions in `test/DeploymentRoleWiring.t.sol` (FR-005, SI-001, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Handoff tx confirmed and deploy completion blocked on failure]
+- [X] T037 [US2] [scripts] Update deployment metadata outputs in `deployments/*.json` handling inside `scripts/hardhat/community-deploy-lib.ts` to avoid legacy dependency reads (FR-007, SC-006, SC-007) [Owner: Scripts] [DoD: Fresh deployments do not require prior staged data]
+- [X] T038 [US2] [contracts] Add post-handoff negative tests for deployer/manager restricted writes in `test/DeploymentRoleWiring.t.sol` and `test/Wiring.t.sol` (SI-001, SI-002, SC-005) [Owner: Contracts] [DoD: Direct restricted writes fail after handoff]
 
 **Checkpoint**: Deploy bootstrap-handoff model complete and proven.
 
@@ -92,11 +109,11 @@ Single-community DoD rule for US1 refactor tasks:
 
 **Independent Test**: Wizard always follows required sequence and supports deterministic retry/restart.
 
-- [ ] T039 [US3] [app] Implement required state enum and transitions in `apps/web/hooks/useDeployWizard.ts` for `PRECHECKS`, `DEPLOY_STACK`, `CONFIGURE_ACCESS_PERMISSIONS`, `HANDOFF_ADMIN_TO_TIMELOCK`, `VERIFY_DEPLOYMENT` (FR-004, UX-001..UX-007, SC-004) [Owner: Web] [DoD: Only allowed transitions exist]
-- [ ] T040 [US3] [app] Implement execution handling for `CONFIGURE_ACCESS_PERMISSIONS` and `HANDOFF_ADMIN_TO_TIMELOCK` in `apps/web/lib/deploy/default-step-executor.ts` (FR-004, FR-005, SC-003, SC-004) [Owner: Web] [DoD: State handlers execute and persist deterministic results]
-- [ ] T041 [US3] [app] Update wizard UI states and control gating in `apps/web/components/home/deploy-wizard.tsx` (UX-003, UX-004, UX-005, SC-004) [Owner: Web] [DoD: UI reflects exact states and blocks completion before handoff]
-- [ ] T042 [US3] [app] Remove residual proposal-driven deploy assumptions from `apps/web/lib/deploy/default-step-executor.ts` and `apps/web/components/home/deploy-wizard.tsx` (FR-005, SC-004, SC-007) [Owner: Web] [DoD: No proposal wiring path in deploy bootstrap flow]
-- [ ] T043 [US3] [app] Add/refresh wizard tests in `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx` and `apps/web/tests/unit/components/deploy-wizard.test.tsx` covering success/failure/restart (UX-006, UX-007, SC-004) [Owner: Web] [DoD: Required state flow fully covered]
+- [X] T039 [US3] [app] Implement required state enum and transitions in `apps/web/hooks/useDeployWizard.ts` for `PRECHECKS`, `DEPLOY_STACK`, `CONFIGURE_ACCESS_PERMISSIONS`, `HANDOFF_ADMIN_TO_TIMELOCK`, `VERIFY_DEPLOYMENT` (FR-004, UX-001..UX-007, SC-004) [Owner: Web] [DoD: Only allowed transitions exist]
+- [X] T040 [US3] [app] Implement execution handling for `CONFIGURE_ACCESS_PERMISSIONS` and `HANDOFF_ADMIN_TO_TIMELOCK` in `apps/web/lib/deploy/default-step-executor.ts` (FR-004, FR-005, SC-003, SC-004) [Owner: Web] [DoD: State handlers execute and persist deterministic results]
+- [X] T041 [US3] [app] Update wizard UI states and control gating in `apps/web/components/home/deploy-wizard.tsx` (UX-003, UX-004, UX-005, SC-004) [Owner: Web] [DoD: UI reflects exact states and blocks completion before handoff]
+- [X] T042 [US3] [app] Remove residual proposal-driven deploy assumptions from `apps/web/lib/deploy/default-step-executor.ts` and `apps/web/components/home/deploy-wizard.tsx` (FR-005, SC-004, SC-007) [Owner: Web] [DoD: No proposal wiring path in deploy bootstrap flow]
+- [X] T043 [US3] [app] Add/refresh wizard tests in `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx` and `apps/web/tests/unit/components/deploy-wizard.test.tsx` covering success/failure/restart (UX-006, UX-007, SC-004) [Owner: Web] [DoD: Required state flow fully covered]
 
 **Checkpoint**: Manager wizard behavior matches spec contract.
 
@@ -108,9 +125,9 @@ Single-community DoD rule for US1 refactor tasks:
 
 **Independent Test**: Fresh deploy works independently of previous staged deployments.
 
-- [ ] T044 [US4] [scripts] Remove migration/backfill hooks and mixed-mode runtime branches from `scripts/hardhat/community-deploy-lib.ts` and related deploy entrypoints (FR-007, SP-001..SP-004, SC-006) [Owner: Scripts] [DoD: No migration/backfill execution path remains]
-- [ ] T045 [US4] [app] Remove legacy resume assumptions tied to old staged deployments in `apps/web/hooks/useDeployWizard.ts` and `apps/web/lib/deploy/default-step-executor.ts` (FR-007, UX-007, SC-006) [Owner: Web] [DoD: New run requires no old staged state]
-- [ ] T046 [US4] [tests] Add staging-policy assertions in `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx` and `test/DeploymentRoleWiring.t.sol` (SP-001..SP-004, SC-006) [Owner: Web+Contracts] [DoD: Tests fail if migration/backfill path is required]
+- [X] T044 [US4] [scripts] Remove migration/backfill hooks and mixed-mode runtime branches from `scripts/hardhat/community-deploy-lib.ts` and related deploy entrypoints (FR-007, SP-001..SP-004, SC-006) [Owner: Scripts] [DoD: No migration/backfill execution path remains]
+- [X] T045 [US4] [app] Remove legacy resume assumptions tied to old staged deployments in `apps/web/hooks/useDeployWizard.ts` and `apps/web/lib/deploy/default-step-executor.ts` (FR-007, UX-007, SC-006) [Owner: Web] [DoD: New run requires no old staged state]
+- [X] T046 [US4] [tests] Add staging-policy assertions in `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx` and `test/DeploymentRoleWiring.t.sol` (SP-001..SP-004, SC-006) [Owner: Web+Contracts] [DoD: Tests fail if migration/backfill path is required]
 
 **Checkpoint**: Staging policy enforced end-to-end.
 
@@ -118,13 +135,23 @@ Single-community DoD rule for US1 refactor tasks:
 
 ## Phase 7: Cross-Cutting Sync and Final Validation
 
-- [ ] T047 [P] [indexer] Update indexer ABIs/projections for contract event/interface changes in `apps/indexer/abis/**`, `apps/indexer/src/**`, and `apps/indexer/schema/**` (MR-002, MR-003, SC-007) [Owner: Indexer] [DoD: Indexer compiles and deterministic replay checks pass]
-- [ ] T048 [P] [app] Sync web ABIs and consumers via `scripts/copy-web-abis.js`, `scripts/copy-ponder-abis.js`, and affected consumers in `apps/web/**` (MR-002, SC-007) [Owner: Web+Indexer] [DoD: ABI consumers updated with no runtime mismatch]
-- [ ] T049 [P] [docs] Update architecture and behavior docs in `docs/EN/Architecture.md`, `docs/EN/Layers.md`, `docs/EN/Flows.md`, `contracts/FEATURES.md`, and `neuromancer/SHIFT_SYSTEM.md` (DT-001, DT-002, SC-007) [Owner: Docs+Architecture] [DoD: Docs reflect bootstrap/handoff and single-community target state]
-- [ ] T050 [docs] Sync project status docs `.github/project-management/IMPLEMENTATION_STATUS.md` and `.github/project-management/STATUS_REVIEW.md` (DT-003, SC-007) [Owner: PM] [DoD: Both files updated consistently in same change set]
-- [ ] T051 [contracts] Run full validation suite and record outputs in `specs/004-single-community-architecture/quickstart.md`: `pnpm forge:test`, `pnpm forge:cov`, `pnpm cov:gate`, `pnpm hh:compile` (SC-001..SC-007) [Owner: Contracts+Scripts] [DoD: All required checks pass]
-- [ ] T052 [indexer] Run indexer build/replay validation using current project commands and document in `specs/004-single-community-architecture/quickstart.md` (MR-002, MR-003, SC-007) [Owner: Indexer] [DoD: No unresolved projection drift]
-- [ ] T053 [app] Run web unit test suites for deploy wizard and document in `specs/004-single-community-architecture/quickstart.md` (SC-004, SC-007) [Owner: Web] [DoD: Wizard tests pass with required state coverage]
+- [X] T047 [P] [indexer] Update indexer ABIs/projections for contract event/interface changes in `apps/indexer/abis/**`, `apps/indexer/src/**`, and `apps/indexer/schema/**` (MR-002, MR-003, SC-007) [Owner: Indexer] [DoD: Indexer compiles and deterministic replay checks pass]
+- [X] T048 [P] [app] Sync web ABIs and consumers via `scripts/copy-web-abis.js`, `scripts/copy-ponder-abis.js`, and affected consumers in `apps/web/**` (MR-002, SC-007) [Owner: Web+Indexer] [DoD: ABI consumers updated with no runtime mismatch]
+- [X] T049 [P] [docs] Update architecture and behavior docs in `docs/EN/Architecture.md`, `docs/EN/Layers.md`, `docs/EN/Flows.md`, `contracts/FEATURES.md`, and `neuromancer/SHIFT_SYSTEM.md` (DT-001, DT-002, SC-007) [Owner: Docs+Architecture] [DoD: Docs reflect bootstrap/handoff and single-community target state]
+- [X] T050 [docs] Sync project status docs `.github/project-management/IMPLEMENTATION_STATUS.md` and `.github/project-management/STATUS_REVIEW.md` (DT-003, SC-007) [Owner: PM] [DoD: Both files updated consistently in same change set]
+- [X] T051 [contracts] Run full validation suite and record outputs in `specs/004-single-community-architecture/quickstart.md`: `pnpm forge:test`, `pnpm forge:cov`, `pnpm cov:gate`, `pnpm hh:compile` (SC-001..SC-007) [Owner: Contracts+Scripts] [DoD: All required checks pass]
+- [X] T052 [indexer] Run indexer build/replay validation using current project commands and document in `specs/004-single-community-architecture/quickstart.md` (MR-002, MR-003, SC-007) [Owner: Indexer] [DoD: No unresolved projection drift]
+- [X] T053 [app] Run web unit test suites for deploy wizard and document in `specs/004-single-community-architecture/quickstart.md` (SC-004, SC-007) [Owner: Web] [DoD: Wizard tests pass with required state coverage]
+
+---
+
+## Phase 8: Blocking Defect Closure - Wizard Static Address Reuse
+
+- [X] T060 [US3] [app] Replace static deployment lookup for mutable deploy-step targets in `apps/web/lib/deploy/default-step-executor.ts` by introducing run-scoped deployment address state produced in `DEPLOY_STACK` (FR-012, SC-008) [Owner: Web] [DoD: No mutable deploy-step target is sourced from `getContractAddress(...)` static deployment JSON during wizard run]
+- [X] T061 [US3] [app] Extend wizard run session model in `apps/web/lib/deploy/types.ts` and `apps/web/hooks/useDeployWizard.ts` to persist and resume run-scoped addresses safely across reload/retry (FR-012, UX-007, SC-008) [Owner: Web] [DoD: Resume uses run-scoped addresses for mutable steps and rejects missing/partial address sets]
+- [X] T062 [US3] [app] Implement parity with script behavior for deploy sequence source-of-truth in `apps/web/lib/deploy/default-step-executor.ts` (or canonical backend deploy API adapter), ensuring `DEPLOY_STACK` emits addresses equivalent to deploy pipeline outputs (FR-012, FR-005, SC-003, SC-008) [Owner: Web+Scripts] [DoD: Wizard deploy path matches staged deploy pipeline behavior and does not rely on pre-existing deployment files]
+- [X] T063 [US3] [tests] Add regression tests in `apps/web/tests/unit/lib/deploy/default-step-executor.test.ts` and `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx` proving static JSON addresses are never used for mutable steps (FR-012, SC-008) [Owner: Web] [DoD: Tests fail if executor tries to use static deployment addresses for mutable deploy operations]
+- [X] T064 [docs] Record defect closure evidence and sync status in `specs/004-single-community-architecture/quickstart.md`, `.github/project-management/IMPLEMENTATION_STATUS.md`, and `.github/project-management/STATUS_REVIEW.md` (SC-007, SC-008, DT-003) [Owner: PM+Web] [DoD: Branch closure notes include bug ID, fix summary, and passing validation evidence]
 
 ---
 

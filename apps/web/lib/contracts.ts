@@ -7,17 +7,63 @@ import draftsManagerArtifact from "../abis/DraftsManager.json" assert { type: "j
 import engagementsArtifact from "../abis/Engagements.json" assert { type: "json" };
 import governorArtifact from "../abis/ShiftGovernor.json" assert { type: "json" };
 import valuableActionRegistryArtifact from "../abis/ValuableActionRegistry.json" assert { type: "json" };
-import baseSepoliaDeployment from "../../../deployments/base_sepolia.json" assert { type: "json" };
 
-type DeploymentJson = typeof baseSepoliaDeployment;
+type LayerFactoryKey =
+  | "governanceLayerFactory"
+  | "verificationLayerFactory"
+  | "economicLayerFactory"
+  | "commerceLayerFactory"
+  | "coordinationLayerFactory";
 
-type ContractKey = keyof DeploymentJson["addresses"];
+type ContractKey =
+  | LayerFactoryKey
+  | "communityRegistry"
+  | "paramController"
+  | "accessManager"
+  | "governor"
+  | "timelock"
+  | "requestHub"
+  | "draftsManager"
+  | "engagements"
+  | "positionManager"
+  | "valuableActionRegistry"
+  | "verifierPowerToken"
+  | "verifierElection"
+  | "verifierManager"
+  | "valuableActionSBT"
+  | "treasuryAdapter"
+  | "communityToken"
+  | "marketplace"
+  | "revenueRouter"
+  | "bootstrapCoordinator";
 
 type ChainId = typeof baseSepolia.id | number;
 
-// Key deployments by chain id to avoid network string mismatches (base_sepolia vs base-sepolia).
-const deployments: Record<number, DeploymentJson> = {
-  [baseSepolia.id]: baseSepoliaDeployment
+const ENV_BY_KEY: Record<ContractKey, string> = {
+  communityRegistry: "NEXT_PUBLIC_COMMUNITY_REGISTRY",
+  paramController: "NEXT_PUBLIC_PARAM_CONTROLLER",
+  accessManager: "NEXT_PUBLIC_ACCESS_MANAGER",
+  governor: "NEXT_PUBLIC_GOVERNOR",
+  timelock: "NEXT_PUBLIC_TIMELOCK",
+  requestHub: "NEXT_PUBLIC_REQUEST_HUB",
+  draftsManager: "NEXT_PUBLIC_DRAFTS_MANAGER",
+  engagements: "NEXT_PUBLIC_ENGAGEMENTS",
+  positionManager: "NEXT_PUBLIC_POSITION_MANAGER",
+  valuableActionRegistry: "NEXT_PUBLIC_VALUABLE_ACTION_REGISTRY",
+  verifierPowerToken: "NEXT_PUBLIC_VERIFIER_POWER_TOKEN",
+  verifierElection: "NEXT_PUBLIC_VERIFIER_ELECTION",
+  verifierManager: "NEXT_PUBLIC_VERIFIER_MANAGER",
+  valuableActionSBT: "NEXT_PUBLIC_VALUABLE_ACTION_SBT",
+  treasuryAdapter: "NEXT_PUBLIC_TREASURY_ADAPTER",
+  communityToken: "NEXT_PUBLIC_COMMUNITY_TOKEN",
+  marketplace: "NEXT_PUBLIC_MARKETPLACE",
+  revenueRouter: "NEXT_PUBLIC_REVENUE_ROUTER",
+  bootstrapCoordinator: "NEXT_PUBLIC_BOOTSTRAP_COORDINATOR",
+  governanceLayerFactory: "NEXT_PUBLIC_GOVERNANCE_LAYER_FACTORY",
+  verificationLayerFactory: "NEXT_PUBLIC_VERIFICATION_LAYER_FACTORY",
+  economicLayerFactory: "NEXT_PUBLIC_ECONOMIC_LAYER_FACTORY",
+  commerceLayerFactory: "NEXT_PUBLIC_COMMERCE_LAYER_FACTORY",
+  coordinationLayerFactory: "NEXT_PUBLIC_COORDINATION_LAYER_FACTORY"
 };
 
 const requestHubAbi = requestHubArtifact.abi as Abi;
@@ -62,18 +108,13 @@ export function getContractAddress(key: ContractKey, chainId?: ChainId): Address
     throw new Error("Unsupported chain. Switch to Base Sepolia.");
   }
 
-  const deployment = deployments[baseSepolia.id];
-
-  if (!deployment) {
-    throw new Error("No deployments configured");
+  const envKey = ENV_BY_KEY[key];
+  const rawAddress = process.env[envKey];
+  if (!rawAddress || !/^0x[a-fA-F0-9]{40}$/.test(rawAddress)) {
+    throw new Error(`Missing or invalid address for ${key}. Set ${envKey} in .env for the web app.`);
   }
 
-  const addr = deployment.addresses[key];
-  if (!addr) {
-    throw new Error(`Missing address for ${key}`);
-  }
-
-  return addr as Address;
+  return rawAddress as Address;
 }
 
 export function getContractConfig<TAbi extends Abi>(key: keyof typeof CONTRACTS, chainId?: ChainId) {

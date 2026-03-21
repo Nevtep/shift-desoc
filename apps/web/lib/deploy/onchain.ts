@@ -63,6 +63,13 @@ const MARKETPLACE_ABI = [
     stateMutability: "view",
     inputs: [{ name: "communityId", type: "uint256" }],
     outputs: [{ name: "", type: "bool" }]
+  },
+  {
+    type: "function",
+    name: "revenueRouter",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }]
   }
 ] as const satisfies Abi;
 
@@ -91,21 +98,30 @@ export async function readVerificationSnapshot(
 ): Promise<VerificationSnapshot> {
   const communityRegistry = getContractAddress("communityRegistry", chainId);
   const accessManager = getContractAddress("accessManager", chainId);
-  const verifierPowerToken = getContractAddress("verifierPowerToken", chainId);
-  const valuableActionRegistry = getContractAddress("valuableActionRegistry", chainId);
   const positionManager = getContractAddress("positionManager", chainId);
   const marketplace = getContractAddress("marketplace", chainId);
-  const requestHub = getContractAddress("requestHub", chainId);
-  const revenueRouter = getContractAddress("revenueRouter", chainId);
+  const modules = (await publicClient.readContract({
+    address: communityRegistry,
+    abi: COMMUNITY_REGISTRY_ABI,
+    functionName: "getCommunityModules",
+    args: [BigInt(communityId)]
+  })) as {
+    requestHub: `0x${string}`;
+    valuableActionRegistry: `0x${string}`;
+    verifierPowerToken: `0x${string}`;
+  };
 
-  const [modules, vptInitialized, rrPosRole, rrDistributor, disputesCaller, housingCaller, vaIssuerRole, communityActive, treasury] =
+  const requestHub = modules.requestHub;
+  const valuableActionRegistry = modules.valuableActionRegistry;
+  const verifierPowerToken = modules.verifierPowerToken;
+  const revenueRouter = (await publicClient.readContract({
+    address: marketplace,
+    abi: MARKETPLACE_ABI,
+    functionName: "revenueRouter"
+  })) as `0x${string}`;
+
+  const [vptInitialized, rrPosRole, rrDistributor, disputesCaller, housingCaller, vaIssuerRole, communityActive, treasury] =
     await Promise.all([
-      publicClient.readContract({
-        address: communityRegistry,
-        abi: COMMUNITY_REGISTRY_ABI,
-        functionName: "getCommunityModules",
-        args: [BigInt(communityId)]
-      }),
       publicClient.readContract({
         address: verifierPowerToken,
         abi: VPT_ABI,
@@ -156,13 +172,11 @@ export async function readVerificationSnapshot(
       })
     ]);
 
-  const moduleValuableActionRegistry = (modules as { valuableActionRegistry: `0x${string}` }).valuableActionRegistry;
-
   return {
     communityId,
     modules: {
       valuableActionRegistryMatches:
-        moduleValuableActionRegistry.toLowerCase() === valuableActionRegistry.toLowerCase()
+        valuableActionRegistry.toLowerCase() !== "0x0000000000000000000000000000000000000000"
     },
     vptInitialized,
     roles: {

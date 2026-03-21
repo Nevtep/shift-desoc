@@ -7,6 +7,8 @@
 
 Main objective: refactor each deploy stack contract to single-community internals while preserving protocol security invariants. The deployment model becomes per-community authority bootstrap: deploy local `AccessManager`, configure selector permissions during bootstrap, then transfer admin authority to local `TimelockController`. After handoff, privileged changes are governance/timelock-only. Base Sepolia runs clean-slate only (no legacy support, no migration/backfill, no mixed-mode runtime).
 
+Blocking defect recorded on 2026-03-16: Manager wizard deploy runtime currently resolves mutable deploy-step targets through static deployment JSON lookup (`apps/web/lib/contracts.ts` -> `deployments/base_sepolia.json`) instead of run-scoped deployment outputs. Branch closure now requires replacing this path with true run-scoped deployment target resolution.
+
 ## Technical Context
 
 **Language/Version**: Solidity `^0.8.24`, TypeScript (Node 22), Next.js app stack  
@@ -75,6 +77,7 @@ Per-contract conversion strategy (from spec matrix):
 2. Enforce one active run lock and deterministic restart from `PRECHECKS`.
 3. Block completion unless handoff is confirmed on-chain.
 4. Ensure no proposal-driven wiring path remains in deploy bootstrap flow.
+5. Ensure mutable deploy-step targets are run-scoped addresses produced during the current deploy run (or returned by canonical deploy API), not static `deployments/*.json` values.
 
 ### WS4 Tests
 
@@ -127,6 +130,7 @@ Per-contract conversion strategy (from spec matrix):
 | ABI/event drift breaks indexer | Medium/High | Event delta checklist + indexer mapping updates + replay verification before merge | Contracts/Indexer |
 | Cross-community privilege leakage | High | Two-community negative tests on privileged selectors and module wiring | Contracts/Tests |
 | Spec/app drift in wizard states | Medium | Exact state enum contract + web tests for all transition paths | Web |
+| Wizard deploy path reuses static JSON addresses | High | Enforce FR-012 + SC-008, remove static-address mutable routing, add regression tests | Web/Scripts |
 
 ## Rollback Strategy (Staging-Only)
 
@@ -150,6 +154,14 @@ Per-contract conversion strategy (from spec matrix):
 2. Indexer checkpoint: update `apps/indexer` schema/mappings and validate deterministic replay.
 3. App checkpoint: update Manager app consumers to new ABI/event shape and role semantics.
 4. Sync checkpoint: run ABI copy scripts for web and indexer consumers.
+
+### ABI/Event Delta Checklist (T007)
+
+- `Checkpoint A (Contracts, links: T009-T033, T047-T056)`: enumerate ABI signature changes per contract, including removed `communityId` arguments and immutable scope constructor updates.
+- `Checkpoint B (Events, links: T009-T033, T047-T056)`: record event parameter changes, indexed-field changes, and any removed/renamed events that affect projections.
+- `Checkpoint C (Indexer, links: T050-T056)`: update `apps/indexer` ABIs, mappings, and schema where event shape changed; verify deterministic replay from deployment `startBlock`.
+- `Checkpoint D (Manager/Web, links: T039-T043, T057-T059)`: update wizard/runtime consumers to new ABI surfaces; ensure no proposal-wiring event assumptions remain.
+- `Checkpoint E (ABI Sync, links: T003, T057-T059)`: run `node scripts/copy-ponder-abis.js` and `node scripts/copy-web-abis.js` and verify zero unresolved ABI drift before merge.
 
 ## Project Structure
 

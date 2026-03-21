@@ -1,17 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
 
 import {
   type CommunityDeploymentConfig,
   validateDeploymentConfig
 } from "../lib/deploy/config";
 import {
-  createDefaultUserSignedStepExecutor,
   type StepExecutionResult,
   type StepExecutor
 } from "../lib/deploy/default-step-executor";
+import { createFactoryDeployStepExecutor } from "../lib/deploy/factory-step-executor";
 import {
   buildPreflightAssessment,
   estimateFunding,
@@ -30,7 +30,8 @@ import {
   isCreatedState,
   nextRunnableStep,
   recordStepTx,
-  transitionStep
+  transitionStep,
+  WIZARD_STEP_ORDER
 } from "../lib/deploy/wizard-machine";
 import { allVerificationChecksPassed, evaluateVerificationSnapshot } from "../lib/deploy/verification";
 
@@ -63,6 +64,13 @@ export type UseDeployWizardOptions = {
 const DEFAULT_SUPPORTED_CHAIN_IDS = [84532];
 const DEPLOY_LOG_PREFIX = "[DeployWizard]";
 
+function isSessionCompatibleWithCurrentWizard(session: DeploymentWizardSession): boolean {
+  if (!Array.isArray(session.steps) || session.steps.length !== WIZARD_STEP_ORDER.length) {
+    return false;
+  }
+  return session.steps.every((step, index) => step.key === WIZARD_STEP_ORDER[index]);
+}
+
 function log(message: string, meta?: unknown): void {
   if (meta === undefined) {
     console.log(`${DEPLOY_LOG_PREFIX} ${message}`);
@@ -77,6 +85,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
   const designMode = options.designMode ?? false;
   const { status, address } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
   const publicClient = usePublicClient();
 
@@ -222,7 +231,18 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
 
       log("Deployment config validation passed");
 
-      const initial = resumeSession ?? createSession();
+      const canResumeProvidedSession = Boolean(
+        resumeSession && isSessionCompatibleWithCurrentWizard(resumeSession)
+      );
+      if (resumeSession && !canResumeProvidedSession) {
+        log("Ignoring incompatible resume session and starting from PRECHECKS", {
+          resumeSessionId: resumeSession.sessionId,
+          resumeChainId: resumeSession.chainId,
+          stepKeys: resumeSession.steps.map((step) => step.key)
+        });
+      }
+
+      const initial = canResumeProvidedSession ? resumeSession! : createSession();
       if (!initial) {
         log("Stopping deploy: no connected wallet session available");
         setError("Connect wallet to start deployment.");
@@ -272,9 +292,10 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         options.stepExecutor ??
         (designMode
           ? createMockStepExecutor()
-          : createDefaultUserSignedStepExecutor({
+          : createFactoryDeployStepExecutor({
               publicClient,
               writeContractAsync: writeContractAsync as any,
+              deployContractAsync: walletClient?.deployContract?.bind(walletClient) as any,
               connectedAddress: address
             }));
       log("Executor selected", {
@@ -301,7 +322,29 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         const result = await execute(runningStep, active, {
           config,
           chainId,
-          preflight: assessment
+          preflight: assessment,
+          onTxConfirmed: (txHash) => {
+            log("Recording tx hash", { step: runningStep, txHash });
+            active = {
+              ...active,
+              steps: recordStepTx(active.steps, runningStep, txHash),
+              updatedAt: new Date().toISOString()
+            };
+            setSession(active);
+            saveSession(active);
+          },
+          onDeploymentAddresses: (addresses) => {
+            active = {
+              ...active,
+              deploymentAddresses: {
+                ...(active.deploymentAddresses ?? {}),
+                ...addresses
+              } as any,
+              updatedAt: new Date().toISOString()
+            };
+            setSession(active);
+            saveSession(active);
+          }
         });
         log("Step execution returned", {
           step: runningStep,
@@ -327,6 +370,13 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
             ...active,
             communityId: result.communityId,
             targetType: "registered"
+          };
+        }
+
+        if (result.deploymentAddresses) {
+          active = {
+            ...active,
+            deploymentAddresses: result.deploymentAddresses
           };
         }
 
@@ -418,13 +468,18 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       skipHydrationRef.current = false;
       return;
     }
-    if (!session && resumeCandidate) {
+    if (!session && resumeCandidate && isSessionCompatibleWithCurrentWizard(resumeCandidate)) {
       log("Hydrating session from resume candidate (returned from wallet or page reload)", {
         sessionId: resumeCandidate.sessionId,
         communityId: resumeCandidate.communityId,
         status: resumeCandidate.status
       });
       setSession(resumeCandidate);
+    } else if (!session && resumeCandidate) {
+      log("Skipping incompatible resume candidate from storage", {
+        sessionId: resumeCandidate.sessionId,
+        stepKeys: resumeCandidate.steps.map((step) => step.key)
+      });
     }
   }, [resumeCandidate, session]);
 

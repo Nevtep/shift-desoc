@@ -92,6 +92,14 @@ contract CredentialManagerTest is Test {
         sbtManagerSelectors[5] = sbt.closePositionToken.selector;
         accessManager.setTargetFunctionRole(address(sbt), sbtManagerSelectors, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
 
+        bytes4[] memory registryIssuerSelectors = new bytes4[](1);
+        registryIssuerSelectors[0] = registry.issueEngagement.selector;
+        accessManager.setTargetFunctionRole(
+            address(registry),
+            registryIssuerSelectors,
+            Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE
+        );
+
         accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(registry), 0);
         accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(manager), 0);
         accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(manager), 0);

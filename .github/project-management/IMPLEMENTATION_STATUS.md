@@ -219,8 +219,35 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 
 ## 2026-03-09 Tactical Update (Staging Deployment Policy)
 
+## 2026-03-16 Tactical Update (Blocking Defect Logged: Wizard Static Address Reuse)
+
+- Recorded branch-blocking defect `BUG-2026-03-16-DEPLOY-WIZARD-STATIC-ADDR` across feature artifacts (`spec.md`, `plan.md`, `research.md`, `quickstart.md`, `tasks.md`).
+- Defect summary: Manager deploy wizard mutable steps currently route through static deployment JSON-backed addresses (`apps/web/lib/contracts.ts`) instead of run-scoped deployment outputs.
+- Added explicit closure tasks `T060-T064` in `specs/004-single-community-architecture/tasks.md` and added new closure criteria (`FR-012`, `SC-008`) requiring run-scoped deploy targets only.
+- Branch is no longer considered closable until `T060-T064` are complete with regression evidence.
+
+## 2026-03-17 Tactical Update (Blocking Defect Closed: Wizard Static Address Reuse)
+
+- Closed `BUG-2026-03-16-DEPLOY-WIZARD-STATIC-ADDR` by moving mutable deploy-step addressing to run-scoped state.
+- `DEPLOY_STACK` now emits run-scoped addresses (`deploymentAddresses`) in `apps/web/lib/deploy/default-step-executor.ts`, and wizard session persistence now stores these addresses in `apps/web/lib/deploy/types.ts` + `apps/web/hooks/useDeployWizard.ts`.
+- Mutable steps `CONFIGURE_ACCESS_PERMISSIONS` and `HANDOFF_ADMIN_TO_TIMELOCK` now consume `session.deploymentAddresses` and no longer resolve mutable targets through static deployment JSON lookup.
+- Added regression tests in `apps/web/tests/unit/lib/deploy/default-step-executor.test.ts` proving static lookup is not used by mutable steps; focused suite validation passed (`2 files, 8 tests`).
+- Closure tasks `T060-T064` are complete and branch closure blocker is removed.
+
 - Adopted explicit Base Sepolia staging policy for current development cycle:
   - no legacy support requirements,
   - no incremental migration path requirements,
   - clean-slate full redeploy is expected when core architecture/behavior changes.
 - Implementation and refactor decisions from this point should optimize for secure target-state architecture rather than backward compatibility with prior staged deployments.
+
+## 2026-03-16 Tactical Update (Wizard State Contract + Staging Hardening)
+
+- Completed deploy wizard state-machine contract alignment to the required five-step flow:
+  `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> HANDOFF_ADMIN_TO_TIMELOCK -> VERIFY_DEPLOYMENT`.
+- Split runtime execution responsibilities in `apps/web/lib/deploy/default-step-executor.ts` across access-configuration and explicit admin handoff phases.
+- Hardened clean-slate staging behavior in `apps/web/hooks/useDeployWizard.ts` by rejecting incompatible resume sessions and forcing fresh starts from `PRECHECKS`.
+- Added staging-policy test coverage:
+  - web: legacy/incompatible resume-session rejection in `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx`
+  - contracts: post-handoff bootstrap admin cannot be reclaimed in `test/DeploymentRoleWiring.t.sol`
+- Validation evidence synced in `specs/004-single-community-architecture/quickstart.md`:
+  `pnpm forge:test` PASS (485), `pnpm hh:compile` PASS, ABI copy PASS, indexer build/startup PASS, focused wizard web tests PASS (15).

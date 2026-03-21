@@ -80,6 +80,30 @@ function registerCommunity(
 - Enables parent-child relationships for community federations
 - Emits `CommunityRegistered` event for indexing
 
+### One-Tx Bootstrap Registration (Mar 2026)
+
+```solidity
+function bootstrapCommunity(
+        string calldata name,
+        string calldata description,
+        string calldata metadataURI,
+        uint256 parentCommunityId,
+        BootstrapParams calldata bootstrapParams,
+        ModuleAddresses calldata modules
+) external returns (uint256 communityId)
+```
+
+**Purpose**: Batch community creation, ParamController policy bootstrap, and module wiring into a single transaction from the bootstrap deployer wallet.
+
+**Security model**:
+
+- Keeps deployer as `communityAdmin` for the new community.
+- Calls ParamController through a registry-only bootstrap entrypoint that validates:
+    - timelock is still unset (bootstrap phase only),
+    - deployer is community admin,
+    - verifier and revenue policy constraints.
+- Preserves the `CommunityRegistered` event for deterministic indexing and community ID derivation.
+
 ### Parameter Management
 
 ```solidity

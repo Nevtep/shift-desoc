@@ -106,6 +106,26 @@ function executeParameterUpdate(uint256 updateId) external {
 }
 ```
 
+### Registry Bootstrap Batch (Mar 2026)
+
+```solidity
+function bootstrapConfigureFromRegistry(
+    uint256 communityId,
+    address deployerAdmin,
+    BootstrapConfig calldata config
+) external onlyCommunityRegistry
+```
+
+**Purpose**: Provide a deterministic, one-call bootstrap path used by `CommunityRegistry.bootstrapCommunity` before timelock handoff.
+
+**Guardrails**:
+
+- Callable only by CommunityRegistry (`onlyCommunityRegistry`).
+- Requires timelock for the community to be unset (bootstrap-only phase).
+- Requires the deployer passed by registry to already be a community admin.
+- Re-applies verifier/revenue validations used by individual setters.
+- Emits the same parameter events (`UintParamSet`, `BoolParamSet`) as discrete writes.
+
 ### Real-time Parameter Queries
 
 ```solidity

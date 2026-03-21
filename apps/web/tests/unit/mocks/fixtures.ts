@@ -97,7 +97,8 @@ export const fixtures = {
     steps: [
       { key: "PRECHECKS", status: "succeeded" },
       { key: "DEPLOY_STACK", status: "running" },
-      { key: "WIRE_ROLES", status: "pending" },
+      { key: "CONFIGURE_ACCESS_PERMISSIONS", status: "pending" },
+      { key: "HANDOFF_ADMIN_TO_TIMELOCK", status: "pending" },
       { key: "VERIFY_DEPLOYMENT", status: "pending" }
     ]
   }

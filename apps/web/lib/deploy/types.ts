@@ -1,4 +1,9 @@
-export type StepKey = "PRECHECKS" | "DEPLOY_STACK" | "WIRE_ROLES" | "VERIFY_DEPLOYMENT";
+export type StepKey =
+  | "PRECHECKS"
+  | "DEPLOY_STACK"
+  | "CONFIGURE_ACCESS_PERMISSIONS"
+  | "HANDOFF_ADMIN_TO_TIMELOCK"
+  | "VERIFY_DEPLOYMENT";
 
 export type StepStatus = "pending" | "running" | "succeeded" | "failed" | "skipped";
 
@@ -14,6 +19,28 @@ export type VerificationCheckKey =
   | "ROLE_VA_ISSUER_REQUEST_HUB"
   | "MARKETPLACE_COMMUNITY_ACTIVE"
   | "REVENUE_ROUTER_TREASURY_SET";
+
+export type DeploymentRunAddresses = {
+  communityRegistry: `0x${string}`;
+  paramController: `0x${string}`;
+  accessManager: `0x${string}`;
+  membershipToken?: `0x${string}`;
+  governor: `0x${string}`;
+  timelock: `0x${string}`;
+  requestHub: `0x${string}`;
+  draftsManager: `0x${string}`;
+  engagements: `0x${string}`;
+  positionManager?: `0x${string}`;
+  valuableActionRegistry: `0x${string}`;
+  verifierPowerToken: `0x${string}`;
+  verifierElection: `0x${string}`;
+  verifierManager: `0x${string}`;
+  valuableActionSBT: `0x${string}`;
+  treasuryAdapter: `0x${string}`;
+  communityToken: `0x${string}`;
+  revenueRouter: `0x${string}`;
+  marketplace: `0x${string}`;
+};
 
 export type DeploymentStepState = {
   key: StepKey;
@@ -34,6 +61,7 @@ export type DeploymentWizardSession = {
   deployerAddress: `0x${string}`;
   chainId: number;
   communityId?: number;
+  deploymentAddresses?: DeploymentRunAddresses;
   deploymentConfig?: {
     communityName: string;
     communityDescription: string;
@@ -59,9 +87,14 @@ export type ProbeStatus = {
 
 export type SharedInfraStatus = {
   addressesPresent: boolean;
-  accessManager: ProbeStatus;
   paramController: ProbeStatus;
   communityRegistry: ProbeStatus;
+  governanceLayerFactory: ProbeStatus;
+  verificationLayerFactory: ProbeStatus;
+  economicLayerFactory: ProbeStatus;
+  commerceLayerFactory: ProbeStatus;
+  coordinationLayerFactory: ProbeStatus;
+  accessManager?: ProbeStatus;
   isUsable: boolean;
 };
 

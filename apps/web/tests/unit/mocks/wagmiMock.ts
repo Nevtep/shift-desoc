@@ -82,6 +82,15 @@ export function buildMockedHooks() {
       reset: () => undefined,
       status: "idle",
       variables: undefined
+    },
+    walletClient: {
+      data: {
+        deployContract: () => Promise.resolve("0x1234" as `0x${string}`)
+      },
+      error: null,
+      isError: false,
+      isLoading: false,
+      isPending: false
     }
   };
 }

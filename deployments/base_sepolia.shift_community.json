@@ -1,0 +1,46 @@
+{
+  "network": "base_sepolia",
+  "timestamp": "2026-03-17T05:02:05.238Z",
+  "deployer": "0x640DB3c444f30ecF506A2Af2F2D1A81FbcC90f8f",
+  "communityId": 2,
+  "addresses": {
+    "accessManager": "0x6F8Cb8edCd1F0a21D733e24b0b53A410f20cb97D",
+    "paramController": "0x830DA191E6a11f071C538346385F53ce9C2051E5",
+    "communityRegistry": "0xD6fb2329fb25C1205dA20Fb955C10d517E887906",
+    "membershipToken": "0x3CD80D10c3E06c5129C25401Ab170fD9C95535a4",
+    "timelock": "0xa19348B648a017001093Ae2a4413546FECDe9Bfb",
+    "governor": "0x582D87b6727397496282B01c44aF47D4771544B2",
+    "countingMultiChoice": "0xd409d40C1206349861d7D0a0345Aff59ee27eDd6",
+    "verifierPowerToken": "0x64BC87A8D0403784144563E39c5972C1934A53Aa",
+    "verifierElection": "0x8809aa6BA885d3DBCfFBC2DFa2Fd897f14F6eb76",
+    "verifierManager": "0x4a7E08bAb0B181a4a0197CF411d1D984902F039C",
+    "valuableActionRegistry": "0xEb679a9C1674142189F4308afc158D08fBfD8D9E",
+    "valuableActionSBT": "0x7EdCbDAad152A5f5d031352203a3D38D58fC2462",
+    "engagements": "0xa876a285250FA6946F0c6eB0432B0868E3d366E1",
+    "positionManager": "0x133b0B5f5A8bcBBEEc9853F1AB97ee12d7015157",
+    "credentialManager": "0xfc8F011F64672F2CE9769e3764276865a766181a",
+    "cohortRegistry": "0x2c9Bc2e496B53F21524F579f3e6BcFA3F9Eb8db4",
+    "investmentCohortManager": "0x67c4239C295D58CA411f53d2c2C4Ba1cf4c31f16",
+    "revenueRouter": "0xcA4B0245b077890ce773dCb6D388CA1ceE2217c1",
+    "communityToken": "0x1eE0C0F08D8d94e8214c16B751a07F0017F83A7f",
+    "treasuryAdapter": "0xCbD11386d859fB5C30F9FD1F48108c760B1aEFf0",
+    "requestHub": "0xC01305e2ACf26e640D75319e8F25a22Ab51d3FF4",
+    "draftsManager": "0x367142AeB50c3a9c830aE95C1975E70610Edfc0C",
+    "commerceDisputes": "0x394733C7296989e679A216555AAb678e39783d49",
+    "marketplace": "0x15588ABfBa6568835b8E4D5b8D2451E2252dD035",
+    "housingManager": "0x20ee5F5e44f68E1451beDa13B8951134D879BB82",
+    "projectFactory": "0x7653153470403eAc943e2a0C107b4D720f4FF0C5"
+  },
+  "configuration": {
+    "communityName": "Shift DeSoc",
+    "votingDelay": 7200,
+    "votingPeriod": 86400,
+    "executionDelay": 21600,
+    "minTreasuryBps": 1000,
+    "minPositionsBps": 4000,
+    "supportedTokens": [
+      "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+    ]
+  },
+  "startBlock": 38456860
+}

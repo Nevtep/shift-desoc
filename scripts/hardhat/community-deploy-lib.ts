@@ -6,12 +6,18 @@ import { Roles } from "../roles";
 const { ethers, network } = hre;
 
 export type SharedInfra = {
-  accessManager: string;
   paramController: string;
   communityRegistry: string;
+  bootstrapCoordinator: string;
+  governanceLayerFactory: string;
+  verificationLayerFactory: string;
+  economicLayerFactory: string;
+  commerceLayerFactory: string;
+  coordinationLayerFactory: string;
 };
 
 export type CommunityStackAddresses = SharedInfra & {
+  accessManager: string;
   membershipToken: string;
   timelock: string;
   governor: string;
@@ -73,8 +79,140 @@ export type CommunityDeployConfig = {
   vptMetadataURI: string;
 };
 
+export type TxOverrides = {
+  maxFeePerGas?: bigint;
+  maxPriorityFeePerGas?: bigint;
+};
+
+let deploymentSignerPromise: Promise<any> | null = null;
+
+function gwei(value: string): bigint {
+  return ethers.parseUnits(value, "gwei");
+}
+
+const BASE_SEPOLIA_MAX_FEE_CAP_GWEI = "0.1";
+const BASE_SEPOLIA_PRIORITY_CAP_GWEI = "0.02";
+
+function assertBaseSepoliaFeeCaps(maxFeePerGas: bigint, maxPriorityFeePerGas: bigint): void {
+  if (networkName() !== "base_sepolia") return;
+
+  const maxFeeCap = gwei(BASE_SEPOLIA_MAX_FEE_CAP_GWEI);
+  const priorityCap = gwei(BASE_SEPOLIA_PRIORITY_CAP_GWEI);
+
+  if (maxFeePerGas > maxFeeCap || maxPriorityFeePerGas > priorityCap) {
+    throw new Error(
+      `Refusing high gas config on base_sepolia. maxFeePerGas<=${BASE_SEPOLIA_MAX_FEE_CAP_GWEI} gwei and maxPriorityFeePerGas<=${BASE_SEPOLIA_PRIORITY_CAP_GWEI} gwei required.`,
+    );
+  }
+}
+
+function getTxOverrides(): TxOverrides {
+  const maxFee = process.env.MAX_FEE_PER_GAS_GWEI;
+  const maxPriority = process.env.MAX_PRIORITY_FEE_PER_GAS_GWEI;
+
+  // Prefer provider-managed fee estimation when no explicit overrides are supplied.
+  if (!maxFee && !maxPriority) return {};
+
+  const resolvedMaxFee = maxFee ? gwei(maxFee) : undefined;
+  const resolvedPriority = maxPriority ? gwei(maxPriority) : undefined;
+
+  if (resolvedMaxFee !== undefined && resolvedPriority !== undefined) {
+    assertBaseSepoliaFeeCaps(resolvedMaxFee, resolvedPriority);
+  }
+
+  if (resolvedMaxFee !== undefined && resolvedPriority === undefined) {
+    assertBaseSepoliaFeeCaps(resolvedMaxFee, 0n);
+  }
+
+  if (resolvedMaxFee === undefined && resolvedPriority !== undefined) {
+    assertBaseSepoliaFeeCaps(0n, resolvedPriority);
+  }
+
+  return {
+    ...(resolvedMaxFee !== undefined ? { maxFeePerGas: resolvedMaxFee } : {}),
+    ...(resolvedPriority !== undefined ? { maxPriorityFeePerGas: resolvedPriority } : {}),
+  };
+}
+
+async function getDeploymentSigner(): Promise<any> {
+  if (!deploymentSignerPromise) {
+    deploymentSignerPromise = (async () => {
+      const [baseSigner] = await ethers.getSigners();
+      const signer: any = new ethers.NonceManager(baseSigner);
+      // Some ethers versions do not expose setTransactionCount on NonceManager.
+      // Resetting before each write phase is the authoritative nonce sync path.
+      if (typeof signer.setTransactionCount === "function") {
+        const pendingNonce = await ethers.provider.getTransactionCount(await baseSigner.getAddress(), "pending");
+        signer.setTransactionCount(pendingNonce);
+      }
+      return signer;
+    })();
+  }
+  return deploymentSignerPromise;
+}
+
+async function syncDeploymentSignerNonce(): Promise<void> {
+  const signer = await getDeploymentSigner();
+  // NonceManager caches locally; reset ensures external txs are reflected.
+  if (typeof signer.reset === "function") {
+    signer.reset();
+  }
+
+  if (typeof signer.setTransactionCount === "function") {
+    const addr = await signer.getAddress();
+    const pendingNonce = await ethers.provider.getTransactionCount(addr, "pending");
+    signer.setTransactionCount(pendingNonce);
+  }
+}
+
+export type CommunityModuleAddresses = {
+  governor: string;
+  timelock: string;
+  requestHub: string;
+  draftsManager: string;
+  engagementsManager: string;
+  valuableActionRegistry: string;
+  verifierPowerToken: string;
+  verifierElection: string;
+  verifierManager: string;
+  valuableActionSBT: string;
+  treasuryVault: string;
+  treasuryAdapter: string;
+  communityToken: string;
+  paramController: string;
+};
+
 const DEPLOYMENTS_DIR = path.join(process.cwd(), "deployments");
 const VPT_ELECTION_POWER_ROLE = 1001n;
+const STRICT_STAGING_NETWORKS = new Set(["base_sepolia", "hardhat"]);
+const LEGACY_MODE_ENV_FLAGS = [
+  "SHIFT_ENABLE_LEGACY_DEPLOY",
+  "SHIFT_ENABLE_BACKFILL",
+  "SHIFT_ENABLE_MIXED_MODE"
+] as const;
+
+function isTruthyEnvFlag(value: string | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function assertStrictStagingMode(net: string): void {
+  if (!STRICT_STAGING_NETWORKS.has(net)) {
+    throw new Error(
+      `Strict staging mode only supports ${Array.from(STRICT_STAGING_NETWORKS).join(", ")}. Received network=${net}.`
+    );
+  }
+
+  const enabledLegacyFlags = LEGACY_MODE_ENV_FLAGS.filter((flag) =>
+    isTruthyEnvFlag(process.env[flag])
+  );
+  if (enabledLegacyFlags.length > 0) {
+    throw new Error(
+      `Legacy deploy modes are disabled in strict staging mode. Unset: ${enabledLegacyFlags.join(", ")}.`
+    );
+  }
+}
 
 export function defaultCommunityDeployConfig(founderAddress: string): CommunityDeployConfig {
   return {
@@ -161,52 +299,78 @@ function requireAddress(value: string | undefined, name: string): string {
 }
 
 async function deploy<T>(factoryName: string, ...args: any[]): Promise<T & { getAddress(): Promise<string> }> {
+  const signer = await getDeploymentSigner();
+  const txOverrides = getTxOverrides();
   const factory = await ethers.getContractFactory(factoryName);
-  const contract = await factory.deploy(...args);
+  const contract = await factory.connect(signer).deploy(...args, txOverrides);
   await contract.waitForDeployment();
   return contract as any;
 }
 
 async function deployTimelockController(...args: any[]): Promise<any> {
+  const signer = await getDeploymentSigner();
+  const txOverrides = getTxOverrides();
   const factory = await ethers.getContractFactory("ShiftTimelockController");
-  const timelock = await factory.deploy(...args);
+  const timelock = await factory.connect(signer).deploy(...args, txOverrides);
   await timelock.waitForDeployment();
   return timelock;
 }
 
 async function deployAccessManager(admin: string): Promise<any> {
+  const signer = await getDeploymentSigner();
+  const txOverrides = getTxOverrides();
   const factory = await ethers.getContractFactory("ShiftAccessManager");
-  const accessManager = await factory.deploy(admin);
+  const accessManager = await factory.connect(signer).deploy(admin, txOverrides);
   await accessManager.waitForDeployment();
   return accessManager;
 }
 
 async function isUsableSharedInfra(addresses: Partial<SharedInfra>): Promise<boolean> {
-  if (!addresses.accessManager || !addresses.paramController || !addresses.communityRegistry) {
+  if (
+    !addresses.paramController ||
+    !addresses.communityRegistry ||
+    !addresses.bootstrapCoordinator ||
+    !addresses.governanceLayerFactory ||
+    !addresses.verificationLayerFactory ||
+    !addresses.economicLayerFactory ||
+    !addresses.commerceLayerFactory ||
+    !addresses.coordinationLayerFactory
+  ) {
     return false;
   }
 
   try {
-    const accessManagerCode = await ethers.provider.getCode(addresses.accessManager);
     const paramControllerCode = await ethers.provider.getCode(addresses.paramController);
     const communityRegistryCode = await ethers.provider.getCode(addresses.communityRegistry);
+    const bootstrapCoordinatorCode = await ethers.provider.getCode(addresses.bootstrapCoordinator);
+    const governanceLayerFactoryCode = await ethers.provider.getCode(addresses.governanceLayerFactory);
+    const verificationLayerFactoryCode = await ethers.provider.getCode(addresses.verificationLayerFactory);
+    const economicLayerFactoryCode = await ethers.provider.getCode(addresses.economicLayerFactory);
+    const commerceLayerFactoryCode = await ethers.provider.getCode(addresses.commerceLayerFactory);
+    const coordinationLayerFactoryCode = await ethers.provider.getCode(addresses.coordinationLayerFactory);
 
     if (
-      accessManagerCode === "0x" ||
       paramControllerCode === "0x" ||
-      communityRegistryCode === "0x"
+      communityRegistryCode === "0x" ||
+      bootstrapCoordinatorCode === "0x" ||
+      governanceLayerFactoryCode === "0x" ||
+      verificationLayerFactoryCode === "0x" ||
+      economicLayerFactoryCode === "0x" ||
+      commerceLayerFactoryCode === "0x" ||
+      coordinationLayerFactoryCode === "0x"
     ) {
       return false;
     }
 
-    const accessManager = await ethers.getContractAt("ShiftAccessManager", addresses.accessManager);
     const paramController = await ethers.getContractAt("ParamController", addresses.paramController);
     const communityRegistry = await ethers.getContractAt("CommunityRegistry", addresses.communityRegistry);
 
     // Probe read-only calls to ensure ABI/runtime compatibility, not just non-empty bytecode.
-    await accessManager.ADMIN_ROLE();
-    await paramController.communityRegistry();
+    const wiredRegistry = await paramController.communityRegistry();
     await communityRegistry.nextCommunityId();
+    if (wiredRegistry.toLowerCase() !== addresses.communityRegistry.toLowerCase()) {
+      return false;
+    }
     return true;
   } catch {
     return false;
@@ -215,52 +379,75 @@ async function isUsableSharedInfra(addresses: Partial<SharedInfra>): Promise<boo
 
 export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
   const net = networkName();
+  assertStrictStagingMode(net);
   const existing = net === "hardhat" ? null : loadDeploymentFile(net);
   const existingShared: Partial<SharedInfra> = {
-    accessManager: existing?.addresses?.accessManager,
     paramController: existing?.addresses?.paramController,
     communityRegistry: existing?.addresses?.communityRegistry,
+    bootstrapCoordinator: existing?.addresses?.bootstrapCoordinator,
+    governanceLayerFactory: existing?.addresses?.governanceLayerFactory,
+    verificationLayerFactory: existing?.addresses?.verificationLayerFactory,
+    economicLayerFactory: existing?.addresses?.economicLayerFactory,
+    commerceLayerFactory: existing?.addresses?.commerceLayerFactory,
+    coordinationLayerFactory: existing?.addresses?.coordinationLayerFactory,
   };
 
   if (await isUsableSharedInfra(existingShared)) {
     return {
-      accessManager: existingShared.accessManager!,
       paramController: existingShared.paramController!,
       communityRegistry: existingShared.communityRegistry!,
+      bootstrapCoordinator: existingShared.bootstrapCoordinator!,
+      governanceLayerFactory: existingShared.governanceLayerFactory!,
+      verificationLayerFactory: existingShared.verificationLayerFactory!,
+      economicLayerFactory: existingShared.economicLayerFactory!,
+      commerceLayerFactory: existingShared.commerceLayerFactory!,
+      coordinationLayerFactory: existingShared.coordinationLayerFactory!,
     };
   }
 
-  if (existing?.addresses?.accessManager || existing?.addresses?.paramController || existing?.addresses?.communityRegistry) {
+  if (existing?.addresses?.paramController || existing?.addresses?.communityRegistry) {
     console.warn(
       "⚠️ Existing shared infra addresses are missing or invalid on current network. Redeploying shared infra and overwriting deployment JSON.",
     );
   }
 
-  const [deployer] = await ethers.getSigners();
+  const signer = await getDeploymentSigner();
+  const deployer = await signer.getAddress();
+  const txOverrides = getTxOverrides();
 
-  const accessManager = await deployAccessManager(deployer.address);
-  const paramController = await deploy<any>("ParamController", deployer.address);
+  const paramController = await deploy<any>("ParamController", deployer);
   const communityRegistry = await deploy<any>(
     "CommunityRegistry",
     await paramController.getAddress(),
   );
-  await (await paramController.setCommunityRegistry(await communityRegistry.getAddress())).wait();
+  const bootstrapCoordinator = await deploy<any>("BootstrapCoordinator");
+  const governanceLayerFactory = await deploy<any>("GovernanceLayerFactory");
+  const verificationLayerFactory = await deploy<any>("VerificationLayerFactory");
+  const economicLayerFactory = await deploy<any>("EconomicLayerFactory");
+  const commerceLayerFactory = await deploy<any>("CommerceLayerFactory");
+  const coordinationLayerFactory = await deploy<any>("CoordinationLayerFactory");
+  await (await paramController.setCommunityRegistry(await communityRegistry.getAddress(), txOverrides)).wait();
 
   const currentBlock = await ethers.provider.getBlockNumber();
   const merged = {
     ...(existing ?? {
       network: networkName(),
       timestamp: new Date().toISOString(),
-      deployer: deployer.address,
+      deployer,
       addresses: {},
     }),
     timestamp: new Date().toISOString(),
-    deployer: deployer.address,
+    deployer,
     addresses: {
       ...(existing?.addresses ?? {}),
-      accessManager: await accessManager.getAddress(),
       paramController: await paramController.getAddress(),
       communityRegistry: await communityRegistry.getAddress(),
+      bootstrapCoordinator: await bootstrapCoordinator.getAddress(),
+      governanceLayerFactory: await governanceLayerFactory.getAddress(),
+      verificationLayerFactory: await verificationLayerFactory.getAddress(),
+      economicLayerFactory: await economicLayerFactory.getAddress(),
+      commerceLayerFactory: await commerceLayerFactory.getAddress(),
+      coordinationLayerFactory: await coordinationLayerFactory.getAddress(),
     },
     startBlock: existing?.startBlock ?? currentBlock,
   } as DeploymentJson;
@@ -268,156 +455,36 @@ export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
   saveDeploymentFile(merged, net);
 
   return {
-    accessManager: await accessManager.getAddress(),
     paramController: await paramController.getAddress(),
     communityRegistry: await communityRegistry.getAddress(),
+    bootstrapCoordinator: await bootstrapCoordinator.getAddress(),
+    governanceLayerFactory: await governanceLayerFactory.getAddress(),
+    verificationLayerFactory: await verificationLayerFactory.getAddress(),
+    economicLayerFactory: await economicLayerFactory.getAddress(),
+    commerceLayerFactory: await commerceLayerFactory.getAddress(),
+    coordinationLayerFactory: await coordinationLayerFactory.getAddress(),
   };
 }
 
-export async function deployCommunityStack(config: CommunityDeployConfig): Promise<{ communityId: number; addresses: CommunityStackAddresses }> {
-  const [deployer] = await ethers.getSigners();
-  const shared = await deploySharedInfraIfMissing();
-
-  const communityRegistry = await ethers.getContractAt("CommunityRegistry", shared.communityRegistry);
-  const paramController = await ethers.getContractAt("ParamController", shared.paramController);
-
-  const nextCommunityId = Number(await communityRegistry.nextCommunityId());
-
-  const membershipToken = await deploy<any>(
-    "MembershipTokenERC20Votes",
-    `${config.communityName} Membership`,
-    `sMEM-${nextCommunityId}`,
-    nextCommunityId,
-    shared.accessManager,
-  );
-
-  const timelock = await deployTimelockController(
-    config.executionDelay,
-    [],
-    [],
-    deployer.address,
-  );
-
-  const governor = await deploy<any>(
-    "ShiftGovernor",
-    await membershipToken.getAddress(),
-    shared.accessManager,
-    config.executionDelay,
-  );
-
-  const countingMultiChoice = await deploy<any>("CountingMultiChoice", await governor.getAddress());
-
-  const verifierPowerToken = await deploy<any>("VerifierPowerToken1155", shared.accessManager, "", nextCommunityId);
-  const verifierElection = await deploy<any>(
-    "VerifierElection",
-    shared.accessManager,
-    await verifierPowerToken.getAddress(),
-    nextCommunityId,
-  );
-  const verifierManager = await deploy<any>(
-    "VerifierManager",
-    shared.accessManager,
-    await verifierElection.getAddress(),
-    shared.paramController,
-    nextCommunityId,
-  );
-
-  const valuableActionRegistry = await deploy<any>(
-    "ValuableActionRegistry",
-    shared.accessManager,
-    shared.communityRegistry,
-    await timelock.getAddress(),
-    nextCommunityId,
-  );
-  const valuableActionSBT = await deploy<any>("ValuableActionSBT", shared.accessManager, nextCommunityId);
-  const engagements = await deploy<any>(
-    "Engagements",
-    shared.accessManager,
-    await valuableActionRegistry.getAddress(),
-    await verifierManager.getAddress(),
-    await valuableActionSBT.getAddress(),
-    await membershipToken.getAddress(),
-    nextCommunityId,
-  );
-  const positionManager = await deploy<any>(
-    "PositionManager",
-    shared.accessManager,
-    await valuableActionRegistry.getAddress(),
-    await valuableActionSBT.getAddress(),
-    nextCommunityId,
-  );
-  const credentialManager = await deploy<any>(
-    "CredentialManager",
-    shared.accessManager,
-    await valuableActionRegistry.getAddress(),
-    await valuableActionSBT.getAddress(),
-    nextCommunityId,
-  );
-
-  const cohortRegistry = await deploy<any>("CohortRegistry", shared.accessManager, nextCommunityId);
-  const investmentCohortManager = await deploy<any>(
-    "InvestmentCohortManager",
-    shared.accessManager,
-    await cohortRegistry.getAddress(),
-    await valuableActionRegistry.getAddress(),
-    await valuableActionSBT.getAddress(),
-    nextCommunityId,
-  );
-  const revenueRouter = await deploy<any>(
-    "RevenueRouter",
-    shared.accessManager,
-    shared.paramController,
-    await cohortRegistry.getAddress(),
-    await valuableActionSBT.getAddress(),
-    nextCommunityId,
-  );
-
-  const communityToken = await deploy<any>(
-    "CommunityToken",
-    requireAddress(config.treasuryStableToken, "treasuryStableToken"),
-    nextCommunityId,
-    `${config.communityName} Token`,
-    `SCT-${nextCommunityId}`,
-    requireAddress(config.treasuryVault, "treasuryVault"),
-    ethers.parseEther("1000000"),
-    shared.paramController,
-    shared.accessManager,
-  );
-
-  const treasuryAdapter = await deploy<any>("TreasuryAdapter", shared.accessManager, shared.communityRegistry, nextCommunityId);
-  const requestHub = await deploy<any>(
-    "RequestHub",
-    shared.communityRegistry,
-    await valuableActionRegistry.getAddress(),
-  );
-  const draftsManager = await deploy<any>(
-    "DraftsManager",
-    shared.communityRegistry,
-    await governor.getAddress(),
-    shared.accessManager,
-    nextCommunityId,
-  );
-  const commerceDisputes = await deploy<any>("CommerceDisputes", shared.accessManager, nextCommunityId);
-  const marketplace = await deploy<any>(
-    "Marketplace",
-    shared.accessManager,
-    await commerceDisputes.getAddress(),
-    await revenueRouter.getAddress(),
-    nextCommunityId,
-  );
-  const housingManager = await deploy<any>(
-    "HousingManager",
-    shared.accessManager,
-    requireAddress(config.treasuryStableToken, "treasuryStableToken"),
-    nextCommunityId,
-  );
-  const projectFactory = await deploy<any>("ProjectFactory", nextCommunityId);
+export async function registerAndConfigureCommunity(
+  communityRegistryAddress: string,
+  paramControllerAddress: string,
+  config: CommunityDeployConfig,
+  moduleAddresses: CommunityModuleAddresses,
+  expectedCommunityId?: number,
+  txOverrides: TxOverrides = {},
+): Promise<number> {
+  await syncDeploymentSignerNonce();
+  const signer = await getDeploymentSigner();
+  const communityRegistry = await ethers.getContractAt("CommunityRegistry", communityRegistryAddress, signer);
+  const paramController = await ethers.getContractAt("ParamController", paramControllerAddress, signer);
 
   const registerTx = await communityRegistry.registerCommunity(
     config.communityName,
     config.communityDescription,
     config.communityMetadataURI,
     0,
+    txOverrides,
   );
   const registerReceipt = await registerTx.wait();
 
@@ -435,14 +502,13 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
   }
 
   if (communityId === null) {
-    // Fallback for legacy ABI/event parsing edge-cases.
     communityId = Number(await communityRegistry.nextCommunityId()) - 1;
   }
 
-  if (communityId !== nextCommunityId) {
+  if (expectedCommunityId !== undefined && communityId !== expectedCommunityId) {
     const observedNext = Number(await communityRegistry.nextCommunityId());
     throw new Error(
-      `Community ID mismatch. predicted=${nextCommunityId} actual=${communityId} observedNext=${observedNext}`,
+      `Community ID mismatch. predicted=${expectedCommunityId} actual=${communityId} observedNext=${observedNext}`,
     );
   }
 
@@ -454,23 +520,201 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     config.useVPTWeighting,
     config.maxWeightPerVerifier,
     config.cooldownAfterFraud,
+    txOverrides,
   )).wait();
   await (await paramController.setGovernanceParams(
     communityId,
     config.votingDelay,
     config.votingPeriod,
     config.executionDelay,
+    txOverrides,
   )).wait();
-  await (await paramController.setEligibilityParams(communityId, 0, 0, config.proposalThreshold)).wait();
+  await (await paramController.setEligibilityParams(communityId, 0, 0, config.proposalThreshold, txOverrides)).wait();
   await (await paramController.setRevenuePolicy(
     communityId,
     config.minTreasuryBps,
     config.minPositionsBps,
     config.spilloverTarget,
     config.spilloverSplitBpsTreasury,
+    txOverrides,
   )).wait();
 
-  const moduleAddresses = {
+  const moduleEntries: Array<[string, string]> = [
+    ["governor", moduleAddresses.governor],
+    ["timelock", moduleAddresses.timelock],
+    ["requestHub", moduleAddresses.requestHub],
+    ["draftsManager", moduleAddresses.draftsManager],
+    ["engagementsManager", moduleAddresses.engagementsManager],
+    ["valuableActionRegistry", moduleAddresses.valuableActionRegistry],
+    ["verifierPowerToken", moduleAddresses.verifierPowerToken],
+    ["verifierElection", moduleAddresses.verifierElection],
+    ["verifierManager", moduleAddresses.verifierManager],
+    ["valuableActionSBT", moduleAddresses.valuableActionSBT],
+    ["treasuryVault", moduleAddresses.treasuryVault],
+    ["treasuryAdapter", moduleAddresses.treasuryAdapter],
+    ["communityToken", moduleAddresses.communityToken],
+    ["paramController", moduleAddresses.paramController],
+  ];
+
+  for (const [key, value] of moduleEntries) {
+    if (value && value !== ethers.ZeroAddress) {
+      await (await communityRegistry.setModuleAddress(communityId, ethers.id(key), value, txOverrides)).wait();
+    }
+  }
+
+  const wiredTimelock = await communityRegistry.getTimelock(communityId);
+  if (wiredTimelock.toLowerCase() !== moduleAddresses.timelock.toLowerCase()) {
+    throw new Error(
+      `Timelock wiring mismatch for community ${communityId}. expected=${moduleAddresses.timelock} actual=${wiredTimelock}`,
+    );
+  }
+
+  return communityId;
+}
+
+export async function deployCommunityStack(config: CommunityDeployConfig): Promise<{ communityId: number; addresses: CommunityStackAddresses }> {
+  assertStrictStagingMode(networkName());
+  const signer = await getDeploymentSigner();
+  const deployer = await signer.getAddress();
+  const txOverrides = getTxOverrides();
+  const shared = await deploySharedInfraIfMissing();
+  const accessManager = await deployAccessManager(deployer);
+  const accessManagerAddress = await accessManager.getAddress();
+
+  const communityRegistry = await ethers.getContractAt("CommunityRegistry", shared.communityRegistry, signer);
+  const nextCommunityId = Number(await communityRegistry.nextCommunityId());
+
+  const membershipToken = await deploy<any>(
+    "MembershipTokenERC20Votes",
+    `${config.communityName} Membership`,
+    `sMEM-${nextCommunityId}`,
+    nextCommunityId,
+    accessManagerAddress,
+  );
+
+  const timelock = await deployTimelockController(
+    config.executionDelay,
+    [],
+    [],
+    deployer,
+  );
+
+  const governor = await deploy<any>(
+    "ShiftGovernor",
+    await membershipToken.getAddress(),
+    accessManagerAddress,
+    config.executionDelay,
+  );
+
+  const countingMultiChoice = await deploy<any>("CountingMultiChoice", await governor.getAddress());
+
+  const verifierPowerToken = await deploy<any>("VerifierPowerToken1155", accessManagerAddress, "", nextCommunityId);
+  const verifierElection = await deploy<any>(
+    "VerifierElection",
+    accessManagerAddress,
+    await verifierPowerToken.getAddress(),
+    nextCommunityId,
+  );
+  const verifierManager = await deploy<any>(
+    "VerifierManager",
+    accessManagerAddress,
+    await verifierElection.getAddress(),
+    shared.paramController,
+    nextCommunityId,
+  );
+
+  const valuableActionRegistry = await deploy<any>(
+    "ValuableActionRegistry",
+    accessManagerAddress,
+    shared.communityRegistry,
+    await timelock.getAddress(),
+    nextCommunityId,
+  );
+  const valuableActionSBT = await deploy<any>("ValuableActionSBT", accessManagerAddress, nextCommunityId);
+  const engagements = await deploy<any>(
+    "Engagements",
+    accessManagerAddress,
+    await valuableActionRegistry.getAddress(),
+    await verifierManager.getAddress(),
+    await valuableActionSBT.getAddress(),
+    await membershipToken.getAddress(),
+    nextCommunityId,
+  );
+  const positionManager = await deploy<any>(
+    "PositionManager",
+    accessManagerAddress,
+    await valuableActionRegistry.getAddress(),
+    await valuableActionSBT.getAddress(),
+    nextCommunityId,
+  );
+  const credentialManager = await deploy<any>(
+    "CredentialManager",
+    accessManagerAddress,
+    await valuableActionRegistry.getAddress(),
+    await valuableActionSBT.getAddress(),
+    nextCommunityId,
+  );
+
+  const cohortRegistry = await deploy<any>("CohortRegistry", accessManagerAddress, nextCommunityId);
+  const investmentCohortManager = await deploy<any>(
+    "InvestmentCohortManager",
+    accessManagerAddress,
+    await cohortRegistry.getAddress(),
+    await valuableActionRegistry.getAddress(),
+    await valuableActionSBT.getAddress(),
+    nextCommunityId,
+  );
+  const revenueRouter = await deploy<any>(
+    "RevenueRouter",
+    accessManagerAddress,
+    shared.paramController,
+    await cohortRegistry.getAddress(),
+    await valuableActionSBT.getAddress(),
+    nextCommunityId,
+  );
+
+  const communityToken = await deploy<any>(
+    "CommunityToken",
+    requireAddress(config.treasuryStableToken, "treasuryStableToken"),
+    nextCommunityId,
+    `${config.communityName} Token`,
+    `SCT-${nextCommunityId}`,
+    requireAddress(config.treasuryVault, "treasuryVault"),
+    ethers.parseEther("1000000"),
+    shared.paramController,
+    accessManagerAddress,
+  );
+
+  const treasuryAdapter = await deploy<any>("TreasuryAdapter", accessManagerAddress, shared.communityRegistry, nextCommunityId);
+  const requestHub = await deploy<any>(
+    "RequestHub",
+    shared.communityRegistry,
+    await valuableActionRegistry.getAddress(),
+  );
+  const draftsManager = await deploy<any>(
+    "DraftsManager",
+    shared.communityRegistry,
+    await governor.getAddress(),
+    accessManagerAddress,
+    nextCommunityId,
+  );
+  const commerceDisputes = await deploy<any>("CommerceDisputes", accessManagerAddress, nextCommunityId);
+  const marketplace = await deploy<any>(
+    "Marketplace",
+    accessManagerAddress,
+    await commerceDisputes.getAddress(),
+    await revenueRouter.getAddress(),
+    nextCommunityId,
+  );
+  const housingManager = await deploy<any>(
+    "HousingManager",
+    accessManagerAddress,
+    requireAddress(config.treasuryStableToken, "treasuryStableToken"),
+    nextCommunityId,
+  );
+  const projectFactory = await deploy<any>("ProjectFactory", nextCommunityId);
+
+  const moduleAddresses: CommunityModuleAddresses = {
     governor: await governor.getAddress(),
     timelock: await timelock.getAddress(),
     requestHub: await requestHub.getAddress(),
@@ -487,17 +731,18 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     paramController: shared.paramController,
   };
 
-  await (await communityRegistry.setModuleAddresses(communityId, moduleAddresses)).wait();
-
-  const wiredTimelock = await communityRegistry.getTimelock(communityId);
-  if (wiredTimelock.toLowerCase() !== moduleAddresses.timelock.toLowerCase()) {
-    throw new Error(
-      `Timelock wiring mismatch for community ${communityId}. expected=${moduleAddresses.timelock} actual=${wiredTimelock}`,
-    );
-  }
+  const communityId = await registerAndConfigureCommunity(
+    shared.communityRegistry,
+    shared.paramController,
+    config,
+    moduleAddresses,
+    nextCommunityId,
+    txOverrides,
+  );
 
   const addresses: CommunityStackAddresses = {
     ...shared,
+    accessManager: accessManagerAddress,
     membershipToken: await membershipToken.getAddress(),
     timelock: await timelock.getAddress(),
     governor: await governor.getAddress(),
@@ -527,7 +772,7 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
   saveDeploymentFile({
     network: networkName(),
     timestamp: new Date().toISOString(),
-    deployer: deployer.address,
+    deployer,
     communityId,
     addresses,
     configuration: {
@@ -550,37 +795,41 @@ export async function wireCommunityRoles(
   addresses: CommunityStackAddresses,
   config: CommunityDeployConfig,
 ): Promise<void> {
-  const [deployer] = await ethers.getSigners();
-  const accessManager = await ethers.getContractAt("ShiftAccessManager", addresses.accessManager);
+  assertStrictStagingMode(networkName());
+  await syncDeploymentSignerNonce();
+  const signer = await getDeploymentSigner();
+  const deployer = await signer.getAddress();
+  const txOverrides = getTxOverrides();
+  const accessManager = await ethers.getContractAt("ShiftAccessManager", addresses.accessManager, signer);
 
   const adminRole = await accessManager.ADMIN_ROLE();
 
-  const timelock = await ethers.getContractAt("ShiftTimelockController", addresses.timelock);
-  const governor = await ethers.getContractAt("ShiftGovernor", addresses.governor);
-  const verifierPowerToken = await ethers.getContractAt("VerifierPowerToken1155", addresses.verifierPowerToken);
-  const verifierElection = await ethers.getContractAt("VerifierElection", addresses.verifierElection);
-  const verifierManager = await ethers.getContractAt("VerifierManager", addresses.verifierManager);
-  const valuableActionRegistry = await ethers.getContractAt("ValuableActionRegistry", addresses.valuableActionRegistry);
-  const valuableActionSBT = await ethers.getContractAt("ValuableActionSBT", addresses.valuableActionSBT);
-  const engagements = await ethers.getContractAt("Engagements", addresses.engagements);
-  const positionManager = await ethers.getContractAt("PositionManager", addresses.positionManager);
-  const credentialManager = await ethers.getContractAt("CredentialManager", addresses.credentialManager);
-  const cohortRegistry = await ethers.getContractAt("CohortRegistry", addresses.cohortRegistry);
-  const investmentCohortManager = await ethers.getContractAt("InvestmentCohortManager", addresses.investmentCohortManager);
-  const revenueRouter = await ethers.getContractAt("RevenueRouter", addresses.revenueRouter);
-  const treasuryAdapter = await ethers.getContractAt("TreasuryAdapter", addresses.treasuryAdapter);
-  const marketplace = await ethers.getContractAt("Marketplace", addresses.marketplace);
-  const housingManager = await ethers.getContractAt("HousingManager", addresses.housingManager);
-  const commerceDisputes = await ethers.getContractAt("CommerceDisputes", addresses.commerceDisputes);
-  const membershipToken = await ethers.getContractAt("MembershipTokenERC20Votes", addresses.membershipToken);
+  const timelock = await ethers.getContractAt("ShiftTimelockController", addresses.timelock, signer);
+  const governor = await ethers.getContractAt("ShiftGovernor", addresses.governor, signer);
+  const verifierPowerToken = await ethers.getContractAt("VerifierPowerToken1155", addresses.verifierPowerToken, signer);
+  const verifierElection = await ethers.getContractAt("VerifierElection", addresses.verifierElection, signer);
+  const verifierManager = await ethers.getContractAt("VerifierManager", addresses.verifierManager, signer);
+  const valuableActionRegistry = await ethers.getContractAt("ValuableActionRegistry", addresses.valuableActionRegistry, signer);
+  const valuableActionSBT = await ethers.getContractAt("ValuableActionSBT", addresses.valuableActionSBT, signer);
+  const engagements = await ethers.getContractAt("Engagements", addresses.engagements, signer);
+  const positionManager = await ethers.getContractAt("PositionManager", addresses.positionManager, signer);
+  const credentialManager = await ethers.getContractAt("CredentialManager", addresses.credentialManager, signer);
+  const cohortRegistry = await ethers.getContractAt("CohortRegistry", addresses.cohortRegistry, signer);
+  const investmentCohortManager = await ethers.getContractAt("InvestmentCohortManager", addresses.investmentCohortManager, signer);
+  const revenueRouter = await ethers.getContractAt("RevenueRouter", addresses.revenueRouter, signer);
+  const treasuryAdapter = await ethers.getContractAt("TreasuryAdapter", addresses.treasuryAdapter, signer);
+  const marketplace = await ethers.getContractAt("Marketplace", addresses.marketplace, signer);
+  const housingManager = await ethers.getContractAt("HousingManager", addresses.housingManager, signer);
+  const commerceDisputes = await ethers.getContractAt("CommerceDisputes", addresses.commerceDisputes, signer);
+  const membershipToken = await ethers.getContractAt("MembershipTokenERC20Votes", addresses.membershipToken, signer);
 
   const setRole = async (targetAddress: string, selectors: string[], roleId: bigint) => {
-    await (await accessManager.setTargetFunctionRole(targetAddress, selectors, roleId)).wait();
+    await (await accessManager.setTargetFunctionRole(targetAddress, selectors, roleId, txOverrides)).wait();
   };
 
   const grantRole = async (roleId: bigint, account: string) => {
-    const has = await accessManager.hasRole(roleId, account);
-    if (!has) await (await accessManager.grantRole(roleId, account, 0)).wait();
+    const [hasRole] = await accessManager.hasRole(roleId, account);
+    if (!hasRole) await (await accessManager.grantRole(roleId, account, 0, txOverrides)).wait();
   };
 
   await grantRole(adminRole, addresses.timelock);
@@ -754,49 +1003,69 @@ export async function wireCommunityRoles(
   const executorRole = await timelock.EXECUTOR_ROLE();
   const cancellerRole = await timelock.CANCELLER_ROLE();
   const defaultAdminRole = await timelock.DEFAULT_ADMIN_ROLE();
-  await (await timelock.grantRole(proposerRole, addresses.governor)).wait();
-  await (await timelock.grantRole(executorRole, addresses.governor)).wait();
-  await (await timelock.grantRole(cancellerRole, addresses.governor)).wait();
+  await (await timelock.grantRole(proposerRole, addresses.governor, txOverrides)).wait();
+  await (await timelock.grantRole(executorRole, addresses.governor, txOverrides)).wait();
+  await (await timelock.grantRole(cancellerRole, addresses.governor, txOverrides)).wait();
 
   if ((await governor.multiCounter()) === ethers.ZeroAddress) {
     console.warn("⚠️ Governor multiCounter is unset. Initialize via governance proposal execution.");
   }
 
-  await (await verifierPowerToken.initializeCommunity(communityId, config.vptMetadataURI)).wait();
-
-  await (await valuableActionRegistry.setValuableActionSBT(addresses.valuableActionSBT)).wait();
-  await (await valuableActionRegistry.setIssuanceModule(addresses.requestHub, true)).wait();
-  await (await valuableActionRegistry.setIssuanceModule(addresses.positionManager, true)).wait();
-  await (await valuableActionRegistry.setIssuanceModule(addresses.investmentCohortManager, true)).wait();
-  await (await valuableActionRegistry.setIssuanceModule(addresses.credentialManager, true)).wait();
-  await (await valuableActionRegistry.addFounder(config.founderAddress)).wait();
-
-  await (await positionManager.setRevenueRouter(addresses.revenueRouter)).wait();
-  await (await revenueRouter.setCommunityTreasury(communityId, config.treasuryVault)).wait();
-  for (const token of config.supportedTokens) {
-    await (await revenueRouter.setSupportedToken(communityId, token, true)).wait();
-    await (await treasuryAdapter.setTokenAllowed(token, true)).wait();
-    await (await treasuryAdapter.setCapBps(token, 1000)).wait();
+  try {
+    await (await verifierPowerToken["initializeCommunity(string)"](config.vptMetadataURI, txOverrides)).wait();
+  } catch {
+    // Backward compatibility for legacy ABI variants that still include communityId.
+    await (await verifierPowerToken.initializeCommunity(communityId, config.vptMetadataURI, txOverrides)).wait();
   }
-  await (await treasuryAdapter.setDestinationAllowed(addresses.requestHub, true)).wait();
 
-  await (await commerceDisputes.setDisputeReceiver(addresses.marketplace)).wait();
-  await (await marketplace.setCommunityActive(communityId, true)).wait();
-  await (await marketplace.setCommunityToken(communityId, addresses.communityToken)).wait();
+  await (await valuableActionRegistry.setValuableActionSBT(addresses.valuableActionSBT, txOverrides)).wait();
+  await (await valuableActionRegistry.setIssuanceModule(addresses.requestHub, true, txOverrides)).wait();
+  await (await valuableActionRegistry.setIssuanceModule(addresses.positionManager, true, txOverrides)).wait();
+  await (await valuableActionRegistry.setIssuanceModule(addresses.investmentCohortManager, true, txOverrides)).wait();
+  await (await valuableActionRegistry.setIssuanceModule(addresses.credentialManager, true, txOverrides)).wait();
+  await (await valuableActionRegistry.addFounder(config.founderAddress, txOverrides)).wait();
+
+  await (await positionManager.setRevenueRouter(addresses.revenueRouter, txOverrides)).wait();
+  await (await revenueRouter.setCommunityTreasury(communityId, config.treasuryVault, txOverrides)).wait();
+  for (const token of config.supportedTokens) {
+    await (await revenueRouter.setSupportedToken(communityId, token, true, txOverrides)).wait();
+    await (await treasuryAdapter.setTokenAllowed(token, true, txOverrides)).wait();
+    await (await treasuryAdapter.setCapBps(token, 1000, txOverrides)).wait();
+  }
+  await (await treasuryAdapter.setDestinationAllowed(addresses.requestHub, true, txOverrides)).wait();
+
+  await (await commerceDisputes.setDisputeReceiver(addresses.marketplace, txOverrides)).wait();
+  await (await marketplace.setCommunityActive(communityId, true, txOverrides)).wait();
+  await (await marketplace.setCommunityToken(communityId, addresses.communityToken, txOverrides)).wait();
 
   if (config.initialMembershipTokens > 0n) {
-    await grantRole(Roles.MEMBERSHIP_TOKEN_MINTER_ROLE, deployer.address);
-    await (await membershipToken.mint(config.founderAddress, config.initialMembershipTokens, "Founder bootstrap")).wait();
-    await (await accessManager.revokeRole(Roles.MEMBERSHIP_TOKEN_MINTER_ROLE, deployer.address)).wait();
+    await grantRole(Roles.MEMBERSHIP_TOKEN_MINTER_ROLE, deployer);
+    await (await membershipToken.mint(config.founderAddress, config.initialMembershipTokens, "Founder bootstrap", txOverrides)).wait();
+    await (await accessManager.revokeRole(Roles.MEMBERSHIP_TOKEN_MINTER_ROLE, deployer, txOverrides)).wait();
   }
 
-  if (await accessManager.hasRole(adminRole, deployer.address)) {
-    await (await accessManager.revokeRole(adminRole, deployer.address)).wait();
+  const [deployerHasAdminBeforeRevoke] = await accessManager.hasRole(adminRole, deployer);
+  if (deployerHasAdminBeforeRevoke) {
+    await (await accessManager.revokeRole(adminRole, deployer, txOverrides)).wait();
   }
-  await (await timelock.renounceRole(defaultAdminRole, deployer.address)).wait();
+
+  const [deployerHasAdminAfterRevoke] = await accessManager.hasRole(adminRole, deployer);
+  if (deployerHasAdminAfterRevoke) {
+    throw new Error("AccessManager handoff failed: deployer still has admin role");
+  }
+  const [timelockHasAdmin] = await accessManager.hasRole(adminRole, addresses.timelock);
+  if (!timelockHasAdmin) {
+    throw new Error("AccessManager handoff failed: timelock missing admin role");
+  }
+
+  await (await timelock.renounceRole(defaultAdminRole, deployer, txOverrides)).wait();
+  if (await timelock.hasRole(defaultAdminRole, deployer)) {
+    throw new Error("Timelock handoff failed: deployer still has DEFAULT_ADMIN_ROLE");
+  }
 }
 
 export async function verifyCommunityDeployment(communityId: number, addresses: CommunityStackAddresses): Promise<void> {
+  assertStrictStagingMode(networkName());
   const accessManager = await ethers.getContractAt("AccessManager", addresses.accessManager);
   const verifierPowerToken = await ethers.getContractAt("VerifierPowerToken1155", addresses.verifierPowerToken);
   const revenueRouter = await ethers.getContractAt("RevenueRouter", addresses.revenueRouter);
@@ -811,23 +1080,30 @@ export async function verifyCommunityDeployment(communityId: number, addresses: 
     // no-op: older ABI may not expose this field
   }
 
-  if (!(await verifierPowerToken.communityInitialized(communityId))) {
+  let isCommunityInitialized = false;
+  try {
+    isCommunityInitialized = await verifierPowerToken.communityInitialized();
+  } catch {
+    // Backward compatibility for legacy ABI variants keyed by communityId.
+    isCommunityInitialized = await verifierPowerToken.communityInitialized(communityId);
+  }
+  if (!isCommunityInitialized) {
     throw new Error("VerifierPowerToken community is not initialized");
   }
 
-  const rrPosRole = await accessManager.hasRole(Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE, addresses.positionManager);
+  const [rrPosRole] = await accessManager.hasRole(Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE, addresses.positionManager);
   if (!rrPosRole) throw new Error("PositionManager missing REVENUE_ROUTER_POSITION_MANAGER_ROLE");
 
-  const rrDistRole = await accessManager.hasRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, addresses.marketplace);
+  const [rrDistRole] = await accessManager.hasRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, addresses.marketplace);
   if (!rrDistRole) throw new Error("Marketplace missing REVENUE_ROUTER_DISTRIBUTOR_ROLE");
 
-  const disputesCaller = await accessManager.hasRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, addresses.marketplace);
+  const [disputesCaller] = await accessManager.hasRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, addresses.marketplace);
   if (!disputesCaller) throw new Error("Marketplace missing COMMERCE_DISPUTES_CALLER_ROLE");
 
-  const housingCaller = await accessManager.hasRole(Roles.HOUSING_MARKETPLACE_CALLER_ROLE, addresses.marketplace);
+  const [housingCaller] = await accessManager.hasRole(Roles.HOUSING_MARKETPLACE_CALLER_ROLE, addresses.marketplace);
   if (!housingCaller) throw new Error("Marketplace missing HOUSING_MARKETPLACE_CALLER_ROLE");
 
-  const issuerRole = await accessManager.hasRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, addresses.requestHub);
+  const [issuerRole] = await accessManager.hasRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, addresses.requestHub);
   if (!issuerRole) throw new Error("RequestHub missing VALUABLE_ACTION_REGISTRY_ISSUER_ROLE");
 
   if (!(await marketplace.communityActive(communityId))) {

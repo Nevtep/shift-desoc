@@ -46,3 +46,22 @@
 - Rationale: Prevents vertical-slice drift and catches authority/security regressions early.
 - Alternatives considered:
   - Contracts-only testing: rejected due to monorepo integration risks.
+
+## T009 Evidence: CommunityRegistry Authorization Refactor
+- Contract: `contracts/modules/CommunityRegistry.sol`
+- Refactor evidence:
+  - Removed `AccessManaged` inheritance reliance and switched privileged paths to explicit internal authorization guards.
+  - Kept community-scoped role checks and module-key validation in local guard logic.
+  - Preserved shared-registry semantics while preventing implicit authority assumptions.
+- Test evidence:
+  - `test/CommunityRegistry.t.sol:testGrantCommunityRoleUnauthorized`
+  - `test/CommunityRegistry.t.sol:testSetModuleAddressUnauthorized`
+  - `test/CommunityRegistry.t.sol:testAccessControlIntegration`
+
+## Blocking Defect Record: BUG-2026-03-16-DEPLOY-WIZARD-STATIC-ADDR
+- Scope: Manager deploy wizard runtime (`apps/web/lib/deploy/default-step-executor.ts`) currently resolves mutable deploy targets through `getContractAddress(...)` backed by `apps/web/lib/contracts.ts` static import of `deployments/base_sepolia.json`.
+- Why this is a blocker: It violates deploy-run determinism and can route configuration/handoff writes to unrelated pre-existing community/module addresses instead of contracts created for the current run.
+- Required correction:
+  - `DEPLOY_STACK` must produce run-scoped address outputs.
+  - Subsequent mutable steps (`CONFIGURE_ACCESS_PERMISSIONS`, `HANDOFF_ADMIN_TO_TIMELOCK`) must consume those run-scoped addresses.
+  - Static deployment JSON may only be used for read-only views/inspection, never as mutable deployment execution targets.

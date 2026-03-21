@@ -3,16 +3,6 @@ import type { Abi, Address, PublicClient } from "viem";
 import { getContractAddress } from "../contracts";
 import type { FundingAssessment, PreflightAssessment, ProbeStatus, SharedInfraStatus } from "./types";
 
-const ADMIN_ROLE_ABI = [
-  {
-    type: "function",
-    name: "ADMIN_ROLE",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint64" }]
-  }
-] as const satisfies Abi;
-
 const PARAM_CONTROLLER_ABI = [
   {
     type: "function",
@@ -82,33 +72,72 @@ async function probe(
   }
 }
 
+async function probeCodeOnly(publicClient: PublicClient, address: Address): Promise<ProbeStatus> {
+  const code = await publicClient.getBytecode({ address });
+  if (!code || code === "0x") {
+    return { address, hasCode: false, abiProbePassed: false, reason: "Missing bytecode" };
+  }
+  return { address, hasCode: true, abiProbePassed: true };
+}
+
 export async function probeSharedInfra(publicClient: PublicClient, chainId: number): Promise<SharedInfraStatus> {
   try {
-    const accessManager = getContractAddress("accessManager", chainId);
+    const resolveOptionalAddress = (key: string): Address | undefined => {
+      try {
+        return getContractAddress(key as never, chainId);
+      } catch {
+        return undefined;
+      }
+    };
+
     const paramController = getContractAddress("paramController", chainId);
     const communityRegistry = getContractAddress("communityRegistry", chainId);
+    const governanceLayerFactory = resolveOptionalAddress("governanceLayerFactory");
+    const verificationLayerFactory = resolveOptionalAddress("verificationLayerFactory");
+    const economicLayerFactory = resolveOptionalAddress("economicLayerFactory");
+    const commerceLayerFactory = resolveOptionalAddress("commerceLayerFactory");
+    const coordinationLayerFactory = resolveOptionalAddress("coordinationLayerFactory");
 
-    const [am, pc, cr] = await Promise.all([
-      probe(publicClient, accessManager, ADMIN_ROLE_ABI, "ADMIN_ROLE"),
+    const probeFactory = async (address: Address | undefined): Promise<ProbeStatus> => {
+      if (!address) {
+        return { hasCode: false, abiProbePassed: false, reason: "Address resolution failed" };
+      }
+      return probeCodeOnly(publicClient, address);
+    };
+
+    const [pc, cr, govFactory, verFactory, ecoFactory, comFactory, coordFactory] = await Promise.all([
       probe(publicClient, paramController, PARAM_CONTROLLER_ABI, "communityRegistry"),
-      probe(publicClient, communityRegistry, COMMUNITY_REGISTRY_ABI, "nextCommunityId")
+      probe(publicClient, communityRegistry, COMMUNITY_REGISTRY_ABI, "nextCommunityId"),
+      probeFactory(governanceLayerFactory),
+      probeFactory(verificationLayerFactory),
+      probeFactory(economicLayerFactory),
+      probeFactory(commerceLayerFactory),
+      probeFactory(coordinationLayerFactory)
     ]);
 
-    const isUsable = am.hasCode && am.abiProbePassed && pc.hasCode && pc.abiProbePassed && cr.hasCode && cr.abiProbePassed;
+    const isUsable = pc.hasCode && pc.abiProbePassed && cr.hasCode && cr.abiProbePassed;
     return {
       addressesPresent: true,
-      accessManager: am,
       paramController: pc,
       communityRegistry: cr,
+      governanceLayerFactory: govFactory,
+      verificationLayerFactory: verFactory,
+      economicLayerFactory: ecoFactory,
+      commerceLayerFactory: comFactory,
+      coordinationLayerFactory: coordFactory,
       isUsable
     };
   } catch {
     const unavailable: ProbeStatus = { hasCode: false, abiProbePassed: false, reason: "Address resolution failed" };
     return {
       addressesPresent: false,
-      accessManager: unavailable,
       paramController: unavailable,
       communityRegistry: unavailable,
+      governanceLayerFactory: unavailable,
+      verificationLayerFactory: unavailable,
+      economicLayerFactory: unavailable,
+      commerceLayerFactory: unavailable,
+      coordinationLayerFactory: unavailable,
       isUsable: false
     };
   }

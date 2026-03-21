@@ -5,6 +5,19 @@ info:
   description: |
     Manager-facing orchestration contract for deployment workflow states.
     This API models app/backend orchestration semantics and does not replace on-chain authority.
+  x-abi-event-delta-checklist:
+    - id: CHECKPOINT_A_CONTRACT_ABI
+      taskRefs: [T007, T009, T033, T047]
+      requirementRefs: [MR-002, SC-007]
+      description: Track ABI signature deltas for refactored single-community contracts.
+    - id: CHECKPOINT_B_EVENT_SHAPE
+      taskRefs: [T007, T047, T050]
+      requirementRefs: [MR-002, SC-007]
+      description: Track event field/indexing changes that impact indexer projections.
+    - id: CHECKPOINT_C_CONSUMER_SYNC
+      taskRefs: [T007, T039, T043, T057]
+      requirementRefs: [MR-002, SC-007]
+      description: Confirm manager app/indexer consumers are updated for ABI and event deltas.
 servers:
   - url: https://manager.shift.local
 paths:

@@ -46,10 +46,18 @@ export function createMockStepExecutor(): (
       return { txHashes, communityId: MOCK_COMMUNITY_ID };
     }
 
-    if (step === "WIRE_ROLES") {
-      const expectedTxCount = STEP_META.WIRE_ROLES.expectedTxCount;
+    if (step === "CONFIGURE_ACCESS_PERMISSIONS") {
+      const expectedTxCount = STEP_META.CONFIGURE_ACCESS_PERMISSIONS.expectedTxCount;
       const txHashes = Array.from({ length: expectedTxCount }, (_, i) =>
-        fakeTxHash("WIRE_ROLES", i)
+        fakeTxHash("CONFIGURE_ACCESS_PERMISSIONS", i)
+      );
+      return { txHashes };
+    }
+
+    if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
+      const expectedTxCount = STEP_META.HANDOFF_ADMIN_TO_TIMELOCK.expectedTxCount;
+      const txHashes = Array.from({ length: expectedTxCount }, (_, i) =>
+        fakeTxHash("HANDOFF_ADMIN_TO_TIMELOCK", i)
       );
       return { txHashes };
     }

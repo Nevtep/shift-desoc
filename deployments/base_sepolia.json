@@ -1,12 +1,12 @@
 {
   "network": "base_sepolia",
-  "timestamp": "2026-03-05T03:40:09.299Z",
+  "timestamp": "2026-03-20T16:16:50.718Z",
   "deployer": "0x640DB3c444f30ecF506A2Af2F2D1A81FbcC90f8f",
   "communityId": 2,
   "addresses": {
     "accessManager": "0x6F8Cb8edCd1F0a21D733e24b0b53A410f20cb97D",
-    "paramController": "0x830DA191E6a11f071C538346385F53ce9C2051E5",
-    "communityRegistry": "0xD6fb2329fb25C1205dA20Fb955C10d517E887906",
+    "paramController": "0xB753BC7679A5B01eFAb187460e08544D30B7C810",
+    "communityRegistry": "0xCF1fB9F01671d7c6FE8D513dB7CF5ce0062CEEEe",
     "membershipToken": "0x3CD80D10c3E06c5129C25401Ab170fD9C95535a4",
     "timelock": "0xa19348B648a017001093Ae2a4413546FECDe9Bfb",
     "governor": "0x582D87b6727397496282B01c44aF47D4771544B2",
@@ -29,7 +29,13 @@
     "commerceDisputes": "0x394733C7296989e679A216555AAb678e39783d49",
     "marketplace": "0x15588ABfBa6568835b8E4D5b8D2451E2252dD035",
     "housingManager": "0x20ee5F5e44f68E1451beDa13B8951134D879BB82",
-    "projectFactory": "0x7653153470403eAc943e2a0C107b4D720f4FF0C5"
+    "projectFactory": "0x7653153470403eAc943e2a0C107b4D720f4FF0C5",
+    "governanceLayerFactory": "0xc9c1d025884DAd18ba150AbbABf5431E4188712F",
+    "verificationLayerFactory": "0x15779ef961994f5d6C9c4b65Ba46057fAe456680",
+    "economicLayerFactory": "0x1E5FB312513A3934568B26e72F0DC4c96BBb2B8f",
+    "commerceLayerFactory": "0xbFb0CC313Fc9086dE52Eb8f141F909C360AEc58C",
+    "coordinationLayerFactory": "0x0e4Bc072988de5ccBcdC4F0463B2c068A40cAbfB",
+    "bootstrapCoordinator": "0x396Cf83cBF24C8900756c5Cf4f44eF2eE20e0aBD"
   },
   "configuration": {
     "communityName": "Shift DeSoc",

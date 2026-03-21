@@ -1,26 +1,59 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DeployWizard } from "../../../components/home/deploy-wizard";
-import { saveSession } from "../../../lib/deploy/session-store";
-import { createInitialSession } from "../../../lib/deploy/wizard-machine";
 import { mockWagmiHooks, renderWithProviders } from "../utils";
 
-describe("DeployWizard", () => {
-  it("renders upfront explanation content", async () => {
-    mockWagmiHooks({ connected: true });
-    renderWithProviders(<DeployWizard />);
+vi.mock("../../../hooks/useMyDeployedCommunities", () => ({
+  useMyDeployedCommunities: () => ({
+    hasCommunities: false,
+    isLoading: false,
+    refetch: vi.fn()
+  })
+}));
 
-    expect(await screen.findByText(/Community Deploy Wizard/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/multi-signature sequence: preflight, deploy stack, role wiring, and deterministic verification/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Before you start, this is the full sequence the wizard will execute/i)
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Deploy Community Stack/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Start deploy/i })).toBeDisabled();
+vi.mock("../../../hooks/useDeployResume", () => ({
+  useDeployResume: () => ({
+    resume: vi.fn(),
+    error: null
+  })
+}));
+
+describe("DeployWizard", () => {
+  it("shows 5-step progress labels during in-progress deployment", async () => {
+    mockWagmiHooks({
+      connected: true,
+      address: "0xabc1230000000000000000000000000000000000",
+      chainId: 84532
+    });
+
+    renderWithProviders(
+      <DeployWizard
+        options={{
+          stepExecutor: vi.fn(async () => ({})),
+          readVerificationSnapshot: vi.fn(async () => ({
+            modules: { valuableActionRegistryMatches: true },
+            vptInitialized: true,
+            roles: {
+              rrPositionManager: true,
+              rrDistributor: true,
+              commerceDisputesCaller: true,
+              housingMarketplaceCaller: true,
+              vaIssuerRequestHub: true
+            },
+            marketplaceActive: true,
+            revenueTreasurySet: true
+          }))
+        }}
+      />
+    );
+
+    const start = await screen.findByRole("button", { name: /^Next$/i });
+    expect(screen.getByText(/Wire Registry/i)).toBeInTheDocument();
+    expect(screen.getByText(/Handoff/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/Community name/i), "Shift Builders");
+    expect(start).toBeEnabled();
   });
 
   it("shows connect-wallet gate when disconnected", async () => {
@@ -28,69 +61,72 @@ describe("DeployWizard", () => {
     renderWithProviders(<DeployWizard />);
 
     expect(
-      await screen.findByText(/Connect a wallet and complete valid deployment configuration before starting/i)
+      await screen.findByText(/Connect your wallet to get started. It's the first step./i)
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Start deploy/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Mock/i })).toBeInTheDocument();
   });
 
   it("enables start deploy after required configuration is valid", async () => {
     mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000" });
     renderWithProviders(<DeployWizard />);
 
-    const startButton = await screen.findByRole("button", { name: /Start deploy/i });
+    const startButton = await screen.findByRole("button", { name: /^Next$/i });
     expect(startButton).toBeDisabled();
 
     await userEvent.type(screen.getByLabelText(/Community name/i), "Shift Builders");
-    await userEvent.type(screen.getByLabelText(/Community description/i), "Community focused on work verification");
-    await userEvent.type(
-      screen.getByLabelText(/Treasury stable token address/i),
-      "0x1234567890abcdef1234567890abcdef12345678"
-    );
-    await userEvent.type(
-      screen.getByLabelText(/Supported tokens/i),
-      "0x1234567890abcdef1234567890abcdef12345678"
-    );
 
     expect(startButton).toBeEnabled();
   });
 
-  it("keeps resume deploy actionable for connected wallet", async () => {
+  it("keeps resume deploy actionable for connected wallet with resumable session", async () => {
     mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000" });
-    renderWithProviders(<DeployWizard />);
+    renderWithProviders(
+      <DeployWizard
+        options={{
+          stepExecutor: vi.fn(async () => ({})),
+          readVerificationSnapshot: vi.fn(async () => ({
+            modules: { valuableActionRegistryMatches: true },
+            vptInitialized: true,
+            roles: {
+              rrPositionManager: true,
+              rrDistributor: true,
+              commerceDisputesCaller: true,
+              housingMarketplaceCaller: true,
+              vaIssuerRequestHub: true
+            },
+            marketplaceActive: true,
+            revenueTreasurySet: true
+          }))
+        }}
+      />
+    );
 
-    expect(await screen.findByRole("button", { name: /Resume deploy/i })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /Resume deploy/i })).not.toBeInTheDocument();
   });
 
-  it("restores saved form config when resume deploy is clicked", async () => {
-    const deployer = "0xabc1230000000000000000000000000000000000" as const;
-    const session = createInitialSession(deployer, 84532);
-    session.status = "failed";
-    session.deploymentConfig = {
-      communityName: "Shift Resume Test",
-      communityDescription: "Recovered from session",
-      communityMetadataUri: "ipfs://resume-config",
-      treasuryVault: "0x1111111111111111111111111111111111111111",
-      treasuryStableToken: "0x2222222222222222222222222222222222222222",
-      supportedTokensCsv: "0x3333333333333333333333333333333333333333"
-    };
-    saveSession(session);
+  it("renders in-progress deployment heading", async () => {
+    mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000", chainId: 84532 });
+    renderWithProviders(
+      <DeployWizard
+        options={{
+          stepExecutor: vi.fn(async () => ({})),
+          readVerificationSnapshot: vi.fn(async () => ({
+            modules: { valuableActionRegistryMatches: true },
+            vptInitialized: true,
+            roles: {
+              rrPositionManager: true,
+              rrDistributor: true,
+              commerceDisputesCaller: true,
+              housingMarketplaceCaller: true,
+              vaIssuerRequestHub: true
+            },
+            marketplaceActive: true,
+            revenueTreasurySet: true
+          }))
+        }}
+      />
+    );
 
-    mockWagmiHooks({ connected: true, address: deployer, chainId: 84532 });
-    renderWithProviders(<DeployWizard />);
-
-    await userEvent.click(await screen.findByRole("button", { name: /Resume deploy/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Resume deploy|Resuming/i })).toBeInTheDocument();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(/Community name/i)).toHaveValue("Shift Resume Test");
-    });
-    expect(screen.getByLabelText(/Community description/i)).toHaveValue("Recovered from session");
-    expect(screen.getByLabelText(/Community metadata URI/i)).toHaveValue("ipfs://resume-config");
-    expect(screen.getByLabelText(/Treasury vault address/i)).toHaveValue("0x1111111111111111111111111111111111111111");
-    expect(screen.getByLabelText(/Treasury stable token address/i)).toHaveValue("0x2222222222222222222222222222222222222222");
-    expect(screen.getByLabelText(/Supported tokens/i)).toHaveValue("0x3333333333333333333333333333333333333333");
+    expect(await screen.findByText(/Create your community/i)).toBeInTheDocument();
   });
 });

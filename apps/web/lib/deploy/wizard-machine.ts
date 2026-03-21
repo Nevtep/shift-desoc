@@ -3,7 +3,8 @@ import type { DeploymentStepState, DeploymentWizardSession, StepKey, StepStatus 
 export const WIZARD_STEP_ORDER: StepKey[] = [
   "PRECHECKS",
   "DEPLOY_STACK",
-  "WIRE_ROLES",
+  "CONFIGURE_ACCESS_PERMISSIONS",
+  "HANDOFF_ADMIN_TO_TIMELOCK",
   "VERIFY_DEPLOYMENT"
 ];
 
@@ -14,14 +15,19 @@ export const STEP_META: Record<StepKey, { name: string; purpose: string; expecte
     expectedTxCount: 0
   },
   DEPLOY_STACK: {
-    name: "Deploy Community Stack",
-    purpose: "Deploy per-community contracts and register the community.",
-    expectedTxCount: 8
+    name: "Deploy Contract Layers",
+    purpose: "Deploy community AccessManager, then governance, verification, economic, commerce, and coordination bytecode via shared layer factories.",
+    expectedTxCount: 6
   },
-  WIRE_ROLES: {
-    name: "Wire Roles And Configuration",
-    purpose: "Apply role wiring and module configuration for activation.",
-    expectedTxCount: 12
+  CONFIGURE_ACCESS_PERMISSIONS: {
+    name: "Wire Registry And Permissions",
+    purpose: "Register the community, set controller policies, wire module addresses, and apply runtime permissions.",
+    expectedTxCount: 17
+  },
+  HANDOFF_ADMIN_TO_TIMELOCK: {
+    name: "Handoff Admin To Timelock",
+    purpose: "Transfer admin authority from bootstrap wallet to timelock governance.",
+    expectedTxCount: 2
   },
   VERIFY_DEPLOYMENT: {
     name: "Verify Community Deployment",
@@ -104,11 +110,12 @@ export function recordStepTx(
 ): DeploymentStepState[] {
   return steps.map((step) => {
     if (step.key !== key) return step;
-    const txHashes = step.txHashes.includes(txHash) ? step.txHashes : [...step.txHashes, txHash];
+    const isNewHash = !step.txHashes.includes(txHash);
+    const txHashes = isNewHash ? [...step.txHashes, txHash] : step.txHashes;
     return {
       ...step,
       txHashes,
-      confirmedTxCount: Math.min(step.expectedTxCount, step.confirmedTxCount + 1)
+      confirmedTxCount: Math.min(step.expectedTxCount, step.confirmedTxCount + (isNewHash ? 1 : 0))
     };
   });
 }

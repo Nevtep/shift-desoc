@@ -106,6 +106,17 @@ contract PositionManagerTest is Test {
         sbtSelectors[4] = sbt.closePositionToken.selector;
         sbtSelectors[5] = sbt.mintRoleFromPosition.selector;
         accessManager.setTargetFunctionRole(address(sbt), sbtSelectors, Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE);
+
+        bytes4[] memory registryIssuerSelectors = new bytes4[](3);
+        registryIssuerSelectors[0] = registry.issuePosition.selector;
+        registryIssuerSelectors[1] = registry.closePositionToken.selector;
+        registryIssuerSelectors[2] = registry.issueRoleFromPosition.selector;
+        accessManager.setTargetFunctionRole(
+            address(registry),
+            registryIssuerSelectors,
+            Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE
+        );
+
         registry.setValuableActionSBT(address(sbt));
         accessManager.grantRole(Roles.VALUABLE_ACTION_SBT_MANAGER_ROLE, address(registry), 0);
         accessManager.grantRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, address(manager), 0);

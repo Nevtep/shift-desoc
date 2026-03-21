@@ -85,6 +85,7 @@ contract WiringTest is Test {
     address treasury = address(0xF0);
 
     uint256 communityId;
+    uint256 communityIdTwo;
     uint256 valuableActionId;
 
     bytes32 constant ROLE_TYPE = bytes32("role:ops");
@@ -98,6 +99,7 @@ contract WiringTest is Test {
         communityRegistry = new CommunityRegistry(address(paramController));
         paramController.setCommunityRegistry(address(communityRegistry));
         communityId = communityRegistry.registerCommunity("Comm", "Desc", "ipfs://meta", 0);
+        communityIdTwo = communityRegistry.registerCommunity("Comm 2", "Desc 2", "ipfs://meta-2", 0);
         accessManager = new AccessManager(governance);
         membershipToken = new MembershipTokenERC20Votes("Membership", "MEM", 1, address(accessManager));
         governorContract = new ShiftGovernor(address(membershipToken), address(accessManager), 1 days);
@@ -398,5 +400,38 @@ contract WiringTest is Test {
     function testGovernorUsesLocalAccessManager() public view {
         assertEq(address(governorContract.accessManager()), address(accessManager));
         assertEq(governorContract.baseDelaySeconds(), 1 days);
+    }
+
+    function testPostHandoffRestrictedWritesFailForDeployerAndManager() public {
+        uint64 adminRole = accessManager.ADMIN_ROLE();
+        address timelockAdmin = address(0xABCD);
+        bytes32 postHandoffRole = keccak256("role:post-handoff");
+
+        accessManager.grantRole(adminRole, timelockAdmin, 0);
+        accessManager.revokeRole(adminRole, governance);
+
+        (bool timelockHasAdmin,) = accessManager.hasRole(adminRole, timelockAdmin);
+        (bool governanceHasAdmin,) = accessManager.hasRole(adminRole, governance);
+        assertTrue(timelockHasAdmin);
+        assertFalse(governanceHasAdmin);
+
+        vm.prank(governance);
+        vm.expectRevert();
+        positionManager.definePositionType(postHandoffRole, 5, true);
+
+        vm.prank(distributor);
+        vm.expectRevert();
+        positionManager.definePositionType(postHandoffRole, 5, true);
+
+        vm.prank(timelockAdmin);
+        positionManager.definePositionType(postHandoffRole, 5, true);
+    }
+
+    function testCrossCommunityPrivilegedMutationFails() public {
+        vm.expectRevert();
+        router.setSupportedToken(communityIdTwo, address(token), true);
+
+        vm.expectRevert();
+        router.setCommunityTreasury(communityIdTwo, treasury);
     }
 }

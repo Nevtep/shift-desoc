@@ -2,7 +2,7 @@
 
 **Feature Branch**: `004-single-community-architecture`  
 **Created**: 2026-03-09  
-**Status**: Draft  
+**Status**: Finalized (Ready for merge)  
 **Input**: User description: "Single-Community Architecture Refactor (Base Sepolia Staging)"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -95,6 +95,7 @@ As protocol maintainers, we can remove staging assumptions tied to old deploymen
 - Multiple browser sessions trigger deploy actions: only one active run can advance state for a session at a time.
 - Contract wiring partially completes before a revert: verification detects incomplete wiring and reports exact missing links.
 - Old staging addresses are present in local cache: new deploy ignores them unless explicitly selected for read-only inspection.
+- Wizard `DEPLOY_STACK` reads static addresses from `deployments/base_sepolia.json` instead of deploying current-run contracts: deployment must hard-fail and surface blocking error until runtime path is corrected.
 
 ## Requirements *(mandatory)*
 
@@ -111,11 +112,12 @@ As protocol maintainers, we can remove staging assumptions tied to old deploymen
 - **FR-009**: Implementation delivery MUST be complete for targeted refactor scope; no placeholder or stub runtime paths are allowed in deploy and wiring flows.
 - **FR-010**: Deployment verification MUST report deterministic pass/fail outputs for contract wiring, role assignment, and policy invariants.
 - **FR-011**: `CommunityRegistry` MUST NOT depend on `AccessManaged`; it MUST enforce authorization through explicit internal security checks and community-scoped validation guards.
+- **FR-012**: Deploy Wizard runtime MUST NOT source deploy-step contract addresses from static deployment JSON (`deployments/*.json`) for mutable deploy flow steps. `DEPLOY_STACK` and subsequent mutable steps MUST use addresses produced by the current run (direct deployment execution or backend deployment API result) and MUST NOT reuse prior community addresses implicitly.
 
 ### Deploy Wizard Screen/UX Contract
 
 - **UX-001 `PRECHECKS`**: Validate wallet connectivity, network, required inputs, and session freshness before any transaction intent is generated.
-- **UX-002 `DEPLOY_STACK`**: Execute deployment of required contracts for the new community and persist deployed addresses for this run.
+- **UX-002 `DEPLOY_STACK`**: Execute deployment of required contracts for the new community and persist deployed addresses for this run. Static deployment files may be used only for read-only reference views, never as the source of deploy-step mutable targets.
 - **UX-003 `CONFIGURE_ACCESS_PERMISSIONS`**: Apply per-selector permission and role wiring in community-local `AccessManager`.
 - **UX-004 `HANDOFF_ADMIN_TO_TIMELOCK`**: Transfer `AccessManager` admin authority from deployer bootstrap authority to community timelock.
 - **UX-005 `VERIFY_DEPLOYMENT`**: Verify role wiring, module references, and authorization invariants after admin handoff is confirmed.
@@ -260,6 +262,7 @@ Priority rule: Completion of this table is the main delivery objective of the fe
 - **SC-005**: 100% of post-handoff privileged mutation tests confirm execution only through local community timelock authority.
 - **SC-006**: 0 required migration/backfill tasks remain for Base Sepolia staging rollout; full redeploy procedure is sufficient.
 - **SC-007**: 0 unresolved contract/indexer/manager-app drift items remain at merge for this feature scope.
+- **SC-008**: 0 wizard deploy-step mutable writes target pre-existing static addresses from `deployments/*.json`; all mutable deploy-step targets are run-scoped addresses produced during the same deployment run.
 
 ### Test Expectations
 
