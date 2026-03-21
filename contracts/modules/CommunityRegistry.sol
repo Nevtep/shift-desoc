@@ -61,6 +61,26 @@ contract CommunityRegistry {
         address paramController;
     }
 
+    /// @notice Bootstrap parameter bundle used for one-tx community setup
+    struct BootstrapParams {
+        uint256 verifierPanelSize;
+        uint256 verifierMin;
+        uint256 maxPanelsPerEpoch;
+        bool useVPTWeighting;
+        uint256 maxWeightPerVerifier;
+        uint256 cooldownAfterFraud;
+        uint256 debateWindow;
+        uint256 voteWindow;
+        uint256 executionDelay;
+        uint256 minSeniority;
+        uint256 minSBTs;
+        uint256 proposalThreshold;
+        uint16 minTreasuryBps;
+        uint16 minPositionsBps;
+        uint8 spilloverTarget;
+        uint16 spilloverSplitBpsToTreasury;
+    }
+
 
 
     /*//////////////////////////////////////////////////////////////
@@ -175,6 +195,54 @@ contract CommunityRegistry {
         string calldata metadataURI,
         uint256 parentCommunityId
     ) external returns (uint256 communityId) {
+        return _registerCommunity(name, description, metadataURI, parentCommunityId, msg.sender);
+    }
+
+    /// @notice Register and bootstrap policy + modules in a single transaction
+    /// @dev Preserves deployer admin ownership while batching ParamController and module wiring
+    function bootstrapCommunity(
+        string calldata name,
+        string calldata description,
+        string calldata metadataURI,
+        uint256 parentCommunityId,
+        BootstrapParams calldata bootstrapParams,
+        ModuleAddresses calldata modules
+    ) external returns (uint256 communityId) {
+        communityId = _registerCommunity(name, description, metadataURI, parentCommunityId, msg.sender);
+
+        paramController.bootstrapConfigureFromRegistry(
+            communityId,
+            msg.sender,
+            ParamController.BootstrapConfig({
+                verifierPanelSize: bootstrapParams.verifierPanelSize,
+                verifierMin: bootstrapParams.verifierMin,
+                maxPanelsPerEpoch: bootstrapParams.maxPanelsPerEpoch,
+                useVPTWeighting: bootstrapParams.useVPTWeighting,
+                maxWeightPerVerifier: bootstrapParams.maxWeightPerVerifier,
+                cooldownAfterFraud: bootstrapParams.cooldownAfterFraud,
+                debateWindow: bootstrapParams.debateWindow,
+                voteWindow: bootstrapParams.voteWindow,
+                executionDelay: bootstrapParams.executionDelay,
+                minSeniority: bootstrapParams.minSeniority,
+                minSBTs: bootstrapParams.minSBTs,
+                proposalThreshold: bootstrapParams.proposalThreshold,
+                minTreasuryBps: bootstrapParams.minTreasuryBps,
+                minPositionsBps: bootstrapParams.minPositionsBps,
+                spilloverTarget: bootstrapParams.spilloverTarget,
+                spilloverSplitBpsToTreasury: bootstrapParams.spilloverSplitBpsToTreasury
+            })
+        );
+
+        _setModuleAddresses(communityId, modules);
+    }
+
+    function _registerCommunity(
+        string calldata name,
+        string calldata description,
+        string calldata metadataURI,
+        uint256 parentCommunityId,
+        address creator
+    ) internal returns (uint256 communityId) {
         if (bytes(name).length == 0) {
             revert Errors.InvalidInput("Community name cannot be empty");
         }
@@ -199,12 +267,12 @@ contract CommunityRegistry {
         // Parameters are set separately via initializeDefaultParameters() or ParamController directly
         
         // Grant creator admin role for this community
-        communityAdmins[communityId][msg.sender] = true;
+        communityAdmins[communityId][creator] = true;
         
         // Increment active community count
         activeCommunityCount++;
         
-        emit CommunityRegistered(communityId, name, msg.sender, parentCommunityId);
+        emit CommunityRegistered(communityId, name, creator, parentCommunityId);
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -300,10 +368,12 @@ contract CommunityRegistry {
     ) external {
         _requireValidCommunity(communityId);
         _requireCommunityAdmin(communityId);
-        
+        _setModuleAddresses(communityId, modules);
+    }
+
+    function _setModuleAddresses(uint256 communityId, ModuleAddresses calldata modules) internal {
         Community storage community = communities[communityId];
-        
-        // Update all module addresses
+
         if (modules.governor != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("governor"), community.governor, modules.governor);
             community.governor = modules.governor;
