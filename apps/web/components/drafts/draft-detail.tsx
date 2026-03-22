@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { useApiQuery } from "../../hooks/useApiQuery";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
-import { getContractConfig } from "../../lib/contracts";
+import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 import type { DraftNode } from "./draft-list";
 
 type DraftVersionNode = {
@@ -27,6 +27,7 @@ type DraftReviewNode = {
 
 type DraftDetailResponse = {
   draft: (DraftNode & {
+    communityId?: number;
     versions: DraftVersionNode[];
     reviews: DraftReviewNode[];
   }) | null;
@@ -109,6 +110,7 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
       <section className="space-y-3">
         <DraftEscalateForm
           draftId={draftId}
+          communityId={draft.communityId ? Number(draft.communityId) : undefined}
           status={draft.status}
           hasProposal={Boolean(draft.escalatedProposalId)}
         />
@@ -172,10 +174,12 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
 
 function DraftEscalateForm({
   draftId,
+  communityId,
   status,
   hasProposal
 }: {
   draftId: string;
+  communityId?: number;
   status: string;
   hasProposal: boolean;
 }) {
@@ -183,6 +187,8 @@ function DraftEscalateForm({
   const chainId = useChainId();
   const { status: accountStatus, address } = useAccount();
   const { writeContractAsync, isPending, error } = useWriteContract();
+  const { modules } = useCommunityModules({ communityId, chainId, enabled: Boolean(communityId) });
+  const draftsManagerAddress = modules?.draftsManager;
 
   const [descriptionCid, setDescriptionCid] = useState("");
   const [descriptionMarkdown, setDescriptionMarkdown] = useState("");
@@ -202,6 +208,10 @@ function DraftEscalateForm({
 
     if (!descriptionCid && !descriptionMarkdown.trim()) {
       setFormError("Provide a description markdown body or an existing CID.");
+      return;
+    }
+    if (!communityId || !draftsManagerAddress) {
+      setFormError("DraftsManager module is not registered for this community.");
       return;
     }
 
@@ -228,11 +238,9 @@ function DraftEscalateForm({
         cidToUse = json.cid;
       }
 
-      const { address: contractAddress, abi } = getContractConfig("draftsManager", chainId);
-
       await writeContractAsync({
-        address: contractAddress,
-        abi,
+        address: draftsManagerAddress,
+        abi: COMMUNITY_MODULE_ABIS.draftsManager,
         functionName: "escalateToProposal",
         args: [BigInt(draftId), isMultiChoice, Number(numOptions), cidToUse]
       });

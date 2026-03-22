@@ -1,24 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import engagementsArtifact from "../abis/Engagements.json" assert { type: "json" };
+import communityRegistryArtifact from "../abis/CommunityRegistry.json" assert { type: "json" };
 import { getContractAddress, getContractConfig } from "./contracts";
 
 describe("contracts wiring", () => {
-  it("resolves engagements contract from env", () => {
-    const original = process.env.NEXT_PUBLIC_ENGAGEMENTS;
-    process.env.NEXT_PUBLIC_ENGAGEMENTS = "0x2222222222222222222222222222222222222222";
+  it("resolves community registry contract from env", () => {
+    const original = process.env.NEXT_PUBLIC_COMMUNITY_REGISTRY;
+    process.env.NEXT_PUBLIC_COMMUNITY_REGISTRY = "0x2222222222222222222222222222222222222222";
 
     try {
-      const config = getContractConfig("engagements");
+      const config = getContractConfig("communityRegistry");
 
-      expect(config.address).toBe(getContractAddress("engagements"));
+      expect(config.address).toBe(getContractAddress("communityRegistry"));
       expect(config.address).toBe("0x2222222222222222222222222222222222222222");
-      expect(config.abi).toEqual(engagementsArtifact.abi);
+      expect(config.abi).toEqual(communityRegistryArtifact.abi);
     } finally {
       if (typeof original === "string") {
-        process.env.NEXT_PUBLIC_ENGAGEMENTS = original;
+        process.env.NEXT_PUBLIC_COMMUNITY_REGISTRY = original;
       } else {
-        delete process.env.NEXT_PUBLIC_ENGAGEMENTS;
+        delete process.env.NEXT_PUBLIC_COMMUNITY_REGISTRY;
       }
     }
   });

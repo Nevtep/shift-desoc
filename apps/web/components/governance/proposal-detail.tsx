@@ -10,7 +10,7 @@ import {
   ProposalQuery,
   type ProposalQueryResult
 } from "../../lib/graphql/queries";
-import { getContractConfig } from "../../lib/contracts";
+import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { useRouter } from "next/navigation";
 
@@ -105,6 +105,7 @@ export function ProposalDetail({ proposalId }: ProposalDetailProps) {
       <section className="space-y-3">
         <VoteForm
           proposalId={proposal.id}
+          communityId={proposal.communityId}
           multiChoiceOptions={proposal.multiChoiceOptions ?? []}
           actionBundle={actionBundle}
           proposalState={proposal.state}
@@ -162,11 +163,13 @@ export function ProposalDetail({ proposalId }: ProposalDetailProps) {
 
 function VoteForm({
   proposalId,
+  communityId,
   multiChoiceOptions,
   actionBundle,
   proposalState
 }: {
   proposalId: string;
+  communityId: number;
   multiChoiceOptions: string[];
   actionBundle: ProposalActions | null;
   proposalState: string;
@@ -175,6 +178,8 @@ function VoteForm({
   const chainId = useChainId();
   const { status } = useAccount();
   const { writeContractAsync, isPending, error } = useWriteContract();
+  const { modules } = useCommunityModules({ communityId, chainId, enabled: true });
+  const governorAddress = modules?.governor;
   const [support, setSupport] = useState<"0" | "1" | "2">("1");
   const [selectedOption, setSelectedOption] = useState(0);
   const [reason, setReason] = useState("");
@@ -190,21 +195,23 @@ function VoteForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSuccess(null);
+    if (!governorAddress) {
+      setActionError("Governor module is not registered for this community.");
+      return;
+    }
     try {
-      const { address, abi } = getContractConfig("governor", chainId);
-
       if (isMultiChoice) {
         const weights = multiChoiceOptions.map((_, idx) => (idx === selectedOption ? 1_000_000_000_000_000_000n : 0n));
         await writeContractAsync({
-          address,
-          abi,
+          address: governorAddress,
+          abi: COMMUNITY_MODULE_ABIS.governor,
           functionName: "castVoteMultiChoice",
           args: [BigInt(proposalId), weights, reason]
         });
       } else {
         await writeContractAsync({
-          address,
-          abi,
+          address: governorAddress,
+          abi: COMMUNITY_MODULE_ABIS.governor,
           functionName: "castVoteWithReason",
           args: [BigInt(proposalId), Number(support), reason]
         });
@@ -224,14 +231,17 @@ function VoteForm({
       setActionError("Proposal actions not indexed yet.");
       return;
     }
+    if (!governorAddress) {
+      setActionError("Governor module is not registered for this community.");
+      return;
+    }
     setIsQueueing(true);
     setActionError(null);
     setActionMessage(null);
     try {
-      const { address, abi } = getContractConfig("governor", chainId);
       await writeContractAsync({
-        address,
-        abi,
+        address: governorAddress,
+        abi: COMMUNITY_MODULE_ABIS.governor,
         functionName: "queue",
         args: [actionBundle.targets, actionBundle.values, actionBundle.calldatas, actionBundle.descriptionHash]
       });
@@ -250,14 +260,17 @@ function VoteForm({
       setActionError("Proposal actions not indexed yet.");
       return;
     }
+    if (!governorAddress) {
+      setActionError("Governor module is not registered for this community.");
+      return;
+    }
     setIsExecuting(true);
     setActionError(null);
     setActionMessage(null);
     try {
-      const { address, abi } = getContractConfig("governor", chainId);
       await writeContractAsync({
-        address,
-        abi,
+        address: governorAddress,
+        abi: COMMUNITY_MODULE_ABIS.governor,
         functionName: "execute",
         args: [actionBundle.targets, actionBundle.values, actionBundle.calldatas, actionBundle.descriptionHash],
         value: 0n

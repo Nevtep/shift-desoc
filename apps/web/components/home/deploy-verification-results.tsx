@@ -33,6 +33,13 @@ type Props = {
   isVerifying?: boolean;
 };
 
+type DisplayVerificationItem = {
+  key: string;
+  label: string;
+  passed?: boolean;
+  failureReason?: string;
+};
+
 function CheckRow({
   label,
   passed,
@@ -96,12 +103,16 @@ export function DeployVerificationResults({ results, isVerifying }: Props) {
 
   if (!showSection) return null;
 
-  const items = hasResults
-    ? results
+  const items: DisplayVerificationItem[] = hasResults
+    ? results.map((item) => ({
+        key: item.key,
+        label: item.label,
+        passed: item.passed,
+        failureReason: item.failureReason
+      }))
     : VERIFY_CHECK_KEYS.map((key) => ({
         key,
-        label: FRIENDLY_LABELS[key] ?? key.replace(/_/g, " "),
-        passed: undefined as boolean | undefined
+        label: FRIENDLY_LABELS[key] ?? key.replace(/_/g, " ")
       }));
 
   return (
@@ -110,9 +121,9 @@ export function DeployVerificationResults({ results, isVerifying }: Props) {
         {items.map((item, i) => (
           <CheckRow
             key={item.key}
-            label={FRIENDLY_LABELS[item.key] ?? ("label" in item ? item.label : item.key.replace(/_/g, " "))}
-            passed={"passed" in item ? item.passed : undefined}
-            failureReason={"failureReason" in item ? item.failureReason : undefined}
+            label={FRIENDLY_LABELS[item.key] ?? item.label}
+            passed={item.passed}
+            failureReason={item.failureReason}
             isLoading={isVerifying || !hasResults}
             delayMs={600 + i * 320}
           />

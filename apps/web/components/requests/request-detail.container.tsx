@@ -14,6 +14,7 @@ import {
   type DraftsQueryResult,
   type RequestQueryResult
 } from "../../lib/graphql/queries";
+import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 import { getContractConfig } from "../../lib/contracts";
 import { isIpfsDocumentResponse, normalizeDateString } from "./helpers";
 import { RequestDetailBody } from "./request-detail-body.component";
@@ -61,15 +62,6 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
   const [linkedValuableActionId, setLinkedValuableActionId] = useState<number | null>(null);
   const [bountyAmount, setBountyAmount] = useState<string>("0");
   const [linkDraft, setLinkDraft] = useState("");
-
-  const requestHubConfig = useMemo(() => {
-    try {
-      return getContractConfig("requestHub", chainId);
-    } catch (err) {
-      console.error(err);
-      return null;
-    }
-  }, [chainId]);
 
   const communityRegistryConfig = useMemo(() => {
     try {
@@ -128,6 +120,15 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
   const isRequestOpen = request?.status === "OPEN_DEBATE";
 
+  const { modules } = useCommunityModules({
+    communityId: request?.communityId,
+    chainId,
+    enabled: Boolean(request)
+  });
+
+  const requestHubAddress = modules?.requestHub;
+  const requestHubAbi = COMMUNITY_MODULE_ABIS.requestHub;
+
   const { data: moderatorRole } = useReadContract({
     address: communityRegistryConfig?.address,
     abi: (communityRegistryConfig?.abi ?? []) as Abi,
@@ -154,7 +155,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
   const isModerator = Boolean(hasModeratorRole);
 
-  const cid = request?.cid;
+  const cid = request?.cid ?? undefined;
 
   const {
     data: ipfsData,
@@ -164,13 +165,13 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
   } = useIpfsDocument(cid, Boolean(cid));
 
   const { data: onchainRequest } = useReadContract({
-    address: requestHubConfig?.address,
-    abi: (requestHubConfig?.abi ?? []) as Abi,
+    address: requestHubAddress,
+    abi: requestHubAbi as Abi,
     functionName: "getRequest",
     args: request ? [BigInt(request.id)] : undefined,
     chainId,
     query: {
-      enabled: Boolean(requestHubConfig && request)
+      enabled: Boolean(requestHubAddress && request)
     }
   });
 
@@ -278,8 +279,8 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       return;
     }
 
-    if (!requestHubConfig) {
-      setCommentError("Unsupported network. Switch to Base Sepolia.");
+    if (!requestHubAddress) {
+      setCommentError("RequestHub module is not registered for this community.");
       return;
     }
 
@@ -329,8 +330,8 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
       setCommentNodes((prev) => [optimisticComment, ...prev]);
 
       await writeContractAsync({
-        address: requestHubConfig.address,
-        abi: requestHubConfig.abi,
+        address: requestHubAddress,
+        abi: requestHubAbi,
         functionName: "postComment",
         args: [BigInt(request.id), BigInt(parentCommentId), uploadJson.cid]
       });
@@ -365,16 +366,16 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
     const nextStatus = statusOptions.find((option) => option.key === statusDraft) ?? statusOptions[0];
 
-    if (!requestHubConfig) {
-      push("Unsupported network. Switch to Base Sepolia.", "error");
+    if (!requestHubAddress) {
+      push("RequestHub module is not registered for this community.", "error");
       return;
     }
 
     try {
       setIsUpdatingStatus(true);
       await writeContractAsync({
-        address: requestHubConfig.address,
-        abi: requestHubConfig.abi,
+        address: requestHubAddress,
+        abi: requestHubAbi,
         functionName: "setRequestStatus",
         args: [BigInt(request.id), nextStatus.value]
       });
@@ -391,15 +392,15 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
   };
 
   const handleModerateComment = async (commentId: string | number, hide: boolean) => {
-    if (!requestHubConfig || !isModerator) {
+    if (!requestHubAddress || !isModerator) {
       return;
     }
 
     try {
       setModeratingCommentId(String(commentId));
       await writeContractAsync({
-        address: requestHubConfig.address,
-        abi: requestHubConfig.abi,
+        address: requestHubAddress,
+        abi: requestHubAbi,
         functionName: "moderateComment",
         args: [BigInt(commentId), hide]
       });
@@ -414,7 +415,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
   };
 
   const handleLinkValuableAction = async () => {
-    if (!request || !requestHubConfig) {
+    if (!request || !requestHubAddress) {
       push("Request not loaded", "error");
       return;
     }
@@ -431,8 +432,8 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
     try {
       await writeContractAsync({
-        address: requestHubConfig.address,
-        abi: requestHubConfig.abi,
+        address: requestHubAddress,
+        abi: requestHubAbi,
         functionName: "linkValuableAction",
         args: [BigInt(request.id), BigInt(vaIdNum)]
       });
@@ -482,7 +483,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
   const comments = useMemo(() => commentNodes, [commentNodes]);
   const hasHiddenComments = useMemo(() => comments.some((comment) => comment.isModerated), [comments]);
   const commentsPageInfo = commentsData?.comments.pageInfo;
-  const commentDisabled = !isConnected || isSubmittingComment || isWriting || !requestHubConfig || !isRequestOpen;
+  const commentDisabled = !isConnected || isSubmittingComment || isWriting || !requestHubAddress || !isRequestOpen;
   const drafts: DraftView[] = useMemo(
     () =>
       (draftsData?.drafts.nodes ?? []).map((node) => ({
@@ -535,7 +536,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
 
       <RequestDetailBody
         cid={cid}
-        hasRequestHubConfig={Boolean(requestHubConfig)}
+        hasRequestHubConfig={Boolean(requestHubAddress)}
         isIpfsLoading={isIpfsLoading}
         isIpfsError={isIpfsError}
         ipfsHtml={ipfsDoc?.html?.body ?? null}
@@ -571,7 +572,7 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
           }
         }}
         hasMore={Boolean(commentsPageInfo?.hasNextPage)}
-        unsupportedNetworkMessage={requestHubConfig ? null : "Unsupported network. Switch to Base Sepolia to comment."}
+        unsupportedNetworkMessage={requestHubAddress ? null : "RequestHub module is not registered for this community."}
       />
     </div>
   );

@@ -261,56 +261,62 @@ export function DeployConfigSteps({
                   Wallet: {shortenAddress(walletAddr)} — {walletAddr}
                 </p>
               ) : null}
-                <div className="grid gap-2 text-sm sm:grid-cols-2">
-                  <p>
-                    Wallet:{" "}
-                    <span className={preflight.walletConnected ? "text-primary" : "text-destructive"}>
-                      {preflight.walletConnected ? "Connected" : "Disconnected"}
-                    </span>
-                  </p>
-                  <p>
-                    Network:{" "}
-                    <span className={preflight.supportedNetwork ? "text-primary" : "text-destructive"}>
-                      {CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}
-                      {preflight.supportedNetwork ? " (supported)" : " (unsupported)"}
-                    </span>
-                  </p>
-                  <p>
-                    Balance: {weiToEth(preflight.funding.currentBalanceWei)} ETH on {CHAIN_NAMES[chainId] ?? `chain ${chainId}`}
-                    {preflight.funding.isSufficient ? (
-                      <span className="ml-1 text-primary">(sufficient)</span>
-                    ) : (
-                      <span className="ml-1 text-destructive">(insufficient)</span>
-                    )}
-                  </p>
-                  <p className="text-muted-foreground">
-                    Required: ~{weiToEth(preflight.funding.requiredWei)} ETH for gas
-                  </p>
-                </div>
-                {preflight.blockingReasons.length > 0 ? (
+                {preflight ? (
                   <>
-                    <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
-                      {preflight.blockingReasons.map((reason) => (
-                        <li key={reason}>{reason}</li>
-                      ))}
-                    </ul>
-                    {blockedByInsufficientFunds && onDesignModeChange ? (
-                      <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
-                        <p className="mb-2 text-xs text-amber-800">
-                          Sin saldo para gas? Activa el modo diseño para ver el flujo completo sin ejecutar transacciones.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => onDesignModeChange(!designMode)}
-                          className="cursor-pointer rounded-lg bg-amber-200 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-300"
-                        >
-                          {designMode ? "Desactivar modo diseño" : "Continuar en modo diseño"}
-                        </button>
-                      </div>
-                    ) : null}
+                    <div className="grid gap-2 text-sm sm:grid-cols-2">
+                      <p>
+                        Wallet:{" "}
+                        <span className={preflight.walletConnected ? "text-primary" : "text-destructive"}>
+                          {preflight.walletConnected ? "Connected" : "Disconnected"}
+                        </span>
+                      </p>
+                      <p>
+                        Network:{" "}
+                        <span className={preflight.supportedNetwork ? "text-primary" : "text-destructive"}>
+                          {CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}
+                          {preflight.supportedNetwork ? " (supported)" : " (unsupported)"}
+                        </span>
+                      </p>
+                      <p>
+                        Balance: {weiToEth(preflight.funding.currentBalanceWei)} ETH on {CHAIN_NAMES[chainId] ?? `chain ${chainId}`}
+                        {preflight.funding.isSufficient ? (
+                          <span className="ml-1 text-primary">(sufficient)</span>
+                        ) : (
+                          <span className="ml-1 text-destructive">(insufficient)</span>
+                        )}
+                      </p>
+                      <p className="text-muted-foreground">
+                        Required: ~{weiToEth(preflight.funding.requiredWei)} ETH for gas
+                      </p>
+                    </div>
+                    {preflight.blockingReasons.length > 0 ? (
+                      <>
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                          {preflight.blockingReasons.map((reason) => (
+                            <li key={reason}>{reason}</li>
+                          ))}
+                        </ul>
+                        {blockedByInsufficientFunds && onDesignModeChange ? (
+                          <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                            <p className="mb-2 text-xs text-amber-800">
+                              Sin saldo para gas? Activa el modo diseño para ver el flujo completo sin ejecutar transacciones.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => onDesignModeChange(!designMode)}
+                              className="cursor-pointer rounded-lg bg-amber-200 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-300"
+                            >
+                              {designMode ? "Desactivar modo diseño" : "Continuar en modo diseño"}
+                            </button>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="text-sm font-medium text-primary">All checks passed. You can deploy.</p>
+                    )}
                   </>
                 ) : (
-                  <p className="text-sm font-medium text-primary">All checks passed. You can deploy.</p>
+                  <p className="text-sm text-muted-foreground">Refreshing preflight status…</p>
                 )}
               </>
             )}

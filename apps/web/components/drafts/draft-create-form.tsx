@@ -14,6 +14,7 @@ import {
 import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
 
 import { CONTRACTS, getContractConfig } from "../../lib/contracts";
+import { COMMUNITY_MODULE_ABIS } from "../../hooks/useCommunityModules";
 import {
   getTargetDefinition,
   getTargetFunctions,
@@ -102,15 +103,15 @@ export function DraftCreateForm() {
   const timelockAddress = moduleAddressMap.timelock ?? null;
 
   function resolveTargetAddress(targetId: ActionTargetId): Address | null {
-    // Prefer per-community module wiring when available, else fall back to deployment map (single-community default)
-    if (targetId === "paramController" && moduleAddressMap.paramController) return moduleAddressMap.paramController;
+    // Resolve module targets from per-community registry wiring.
     if (targetId === "draftsManager" && moduleAddressMap.draftsManager) return moduleAddressMap.draftsManager;
-    if (targetId === "communityRegistry") return getContractConfig("communityRegistry", chainId).address;
-    if (targetId === "cohortRegistry") return getContractConfig("cohortRegistry", chainId).address;
-    if (targetId === "verifierElection" && moduleAddressMap.verifierElection) return moduleAddressMap.verifierElection;
-    if (targetId === "verifierPowerToken" && moduleAddressMap.verifierPowerToken) return moduleAddressMap.verifierPowerToken;
+    if (targetId === "engagements" && moduleAddressMap.engagementsManager) return moduleAddressMap.engagementsManager;
     if (targetId === "valuableActionRegistry" && moduleAddressMap.valuableActionRegistry)
       return moduleAddressMap.valuableActionRegistry;
+    if (targetId === "communityRegistry") return getContractConfig("communityRegistry", chainId).address;
+    if (targetId === "requestHub" && moduleAddressMap.requestHub) return moduleAddressMap.requestHub;
+    if (targetId === "governor" && moduleAddressMap.governor) return moduleAddressMap.governor;
+
     return null;
   }
 
@@ -165,11 +166,14 @@ export function DraftCreateForm() {
         ? keccak256(encodePacked(["address[]", "uint256[]", "bytes[]"], [targets, values, calldatas]))
         : ZERO_HASH;
 
-      const { address: contractAddress, abi } = getContractConfig("draftsManager", chainId);
+      const contractAddress = moduleAddressMap.draftsManager;
+      if (!contractAddress) {
+        throw new Error("DraftsManager module is not registered for this community.");
+      }
 
       await writeContractAsync({
         address: contractAddress,
-        abi,
+        abi: COMMUNITY_MODULE_ABIS.draftsManager,
         functionName: "createDraft",
         args: [
           BigInt(communityIdNum),
@@ -324,6 +328,11 @@ function ActionBuilder({
     return form.paramValues[key] ?? "";
   }
 
+  function getTupleComponents(param: AbiParameter): readonly AbiParameter[] | null {
+    const withComponents = param as AbiParameter & { components?: readonly AbiParameter[] };
+    return Array.isArray(withComponents.components) ? withComponents.components : null;
+  }
+
   function buildTupleObject(components: readonly AbiParameter[], baseKey: string): Record<string, unknown> {
     const obj: Record<string, unknown> = {};
     components.forEach((component, idx) => {
@@ -336,13 +345,15 @@ function ActionBuilder({
 
   function buildValue(param: AbiParameter, baseKey: string): unknown {
     if (param.type === "tuple") {
-      if (!param.components) throw new Error("Missing tuple components");
-      return buildTupleObject(param.components, baseKey);
+      const components = getTupleComponents(param);
+      if (!components) throw new Error("Missing tuple components");
+      return buildTupleObject(components, baseKey);
     }
     if (param.type === "tuple[]") {
-      if (!param.components) throw new Error("Missing tuple components");
+      const components = getTupleComponents(param);
+      if (!components) throw new Error("Missing tuple components");
       const count = form.tupleArrayCounts[baseKey] ?? 1;
-      return Array.from({ length: count }, (_, i) => buildTupleObject(param.components as AbiParameter[], `${baseKey}[${i}]`));
+      return Array.from({ length: count }, (_, i) => buildTupleObject(components, `${baseKey}[${i}]`));
     }
     if (param.type.endsWith("[]")) {
       const base = param.type.slice(0, -2);
@@ -366,11 +377,13 @@ function ActionBuilder({
     });
   }
 
-  function renderParamInput(input: AbiParameter, idx: number, parentKey?: string): JSX.Element {
+  function renderParamInput(input: AbiParameter, idx: number, parentKey?: string) {
     const displayName = input.name || `arg${idx}`;
     const path = parentKey ? `${parentKey}.${displayName}` : displayName;
 
-    if (input.type === "tuple[]" && input.components) {
+    const tupleComponents = getTupleComponents(input);
+
+    if (input.type === "tuple[]" && tupleComponents) {
       const count = form.tupleArrayCounts[path] ?? 1;
       return (
         <div key={path} className="space-y-2 rounded border border-border p-3 sm:col-span-2">
@@ -399,7 +412,7 @@ function ActionBuilder({
               <div key={`${path}[${itemIdx}]`} className="rounded border border-dashed border-border p-3">
                 <div className="mb-2 text-xs text-muted-foreground">Item {itemIdx + 1}</div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {input.components?.map((component, compIdx) =>
+                  {tupleComponents.map((component, compIdx) =>
                     renderParamInput(component, compIdx, `${path}[${itemIdx}]`)
                   )}
                 </div>
@@ -410,15 +423,12 @@ function ActionBuilder({
       );
     }
 
-    if (input.type === "tuple" && input.components) {
+    if (input.type === "tuple" && tupleComponents) {
       return (
         <div key={path} className="space-y-2 rounded border border-border p-3 sm:col-span-2">
           <div className="text-sm font-medium">{displayName} (tuple)</div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {input.components.map((component, compIdx) => {
-              const compName = component.name || `field${compIdx}`;
-              return renderParamInput(component, compIdx, path);
-            })}
+            {tupleComponents.map((component, compIdx) => renderParamInput(component, compIdx, path))}
           </div>
         </div>
       );
@@ -533,26 +543,7 @@ function ActionBuilder({
           </select>
         </label>
 
-        {selectedFunction?.abiFragment.inputs.map((input, idx) => {
-          const key = input.name || `arg${idx}`;
-          if (input.type == (SolidityTuple | SolidityArrayWithTuple)){
-            input.components
-          } else {
-            return (
-              <label key={key} className="flex flex-col gap-1 text-sm sm:col-span-2">
-                <span className="text-muted-foreground">
-                  {key || `arg${idx}`} <span className="text-xs text-muted-foreground">{input.type}</span>
-                </span>
-                <input
-                  className="rounded border border-border bg-background px-3 py-2"
-                  value={form.paramValues[key] ?? ""}
-                  onChange={(e) => handleParamChange(key, e.target.value)}
-                  placeholder="Comma-separated for arrays"
-                />
-              </label>
-            );
-          }
-        })}
+        {selectedFunction?.abiFragment.inputs.map((input, idx) => renderParamInput(input, idx))}
 
         {selectedFunction?.abiFragment.stateMutability === "payable" ? (
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">

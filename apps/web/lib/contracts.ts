@@ -15,6 +15,16 @@ type LayerFactoryKey =
   | "commerceLayerFactory"
   | "coordinationLayerFactory";
 
+type EnvBackedContractKey =
+  | LayerFactoryKey
+  | "communityRegistry"
+  | "paramController"
+  | "accessManager"
+  | "positionManager"
+  | "marketplace"
+  | "revenueRouter"
+  | "bootstrapCoordinator";
+
 type ContractKey =
   | LayerFactoryKey
   | "communityRegistry"
@@ -39,23 +49,11 @@ type ContractKey =
 
 type ChainId = typeof baseSepolia.id | number;
 
-const ENV_BY_KEY: Record<ContractKey, string> = {
+const ENV_BY_KEY: Record<EnvBackedContractKey, string> = {
   communityRegistry: "NEXT_PUBLIC_COMMUNITY_REGISTRY",
   paramController: "NEXT_PUBLIC_PARAM_CONTROLLER",
   accessManager: "NEXT_PUBLIC_ACCESS_MANAGER",
-  governor: "NEXT_PUBLIC_GOVERNOR",
-  timelock: "NEXT_PUBLIC_TIMELOCK",
-  requestHub: "NEXT_PUBLIC_REQUEST_HUB",
-  draftsManager: "NEXT_PUBLIC_DRAFTS_MANAGER",
-  engagements: "NEXT_PUBLIC_ENGAGEMENTS",
   positionManager: "NEXT_PUBLIC_POSITION_MANAGER",
-  valuableActionRegistry: "NEXT_PUBLIC_VALUABLE_ACTION_REGISTRY",
-  verifierPowerToken: "NEXT_PUBLIC_VERIFIER_POWER_TOKEN",
-  verifierElection: "NEXT_PUBLIC_VERIFIER_ELECTION",
-  verifierManager: "NEXT_PUBLIC_VERIFIER_MANAGER",
-  valuableActionSBT: "NEXT_PUBLIC_VALUABLE_ACTION_SBT",
-  treasuryAdapter: "NEXT_PUBLIC_TREASURY_ADAPTER",
-  communityToken: "NEXT_PUBLIC_COMMUNITY_TOKEN",
   marketplace: "NEXT_PUBLIC_MARKETPLACE",
   revenueRouter: "NEXT_PUBLIC_REVENUE_ROUTER",
   bootstrapCoordinator: "NEXT_PUBLIC_BOOTSTRAP_COORDINATOR",
@@ -108,7 +106,12 @@ export function getContractAddress(key: ContractKey, chainId?: ChainId): Address
     throw new Error("Unsupported chain. Switch to Base Sepolia.");
   }
 
-  const envKey = ENV_BY_KEY[key];
+  const envKey = ENV_BY_KEY[key as EnvBackedContractKey];
+  if (!envKey) {
+    throw new Error(
+      `Address for ${key} is not env-backed. Resolve this module address from CommunityRegistry wiring by communityId.`
+    );
+  }
   const rawAddress = process.env[envKey];
   if (!rawAddress || !/^0x[a-fA-F0-9]{40}$/.test(rawAddress)) {
     throw new Error(`Missing or invalid address for ${key}. Set ${envKey} in .env for the web app.`);

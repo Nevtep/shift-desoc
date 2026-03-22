@@ -16,7 +16,11 @@
                 "approve": true,
                 "matchCommandLine": true
             },
-            "printf": true
+            "printf": true,
+            "/^source \\.env >/dev/null 2>&1; psql \"\\$DATABASE_URL\" -c \"select pid, usename, application_name, state, query from pg_stat_activity where datname = current_database\\(\\) and query ilike '%_ponder_meta%' order by pid;\"$/": {
+                "approve": true,
+                "matchCommandLine": true
+            }
         }
     }
 }

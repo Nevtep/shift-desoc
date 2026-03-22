@@ -10,7 +10,7 @@ import {
   type EngagementQueryResult
 } from "../../lib/graphql/queries";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
-import { getContractConfig } from "../../lib/contracts";
+import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "../ui/toaster";
@@ -99,6 +99,7 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
       <section className="space-y-3">
         <VerifyEngagementForm
           engagementId={engagement.id}
+          communityId={engagement.communityId}
           engagementStatus={engagement.status}
           assignments={engagement.jurorAssignments ?? []}
         />
@@ -143,10 +144,12 @@ type JurorAssignment = NonNullable<NonNullable<EngagementQueryResult["engagement
 
 function VerifyEngagementForm({
   engagementId,
+  communityId,
   engagementStatus,
   assignments
 }: {
   engagementId: string;
+  communityId: number;
   engagementStatus: string;
   assignments: JurorAssignment[];
 }) {
@@ -154,6 +157,8 @@ function VerifyEngagementForm({
   const chainId = useChainId();
   const { status, address } = useAccount();
   const { writeContractAsync, isPending, error } = useWriteContract();
+  const { modules } = useCommunityModules({ communityId, chainId, enabled: true });
+  const engagementsAddress = modules?.engagementsManager;
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [success, setSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -174,11 +179,14 @@ function VerifyEngagementForm({
       setActionError("You are not assigned as a juror for this engagement.");
       return;
     }
+    if (!engagementsAddress) {
+      setActionError("Engagements module is not registered for this community.");
+      return;
+    }
     try {
-      const { address, abi } = getContractConfig("engagements", chainId);
       await writeContractAsync({
-        address,
-        abi,
+        address: engagementsAddress,
+        abi: COMMUNITY_MODULE_ABIS.engagements,
         functionName: "verify",
         args: [BigInt(engagementId), decision === "approve"]
       });

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useChainId, usePublicClient, useReadContract, useWriteContract } from "wagmi";
 
-import { getContractConfig } from "../../lib/contracts";
+import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 
 export function RequestCreateForm() {
   const router = useRouter();
@@ -25,20 +25,27 @@ export function RequestCreateForm() {
   const isConnected = status === "connected";
   const disabled = !isConnected || isPending || isUploading;
 
-  const valuableActionRegistry = useMemo(() => {
-    try {
-      return getContractConfig("valuableActionRegistry", chainId);
-    } catch (err) {
-      console.error(err);
-      return null;
-    }
-  }, [chainId]);
+  const communityIdNum = Number(communityId);
+  const { modules, isFetching: isFetchingModules } = useCommunityModules({
+    communityId: Number.isFinite(communityIdNum) ? communityIdNum : undefined,
+    chainId,
+    enabled: true
+  });
+
+  const requestHubAddress = modules?.requestHub;
+  const valuableActionRegistryAddress = modules?.valuableActionRegistry;
 
   const { data: activeVaIdsRaw, isFetching: isFetchingVas } = useReadContract({
-    address: valuableActionRegistry?.address,
-    abi: valuableActionRegistry?.abi,
+    address: valuableActionRegistryAddress,
+    abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
     functionName: "getActiveValuableActions",
-    query: { enabled: requestType === "execution" && Boolean(valuableActionRegistry) }
+    query: {
+      enabled:
+        requestType === "execution" &&
+        Boolean(valuableActionRegistryAddress) &&
+        Number.isFinite(communityIdNum) &&
+        communityIdNum > 0
+    }
   });
 
   const activeVaIds = useMemo(() => {
@@ -50,7 +57,6 @@ export function RequestCreateForm() {
     event.preventDefault();
     setSuccessMessage(null);
 
-    const communityIdNum = Number(communityId);
     if (!Number.isFinite(communityIdNum) || communityIdNum <= 0) {
       alert("Enter a valid community ID");
       return;
@@ -91,7 +97,12 @@ export function RequestCreateForm() {
         throw new Error(uploadJson.error ?? "Failed to upload content to IPFS");
       }
 
-      const { address: contractAddress, abi } = getContractConfig("requestHub", chainId);
+      if (!requestHubAddress) {
+        throw new Error("RequestHub module is not registered for this community.");
+      }
+
+      const contractAddress = requestHubAddress;
+      const abi = COMMUNITY_MODULE_ABIS.requestHub;
 
       let anticipatedRequestId: bigint | null = null;
       if (requestType === "execution" && publicClient) {
@@ -220,7 +231,7 @@ export function RequestCreateForm() {
                 value={selectedValuableActionId}
                 onChange={(e) => setSelectedValuableActionId(e.target.value)}
                 className="rounded border border-border bg-background px-3 py-2 sm:w-1/2"
-                disabled={isFetchingVas || activeVaIds.length === 0}
+                disabled={isFetchingModules || isFetchingVas || activeVaIds.length === 0}
               >
                 <option value="">{isFetchingVas ? "Loading active actions..." : "Select active action"}</option>
                 {activeVaIds.map((id) => (
@@ -240,6 +251,11 @@ export function RequestCreateForm() {
               Active Valuable Actions are loaded from chain; you can also paste a specific ID.
             </span>
           </label>
+        ) : null}
+        {Number.isFinite(communityIdNum) && communityIdNum > 0 && !requestHubAddress ? (
+          <p className="text-xs text-destructive sm:col-span-2">
+            RequestHub module not found for community {communityIdNum}. Check CommunityRegistry wiring.
+          </p>
         ) : null}
         <label className="flex flex-col gap-1 text-sm sm:col-span-1">
           <span className="text-muted-foreground">Tags (comma separated)</span>

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
 
-import { getContractConfig } from "../../lib/contracts";
+import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 
 export function EngagementSubmitForm() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export function EngagementSubmitForm() {
   const { writeContractAsync, isPending, error } = useWriteContract();
 
   const [typeId, setTypeId] = useState("1");
+  const [communityId, setCommunityId] = useState("1");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [evidenceLinks, setEvidenceLinks] = useState("");
@@ -22,11 +23,23 @@ export function EngagementSubmitForm() {
   const isConnected = status === "connected";
   const disabled = !isConnected || isPending || isUploading;
 
+  const communityIdNum = Number(communityId);
+  const { modules } = useCommunityModules({
+    communityId: Number.isFinite(communityIdNum) ? communityIdNum : undefined,
+    chainId,
+    enabled: true
+  });
+  const engagementsAddress = modules?.engagementsManager;
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSuccessMessage(null);
 
     const typeIdNum = Number(typeId);
+    if (!Number.isFinite(communityIdNum) || communityIdNum <= 0) {
+      alert("Enter a valid community ID");
+      return;
+    }
     if (!Number.isFinite(typeIdNum) || typeIdNum <= 0) {
       alert("Enter a valid valuable action ID");
       return;
@@ -67,7 +80,12 @@ export function EngagementSubmitForm() {
         throw new Error(uploadJson.error ?? "Failed to upload evidence to IPFS");
       }
 
-      const { address: contractAddress, abi } = getContractConfig("engagements", chainId);
+      if (!engagementsAddress) {
+        throw new Error("Engagements module is not registered for this community.");
+      }
+
+      const contractAddress = engagementsAddress;
+      const abi = COMMUNITY_MODULE_ABIS.engagements;
 
       await writeContractAsync({
         address: contractAddress,
@@ -99,6 +117,16 @@ export function EngagementSubmitForm() {
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-muted-foreground">Community ID</span>
+          <input
+            required
+            value={communityId}
+            onChange={(e) => setCommunityId(e.target.value)}
+            className="rounded border border-border bg-background px-3 py-2"
+            placeholder="1"
+          />
+        </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Valuable Action ID</span>
           <input

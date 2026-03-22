@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useRef, useEffect, useState } from "react";
 
-const items = [
+const items: { href: Route; label: string }[] = [
   { href: "/requests", label: "Requests" },
   { href: "/drafts", label: "Drafts" },
   { href: "/governance/proposals", label: "Proposals" }

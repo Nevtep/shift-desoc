@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Mar 20, 2026)
+# Shift DeSoc Status Review (Mar 22, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -69,6 +69,7 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-03-22: Web runtime no longer treats community modules as env-backed addresses. `apps/web/lib/contracts.ts` now limits env-backed address resolution to shared infra + non-community-scoped/system keys, while community module interactions continue resolving through CommunityRegistry (`getCommunityModules`) by `communityId`. Deployment default step executor now seeds module wiring from on-chain template community modules instead of module env vars. Expanded `scripts/copy-web-abis.js` coverage and refreshed `apps/web/abis/*` to include shared infra, module, and layer-factory ABIs used across web flows.
 - 2026-03-20: Added `BootstrapCoordinator` to shared infrastructure deployment/reuse flow (`deploySharedInfraIfMissing`) so Base Sepolia shared-infra deploy now persists `bootstrapCoordinator` in `deployments/base_sepolia.json` and emits `NEXT_PUBLIC_BOOTSTRAP_COORDINATOR` from `scripts/hardhat/deploy-shared-infra.ts`.
 - 2026-03-20: Added shared-infra `BootstrapCoordinator` (`contracts/core/BootstrapCoordinator.sol`) to batch AccessManager selector-role wiring and role grants through one call while preserving admin checks (`caller` and `coordinator` must both hold `ADMIN_ROLE`). Web deploy wizard `CONFIGURE_ACCESS_PERMISSIONS` now attempts coordinator-based batching first when configured (`NEXT_PUBLIC_BOOTSTRAP_COORDINATOR` or deployment address lookup) and safely falls back to direct idempotent writes when coordinator infra is absent/ineligible.
 - 2026-03-20: Added one-transaction community bootstrap path in contracts and deploy wizard runtime. `CommunityRegistry` now supports `bootstrapCommunity(...)` to atomically register a community, bootstrap ParamController policies, and wire module addresses; `ParamController` added registry-only `bootstrapConfigureFromRegistry(...)` with bootstrap-phase guardrails and validation parity. Web factory executor now attempts the one-tx bootstrap first and falls back to legacy multi-write wiring for older staged deployments that do not yet expose the new registry function.

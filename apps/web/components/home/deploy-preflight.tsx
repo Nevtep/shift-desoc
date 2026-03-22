@@ -14,6 +14,9 @@ export function DeployPreflight({ assessment }: Props) {
   }
 
   const { funding, sharedInfra } = assessment;
+  const accessManagerProbe = sharedInfra.accessManager;
+  const paramControllerProbe = sharedInfra.paramController;
+  const communityRegistryProbe = sharedInfra.communityRegistry;
 
   return (
     <section className="card space-y-3">
@@ -39,13 +42,13 @@ export function DeployPreflight({ assessment }: Props) {
       <div className="card-tight space-y-1 text-xs text-muted-foreground">
         <p className="font-medium text-foreground">Shared infra details</p>
         <p>
-          AccessManager: {sharedInfra.accessManager.address ?? "not resolved"} ({sharedInfra.accessManager.abiProbePassed ? "probe ok" : "probe failed"})
+          AccessManager: {accessManagerProbe?.address ?? "not resolved"} ({accessManagerProbe?.abiProbePassed ? "probe ok" : "probe failed"})
         </p>
         <p>
-          ParamController: {sharedInfra.paramController.address ?? "not resolved"} ({sharedInfra.paramController.abiProbePassed ? "probe ok" : "probe failed"})
+          ParamController: {paramControllerProbe?.address ?? "not resolved"} ({paramControllerProbe?.abiProbePassed ? "probe ok" : "probe failed"})
         </p>
         <p>
-          CommunityRegistry: {sharedInfra.communityRegistry.address ?? "not resolved"} ({sharedInfra.communityRegistry.abiProbePassed ? "probe ok" : "probe failed"})
+          CommunityRegistry: {communityRegistryProbe?.address ?? "not resolved"} ({communityRegistryProbe?.abiProbePassed ? "probe ok" : "probe failed"})
         </p>
       </div>
       {assessment.blockingReasons.length > 0 ? (

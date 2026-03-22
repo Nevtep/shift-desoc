@@ -52,7 +52,9 @@ const startBlock = process.env.PONDER_START_BLOCK
   ? Number.parseInt(process.env.PONDER_START_BLOCK, 10)
   : deployment.startBlock;
 
-  console.log(`Using deployment from ${deploymentPath} with start block ${startBlock}`);
+console.log(
+  `Using deployment from ${deploymentPath} with start block ${startBlock}`
+);
 
 const toAddress = (val?: string): `0x${string}` | undefined =>
   val && val.startsWith("0x") ? (val as `0x${string}`) : undefined;
