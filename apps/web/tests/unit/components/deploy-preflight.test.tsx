@@ -11,7 +11,6 @@ describe("Deploy preflight gating", () => {
     renderWithProviders(<DeployWizard />);
 
     expect(await screen.findByText(/Shared infra details/i)).toBeInTheDocument();
-    expect(screen.getByText(/AccessManager:/i)).toBeInTheDocument();
     expect(screen.getByText(/ParamController:/i)).toBeInTheDocument();
     expect(screen.getByText(/CommunityRegistry:/i)).toBeInTheDocument();
   });

@@ -45,6 +45,24 @@ export function clearSession(sessionId: string): void {
   writeStore(store);
 }
 
+export function clearSessionsForDeployerChain(
+  deployerAddress: `0x${string}`,
+  chainId: number
+): void {
+  const normalized = deployerAddress.toLowerCase();
+  const store = readStore();
+  const nextStore: SessionMap = {};
+
+  for (const [sessionId, session] of Object.entries(store)) {
+    const isSameDeployer = session.deployerAddress.toLowerCase() === normalized;
+    const isSameChain = session.chainId === chainId;
+    if (isSameDeployer && isSameChain) continue;
+    nextStore[sessionId] = session;
+  }
+
+  writeStore(nextStore);
+}
+
 export function findResumeCandidate(
   deployerAddress: `0x${string}`,
   chainId: number,

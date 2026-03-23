@@ -16,7 +16,7 @@ describe("preflight", () => {
     expect(funding.bufferMultiplierBps).toBe(12500);
   });
 
-  it("blocks start when wallet/network/shared infra/funds fail", () => {
+  it("blocks start when wallet/network/funds fail and avoids misleading infra error on wrong network", () => {
     const funding = estimateFunding({
       estimatedTxCount: 50,
       estimatedGasPerTx: 500_000n,
@@ -31,9 +31,13 @@ describe("preflight", () => {
       supportedChainIds: [84532],
       sharedInfra: {
         addressesPresent: false,
-        accessManager: { hasCode: false, abiProbePassed: false },
         paramController: { hasCode: false, abiProbePassed: false },
         communityRegistry: { hasCode: false, abiProbePassed: false },
+        governanceLayerFactory: { hasCode: false, abiProbePassed: false },
+        verificationLayerFactory: { hasCode: false, abiProbePassed: false },
+        economicLayerFactory: { hasCode: false, abiProbePassed: false },
+        commerceLayerFactory: { hasCode: false, abiProbePassed: false },
+        coordinationLayerFactory: { hasCode: false, abiProbePassed: false },
         isUsable: false
       },
       funding
@@ -42,6 +46,6 @@ describe("preflight", () => {
     expect(assessment.blockingReasons.length).toBeGreaterThanOrEqual(3);
     expect(assessment.blockingReasons.join(" ")).toContain("Connect wallet");
     expect(assessment.blockingReasons.join(" ")).toContain("supported network");
-    expect(assessment.blockingReasons.join(" ")).toContain("Shared infrastructure");
+    expect(assessment.blockingReasons.join(" ")).not.toContain("Shared infrastructure");
   });
 });

@@ -26,6 +26,7 @@ function makeSession() {
       verifierElection: "0x1000000000000000000000000000000000000011",
       verifierManager: "0x1000000000000000000000000000000000000012",
       valuableActionSBT: "0x1000000000000000000000000000000000000013",
+      positionManager: "0x1000000000000000000000000000000000000018",
       treasuryAdapter: "0x1000000000000000000000000000000000000014",
       communityToken: "0x1000000000000000000000000000000000000015",
       revenueRouter: "0x1000000000000000000000000000000000000016",
@@ -100,11 +101,12 @@ describe("factory-step-executor strict staging guards", () => {
   });
 
   it("uses run-scoped addresses for CONFIGURE_ACCESS_PERMISSIONS without static lookup", async () => {
+    process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = "0x2000000000000000000000000000000000000002";
     let nextCommunityId = 1n;
 
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(1n),
-      getBytecode: vi.fn().mockResolvedValue("0x"),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
       readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
         switch (functionName) {
           case "nextCommunityId": {
@@ -114,6 +116,8 @@ describe("factory-step-executor strict staging guards", () => {
           }
           case "ADMIN_ROLE":
             return 0n;
+          case "authority":
+            return "0x1000000000000000000000000000000000000003";
           case "hasRole":
             return [true, 0];
           case "communityInitialized":
@@ -150,6 +154,7 @@ describe("factory-step-executor strict staging guards", () => {
     const executor = createFactoryDeployStepExecutor({
       publicClient,
       writeContractAsync,
+      deployContractAsync: vi.fn(),
       connectedAddress: "0xabc1230000000000000000000000000000000000"
     });
 
@@ -158,6 +163,250 @@ describe("factory-step-executor strict staging guards", () => {
     expect(result.communityId).toBe(1);
     expect(result.txHashes?.length ?? 0).toBeGreaterThan(0);
     expect(writeContractAsync).toHaveBeenCalled();
+
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("falls back to static gas when bootstrapAccessAndRuntime estimation returns AccessManagedUnauthorized", async () => {
+    process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = "0x2000000000000000000000000000000000000002";
+    let nextCommunityId = 1n;
+
+    const publicClient = {
+      getTransactionCount: vi.fn().mockResolvedValue(1n),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
+        switch (functionName) {
+          case "nextCommunityId": {
+            const value = nextCommunityId;
+            nextCommunityId += 1n;
+            return value;
+          }
+          case "ADMIN_ROLE":
+            return 0n;
+          case "authority":
+            return "0x1000000000000000000000000000000000000003";
+          case "hasRole":
+            return [true, 0];
+          default:
+            return true;
+        }
+      }),
+      estimateContractGas: vi.fn(async ({ functionName }: { functionName: string }) => {
+        if (functionName === "bootstrapAccessAndRuntime") {
+          throw new Error("AccessManagedUnauthorized(0xabc123)");
+        }
+        return 21000n;
+      }),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
+    } as any;
+
+    const writeContractAsync = vi
+      .fn()
+      .mockResolvedValue("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+    const executor = createFactoryDeployStepExecutor({
+      publicClient,
+      writeContractAsync,
+      deployContractAsync: vi.fn(),
+      connectedAddress: "0xabc1230000000000000000000000000000000000"
+    });
+
+    const result = await executor("CONFIGURE_ACCESS_PERMISSIONS", makeSession(), makeContext());
+
+    expect(result.communityId).toBe(1);
+    expect(result.txHashes?.length ?? 0).toBe(2);
+    expect(writeContractAsync).toHaveBeenCalled();
+
+    const bootstrapCall = writeContractAsync.mock.calls.find(
+      ([args]) => args?.functionName === "bootstrapAccessAndRuntime"
+    )?.[0];
+    expect(bootstrapCall).toBeTruthy();
+    expect(bootstrapCall.gas).toBe(1800000n);
+
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("resumes CONFIGURE_ACCESS_PERMISSIONS from prior bootstrap tx without re-running bootstrapCommunity", async () => {
+    process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = "0x2000000000000000000000000000000000000002";
+
+    const resumedSession = makeSession();
+    resumedSession.communityId = undefined;
+    resumedSession.steps = [
+      {
+        key: "PRECHECKS",
+        status: "succeeded",
+        expectedTxCount: 0,
+        confirmedTxCount: 0,
+        txHashes: []
+      },
+      {
+        key: "DEPLOY_STACK",
+        status: "succeeded",
+        expectedTxCount: 7,
+        confirmedTxCount: 7,
+        txHashes: [
+          "0x1111111111111111111111111111111111111111111111111111111111111111"
+        ]
+      },
+      {
+        key: "CONFIGURE_ACCESS_PERMISSIONS",
+        status: "failed",
+        expectedTxCount: 2,
+        confirmedTxCount: 1,
+        txHashes: [
+          "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ]
+      },
+      {
+        key: "HANDOFF_ADMIN_TO_TIMELOCK",
+        status: "pending",
+        expectedTxCount: 3,
+        confirmedTxCount: 0,
+        txHashes: []
+      },
+      {
+        key: "VERIFY_DEPLOYMENT",
+        status: "pending",
+        expectedTxCount: 0,
+        confirmedTxCount: 0,
+        txHashes: []
+      }
+    ];
+
+    const publicClient = {
+      getTransactionCount: vi.fn().mockResolvedValue(1n),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      getTransactionReceipt: vi.fn().mockResolvedValue({
+        logs: [
+          {
+            data: "0x",
+            topics: ["0xdeadbeef"]
+          }
+        ]
+      }),
+      readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
+        switch (functionName) {
+          case "nextCommunityId":
+            return 4n;
+          case "ADMIN_ROLE":
+            return 0n;
+          case "authority":
+            return "0x1000000000000000000000000000000000000003";
+          case "hasRole":
+            return [true, 0];
+          default:
+            return true;
+        }
+      }),
+      estimateContractGas: vi.fn().mockResolvedValue(21000n),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
+    } as any;
+
+    const writeContractAsync = vi
+      .fn()
+      .mockResolvedValue("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc");
+
+    const executor = createFactoryDeployStepExecutor({
+      publicClient,
+      writeContractAsync,
+      deployContractAsync: vi.fn(),
+      connectedAddress: "0xabc1230000000000000000000000000000000000"
+    });
+
+    const result = await executor("CONFIGURE_ACCESS_PERMISSIONS", resumedSession, makeContext());
+
+    expect(result.communityId).toBe(3);
+
+    const calledFunctionNames = writeContractAsync.mock.calls.map(([args]) => args?.functionName);
+    expect(calledFunctionNames.includes("bootstrapCommunity")).toBe(false);
+    expect(calledFunctionNames.includes("bootstrapAccessAndRuntime")).toBe(true);
+
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("resumes DEPLOY_STACK from prior layer tx without redeploying recovered governance layer", async () => {
+    const resumedSession = makeSession();
+    delete resumedSession.deploymentAddresses.membershipToken;
+    delete resumedSession.deploymentAddresses.timelock;
+    delete resumedSession.deploymentAddresses.governor;
+    resumedSession.steps = [
+      {
+        key: "PRECHECKS",
+        status: "succeeded",
+        expectedTxCount: 0,
+        confirmedTxCount: 0,
+        txHashes: []
+      },
+      {
+        key: "DEPLOY_STACK",
+        status: "failed",
+        expectedTxCount: 7,
+        confirmedTxCount: 3,
+        txHashes: [
+          "0x1111111111111111111111111111111111111111111111111111111111111111"
+        ]
+      },
+      {
+        key: "CONFIGURE_ACCESS_PERMISSIONS",
+        status: "pending",
+        expectedTxCount: 2,
+        confirmedTxCount: 0,
+        txHashes: []
+      },
+      {
+        key: "HANDOFF_ADMIN_TO_TIMELOCK",
+        status: "pending",
+        expectedTxCount: 3,
+        confirmedTxCount: 0,
+        txHashes: []
+      },
+      {
+        key: "VERIFY_DEPLOYMENT",
+        status: "pending",
+        expectedTxCount: 0,
+        confirmedTxCount: 0,
+        txHashes: []
+      }
+    ];
+
+    const governanceFactoryAddress = "0x1000000000000000000000000000000000000020";
+
+    const publicClient = {
+      getTransaction: vi.fn().mockResolvedValue({ to: governanceFactoryAddress }),
+      getTransactionReceipt: vi.fn().mockResolvedValue({ contractAddress: null }),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      readContract: vi.fn(async ({ functionName, address }: { functionName: string; address: string }) => {
+        if (functionName === "ADMIN_ROLE") return 0n;
+        if (functionName === "authority") return "0x1000000000000000000000000000000000000003";
+        if (functionName === "nextCommunityId") return 5n;
+        if (functionName === "lastDeploymentByCaller" && address.toLowerCase() === governanceFactoryAddress.toLowerCase()) {
+          return {
+            membershipToken: "0x3000000000000000000000000000000000000001",
+            timelock: "0x3000000000000000000000000000000000000002",
+            governor: "0x3000000000000000000000000000000000000003",
+            countingMultiChoice: "0x3000000000000000000000000000000000000004"
+          };
+        }
+        return true;
+      }),
+      estimateContractGas: vi.fn().mockResolvedValue(21000n),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
+    } as any;
+
+    const writeContractAsync = vi.fn();
+
+    const executor = createFactoryDeployStepExecutor({
+      publicClient,
+      writeContractAsync,
+      deployContractAsync: vi.fn(),
+      connectedAddress: "0xabc1230000000000000000000000000000000000"
+    });
+
+    const result = await executor("DEPLOY_STACK", resumedSession, makeContext());
+
+    expect(result.txHashes?.length ?? 0).toBeGreaterThan(0);
+
+    const calledFunctionNames = writeContractAsync.mock.calls.map(([args]) => args?.functionName);
+    expect(calledFunctionNames.includes("deployLayer")).toBe(false);
   });
 
   it("uses run-scoped addresses for HANDOFF_ADMIN_TO_TIMELOCK without static lookup", async () => {
@@ -165,6 +414,7 @@ describe("factory-step-executor strict staging guards", () => {
       getTransactionCount: vi.fn().mockResolvedValue(1n),
       readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
         if (functionName === "ADMIN_ROLE") return 0n;
+        if (functionName === "authority") return "0x1000000000000000000000000000000000000003";
         if (functionName === "hasRole") {
           const account = args?.[1] as string;
           if (account.toLowerCase() === "0x1000000000000000000000000000000000000005") return [true, 0];
@@ -200,6 +450,7 @@ describe("factory-step-executor strict staging guards", () => {
       getTransactionCount: vi.fn().mockResolvedValue(5n),
       readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
         if (functionName === "ADMIN_ROLE") return 0n;
+        if (functionName === "authority") return "0x1000000000000000000000000000000000000003";
         if (functionName === "hasRole") {
           const account = String(args?.[1] ?? "").toLowerCase();
           if (account === "0x1000000000000000000000000000000000000005") {
@@ -225,8 +476,8 @@ describe("factory-step-executor strict staging guards", () => {
 
     const writeContractAsync = vi.fn()
       .mockResolvedValueOnce("0xaaa") // grant timelock admin
-      .mockResolvedValueOnce("0xbbb") // revoke deployer
-      .mockResolvedValueOnce("0xccc"); // revoke coordinator
+      .mockResolvedValueOnce("0xbbb") // revoke coordinator
+      .mockResolvedValueOnce("0xccc"); // revoke deployer
 
     const executor = createFactoryDeployStepExecutor({
       publicClient,
@@ -239,9 +490,9 @@ describe("factory-step-executor strict staging guards", () => {
     expect(result.txHashes ?? []).toHaveLength(3);
     expect(writeContractAsync).toHaveBeenCalledTimes(3);
 
-    const thirdCall = writeContractAsync.mock.calls[2]?.[0];
-    expect(thirdCall?.functionName).toBe("revokeRole");
-    expect(thirdCall?.args?.[1]).toBe("0x2000000000000000000000000000000000000002");
+    const secondCall = writeContractAsync.mock.calls[1]?.[0];
+    expect(secondCall?.functionName).toBe("revokeRole");
+    expect(secondCall?.args?.[1]).toBe("0x2000000000000000000000000000000000000002");
 
     delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
   });

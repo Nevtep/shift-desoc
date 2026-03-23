@@ -17,12 +17,12 @@ export const STEP_META: Record<StepKey, { name: string; purpose: string; expecte
   DEPLOY_STACK: {
     name: "Deploy Contract Layers",
     purpose: "Deploy community AccessManager, then governance, verification, economic, commerce, and coordination bytecode via shared layer factories.",
-    expectedTxCount: 6
+    expectedTxCount: 7
   },
   CONFIGURE_ACCESS_PERMISSIONS: {
     name: "Wire Registry And Permissions",
-    purpose: "Register the community, set controller policies, wire module addresses, and apply runtime permissions.",
-    expectedTxCount: 17
+    purpose: "Bootstrap registry wiring and apply access roles. Additional setup transactions may run if defaults are missing.",
+    expectedTxCount: 2
   },
   HANDOFF_ADMIN_TO_TIMELOCK: {
     name: "Handoff Admin To Timelock",
@@ -115,7 +115,7 @@ export function recordStepTx(
     return {
       ...step,
       txHashes,
-      confirmedTxCount: Math.min(step.expectedTxCount, step.confirmedTxCount + (isNewHash ? 1 : 0))
+      confirmedTxCount: step.confirmedTxCount + (isNewHash ? 1 : 0)
     };
   });
 }

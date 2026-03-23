@@ -94,7 +94,6 @@ export type SharedInfraStatus = {
   economicLayerFactory: ProbeStatus;
   commerceLayerFactory: ProbeStatus;
   coordinationLayerFactory: ProbeStatus;
-  accessManager?: ProbeStatus;
   isUsable: boolean;
 };
 

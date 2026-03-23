@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
+  clearSessionsForDeployerChain,
   clearSession,
   findResumeCandidate,
   getSession,
@@ -42,5 +43,36 @@ describe("session-store", () => {
     saveSession(session);
     clearSession(session.sessionId);
     expect(getSession(session.sessionId)).toBeNull();
+  });
+
+  it("clears all sessions for deployer and chain", () => {
+    const deployer = "0xabc1230000000000000000000000000000000000" as const;
+
+    const sameChainA = createInitialSession(deployer, 84532);
+    sameChainA.sessionId = `${sameChainA.sessionId}-a`;
+    sameChainA.status = "failed";
+    saveSession(sameChainA);
+
+    const sameChainB = createInitialSession(deployer, 84532);
+    sameChainB.sessionId = `${sameChainB.sessionId}-b`;
+    sameChainB.status = "in-progress";
+    saveSession(sameChainB);
+
+    const otherChain = createInitialSession(deployer, 8453);
+    otherChain.sessionId = `${otherChain.sessionId}-c`;
+    otherChain.status = "in-progress";
+    saveSession(otherChain);
+
+    const otherDeployer = createInitialSession("0xdef4560000000000000000000000000000000000", 84532);
+    otherDeployer.sessionId = `${otherDeployer.sessionId}-d`;
+    otherDeployer.status = "in-progress";
+    saveSession(otherDeployer);
+
+    clearSessionsForDeployerChain(deployer, 84532);
+
+    expect(getSession(sameChainA.sessionId)).toBeNull();
+    expect(getSession(sameChainB.sessionId)).toBeNull();
+    expect(getSession(otherChain.sessionId)?.sessionId).toBe(otherChain.sessionId);
+    expect(getSession(otherDeployer.sessionId)?.sessionId).toBe(otherDeployer.sessionId);
   });
 });

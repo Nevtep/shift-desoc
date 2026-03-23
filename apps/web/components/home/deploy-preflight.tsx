@@ -14,7 +14,9 @@ export function DeployPreflight({ assessment }: Props) {
   }
 
   const { funding, sharedInfra } = assessment;
-  const accessManagerProbe = sharedInfra.accessManager;
+  const sharedInfraStatusLabel = assessment.supportedNetwork
+    ? (sharedInfra.isUsable ? "ready" : "missing / invalid")
+    : "skipped (switch network)";
   const paramControllerProbe = sharedInfra.paramController;
   const communityRegistryProbe = sharedInfra.communityRegistry;
 
@@ -29,7 +31,7 @@ export function DeployPreflight({ assessment }: Props) {
           Network: {assessment.supportedNetwork ? "supported" : "unsupported"}
         </p>
         <p>
-          Shared infra: {sharedInfra.isUsable ? "ready" : "missing / invalid"}
+          Shared infra: {sharedInfraStatusLabel}
         </p>
         <p>
           Funds: {funding.isSufficient ? "sufficient" : "insufficient"}
@@ -41,9 +43,6 @@ export function DeployPreflight({ assessment }: Props) {
       </div>
       <div className="card-tight space-y-1 text-xs text-muted-foreground">
         <p className="font-medium text-foreground">Shared infra details</p>
-        <p>
-          AccessManager: {accessManagerProbe?.address ?? "not resolved"} ({accessManagerProbe?.abiProbePassed ? "probe ok" : "probe failed"})
-        </p>
         <p>
           ParamController: {paramControllerProbe?.address ?? "not resolved"} ({paramControllerProbe?.abiProbePassed ? "probe ok" : "probe failed"})
         </p>

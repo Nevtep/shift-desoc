@@ -23,39 +23,10 @@ const TX_LABELS: Record<string, string> = {
   HANDOFF_ADMIN_TO_TIMELOCK: "Admin handoff"
 };
 
-const DEPLOY_LAYER_LABELS = [
-  "AccessManager",
-  "Governance layer",
-  "Verification layer",
-  "Economic layer",
-  "Commerce layer",
-  "Coordination layer"
-];
-
 const ACCESS_WIRING_LABELS = [
-  "Set ValuableActionRegistry selector roles",
-  "Set VerifierPowerToken admin selector roles",
-  "Set VerifierPowerToken election-power selector roles",
-  "Set RevenueRouter selector roles",
-  "Set TreasuryAdapter selector roles",
-  "Set Marketplace selector roles",
-  "Grant verifier election power role",
-  "Grant position manager role",
-  "Grant revenue distributor role",
-  "Grant commerce disputes caller role",
-  "Grant housing marketplace caller role",
-  "Grant ValuableAction issuer role",
-  "Initialize verifier community state",
-  "Link ValuableActionSBT to registry",
-  "Allow RequestHub issuance module",
-  "Whitelist founder",
-  "Set community treasury",
-  "Allow supported token in RevenueRouter",
-  "Allow token in TreasuryAdapter",
-  "Set TreasuryAdapter token cap",
-  "Allow RequestHub treasury destination",
-  "Activate marketplace for community",
-  "Link community token in marketplace"
+  "Bootstrap community registry",
+  "Apply access-role wiring",
+  "Run post-wiring setup"
 ];
 
 const HANDOFF_LABELS = [
@@ -81,9 +52,9 @@ function TxItem({
   const inProgress = isCurrent && index === confirmed;
   const baseLabel =
     stepKey === "DEPLOY_STACK"
-      ? DEPLOY_LAYER_LABELS[index] ?? TX_LABELS[stepKey] ?? "Transaction"
+      ? TX_LABELS[stepKey] ?? "Transaction"
       : stepKey === "CONFIGURE_ACCESS_PERMISSIONS"
-        ? ACCESS_WIRING_LABELS[index] ?? TX_LABELS[stepKey] ?? "Transaction"
+        ? ACCESS_WIRING_LABELS[Math.min(index, ACCESS_WIRING_LABELS.length - 1)] ?? TX_LABELS[stepKey] ?? "Transaction"
         : stepKey === "HANDOFF_ADMIN_TO_TIMELOCK"
           ? HANDOFF_LABELS[index] ?? TX_LABELS[stepKey] ?? "Transaction"
       : TX_LABELS[stepKey] ?? "Transaction";
@@ -129,8 +100,12 @@ export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
   const idx = currentIdx < 0 ? order.length - 1 : Math.max(0, currentIdx);
 
   const currentStep = order[idx];
+  const currentStepTxSlots =
+    currentStep?.status === "running"
+      ? Math.max(currentStep.expectedTxCount, currentStep.confirmedTxCount + 1)
+      : currentStep?.expectedTxCount ?? 0;
   const hasTxList =
-    currentStep && currentStep.expectedTxCount > 0 && currentStep.status === "running";
+    currentStep && currentStepTxSlots > 0 && currentStep.status === "running";
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 pt-2">
@@ -145,11 +120,11 @@ export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
             </p>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {Array.from({ length: currentStep.expectedTxCount }, (_, i) => (
+            {Array.from({ length: currentStepTxSlots }, (_, i) => (
               <TxItem
                 key={i}
                 index={i}
-                total={currentStep.expectedTxCount}
+                total={currentStepTxSlots}
                 confirmed={currentStep.confirmedTxCount}
                 isCurrent={currentStep.status === "running"}
                 stepKey={currentStep.key}

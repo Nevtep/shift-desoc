@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAccount, useChainId, usePublicClient, useWalletClient, useWriteContract } from "wagmi";
+import { useAccount, useChainId, useWalletClient, useWriteContract } from "wagmi";
 
 import {
   type CommunityDeploymentConfig,
@@ -10,7 +10,7 @@ import {
 import {
   type StepExecutionResult,
   type StepExecutor
-} from "../lib/deploy/default-step-executor";
+} from "../lib/deploy/step-executor-types";
 import { createFactoryDeployStepExecutor } from "../lib/deploy/factory-step-executor";
 import {
   buildPreflightAssessment,
@@ -23,7 +23,13 @@ import {
   mockReadVerificationSnapshot
 } from "../lib/deploy/mock-step-executor";
 import { readVerificationSnapshot as readVerificationSnapshotFromChain } from "../lib/deploy/onchain";
-import { clearSession as clearSessionStore, findResumeCandidate, saveSession } from "../lib/deploy/session-store";
+import {
+  clearSessionsForDeployerChain,
+  clearSession as clearSessionStore,
+  findResumeCandidate,
+  saveSession
+} from "../lib/deploy/session-store";
+import { useCachedPublicClient } from "./useCachedPublicClient";
 import type { DeploymentWizardSession, PreflightAssessment, StepKey, VerificationCheckResult } from "../lib/deploy/types";
 import {
   createInitialSession,
@@ -37,7 +43,8 @@ import { allVerificationChecksPassed, evaluateVerificationSnapshot } from "../li
 
 export type VerificationSnapshotReader = (
   communityId: number,
-  chainId: number
+  chainId: number,
+  deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"]
 ) => Promise<{
   modules: { valuableActionRegistryMatches: boolean };
   vptInitialized: boolean;
@@ -87,14 +94,15 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
   const { writeContractAsync } = useWriteContract();
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
-  const publicClient = usePublicClient();
+  const cachedPublicClient = useCachedPublicClient();
+  const publicClient = cachedPublicClient.raw;
 
   const [session, setSession] = useState<DeploymentWizardSession | null>(null);
   const [preflight, setPreflight] = useState<PreflightAssessment | null>(null);
   const [verificationResults, setVerificationResults] = useState<VerificationCheckResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const hasAutoPreflightRun = useRef(false);
+  const lastAutoPreflightKey = useRef<string | null>(null);
   const runInFlightRef = useRef(false);
   const skipHydrationRef = useRef(false);
 
@@ -126,7 +134,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
 
     const connected = status === "connected" && Boolean(address);
     const sharedInfra = await probeSharedInfra(publicClient, chainId);
-    const currentBalanceWei = connected && address ? await publicClient.getBalance({ address }) : 0n;
+    const currentBalanceWei = connected && address ? await cachedPublicClient.getBalance({ address }) : 0n;
     const funding = estimateFunding({
       estimatedTxCount: estimateInput?.estimatedTxCount ?? 20,
       estimatedGasPerTx: estimateInput?.estimatedGasPerTx ?? 250000n,
@@ -153,16 +161,22 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       blockingReasons: assessment.blockingReasons
     });
     return assessment;
-  }, [address, chainId, estimateInput, publicClient, status, supportedChainIds]);
+  }, [address, cachedPublicClient, chainId, estimateInput, publicClient, status, supportedChainIds]);
 
   useEffect(() => {
-    if (hasAutoPreflightRun.current) return;
     if (!publicClient) return;
 
-    hasAutoPreflightRun.current = true;
-    log("Running one-time auto preflight check");
+    const key = `${chainId}:${status}:${address ?? ""}`;
+    if (lastAutoPreflightKey.current === key) return;
+    lastAutoPreflightKey.current = key;
+
+    log("Running auto preflight check", {
+      chainId,
+      connectedAddress: address,
+      status
+    });
     void runPreflight();
-  }, [publicClient, runPreflight]);
+  }, [address, chainId, publicClient, runPreflight, status]);
 
   const runVerification = useCallback(
     async (activeSession: DeploymentWizardSession) => {
@@ -181,9 +195,13 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         options.readVerificationSnapshot ??
         (options.designMode
           ? mockReadVerificationSnapshot
-          : async (communityId: number, currentChainId: number) =>
-              readVerificationSnapshotFromChain(publicClient!, currentChainId, communityId));
-      const snapshot = await reader(activeSession.communityId, chainId);
+          : async (
+            communityId: number,
+            currentChainId: number,
+            deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"]
+          ) =>
+              readVerificationSnapshotFromChain(publicClient!, currentChainId, communityId, deploymentAddresses));
+      const snapshot = await reader(activeSession.communityId, chainId, activeSession.deploymentAddresses);
       const results = evaluateVerificationSnapshot({
         communityId: activeSession.communityId,
         ...snapshot
@@ -354,6 +372,10 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         const txHashes = result.txHashes ?? [];
         for (let i = 0; i < txHashes.length; i++) {
           const txHash = txHashes[i];
+          const alreadyRecorded = active.steps.some(
+            (step) => step.key === runningStep && step.txHashes.includes(txHash)
+          );
+          if (alreadyRecorded) continue;
           log("Recording tx hash", { step: runningStep, txHash });
           active = {
             ...active,
@@ -485,9 +507,15 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
 
   const clearAndStartOver = useCallback((sessionId: string) => {
     clearSessionStore(sessionId);
+    if (address) {
+      clearSessionsForDeployerChain(address, chainId);
+    }
     skipHydrationRef.current = true;
+    setError(null);
+    setPreflight(null);
+    setVerificationResults([]);
     setSession(null);
-  }, []);
+  }, [address, chainId]);
 
   return {
     session,

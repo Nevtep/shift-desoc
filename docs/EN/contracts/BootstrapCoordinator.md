@@ -5,6 +5,7 @@
 `BootstrapCoordinator` is shared infrastructure that batches AccessManager selector-role wiring and role grants into a single transaction.
 
 It is intended for bootstrap/setup workflows where many `setTargetFunctionRole` and `grantRole` calls would otherwise require multiple wallet confirmations.
+It also provides an end-to-end runtime bootstrap path so fresh community deploys do not require post-deploy reconciliation writes.
 
 ## Core Model
 
@@ -28,6 +29,23 @@ struct RoleGrant {
     address account;
     uint32 executionDelay;
 }
+
+struct RuntimeBootstrapConfig {
+  uint256 communityId;
+  address valuableActionRegistry;
+  address verifierPowerToken;
+  address requestHub;
+  address founder;
+  address valuableActionSBT;
+  address revenueRouter;
+  address treasuryAdapter;
+  address marketplace;
+  address communityToken;
+  address treasuryVault;
+  address[] supportedTokens;
+  uint16 tokenCapBps;
+  string verifierMetadataURI;
+}
 ```
 
 ## API
@@ -45,6 +63,19 @@ Flow:
 5. Applies all selector mappings via `setTargetFunctionRole`.
 6. Applies grants only when `hasRole` returns false.
 
+### `bootstrapAccessAndRuntime(address accessManager, TargetRoleConfig[] selectorConfigs, RoleGrant[] roleGrants, RuntimeBootstrapConfig runtimeConfig)`
+
+Performs a full bootstrap in one coordinator call:
+
+1. Applies all access selector-role assignments and role grants.
+2. Initializes verifier power token community metadata (if not initialized).
+3. Links ValuableActionRegistry runtime references (`valuableActionSBT`, issuance module, founder allowlist).
+4. Sets RevenueRouter treasury and supported tokens.
+5. Sets TreasuryAdapter token allowlist, cap bps, and requestHub destination.
+6. Activates marketplace community and links community token.
+
+All runtime writes are idempotent: existing correct state is preserved without duplicate writes.
+
 ## Security Notes
 
 - The contract does not introduce a new authority domain: it only executes when the caller is already AccessManager admin.
@@ -55,11 +86,11 @@ Flow:
 ## Integration Points
 
 - Intended consumer: deploy wizard `CONFIGURE_ACCESS_PERMISSIONS` step.
-- Wizard should prefer coordinator batch call when:
-  - Coordinator address exists,
-  - Coordinator has bytecode,
-  - Coordinator holds AccessManager admin.
-- Wizard should fallback to direct per-call writes for backward compatibility.
+- Wizard uses strict coordinator mode:
+  - Coordinator address must exist,
+  - Coordinator must have bytecode,
+  - Coordinator must hold AccessManager admin.
+- If those conditions fail, deployment should stop with explicit errors (no direct role-by-role fallback).
 
 ## Operational Guidance
 

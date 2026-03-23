@@ -6,7 +6,7 @@
 
 import type { CommunityDeploymentConfig } from "./config";
 import type { DeploymentWizardSession, PreflightAssessment, StepKey } from "./types";
-import type { StepExecutionResult } from "./default-step-executor";
+import type { StepExecutionResult } from "./step-executor-types";
 import { STEP_META } from "./wizard-machine";
 
 const MOCK_DELAY_MS = 1800;

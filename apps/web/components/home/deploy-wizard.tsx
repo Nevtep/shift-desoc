@@ -208,6 +208,13 @@ export function DeployWizard({ options }: Props) {
   }
 
   function handleStartOver() {
+    if (address && chainId && typeof window !== "undefined") {
+      window.localStorage.removeItem(`${FORM_DRAFT_STORAGE_KEY}:${chainId}:${address.toLowerCase()}`);
+    }
+    setConfig((current) => ({
+      ...createDefaultDeploymentConfig(),
+      treasuryVault: address || current.treasuryVault || ""
+    }));
     if (session?.sessionId) {
       clearAndStartOver(session.sessionId);
     }

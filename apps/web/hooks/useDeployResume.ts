@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useAccount, useChainId, usePublicClient } from "wagmi";
-import { parseAbiItem, type PublicClient } from "viem";
+import { useAccount, useChainId } from "wagmi";
+import { parseAbiItem } from "viem";
 import { getContractAddress } from "../lib/contracts";
 import { findResumeCandidate, listSessions, saveSession } from "../lib/deploy/session-store";
 import type { DeploymentWizardSession } from "../lib/deploy/types";
@@ -10,6 +10,7 @@ import type { CommunityDeploymentConfig } from "../lib/deploy/config";
 import { readVerificationSnapshot as readVerificationSnapshotFromChain } from "../lib/deploy/onchain";
 import { evaluateVerificationSnapshot } from "../lib/deploy/verification";
 import { createInitialSteps, firstIncompleteStep, transitionStep } from "../lib/deploy/wizard-machine";
+import { useCachedPublicClient, type CachedPublicClient } from "./useCachedPublicClient";
 
 export type ResumeTarget = {
   sessionId?: string;
@@ -67,7 +68,7 @@ const GET_ECONOMIC_PARAMETERS_ITEM = parseAbiItem(
 );
 
 async function inferCommunityIdsFromChain(params: {
-  publicClient: PublicClient | undefined;
+  publicClient: CachedPublicClient;
   deployerAddress: `0x${string}`;
   chainId: number;
   targetCommunityId?: number;
@@ -75,9 +76,9 @@ async function inferCommunityIdsFromChain(params: {
   const { publicClient, deployerAddress, chainId, targetCommunityId } = params;
 
   if (typeof targetCommunityId === "number") return [targetCommunityId];
-  if (!publicClient) return [];
+  if (!publicClient.raw) return [];
 
-  const toBlock = await publicClient.getBlockNumber();
+  const toBlock = await publicClient.getBlockNumber(5_000);
   const fromBlock = toBlock > 500_000n ? toBlock - 500_000n : 0n;
 
   const logs = await publicClient.getLogs({
@@ -86,7 +87,7 @@ async function inferCommunityIdsFromChain(params: {
     args: { creator: deployerAddress },
     fromBlock,
     toBlock
-  });
+  }, 30_000);
 
   if (logs.length === 0) return [];
 
@@ -153,11 +154,11 @@ function normalizeAddress(value?: string): string {
 }
 
 async function recoverDeploymentConfigFromChain(
-  publicClient: PublicClient | undefined,
+  publicClient: CachedPublicClient,
   chainId: number,
   communityId: number
 ): Promise<CommunityDeploymentConfig | null> {
-  if (!publicClient) return null;
+  if (!publicClient.raw) return null;
 
   try {
     const registry = getContractAddress("communityRegistry", chainId);
@@ -167,7 +168,7 @@ async function recoverDeploymentConfigFromChain(
       abi: [GET_COMMUNITY_ITEM],
       functionName: "getCommunity",
       args: [BigInt(communityId)]
-    })) as {
+    }, 20_000)) as {
       name: string;
       description: string;
       metadataURI: string;
@@ -179,7 +180,7 @@ async function recoverDeploymentConfigFromChain(
       abi: [GET_ECONOMIC_PARAMETERS_ITEM],
       functionName: "getEconomicParameters",
       args: [BigInt(communityId)]
-    })) as readonly [bigint, bigint, bigint, readonly `0x${string}`[]];
+    }, 20_000)) as readonly [bigint, bigint, bigint, readonly `0x${string}`[]];
 
     const backingAssets = (economic[3] ?? []).map((token) => normalizeAddress(token)).filter(Boolean);
 
@@ -207,7 +208,7 @@ export function useDeployResume(
 ) {
   const { address } = useAccount();
   const chainId = useChainId();
-  const publicClient = usePublicClient();
+  const publicClient = useCachedPublicClient();
   const [error, setError] = useState<string | null>(null);
 
   const candidate = useMemo(() => {
@@ -263,8 +264,13 @@ export function useDeployResume(
 
           const snapshot = readOnchainSnapshot
             ? await readOnchainSnapshot(candidateCommunityId, chainId)
-            : publicClient
-              ? await readVerificationSnapshotFromChain(publicClient, chainId, candidateCommunityId)
+            : publicClient.raw
+              ? await readVerificationSnapshotFromChain(
+                  publicClient.raw,
+                  chainId,
+                  candidateCommunityId,
+                  session?.deploymentAddresses
+                )
               : null;
 
           if (!snapshot) {
@@ -366,8 +372,13 @@ export function useDeployResume(
       }
 
       if (session.communityId && !readOnchainSnapshot) {
-        if (publicClient) {
-          const snapshot = await readVerificationSnapshotFromChain(publicClient, chainId, session.communityId);
+        if (publicClient.raw) {
+          const snapshot = await readVerificationSnapshotFromChain(
+            publicClient.raw,
+            chainId,
+            session.communityId,
+            session.deploymentAddresses
+          );
           const checks = evaluateVerificationSnapshot({
             ...snapshot
           });

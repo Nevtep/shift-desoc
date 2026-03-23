@@ -1,7 +1,7 @@
 import type { Abi, PublicClient } from "viem";
 
 import { getContractAddress } from "../contracts";
-import type { VerificationSnapshot } from "./types";
+import type { DeploymentRunAddresses, VerificationSnapshot } from "./types";
 
 const COMMUNITY_REGISTRY_ABI = [
   {
@@ -46,12 +46,22 @@ const ACCESS_MANAGER_ABI = [
   }
 ] as const satisfies Abi;
 
-const VPT_ABI = [
+const VPT_ABI_BY_COMMUNITY = [
   {
     type: "function",
     name: "communityInitialized",
     stateMutability: "view",
     inputs: [{ name: "communityId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }]
+  }
+] as const satisfies Abi;
+
+const VPT_ABI_GLOBAL = [
+  {
+    type: "function",
+    name: "communityInitialized",
+    stateMutability: "view",
+    inputs: [],
     outputs: [{ name: "", type: "bool" }]
   }
 ] as const satisfies Abi;
@@ -67,6 +77,16 @@ const MARKETPLACE_ABI = [
   {
     type: "function",
     name: "revenueRouter",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }]
+  }
+] as const satisfies Abi;
+
+const ACCESS_MANAGED_AUTHORITY_ABI = [
+  {
+    type: "function",
+    name: "authority",
     stateMutability: "view",
     inputs: [],
     outputs: [{ name: "", type: "address" }]
@@ -94,12 +114,10 @@ const ROLES = {
 export async function readVerificationSnapshot(
   publicClient: PublicClient,
   chainId: number,
-  communityId: number
+  communityId: number,
+  deploymentAddresses?: DeploymentRunAddresses
 ): Promise<VerificationSnapshot> {
   const communityRegistry = getContractAddress("communityRegistry", chainId);
-  const accessManager = getContractAddress("accessManager", chainId);
-  const positionManager = getContractAddress("positionManager", chainId);
-  const marketplace = getContractAddress("marketplace", chainId);
   const modules = (await publicClient.readContract({
     address: communityRegistry,
     abi: COMMUNITY_REGISTRY_ABI,
@@ -114,20 +132,52 @@ export async function readVerificationSnapshot(
   const requestHub = modules.requestHub;
   const valuableActionRegistry = modules.valuableActionRegistry;
   const verifierPowerToken = modules.verifierPowerToken;
+
+  const accessManager = (deploymentAddresses?.accessManager ??
+    ((await publicClient.readContract({
+      address: valuableActionRegistry,
+      abi: ACCESS_MANAGED_AUTHORITY_ABI,
+      functionName: "authority"
+    })) as `0x${string}`)) as `0x${string}`;
+
+  const marketplace = deploymentAddresses?.marketplace as `0x${string}` | undefined;
+  if (!marketplace) {
+    throw new Error(
+      "Missing marketplace address in deployment run state. Wizard verification now uses run-scoped community module addresses, not NEXT_PUBLIC_MARKETPLACE."
+    );
+  }
+
+  const positionManager = deploymentAddresses?.positionManager as `0x${string}` | undefined;
+  if (!positionManager) {
+    throw new Error(
+      "Missing positionManager address in deployment run state. Wizard verification now uses run-scoped community module addresses, not NEXT_PUBLIC_POSITION_MANAGER."
+    );
+  }
+
   const revenueRouter = (await publicClient.readContract({
     address: marketplace,
     abi: MARKETPLACE_ABI,
     functionName: "revenueRouter"
   })) as `0x${string}`;
 
-  const [vptInitialized, rrPosRole, rrDistributor, disputesCaller, housingCaller, vaIssuerRole, communityActive, treasury] =
+  let vptInitialized: boolean;
+  try {
+    vptInitialized = (await publicClient.readContract({
+      address: verifierPowerToken,
+      abi: VPT_ABI_BY_COMMUNITY,
+      functionName: "communityInitialized",
+      args: [BigInt(communityId)]
+    })) as boolean;
+  } catch {
+    vptInitialized = (await publicClient.readContract({
+      address: verifierPowerToken,
+      abi: VPT_ABI_GLOBAL,
+      functionName: "communityInitialized"
+    })) as boolean;
+  }
+
+  const [rrPosRole, rrDistributor, disputesCaller, housingCaller, vaIssuerRole, communityActive, treasury] =
     await Promise.all([
-      publicClient.readContract({
-        address: verifierPowerToken,
-        abi: VPT_ABI,
-        functionName: "communityInitialized",
-        args: [BigInt(communityId)]
-      }),
       publicClient.readContract({
         address: accessManager,
         abi: ACCESS_MANAGER_ABI,

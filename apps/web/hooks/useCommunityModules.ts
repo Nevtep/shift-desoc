@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Abi, Address } from "viem";
-import { useReadContract } from "wagmi";
 
 import { CONTRACTS, getContractConfig } from "../lib/contracts";
+import { useCachedPublicClient } from "./useCachedPublicClient";
 import timelockArtifact from "../abis/ShiftTimelockController.json" assert { type: "json" };
 import verifierPowerTokenArtifact from "../abis/VerifierPowerToken1155.json" assert { type: "json" };
 import verifierElectionArtifact from "../abis/VerifierElection.json" assert { type: "json" };
@@ -64,6 +64,13 @@ function mapModules(raw: unknown): CommunityModules | null {
 }
 
 export function useCommunityModules({ communityId, chainId, enabled = true }: HookParams) {
+  const publicClient = useCachedPublicClient();
+  const [modules, setModules] = useState<CommunityModules | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
   const communityRegistry = useMemo(() => {
     try {
       return getContractConfig("communityRegistry", chainId);
@@ -74,24 +81,60 @@ export function useCommunityModules({ communityId, chainId, enabled = true }: Ho
 
   const validCommunityId = Number.isFinite(communityId) && (communityId as number) > 0;
 
-  const query = useReadContract({
-    address: communityRegistry?.address,
-    abi: communityRegistry?.abi,
-    functionName: "getCommunityModules",
-    args: validCommunityId ? [BigInt(communityId as number)] : undefined,
-    query: {
-      enabled: Boolean(enabled && communityRegistry && validCommunityId)
-    }
-  });
+  useEffect(() => {
+    let cancelled = false;
+    const canQuery = Boolean(enabled && communityRegistry && validCommunityId && publicClient.raw);
 
-  const modules = useMemo(() => mapModules(query.data), [query.data]);
+    if (!canQuery) {
+      setModules(null);
+      setIsLoading(false);
+      setIsFetching(false);
+      setIsError(false);
+      setError(null);
+      return;
+    }
+
+    const run = async () => {
+      setIsLoading(true);
+      setIsFetching(true);
+      setIsError(false);
+      setError(null);
+
+      try {
+        const data = await publicClient.readContract({
+          address: communityRegistry!.address,
+          abi: communityRegistry!.abi,
+          functionName: "getCommunityModules",
+          args: [BigInt(communityId as number)]
+        }, 20_000);
+
+        if (cancelled) return;
+        setModules(mapModules(data));
+      } catch (readError) {
+        if (cancelled) return;
+        setModules(null);
+        setIsError(true);
+        setError(readError instanceof Error ? readError : new Error(String(readError)));
+      } finally {
+        if (cancelled) return;
+        setIsLoading(false);
+        setIsFetching(false);
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [communityId, communityRegistry, enabled, publicClient, validCommunityId]);
 
   return {
     modules,
-    isLoading: query.isLoading,
-    isFetching: query.isFetching,
-    isError: query.isError,
-    error: query.error
+    isLoading,
+    isFetching,
+    isError,
+    error
   };
 }
 

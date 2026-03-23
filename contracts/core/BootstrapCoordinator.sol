@@ -13,6 +13,60 @@ interface IAccessManagerBootstrap {
     function grantRole(uint64 roleId, address account, uint32 executionDelay) external;
 }
 
+interface IValuableActionRegistryBootstrap {
+    function valuableActionSBT() external view returns (address);
+
+    function isIssuanceModule(address module) external view returns (bool);
+
+    function founderWhitelist(address founder, uint256 communityId) external view returns (bool);
+
+    function setValuableActionSBT(address sbt) external;
+
+    function setIssuanceModule(address module, bool allowed) external;
+
+    function addFounder(address founder) external;
+}
+
+interface IVerifierPowerTokenBootstrap {
+    function communityInitialized() external view returns (bool);
+
+    function initializeCommunity(string calldata metadataURI) external;
+}
+
+interface IRevenueRouterBootstrap {
+    function communityTreasuries(uint256 communityId) external view returns (address);
+
+    function supportedTokens(uint256 communityId, address token) external view returns (bool);
+
+    function setCommunityTreasury(uint256 communityId, address treasury) external;
+
+    function setSupportedToken(uint256 communityId, address token, bool supported) external;
+}
+
+interface ITreasuryAdapterBootstrap {
+    function tokenAllowed(address token) external view returns (bool);
+
+    function destinationAllowed(address destination) external view returns (bool);
+
+    function capBps(address token) external view returns (uint16);
+
+    function setTokenAllowed(address token, bool allowed) external;
+
+    function setDestinationAllowed(address destination, bool allowed) external;
+
+    function setCapBps(address token, uint16 capBpsValue) external;
+}
+
+interface IMarketplaceBootstrap {
+    function communityActive(uint256 communityId) external view returns (bool);
+
+    function communityTokens(uint256 communityId) external view returns (address);
+
+    function setCommunityActive(uint256 communityId, bool active) external;
+
+    function setCommunityToken(uint256 communityId, address token) external;
+}
+
 /// @title BootstrapCoordinator
 /// @notice Batches AccessManager selector-role assignments and role grants in a single call.
 /// @dev Caller must currently hold ADMIN_ROLE on the AccessManager, and this coordinator
@@ -30,12 +84,31 @@ contract BootstrapCoordinator {
         uint32 executionDelay;
     }
 
+    struct RuntimeBootstrapConfig {
+        uint256 communityId;
+        address valuableActionRegistry;
+        address verifierPowerToken;
+        address requestHub;
+        address founder;
+        address valuableActionSBT;
+        address revenueRouter;
+        address treasuryAdapter;
+        address marketplace;
+        address communityToken;
+        address treasuryVault;
+        address[] supportedTokens;
+        uint16 tokenCapBps;
+        string verifierMetadataURI;
+    }
+
     event AccessManagerBootstrapped(
         address indexed accessManager,
         address indexed operator,
         uint256 selectorConfigCount,
         uint256 roleGrantCount
     );
+
+    event RuntimeBootstrapped(address indexed operator, uint256 indexed communityId, uint256 supportedTokenCount);
 
     /// @notice Configure selector roles and grants on a target AccessManager.
     /// @param accessManager Address of the AccessManager to configure.
@@ -46,9 +119,31 @@ contract BootstrapCoordinator {
         TargetRoleConfig[] calldata selectorConfigs,
         RoleGrant[] calldata roleGrants
     ) external {
+        IAccessManagerBootstrap manager = _requireAdminPair(accessManager);
+
+        _applyAccessManagerConfig(manager, selectorConfigs, roleGrants, accessManager);
+    }
+
+    /// @notice Configure AccessManager and all community runtime defaults in one transaction.
+    /// @dev Intended for fresh community deployment to avoid post-bootstrap reconciliation tx.
+    function bootstrapAccessAndRuntime(
+        address accessManager,
+        TargetRoleConfig[] calldata selectorConfigs,
+        RoleGrant[] calldata roleGrants,
+        RuntimeBootstrapConfig calldata runtimeConfig
+    ) external {
+        IAccessManagerBootstrap manager = _requireAdminPair(accessManager);
+
+        _applyAccessManagerConfig(manager, selectorConfigs, roleGrants, accessManager);
+        _applyRuntimeBootstrap(runtimeConfig);
+
+        emit RuntimeBootstrapped(msg.sender, runtimeConfig.communityId, runtimeConfig.supportedTokens.length);
+    }
+
+    function _requireAdminPair(address accessManager) internal view returns (IAccessManagerBootstrap manager) {
         if (accessManager == address(0)) revert Errors.ZeroAddress();
 
-        IAccessManagerBootstrap manager = IAccessManagerBootstrap(accessManager);
+        manager = IAccessManagerBootstrap(accessManager);
         uint64 adminRole = manager.ADMIN_ROLE();
 
         (bool callerIsAdmin,) = manager.hasRole(adminRole, msg.sender);
@@ -56,6 +151,14 @@ contract BootstrapCoordinator {
 
         (bool coordinatorIsAdmin,) = manager.hasRole(adminRole, address(this));
         if (!coordinatorIsAdmin) revert Errors.NotAuthorized(address(this));
+    }
+
+    function _applyAccessManagerConfig(
+        IAccessManagerBootstrap manager,
+        TargetRoleConfig[] calldata selectorConfigs,
+        RoleGrant[] calldata roleGrants,
+        address accessManager
+    ) internal {
 
         for (uint256 i = 0; i < selectorConfigs.length; i++) {
             TargetRoleConfig calldata cfg = selectorConfigs[i];
@@ -76,5 +179,74 @@ contract BootstrapCoordinator {
         }
 
         emit AccessManagerBootstrapped(accessManager, msg.sender, selectorConfigs.length, roleGrants.length);
+    }
+
+    function _applyRuntimeBootstrap(RuntimeBootstrapConfig calldata cfg) internal {
+        if (cfg.communityId == 0) revert Errors.InvalidInput("Invalid communityId");
+        if (cfg.valuableActionRegistry == address(0)) revert Errors.ZeroAddress();
+        if (cfg.verifierPowerToken == address(0)) revert Errors.ZeroAddress();
+        if (cfg.requestHub == address(0)) revert Errors.ZeroAddress();
+        if (cfg.founder == address(0)) revert Errors.ZeroAddress();
+        if (cfg.valuableActionSBT == address(0)) revert Errors.ZeroAddress();
+        if (cfg.revenueRouter == address(0)) revert Errors.ZeroAddress();
+        if (cfg.treasuryAdapter == address(0)) revert Errors.ZeroAddress();
+        if (cfg.marketplace == address(0)) revert Errors.ZeroAddress();
+        if (cfg.communityToken == address(0)) revert Errors.ZeroAddress();
+        if (cfg.treasuryVault == address(0)) revert Errors.ZeroAddress();
+        if (cfg.tokenCapBps > 10_000) revert Errors.InvalidInput("Invalid token cap bps");
+
+        IValuableActionRegistryBootstrap registry = IValuableActionRegistryBootstrap(cfg.valuableActionRegistry);
+        if (registry.valuableActionSBT() != cfg.valuableActionSBT) {
+            registry.setValuableActionSBT(cfg.valuableActionSBT);
+        }
+
+        if (!registry.isIssuanceModule(cfg.requestHub)) {
+            registry.setIssuanceModule(cfg.requestHub, true);
+        }
+
+        if (!registry.founderWhitelist(cfg.founder, cfg.communityId)) {
+            registry.addFounder(cfg.founder);
+        }
+
+        IVerifierPowerTokenBootstrap vpt = IVerifierPowerTokenBootstrap(cfg.verifierPowerToken);
+        if (!vpt.communityInitialized()) {
+            vpt.initializeCommunity(cfg.verifierMetadataURI);
+        }
+
+        IRevenueRouterBootstrap router = IRevenueRouterBootstrap(cfg.revenueRouter);
+        if (router.communityTreasuries(cfg.communityId) != cfg.treasuryVault) {
+            router.setCommunityTreasury(cfg.communityId, cfg.treasuryVault);
+        }
+
+        ITreasuryAdapterBootstrap adapter = ITreasuryAdapterBootstrap(cfg.treasuryAdapter);
+        for (uint256 i = 0; i < cfg.supportedTokens.length; i++) {
+            address token = cfg.supportedTokens[i];
+            if (token == address(0)) revert Errors.ZeroAddress();
+
+            if (!router.supportedTokens(cfg.communityId, token)) {
+                router.setSupportedToken(cfg.communityId, token, true);
+            }
+
+            if (!adapter.tokenAllowed(token)) {
+                adapter.setTokenAllowed(token, true);
+            }
+
+            if (adapter.capBps(token) != cfg.tokenCapBps) {
+                adapter.setCapBps(token, cfg.tokenCapBps);
+            }
+        }
+
+        if (!adapter.destinationAllowed(cfg.requestHub)) {
+            adapter.setDestinationAllowed(cfg.requestHub, true);
+        }
+
+        IMarketplaceBootstrap marketplace = IMarketplaceBootstrap(cfg.marketplace);
+        if (!marketplace.communityActive(cfg.communityId)) {
+            marketplace.setCommunityActive(cfg.communityId, true);
+        }
+
+        if (marketplace.communityTokens(cfg.communityId) != cfg.communityToken) {
+            marketplace.setCommunityToken(cfg.communityId, cfg.communityToken);
+        }
     }
 }

@@ -1,6 +1,7 @@
 import type { Abi, Address, PublicClient } from "viem";
 
 import { getContractAddress } from "../contracts";
+import { getOrFetchPersistentCache } from "./persistent-cache";
 import type { FundingAssessment, PreflightAssessment, ProbeStatus, SharedInfraStatus } from "./types";
 
 const PARAM_CONTROLLER_ABI = [
@@ -22,6 +23,8 @@ const COMMUNITY_REGISTRY_ABI = [
     outputs: [{ name: "", type: "uint256" }]
   }
 ] as const satisfies Abi;
+
+const PREFLIGHT_PROBE_TTL_MS = 45_000;
 
 export type FundsEstimateInput = {
   estimatedTxCount: number;
@@ -50,34 +53,41 @@ export function estimateFunding(input: FundsEstimateInput): FundingAssessment {
 
 async function probe(
   publicClient: PublicClient,
+  chainId: number,
   address: Address,
   abi: Abi,
   functionName: string
 ): Promise<ProbeStatus> {
-  const code = await publicClient.getBytecode({ address });
-  if (!code || code === "0x") {
-    return { address, hasCode: false, abiProbePassed: false, reason: "Missing bytecode" };
-  }
+  const cacheKey = `preflight:probe:${chainId}:${address.toLowerCase()}:${functionName}`;
+  return getOrFetchPersistentCache(cacheKey, PREFLIGHT_PROBE_TTL_MS, async () => {
+    const code = await publicClient.getBytecode({ address });
+    if (!code || code === "0x") {
+      return { address, hasCode: false, abiProbePassed: false, reason: "Missing bytecode" };
+    }
 
-  try {
-    await publicClient.readContract({
-      address,
-      abi,
-      functionName,
-      args: []
-    });
-    return { address, hasCode: true, abiProbePassed: true };
-  } catch {
-    return { address, hasCode: true, abiProbePassed: false, reason: `ABI probe failed: ${functionName}` };
-  }
+    try {
+      await publicClient.readContract({
+        address,
+        abi,
+        functionName,
+        args: []
+      });
+      return { address, hasCode: true, abiProbePassed: true };
+    } catch {
+      return { address, hasCode: true, abiProbePassed: false, reason: `ABI probe failed: ${functionName}` };
+    }
+  });
 }
 
-async function probeCodeOnly(publicClient: PublicClient, address: Address): Promise<ProbeStatus> {
-  const code = await publicClient.getBytecode({ address });
-  if (!code || code === "0x") {
-    return { address, hasCode: false, abiProbePassed: false, reason: "Missing bytecode" };
-  }
-  return { address, hasCode: true, abiProbePassed: true };
+async function probeCodeOnly(publicClient: PublicClient, chainId: number, address: Address): Promise<ProbeStatus> {
+  const cacheKey = `preflight:code:${chainId}:${address.toLowerCase()}`;
+  return getOrFetchPersistentCache(cacheKey, PREFLIGHT_PROBE_TTL_MS, async () => {
+    const code = await publicClient.getBytecode({ address });
+    if (!code || code === "0x") {
+      return { address, hasCode: false, abiProbePassed: false, reason: "Missing bytecode" };
+    }
+    return { address, hasCode: true, abiProbePassed: true };
+  });
 }
 
 export async function probeSharedInfra(publicClient: PublicClient, chainId: number): Promise<SharedInfraStatus> {
@@ -102,12 +112,12 @@ export async function probeSharedInfra(publicClient: PublicClient, chainId: numb
       if (!address) {
         return { hasCode: false, abiProbePassed: false, reason: "Address resolution failed" };
       }
-      return probeCodeOnly(publicClient, address);
+      return probeCodeOnly(publicClient, chainId, address);
     };
 
     const [pc, cr, govFactory, verFactory, ecoFactory, comFactory, coordFactory] = await Promise.all([
-      probe(publicClient, paramController, PARAM_CONTROLLER_ABI, "communityRegistry"),
-      probe(publicClient, communityRegistry, COMMUNITY_REGISTRY_ABI, "nextCommunityId"),
+      probe(publicClient, chainId, paramController, PARAM_CONTROLLER_ABI, "communityRegistry"),
+      probe(publicClient, chainId, communityRegistry, COMMUNITY_REGISTRY_ABI, "nextCommunityId"),
       probeFactory(governanceLayerFactory),
       probeFactory(verificationLayerFactory),
       probeFactory(economicLayerFactory),
@@ -158,7 +168,9 @@ export function buildPreflightAssessment(input: BuildPreflightInput): PreflightA
 
   if (!input.walletConnected) blockingReasons.push("Connect wallet to start deployment.");
   if (!supportedNetwork) blockingReasons.push("Switch to a supported network.");
-  if (!input.sharedInfra.isUsable) blockingReasons.push("Shared infrastructure is missing or invalid.");
+  if (supportedNetwork && !input.sharedInfra.isUsable) {
+    blockingReasons.push("Shared infrastructure is missing or invalid.");
+  }
   if (!input.funding.isSufficient) blockingReasons.push("Insufficient native token balance for estimated deployment cost.");
 
   return {

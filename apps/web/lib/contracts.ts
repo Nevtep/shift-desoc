@@ -19,10 +19,6 @@ type EnvBackedContractKey =
   | LayerFactoryKey
   | "communityRegistry"
   | "paramController"
-  | "accessManager"
-  | "positionManager"
-  | "marketplace"
-  | "revenueRouter"
   | "bootstrapCoordinator";
 
 type ContractKey =
@@ -52,16 +48,23 @@ type ChainId = typeof baseSepolia.id | number;
 const ENV_BY_KEY: Record<EnvBackedContractKey, string> = {
   communityRegistry: "NEXT_PUBLIC_COMMUNITY_REGISTRY",
   paramController: "NEXT_PUBLIC_PARAM_CONTROLLER",
-  accessManager: "NEXT_PUBLIC_ACCESS_MANAGER",
-  positionManager: "NEXT_PUBLIC_POSITION_MANAGER",
-  marketplace: "NEXT_PUBLIC_MARKETPLACE",
-  revenueRouter: "NEXT_PUBLIC_REVENUE_ROUTER",
   bootstrapCoordinator: "NEXT_PUBLIC_BOOTSTRAP_COORDINATOR",
   governanceLayerFactory: "NEXT_PUBLIC_GOVERNANCE_LAYER_FACTORY",
   verificationLayerFactory: "NEXT_PUBLIC_VERIFICATION_LAYER_FACTORY",
   economicLayerFactory: "NEXT_PUBLIC_ECONOMIC_LAYER_FACTORY",
   commerceLayerFactory: "NEXT_PUBLIC_COMMERCE_LAYER_FACTORY",
   coordinationLayerFactory: "NEXT_PUBLIC_COORDINATION_LAYER_FACTORY"
+};
+
+const ENV_VALUE_BY_KEY: Record<EnvBackedContractKey, string | undefined> = {
+  communityRegistry: process.env.NEXT_PUBLIC_COMMUNITY_REGISTRY,
+  paramController: process.env.NEXT_PUBLIC_PARAM_CONTROLLER,
+  bootstrapCoordinator: process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR,
+  governanceLayerFactory: process.env.NEXT_PUBLIC_GOVERNANCE_LAYER_FACTORY,
+  verificationLayerFactory: process.env.NEXT_PUBLIC_VERIFICATION_LAYER_FACTORY,
+  economicLayerFactory: process.env.NEXT_PUBLIC_ECONOMIC_LAYER_FACTORY,
+  commerceLayerFactory: process.env.NEXT_PUBLIC_COMMERCE_LAYER_FACTORY,
+  coordinationLayerFactory: process.env.NEXT_PUBLIC_COORDINATION_LAYER_FACTORY
 };
 
 const requestHubAbi = requestHubArtifact.abi as Abi;
@@ -112,7 +115,7 @@ export function getContractAddress(key: ContractKey, chainId?: ChainId): Address
       `Address for ${key} is not env-backed. Resolve this module address from CommunityRegistry wiring by communityId.`
     );
   }
-  const rawAddress = process.env[envKey];
+  const rawAddress = ENV_VALUE_BY_KEY[key as EnvBackedContractKey];
   if (!rawAddress || !/^0x[a-fA-F0-9]{40}$/.test(rawAddress)) {
     throw new Error(`Missing or invalid address for ${key}. Set ${envKey} in .env for the web app.`);
   }

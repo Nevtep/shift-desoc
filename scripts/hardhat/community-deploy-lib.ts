@@ -380,6 +380,7 @@ async function isUsableSharedInfra(addresses: Partial<SharedInfra>): Promise<boo
 export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
   const net = networkName();
   assertStrictStagingMode(net);
+  const forceRedeploySharedInfra = process.env.SHIFT_FORCE_REDEPLOY_SHARED_INFRA === "1";
   const existing = net === "hardhat" ? null : loadDeploymentFile(net);
   const existingShared: Partial<SharedInfra> = {
     paramController: existing?.addresses?.paramController,
@@ -392,7 +393,7 @@ export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
     coordinationLayerFactory: existing?.addresses?.coordinationLayerFactory,
   };
 
-  if (await isUsableSharedInfra(existingShared)) {
+  if (!forceRedeploySharedInfra && await isUsableSharedInfra(existingShared)) {
     return {
       paramController: existingShared.paramController!,
       communityRegistry: existingShared.communityRegistry!,
@@ -403,6 +404,10 @@ export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
       commerceLayerFactory: existingShared.commerceLayerFactory!,
       coordinationLayerFactory: existingShared.coordinationLayerFactory!,
     };
+  }
+
+  if (forceRedeploySharedInfra) {
+    console.warn("⚠️ SHIFT_FORCE_REDEPLOY_SHARED_INFRA=1 set. Redeploying shared infra and overwriting deployment JSON addresses.");
   }
 
   if (existing?.addresses?.paramController || existing?.addresses?.communityRegistry) {
