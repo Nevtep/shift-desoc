@@ -37,6 +37,12 @@ type Query {
   engagementss(where: engagementsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementsPage!
   jurorAssignments(id: String!): jurorAssignments
   jurorAssignmentss(where: jurorAssignmentsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): jurorAssignmentsPage!
+  emitterMappingWindows(id: String!): emitterMappingWindows
+  emitterMappingWindowss(where: emitterMappingWindowsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): emitterMappingWindowsPage!
+  emitterMappingActive(emitterAddress: String!): emitterMappingActive
+  emitterMappingActives(where: emitterMappingActiveFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): emitterMappingActivePage!
+  unmappedEmitterAlerts(id: String!): unmappedEmitterAlerts
+  unmappedEmitterAlertss(where: unmappedEmitterAlertsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): unmappedEmitterAlertsPage!
   _meta: Meta
 }
 
@@ -872,4 +878,317 @@ input jurorAssignmentsFilter {
   decidedAt_ends_with: String
   decidedAt_not_starts_with: String
   decidedAt_not_ends_with: String
+}
+
+type emitterMappingWindows {
+  id: String!
+  chainId: Int!
+  emitterAddress: String!
+  communityId: Int!
+  moduleKey: String!
+  activeFromBlock: BigInt!
+  activeFromLogIndex: Int!
+  activeToBlock: BigInt
+  activeToLogIndex: Int
+  discoveredAt: String!
+  closedAt: String
+}
+
+type emitterMappingWindowsPage {
+  items: [emitterMappingWindows!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input emitterMappingWindowsFilter {
+  AND: [emitterMappingWindowsFilter]
+  OR: [emitterMappingWindowsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  chainId: Int
+  chainId_not: Int
+  chainId_in: [Int]
+  chainId_not_in: [Int]
+  chainId_gt: Int
+  chainId_lt: Int
+  chainId_gte: Int
+  chainId_lte: Int
+  emitterAddress: String
+  emitterAddress_not: String
+  emitterAddress_in: [String]
+  emitterAddress_not_in: [String]
+  emitterAddress_contains: String
+  emitterAddress_not_contains: String
+  emitterAddress_starts_with: String
+  emitterAddress_ends_with: String
+  emitterAddress_not_starts_with: String
+  emitterAddress_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  moduleKey: String
+  moduleKey_not: String
+  moduleKey_in: [String]
+  moduleKey_not_in: [String]
+  moduleKey_contains: String
+  moduleKey_not_contains: String
+  moduleKey_starts_with: String
+  moduleKey_ends_with: String
+  moduleKey_not_starts_with: String
+  moduleKey_not_ends_with: String
+  activeFromBlock: BigInt
+  activeFromBlock_not: BigInt
+  activeFromBlock_in: [BigInt]
+  activeFromBlock_not_in: [BigInt]
+  activeFromBlock_gt: BigInt
+  activeFromBlock_lt: BigInt
+  activeFromBlock_gte: BigInt
+  activeFromBlock_lte: BigInt
+  activeFromLogIndex: Int
+  activeFromLogIndex_not: Int
+  activeFromLogIndex_in: [Int]
+  activeFromLogIndex_not_in: [Int]
+  activeFromLogIndex_gt: Int
+  activeFromLogIndex_lt: Int
+  activeFromLogIndex_gte: Int
+  activeFromLogIndex_lte: Int
+  activeToBlock: BigInt
+  activeToBlock_not: BigInt
+  activeToBlock_in: [BigInt]
+  activeToBlock_not_in: [BigInt]
+  activeToBlock_gt: BigInt
+  activeToBlock_lt: BigInt
+  activeToBlock_gte: BigInt
+  activeToBlock_lte: BigInt
+  activeToLogIndex: Int
+  activeToLogIndex_not: Int
+  activeToLogIndex_in: [Int]
+  activeToLogIndex_not_in: [Int]
+  activeToLogIndex_gt: Int
+  activeToLogIndex_lt: Int
+  activeToLogIndex_gte: Int
+  activeToLogIndex_lte: Int
+  discoveredAt: String
+  discoveredAt_not: String
+  discoveredAt_in: [String]
+  discoveredAt_not_in: [String]
+  discoveredAt_contains: String
+  discoveredAt_not_contains: String
+  discoveredAt_starts_with: String
+  discoveredAt_ends_with: String
+  discoveredAt_not_starts_with: String
+  discoveredAt_not_ends_with: String
+  closedAt: String
+  closedAt_not: String
+  closedAt_in: [String]
+  closedAt_not_in: [String]
+  closedAt_contains: String
+  closedAt_not_contains: String
+  closedAt_starts_with: String
+  closedAt_ends_with: String
+  closedAt_not_starts_with: String
+  closedAt_not_ends_with: String
+}
+
+type emitterMappingActive {
+  emitterAddress: String!
+  chainId: Int!
+  communityId: Int!
+  moduleKey: String!
+  activeFromBlock: BigInt!
+  activeFromLogIndex: Int!
+  updatedAt: String!
+}
+
+type emitterMappingActivePage {
+  items: [emitterMappingActive!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input emitterMappingActiveFilter {
+  AND: [emitterMappingActiveFilter]
+  OR: [emitterMappingActiveFilter]
+  emitterAddress: String
+  emitterAddress_not: String
+  emitterAddress_in: [String]
+  emitterAddress_not_in: [String]
+  emitterAddress_contains: String
+  emitterAddress_not_contains: String
+  emitterAddress_starts_with: String
+  emitterAddress_ends_with: String
+  emitterAddress_not_starts_with: String
+  emitterAddress_not_ends_with: String
+  chainId: Int
+  chainId_not: Int
+  chainId_in: [Int]
+  chainId_not_in: [Int]
+  chainId_gt: Int
+  chainId_lt: Int
+  chainId_gte: Int
+  chainId_lte: Int
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  moduleKey: String
+  moduleKey_not: String
+  moduleKey_in: [String]
+  moduleKey_not_in: [String]
+  moduleKey_contains: String
+  moduleKey_not_contains: String
+  moduleKey_starts_with: String
+  moduleKey_ends_with: String
+  moduleKey_not_starts_with: String
+  moduleKey_not_ends_with: String
+  activeFromBlock: BigInt
+  activeFromBlock_not: BigInt
+  activeFromBlock_in: [BigInt]
+  activeFromBlock_not_in: [BigInt]
+  activeFromBlock_gt: BigInt
+  activeFromBlock_lt: BigInt
+  activeFromBlock_gte: BigInt
+  activeFromBlock_lte: BigInt
+  activeFromLogIndex: Int
+  activeFromLogIndex_not: Int
+  activeFromLogIndex_in: [Int]
+  activeFromLogIndex_not_in: [Int]
+  activeFromLogIndex_gt: Int
+  activeFromLogIndex_lt: Int
+  activeFromLogIndex_gte: Int
+  activeFromLogIndex_lte: Int
+  updatedAt: String
+  updatedAt_not: String
+  updatedAt_in: [String]
+  updatedAt_not_in: [String]
+  updatedAt_contains: String
+  updatedAt_not_contains: String
+  updatedAt_starts_with: String
+  updatedAt_ends_with: String
+  updatedAt_not_starts_with: String
+  updatedAt_not_ends_with: String
+}
+
+type unmappedEmitterAlerts {
+  id: String!
+  chainId: Int!
+  emitterAddress: String!
+  moduleKeyHint: String
+  eventName: String!
+  blockNumber: BigInt!
+  txHash: String!
+  logIndex: Int!
+  observedAt: String!
+}
+
+type unmappedEmitterAlertsPage {
+  items: [unmappedEmitterAlerts!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input unmappedEmitterAlertsFilter {
+  AND: [unmappedEmitterAlertsFilter]
+  OR: [unmappedEmitterAlertsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  chainId: Int
+  chainId_not: Int
+  chainId_in: [Int]
+  chainId_not_in: [Int]
+  chainId_gt: Int
+  chainId_lt: Int
+  chainId_gte: Int
+  chainId_lte: Int
+  emitterAddress: String
+  emitterAddress_not: String
+  emitterAddress_in: [String]
+  emitterAddress_not_in: [String]
+  emitterAddress_contains: String
+  emitterAddress_not_contains: String
+  emitterAddress_starts_with: String
+  emitterAddress_ends_with: String
+  emitterAddress_not_starts_with: String
+  emitterAddress_not_ends_with: String
+  moduleKeyHint: String
+  moduleKeyHint_not: String
+  moduleKeyHint_in: [String]
+  moduleKeyHint_not_in: [String]
+  moduleKeyHint_contains: String
+  moduleKeyHint_not_contains: String
+  moduleKeyHint_starts_with: String
+  moduleKeyHint_ends_with: String
+  moduleKeyHint_not_starts_with: String
+  moduleKeyHint_not_ends_with: String
+  eventName: String
+  eventName_not: String
+  eventName_in: [String]
+  eventName_not_in: [String]
+  eventName_contains: String
+  eventName_not_contains: String
+  eventName_starts_with: String
+  eventName_ends_with: String
+  eventName_not_starts_with: String
+  eventName_not_ends_with: String
+  blockNumber: BigInt
+  blockNumber_not: BigInt
+  blockNumber_in: [BigInt]
+  blockNumber_not_in: [BigInt]
+  blockNumber_gt: BigInt
+  blockNumber_lt: BigInt
+  blockNumber_gte: BigInt
+  blockNumber_lte: BigInt
+  txHash: String
+  txHash_not: String
+  txHash_in: [String]
+  txHash_not_in: [String]
+  txHash_contains: String
+  txHash_not_contains: String
+  txHash_starts_with: String
+  txHash_ends_with: String
+  txHash_not_starts_with: String
+  txHash_not_ends_with: String
+  logIndex: Int
+  logIndex_not: Int
+  logIndex_in: [Int]
+  logIndex_not_in: [Int]
+  logIndex_gt: Int
+  logIndex_lt: Int
+  logIndex_gte: Int
+  logIndex_lte: Int
+  observedAt: String
+  observedAt_not: String
+  observedAt_in: [String]
+  observedAt_not_in: [String]
+  observedAt_contains: String
+  observedAt_not_contains: String
+  observedAt_starts_with: String
+  observedAt_ends_with: String
+  observedAt_not_starts_with: String
+  observedAt_not_ends_with: String
 }

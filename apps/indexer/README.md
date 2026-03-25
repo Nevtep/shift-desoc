@@ -10,6 +10,32 @@ Ponder-based indexer for Shift contracts writing to Postgres and exposing GraphQ
 
 ## PONDER_START_BLOCK Behavior
 
-- If `PONDER_START_BLOCK` is unchanged, the indexer resumes from the latest finalized checkpoint.
-- If `PONDER_START_BLOCK` changes, startup clears Ponder app/status metadata and re-initializes indexing from the new block.
+- If `COMMUNITY_REGISTRY_START_BLOCK` is unchanged, the indexer resumes from the latest finalized checkpoint.
+- If `COMMUNITY_REGISTRY_START_BLOCK` changes, startup clears Ponder app/status metadata and re-initializes indexing from the new block.
 - This is handled by `scripts/prepare-start.js`, executed before `ponder start` and `ponder dev`.
+
+## Required Discovery Environment
+
+- `COMMUNITY_REGISTRY_ADDRESS`: on-chain CommunityRegistry address used as discovery root.
+- `COMMUNITY_REGISTRY_START_BLOCK`: replay/backfill start block for registry lifecycle events.
+- `PONDER_NETWORK`: `base` or `base_sepolia`.
+
+Startup fails fast when the required discovery env vars are missing/invalid.
+
+## Replay And Backfill
+
+1. Set `COMMUNITY_REGISTRY_START_BLOCK` to the desired replay boundary.
+2. Run `pnpm --filter @shift/indexer run dev` (or `start`).
+3. `scripts/prepare-start.js` clears Ponder app/status metadata when the start block changed.
+4. Verify mappings and unmapped telemetry with:
+	- `GET /api/discovery/health`
+
+## Compatibility Checks
+
+- ABI/event compatibility: `pnpm --filter @shift/indexer run check:events`
+- Schema/query compatibility smoke: `pnpm --filter @shift/indexer run check:compat`
+
+## Reorg/Replay Resilience Note
+
+The local test harness validates replay idempotency invariants (stable attribution and no duplicate rows) using log-derived deterministic IDs.
+Full chain reorg simulation is not currently available in this local harness.

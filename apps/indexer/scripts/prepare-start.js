@@ -5,6 +5,7 @@ const { Client } = require("pg");
 dotenv.config({ path: path.join(__dirname, "../../../.env") });
 
 const START_BLOCK_META_KEY = "shift_start_block";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 async function tableExists(client, name) {
   const result = await client.query("select to_regclass($1) as reg", [name]);
@@ -13,15 +14,52 @@ async function tableExists(client, name) {
 
 async function main() {
   const databaseUrl = process.env.DATABASE_URL;
-  const startBlockRaw = process.env.PONDER_START_BLOCK;
+  const startBlockRaw = process.env.COMMUNITY_REGISTRY_START_BLOCK;
+  const registryAddressRaw = process.env.COMMUNITY_REGISTRY_ADDRESS;
+  const network = process.env.PONDER_NETWORK ?? "base_sepolia";
+  const rpcUrl =
+    network === "base"
+      ? process.env.RPC_BASE ?? "https://mainnet.base.org"
+      : process.env.RPC_BASE_SEPOLIA ?? "https://sepolia.base.org";
 
-  if (!databaseUrl || !startBlockRaw) {
-    return;
+  if (!registryAddressRaw) {
+    throw new Error("Missing required env COMMUNITY_REGISTRY_ADDRESS");
+  }
+
+  if (!/^0x[a-fA-F0-9]{40}$/.test(registryAddressRaw) || registryAddressRaw.toLowerCase() === ZERO_ADDRESS) {
+    throw new Error("Invalid COMMUNITY_REGISTRY_ADDRESS");
+  }
+
+  if (!startBlockRaw) {
+    throw new Error("Missing required env COMMUNITY_REGISTRY_START_BLOCK");
   }
 
   const startBlock = Number.parseInt(startBlockRaw, 10);
-  if (!Number.isFinite(startBlock)) {
-    console.warn(`[indexer] Ignoring invalid PONDER_START_BLOCK='${startBlockRaw}'.`);
+  if (!Number.isFinite(startBlock) || startBlock < 0) {
+    throw new Error("Invalid COMMUNITY_REGISTRY_START_BLOCK");
+  }
+
+  const codeResponse = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_getCode",
+      params: [registryAddressRaw, "latest"],
+    }),
+  });
+
+  if (!codeResponse.ok) {
+    throw new Error(`Failed registry usability check with RPC status ${codeResponse.status}`);
+  }
+
+  const codeResult = await codeResponse.json();
+  if (!codeResult?.result || codeResult.result === "0x") {
+    throw new Error("COMMUNITY_REGISTRY_ADDRESS has no deployed bytecode on selected network");
+  }
+
+  if (!databaseUrl || !startBlockRaw) {
     return;
   }
 

@@ -1,7 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
-
-import { and, desc, eq, graphql } from "@ponder/core";
+import { and, count, desc, eq, graphql } from "@ponder/core";
 import {
   engagements,
   comments,
@@ -9,14 +6,22 @@ import {
   draftReviews,
   draftVersions,
   drafts,
+  emitterMappingActive,
+  emitterMappingWindows,
   jurorAssignments,
   proposalVotes,
   proposals,
   requests,
+  unmappedEmitterAlerts,
 } from "../ponder.schema";
 
 import { keccak256, toBytes, type Address } from "viem";
 import { ponder } from "@/generated";
+import { contractModuleKeyAllowlists } from "./discovery/module-key-allowlists";
+import { applyModuleAddressUpdate } from "./discovery/mapping-windows";
+import { normalizeModuleKey } from "./discovery/module-keys";
+import { resolveCommunityFromEmitter } from "./discovery/resolve-community-from-emitter";
+import { writeUnmappedEmitterTelemetry } from "./discovery/unmapped-emitter-telemetry";
 
 // --- API ROUTES (Hono via Ponder) -------------------------------------------------
 
@@ -24,6 +29,16 @@ import { ponder } from "@/generated";
 ponder.use("/graphql", graphql());
 
 ponder.get("/api/health", (c) => c.json({ ok: true }));
+
+ponder.get("/api/discovery/health", async (c) => {
+  const [activeCountRow] = await c.db.select({ count: count() }).from(emitterMappingActive);
+  const [unmappedCountRow] = await c.db.select({ count: count() }).from(unmappedEmitterAlerts);
+
+  return c.json({
+    activeEmitterMappings: Number(activeCountRow?.count ?? 0),
+    unmappedEmitterAlerts: Number(unmappedCountRow?.count ?? 0),
+  });
+});
 
 ponder.get("/communities", async (c) => {
   const { limit, offset } = parsePagination(c.req.query("limit"), c.req.query("offset"));
@@ -180,15 +195,6 @@ ponder.get("/engagements/:id", async (c) => {
 
 // --- EVENT HANDLERS -------------------------------------------------------------
 
-const network = (process.env.PONDER_NETWORK ?? "base_sepolia") as
-  | "base"
-  | "base_sepolia";
-const deploymentPath = path.join(__dirname, "../../deployments", `${network}.json`);
-const deployment = fs.existsSync(deploymentPath)
-  ? (JSON.parse(fs.readFileSync(deploymentPath, "utf8")) as { communityId?: number })
-  : {};
-const defaultCommunityId = deployment.communityId ?? 0;
-
 const requestStatuses = ["OPEN_DEBATE", "FROZEN", "ARCHIVED"] as const;
 const draftStatuses = ["DRAFTING", "REVIEW", "FINALIZED", "ESCALATED", "WON", "LOST"] as const;
 const reviewTypes = ["SUPPORT", "OPPOSE", "NEUTRAL", "REQUEST_CHANGES"] as const;
@@ -223,6 +229,48 @@ const buildReviewId = (draftId: number, reviewer: Address) => `${draftId}-${revi
 const buildVoteId = (proposalId: bigint, voter: Address) => `${proposalId.toString()}-${voter.toLowerCase()}`;
 const buildJurorAssignmentId = (engagementId: number, juror: Address) => `${engagementId}-${juror.toLowerCase()}`;
 
+const getEventMeta = (event: any) => ({
+  emitterAddress: String(event?.log?.address ?? "").toLowerCase(),
+  blockNumber: BigInt(event?.block?.number ?? 0n),
+  logIndex: Number(event?.log?.logIndex ?? 0),
+  txHash: String(event?.transaction?.hash ?? ""),
+  timestamp: toDate(BigInt(event.block.timestamp)),
+  eventName: String(event?.name ?? "unknown"),
+});
+
+const resolveOrAlert = async (
+  context: any,
+  event: any,
+  contractName: keyof typeof contractModuleKeyAllowlists
+) => {
+  const meta = getEventMeta(event);
+  const expectedModuleKeys = contractModuleKeyAllowlists[contractName];
+  const resolved = await resolveCommunityFromEmitter({
+    db: context.db,
+    emitterAddress: meta.emitterAddress,
+    blockNumber: meta.blockNumber,
+    expectedModuleKeys,
+  });
+
+  if (resolved) {
+    return resolved;
+  }
+
+  await writeUnmappedEmitterTelemetry({
+    db: context.db,
+    chainId: context.network.chainId,
+    emitterAddress: meta.emitterAddress,
+    moduleKeyHint: expectedModuleKeys?.join(",") ?? undefined,
+    eventName: meta.eventName,
+    blockNumber: meta.blockNumber,
+    txHash: meta.txHash,
+    logIndex: meta.logIndex,
+    timestamp: meta.timestamp,
+  });
+
+  return null;
+};
+
 ponder.on("CommunityRegistry:CommunityRegistered", async ({ event, context }) => {
   const createdAt = toDate(event.block.timestamp);
   const communityId = Number(event.args.communityId);
@@ -246,12 +294,36 @@ ponder.on("CommunityRegistry:CommunityRegistered", async ({ event, context }) =>
     .set(payload);
 });
 
+ponder.on("CommunityRegistry:ModuleAddressUpdated", async ({ event, context }) => {
+  const meta = getEventMeta(event);
+
+  await applyModuleAddressUpdate(
+    {
+      db: context.db,
+      network: context.network,
+    },
+    {
+      communityId: Number(event.args.communityId),
+      moduleKey: normalizeModuleKey(String(event.args.moduleKey)),
+      oldAddress: String(event.args.oldAddress),
+      newAddress: String(event.args.newAddress),
+      blockNumber: meta.blockNumber,
+      logIndex: meta.logIndex,
+      txHash: meta.txHash,
+      timestamp: meta.timestamp,
+    }
+  );
+});
+
 ponder.on("RequestHub:RequestCreated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "RequestHub");
+  if (!resolved) return;
+
   await context.db
     .insert(requests)
     .values({
       id: Number(event.args.requestId),
-      communityId: Number(event.args.communityId),
+      communityId: resolved.communityId,
       author: event.args.author,
       status: requestStatuses[0],
       cid: event.args.cid,
@@ -290,6 +362,9 @@ ponder.on("RequestHub:CommentModerated", async ({ event, context }) => {
 });
 
 ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "DraftsManager");
+  if (!resolved) return;
+
   const now = toDate(event.block.timestamp);
   const draftId = Number(event.args.draftId);
 
@@ -297,7 +372,7 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
     .insert(drafts)
     .values({
       id: draftId,
-      communityId: Number(event.args.communityId),
+      communityId: resolved.communityId,
       requestId: Number(event.args.requestId),
       status: draftStatuses[0],
       latestVersionCid: event.args.versionCID,
@@ -308,7 +383,7 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
     .onConflictDoUpdate({
       target: drafts.id,
       set: {
-        communityId: Number(event.args.communityId),
+        communityId: resolved.communityId,
         requestId: Number(event.args.requestId),
         status: draftStatuses[0],
         latestVersionCid: event.args.versionCID,
@@ -393,6 +468,9 @@ ponder.on("DraftsManager:DraftStatusChanged", async ({ event, context }) => {
 });
 
 ponder.on("DraftsManager:ProposalEscalated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "DraftsManager");
+  if (!resolved) return;
+
   const draftId = Number(event.args.draftId);
   const proposalId = event.args.proposalId;
   const createdAt = toDate(event.block.timestamp);
@@ -408,7 +486,7 @@ ponder.on("DraftsManager:ProposalEscalated", async ({ event, context }) => {
     .insert(proposals)
     .values({
       id: proposalId.toString(),
-      communityId: defaultCommunityId,
+      communityId: resolved.communityId,
       proposer: event.transaction.from,
       descriptionCid: null,
       descriptionHash: null,
@@ -442,6 +520,9 @@ ponder.on("DraftsManager:ProposalOutcomeUpdated", async ({ event, context }) => 
 });
 
 ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ShiftGovernor");
+  if (!resolved) return;
+
   const createdAt = toDate(event.block.timestamp);
   const description = event.args.description;
   const descriptionHash = keccak256(toBytes(description));
@@ -450,7 +531,7 @@ ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
     .insert(proposals)
     .values({
       id: event.args.proposalId.toString(),
-      communityId: defaultCommunityId,
+      communityId: resolved.communityId,
       proposer: event.args.proposer,
       descriptionCid: description,
       descriptionHash,
@@ -479,6 +560,9 @@ ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
 });
 
 ponder.on("ShiftGovernor:MultiChoiceProposalCreated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ShiftGovernor");
+  if (!resolved) return;
+
   const createdAt = toDate(event.block.timestamp);
   const descriptionHash = keccak256(toBytes(event.args.description));
   const options = Array.from({ length: Number(event.args.numOptions) }, (_, i) => i);
@@ -487,7 +571,7 @@ ponder.on("ShiftGovernor:MultiChoiceProposalCreated", async ({ event, context })
     .insert(proposals)
     .values({
       id: event.args.proposalId.toString(),
-      communityId: defaultCommunityId,
+      communityId: resolved.communityId,
       proposer: event.args.proposer,
       descriptionCid: event.args.description,
       descriptionHash,
@@ -603,12 +687,15 @@ ponder.on("ShiftGovernor:MultiChoiceVoteCast", async ({ event, context }) => {
 });
 
 ponder.on("Engagements:EngagementSubmitted", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "Engagements");
+  if (!resolved) return;
+
   const submittedAt = toDate(event.block.timestamp);
   await context.db
     .insert(engagements)
     .values({
       id: Number(event.args.engagementId),
-      communityId: defaultCommunityId,
+      communityId: resolved.communityId,
       valuableActionId: Number(event.args.typeId),
       participant: event.args.participant,
       status: engagementStatuses[0],
@@ -619,7 +706,7 @@ ponder.on("Engagements:EngagementSubmitted", async ({ event, context }) => {
     .onConflictDoUpdate({
       target: engagements.id,
       set: {
-        communityId: defaultCommunityId,
+        communityId: resolved.communityId,
         valuableActionId: Number(event.args.typeId),
         participant: event.args.participant,
         status: engagementStatuses[0],
@@ -631,13 +718,16 @@ ponder.on("Engagements:EngagementSubmitted", async ({ event, context }) => {
 });
 
 ponder.on("VerifierManager:JurorsSelected", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "VerifierManager");
+  if (!resolved) return;
+
   const engagementId = Number(event.args.engagementId);
   const jurors = event.args.jurors as Address[];
   const powers = event.args.powers as bigint[];
 
   await context.db
     .update(engagements, { id: engagementId })
-    .set({ communityId: Number(event.args.communityId) });
+    .set({ communityId: resolved.communityId });
 
   for (let i = 0; i < jurors.length; i += 1) {
     const juror = jurors[i]!;

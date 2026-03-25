@@ -6,6 +6,11 @@
     "dev": "node scripts/prepare-start.js && ponder dev",
     "start": "node scripts/prepare-start.js && ponder start",
     "build": "ponder codegen",
+    "test": "vitest run",
+    "test:integration": "vitest run test/integration",
+    "test:unit": "vitest run test/unit",
+    "check:events": "node --experimental-strip-types scripts/check-handler-event-signatures.ts",
+    "check:compat": "pnpm run build && pnpm run check:events && vitest run test/integration/schema-compatibility-smoke.test.ts",
     "docker:start": "sh -c 'docker start shift-indexer-postgres || docker run -d --name shift-indexer-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=ponder -p 5432:5432 -v shift-indexer-postgres-data:/var/lib/postgresql/data postgres:18'"
   },
   "dependencies": {
@@ -16,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.9"
   }
 }

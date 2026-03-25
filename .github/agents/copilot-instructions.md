@@ -13,6 +13,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - N/A for feature state (reads from chain + indexer projection) (005-community-overview-dashboard)
 - TypeScript (Next.js 16 App Router, React 19) + Next.js App Router, graphql-request, TanStack Query, wagmi/viem, Vitest, Testing Library, MSW (006-coordination-hub-cta-fix)
 - N/A (UI and route composition only; no new persistence) (006-coordination-hub-cta-fix)
+- TypeScript (Node 22 runtime) + `@ponder/core@0.7.17`, `viem`, `pg`, `hono` (007-indexer-community-discovery)
+- PostgreSQL (Ponder onchain schema tables) (007-indexer-community-discovery)
 
 - Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22 + OpenZeppelin 5.x (`AccessManaged`, `ReentrancyGuard`, `SafeERC20`), Foundry, Hardhat 2.22.x (001-security-fixes)
 
@@ -33,9 +35,9 @@ npm test && npm run lint
 Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22: Follow standard conventions
 
 ## Recent Changes
+- 007-indexer-community-discovery: Added TypeScript (Node 22 runtime) + `@ponder/core@0.7.17`, `viem`, `pg`, `hono`
 - 006-coordination-hub-cta-fix: Added TypeScript (Next.js 16 App Router, React 19) + Next.js App Router, graphql-request, TanStack Query, wagmi/viem, Vitest, Testing Library, MSW
 - 005-community-overview-dashboard: Added TypeScript (Next.js App Router, React 19), Node 22 + Next.js 16, React, wagmi/viem, TanStack Query, graphql-reques
-- 004-single-community-architecture: Added Solidity `^0.8.24`, TypeScript (Node 22), Next.js app stack + OpenZeppelin 5.x (AccessManager/AccessManaged/Governor/Timelock), Foundry, Hardhat, wagmi/viem
 
 
 <!-- MANUAL ADDITIONS START -->

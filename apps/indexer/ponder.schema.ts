@@ -105,6 +105,42 @@ export const jurorAssignments = schema.table("juror_assignments", (t) => ({
   decidedAt: t.timestamp({ withTimezone: true }),
 }));
 
+export const emitterMappingWindows = schema.table("emitter_mapping_windows", (t) => ({
+  id: t.text().primaryKey(),
+  chainId: t.integer().notNull(),
+  emitterAddress: t.text().notNull(),
+  communityId: t.integer().notNull(),
+  moduleKey: t.text().notNull(),
+  activeFromBlock: t.bigint().notNull(),
+  activeFromLogIndex: t.integer().notNull(),
+  activeToBlock: t.bigint(),
+  activeToLogIndex: t.integer(),
+  discoveredAt: t.timestamp({ withTimezone: true }).notNull(),
+  closedAt: t.timestamp({ withTimezone: true }),
+}));
+
+export const emitterMappingActive = schema.table("emitter_mapping_active", (t) => ({
+  emitterAddress: t.text().primaryKey(),
+  chainId: t.integer().notNull(),
+  communityId: t.integer().notNull(),
+  moduleKey: t.text().notNull(),
+  activeFromBlock: t.bigint().notNull(),
+  activeFromLogIndex: t.integer().notNull(),
+  updatedAt: t.timestamp({ withTimezone: true }).notNull(),
+}));
+
+export const unmappedEmitterAlerts = schema.table("unmapped_emitter_alerts", (t) => ({
+  id: t.text().primaryKey(),
+  chainId: t.integer().notNull(),
+  emitterAddress: t.text().notNull(),
+  moduleKeyHint: t.text(),
+  eventName: t.text().notNull(),
+  blockNumber: t.bigint().notNull(),
+  txHash: t.text().notNull(),
+  logIndex: t.integer().notNull(),
+  observedAt: t.timestamp({ withTimezone: true }).notNull(),
+}));
+
 export const schemaTables = {
   communities,
   requests,
@@ -116,6 +152,9 @@ export const schemaTables = {
   proposalVotes,
   engagements,
   jurorAssignments,
+  emitterMappingWindows,
+  emitterMappingActive,
+  unmappedEmitterAlerts,
 };
 
 export default schemaTables;
