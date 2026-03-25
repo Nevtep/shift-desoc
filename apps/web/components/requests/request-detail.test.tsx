@@ -48,4 +48,21 @@ describe("RequestDetail", () => {
 
     expect(await screen.findByText(/No IPFS body was provided/i)).toBeInTheDocument();
   });
+
+  it("shows mismatch guard when route community does not match request community", async () => {
+    renderWithProviders(
+      <RequestDetail
+        requestId="1"
+        expectedCommunityId={8}
+        requestListHref="/communities/8/coordination/requests"
+        draftHrefBuilder={(draft) => `/communities/8/coordination/drafts/${draft.id}`}
+      />
+    );
+
+    expect(await screen.findByText(/belongs to Community #1, not Community #8/i)).toBeInTheDocument();
+    const correctedLink = screen.getByRole("link", { name: /open the correct route/i });
+    expect(correctedLink).toHaveAttribute("href", "/communities/1/coordination/requests/1");
+    const draftLink = await screen.findByRole("link", { name: /draft 10/i });
+    expect(draftLink).toHaveAttribute("href", "/communities/8/coordination/drafts/10");
+  });
 });

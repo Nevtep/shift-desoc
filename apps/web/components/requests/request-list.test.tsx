@@ -63,4 +63,16 @@ describe("RequestList", () => {
 
     expect(await screen.findByText(/No requests indexed yet/i)).toBeInTheDocument();
   });
+
+  it("renders community-scoped detail links when builder is provided", async () => {
+    renderWithProviders(
+      <RequestList
+        communityId="8"
+        detailHrefBuilder={(request) => `/communities/8/coordination/requests/${request.id}`}
+      />
+    );
+
+    const link = await screen.findByRole("link", { name: /view details/i });
+    expect(link).toHaveAttribute("href", "/communities/8/coordination/requests/1");
+  });
 });

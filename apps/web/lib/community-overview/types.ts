@@ -59,8 +59,8 @@ export type ActivityPanelState = {
   state: "loading" | "ready" | "empty" | "error" | "lagging";
   items: ActivityPreviewItem[];
   canRetry: boolean;
-  viewAllHref: string;
-  createHref: string;
+  viewAll: OverviewActionState;
+  create: OverviewActionState;
 };
 
 export type SectionTabState = {

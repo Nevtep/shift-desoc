@@ -26,6 +26,10 @@ import { useToast } from "../ui/toaster";
 
 export type RequestDetailProps = {
   requestId: string;
+  expectedCommunityId?: number;
+  requestListHref?: string;
+  draftHrefBuilder?: (draft: DraftView) => string;
+  draftHrefBasePath?: string;
 };
 
 type RequestDetailRequest = {
@@ -44,7 +48,13 @@ type RequestQueryVars = { id: number };
 type DraftsByRequestVars = { requestId: number; limit: number };
 type CommentsByRequestVars = { requestId: number; limit: number; after?: string };
 
-export function RequestDetail({ requestId }: RequestDetailProps) {
+export function RequestDetail({
+  requestId,
+  expectedCommunityId,
+  requestListHref,
+  draftHrefBuilder,
+  draftHrefBasePath
+}: RequestDetailProps) {
   const numericId = Number(requestId);
   const chainId = useChainId();
   const { address, status: accountStatus } = useAccount();
@@ -509,8 +519,35 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
     );
   }
 
+  const hasCommunityMismatch =
+    Number.isFinite(expectedCommunityId) &&
+    typeof expectedCommunityId === "number" &&
+    expectedCommunityId > 0 &&
+    request.communityId !== expectedCommunityId;
+
+  const correctedRequestHref = hasCommunityMismatch
+    ? `/communities/${request.communityId}/coordination/requests/${request.id}`
+    : null;
+
   return (
     <div className="space-y-8">
+      {hasCommunityMismatch ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          This request belongs to Community #{request.communityId}, not Community #{expectedCommunityId}.{" "}
+          {correctedRequestHref ? (
+            <a className="underline" href={correctedRequestHref}>
+              Open the correct route
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+
+      {requestListHref ? (
+        <div className="text-sm">
+          <a className="underline" href={requestListHref}>Back to requests</a>
+        </div>
+      ) : null}
+
       <RequestDetailHeader
         title={headerTitle}
         requestId={request.id}
@@ -543,7 +580,11 @@ export function RequestDetail({ requestId }: RequestDetailProps) {
         onRetryIpfs={refetchIpfs}
       />
 
-      <RequestDetailDrafts drafts={drafts} />
+      <RequestDetailDrafts
+        drafts={drafts}
+        draftHrefBuilder={draftHrefBuilder}
+        draftHrefBasePath={draftHrefBasePath}
+      />
 
       <RequestDetailComments
         comments={comments}

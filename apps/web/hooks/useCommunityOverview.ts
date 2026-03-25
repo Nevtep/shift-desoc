@@ -83,7 +83,8 @@ export function buildOverviewHeaderState(args: {
     actions: {
       viewParameters: {
         href: routes.actions.viewParameters,
-        enabled: true
+        enabled: false,
+        comingSoon: true
       },
       editParameters: {
         href: routes.actions.editParameters,

@@ -15,6 +15,7 @@ import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi
 
 import { CONTRACTS, getContractConfig } from "../../lib/contracts";
 import { COMMUNITY_MODULE_ABIS } from "../../hooks/useCommunityModules";
+import { useToast } from "../ui/toaster";
 import {
   getTargetDefinition,
   getTargetFunctions,
@@ -41,13 +42,22 @@ type ActionFormState = {
 
 const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 
-export function DraftCreateForm() {
+export function DraftCreateForm({
+  fixedCommunityId,
+  successRedirectHref
+}: {
+  fixedCommunityId?: number;
+  successRedirectHref?: string;
+} = {}) {
   const router = useRouter();
+  const { push } = useToast();
   const chainId = useChainId();
   const { status, address } = useAccount();
   const { writeContractAsync, isPending, error } = useWriteContract();
 
-  const [communityId, setCommunityId] = useState("1");
+  const [communityId, setCommunityId] = useState(
+    Number.isFinite(fixedCommunityId) && (fixedCommunityId ?? 0) > 0 ? String(fixedCommunityId) : "1"
+  );
   const [requestId, setRequestId] = useState("0");
   const [versionCid, setVersionCid] = useState("");
   const [content, setContent] = useState("");
@@ -60,6 +70,7 @@ export function DraftCreateForm() {
 
   const isConnected = status === "connected";
   const disabled = !isConnected || isPending || isUploading;
+  const isFixedCommunity = Number.isFinite(fixedCommunityId) && (fixedCommunityId ?? 0) > 0;
 
   const communityRegistry = useMemo(() => {
     try {
@@ -189,10 +200,15 @@ export function DraftCreateForm() {
       });
 
       setSuccess("Draft created. It will surface after the indexer updates.");
+      push("Draft created. May take a moment to appear if the indexer is lagging.", "success");
       setContent("");
       setVersionCid("");
       setActions([]);
-      router.refresh();
+      if (successRedirectHref) {
+        router.push(successRedirectHref);
+      } else {
+        router.refresh();
+      }
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "Failed to create draft");
@@ -220,12 +236,18 @@ export function DraftCreateForm() {
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted-foreground">Community ID</span>
-            <input
-              required
-              value={communityId}
-              onChange={(e) => setCommunityId(e.target.value)}
-              className="rounded border border-border bg-background px-3 py-2"
-            />
+            {isFixedCommunity ? (
+              <div className="rounded border border-border bg-muted px-3 py-2 text-sm text-foreground">
+                Community #{communityId}
+              </div>
+            ) : (
+              <input
+                required
+                value={communityId}
+                onChange={(e) => setCommunityId(e.target.value)}
+                className="rounded border border-border bg-background px-3 py-2"
+              />
+            )}
           </label>
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted-foreground">Request ID (0 for none)</span>

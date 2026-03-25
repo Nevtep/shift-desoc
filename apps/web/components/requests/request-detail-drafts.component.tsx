@@ -2,7 +2,15 @@ import Link from "next/link";
 
 import type { DraftView } from "./types";
 
-export function RequestDetailDrafts({ drafts }: { drafts: DraftView[] }) {
+export function RequestDetailDrafts({
+  drafts,
+  draftHrefBuilder,
+  draftHrefBasePath
+}: {
+  drafts: DraftView[];
+  draftHrefBuilder?: (draft: DraftView) => string;
+  draftHrefBasePath?: string;
+}) {
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-medium">Drafts</h2>
@@ -10,7 +18,16 @@ export function RequestDetailDrafts({ drafts }: { drafts: DraftView[] }) {
         <ul className="space-y-2 text-sm">
           {drafts.map((draft) => (
             <li key={draft.id} className="flex flex-wrap items-center gap-2">
-              <Link className="underline" href={`/drafts/${draft.id}`}>
+              <Link
+                className="underline"
+                href={
+                  draftHrefBasePath
+                    ? `${draftHrefBasePath}/${draft.id}`
+                    : draftHrefBuilder
+                      ? draftHrefBuilder(draft)
+                      : `/drafts/${draft.id}`
+                }
+              >
                 Draft {draft.id}
               </Link>
               <span className="text-muted-foreground">Status: {draft.status}</span>

@@ -5,15 +5,25 @@ import { useRouter } from "next/navigation";
 import { useAccount, useChainId, usePublicClient, useReadContract, useWriteContract } from "wagmi";
 
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
+import { useToast } from "../ui/toaster";
 
-export function RequestCreateForm() {
+export function RequestCreateForm({
+  fixedCommunityId,
+  successRedirectHref
+}: {
+  fixedCommunityId?: number;
+  successRedirectHref?: string;
+} = {}) {
   const router = useRouter();
+  const { push } = useToast();
   const chainId = useChainId();
   const { address, status } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync, isPending, error } = useWriteContract();
 
-  const [communityId, setCommunityId] = useState("1");
+  const [communityId, setCommunityId] = useState(
+    Number.isFinite(fixedCommunityId) && (fixedCommunityId ?? 0) > 0 ? String(fixedCommunityId) : "1"
+  );
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
@@ -24,6 +34,7 @@ export function RequestCreateForm() {
 
   const isConnected = status === "connected";
   const disabled = !isConnected || isPending || isUploading;
+  const isFixedCommunity = Number.isFinite(fixedCommunityId) && (fixedCommunityId ?? 0) > 0;
 
   const communityIdNum = Number(communityId);
   const { modules, isFetching: isFetchingModules } = useCommunityModules({
@@ -163,7 +174,12 @@ export function RequestCreateForm() {
       setTags("");
       setSelectedValuableActionId("");
       setRequestType("governance");
-      router.refresh();
+      push("Request created. May take a moment to appear if the indexer is lagging.", "success");
+      if (successRedirectHref) {
+        router.push(successRedirectHref);
+      } else {
+        router.refresh();
+      }
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "Failed to submit request");
@@ -215,13 +231,19 @@ export function RequestCreateForm() {
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Community ID</span>
-          <input
-            required
-            value={communityId}
-            onChange={(e) => setCommunityId(e.target.value)}
-            className="rounded border border-border bg-background px-3 py-2"
-            placeholder="1"
-          />
+          {isFixedCommunity ? (
+            <div className="rounded border border-border bg-muted px-3 py-2 text-sm text-foreground">
+              Community #{communityId}
+            </div>
+          ) : (
+            <input
+              required
+              value={communityId}
+              onChange={(e) => setCommunityId(e.target.value)}
+              className="rounded border border-border bg-background px-3 py-2"
+              placeholder="1"
+            />
+          )}
         </label>
         {requestType === "execution" ? (
           <label className="flex flex-col gap-1 text-sm sm:col-span-2">

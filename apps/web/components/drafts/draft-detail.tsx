@@ -35,9 +35,19 @@ type DraftDetailResponse = {
 
 export type DraftDetailProps = {
   draftId: string;
+  expectedCommunityId?: number;
+  draftsListHref?: string;
+  requestHrefBuilder?: (requestId: number, communityId: number) => string;
+  useCommunityScopedRequestLinks?: boolean;
 };
 
-export function DraftDetail({ draftId }: DraftDetailProps) {
+export function DraftDetail({
+  draftId,
+  expectedCommunityId,
+  draftsListHref,
+  requestHrefBuilder,
+  useCommunityScopedRequestLinks
+}: DraftDetailProps) {
   const { data, isLoading, isError, refetch } = useApiQuery<DraftDetailResponse>(
     ["draft", draftId],
     `/drafts/${draftId}`
@@ -75,8 +85,37 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
     );
   }
 
+  const draftCommunityId = draft.communityId ? Number(draft.communityId) : null;
+  const hasCommunityMismatch =
+    Number.isFinite(expectedCommunityId) &&
+    typeof expectedCommunityId === "number" &&
+    (expectedCommunityId ?? 0) > 0 &&
+    Number.isFinite(draftCommunityId) &&
+    draftCommunityId !== expectedCommunityId;
+
+  const correctedDraftHref = hasCommunityMismatch
+    ? `/communities/${draftCommunityId}/coordination/drafts/${draftId}`
+    : null;
+
   return (
     <div className="space-y-8">
+      {hasCommunityMismatch ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          This draft belongs to Community #{draftCommunityId}, not Community #{expectedCommunityId}.{" "}
+          {correctedDraftHref ? (
+            <a className="underline" href={correctedDraftHref}>
+              Open the correct route
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+
+      {draftsListHref ? (
+        <div className="text-sm">
+          <a className="underline" href={draftsListHref}>Back to drafts</a>
+        </div>
+      ) : null}
+
       <section className="space-y-3">
         <div className="card">
           <h2 className="text-lg font-medium">Metadata</h2>
@@ -84,7 +123,16 @@ export function DraftDetail({ draftId }: DraftDetailProps) {
             <div className="flex items-center gap-2">
               <dt className="font-medium text-foreground">Request</dt>
               <dd>
-                <Link className="underline" href={`/requests/${draft.requestId}`}>
+                <Link
+                  className="underline"
+                  href={
+                    useCommunityScopedRequestLinks && Number.isFinite(draftCommunityId)
+                      ? `/communities/${draftCommunityId}/coordination/requests/${draft.requestId}`
+                      : requestHrefBuilder && Number.isFinite(draftCommunityId)
+                      ? requestHrefBuilder(draft.requestId, draftCommunityId)
+                      : `/requests/${draft.requestId}`
+                  }
+                >
                   {draft.requestId}
                 </Link>
               </dd>

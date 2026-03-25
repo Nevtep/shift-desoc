@@ -15,9 +15,11 @@ import { RequestListItem } from "./request-list-item.component";
 
 export type RequestListProps = {
   communityId?: string;
+  detailHrefBuilder?: (request: { id: number; communityId: number }) => string;
+  detailHrefBasePath?: string;
 };
 
-export function RequestList({ communityId }: RequestListProps) {
+export function RequestList({ communityId, detailHrefBuilder, detailHrefBasePath }: RequestListProps) {
   type RequestsQueryVars = { limit: number; communityId?: number };
 
   const variables: RequestsQueryVars = communityId
@@ -73,6 +75,13 @@ export function RequestList({ communityId }: RequestListProps) {
           key={request.id}
           request={request}
           communityName={communityNameById.get(request.communityId)}
+          detailHref={
+            detailHrefBasePath
+              ? `${detailHrefBasePath}/${request.id}`
+              : detailHrefBuilder
+                ? detailHrefBuilder(request)
+                : undefined
+          }
         />
       ))}
     </ul>

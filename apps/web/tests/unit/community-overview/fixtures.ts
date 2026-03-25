@@ -50,8 +50,14 @@ export function makeActivityPanel(overrides: Partial<ActivityPanelState> = {}): 
     state: "ready",
     items: [makeActivityItem()],
     canRetry: false,
-    viewAllHref: "/communities/1/coordination/requests",
-    createHref: "/communities/1/coordination/requests/new",
+    viewAll: {
+      href: "/communities/1/coordination/requests",
+      enabled: true
+    },
+    create: {
+      href: "/communities/1/coordination/requests/new",
+      enabled: true
+    },
     ...overrides
   };
 }

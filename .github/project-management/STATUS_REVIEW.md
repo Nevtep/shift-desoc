@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Mar 22, 2026)
+# Shift DeSoc Status Review (Mar 25, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -69,6 +69,7 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-03-25: Added community-scoped coordination hub surface in `apps/web` under `/communities/[communityId]/coordination` with implemented Requests/Drafts list/create/detail routes, scoped navigation wiring, and mismatch guards that redirect users toward the correct community route. Overview CTAs now avoid dead-end navigation by rendering Proposals/View parameters actions as disabled `Coming soon` controls while keeping Requests/Drafts CTAs live. Also aligned web indexer health checks to `/api/health` to match indexer runtime endpoint contract and prevent false-negative health parsing in the web app.
 - 2026-03-25: Shipped Community Overview Dashboard vertical slice in `apps/web` at `/communities/[communityId]` with strict community-scoped navigation, hybrid truth model (on-chain authoritative config + indexer latest-3 previews), and honest health/capability signaling (`synced|lagging|error|unknown`, `Coming soon` gating). Synced tactical status and evidence in `.github/project-management/IMPLEMENTATION_STATUS.md`.
 - 2026-03-22: Redeployed Base Sepolia shared infrastructure with forced refresh (`SHIFT_FORCE_REDEPLOY_SHARED_INFRA=1`) to publish the upgraded `BootstrapCoordinator` that includes `bootstrapAccessAndRuntime(...)`. Updated shared infra addresses in `deployments/base_sepolia.json` (notably `paramController=0xEd022EE10fB41957356F0AEa5B70209572F2bF36`, `communityRegistry=0x6F3c1BC404468851997F181Cb08B1D623d56f3AD`, `bootstrapCoordinator=0x8e62676BC018F56207A8Ee7Ac544083b7F1A26a8`, plus fresh layer-factory addresses).
 - 2026-03-22: Root-cause bootstrap simplification for manager deploy configure flow. Added `bootstrapAccessAndRuntime(...)` in `contracts/core/BootstrapCoordinator.sol` to batch AccessManager selector-role wiring plus runtime module initialization (VPT init, ValuableActionRegistry links/founder, RevenueRouter treasury+tokens, TreasuryAdapter allowlists/caps/destination, Marketplace activation/token). Web deploy executor now calls this combined coordinator function in `CONFIGURE_ACCESS_PERMISSIONS`, removing wizard-side runtime reconciliation writes for fresh deployments and enforcing strict coordinator path (no direct role-by-role fallback).

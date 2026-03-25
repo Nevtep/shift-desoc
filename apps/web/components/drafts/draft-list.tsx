@@ -18,9 +18,11 @@ export type DraftNode = {
 
 export type DraftListProps = {
   communityId?: string;
+  detailHrefBuilder?: (draft: DraftNode) => string;
+  detailHrefBasePath?: string;
 };
 
-export function DraftList({ communityId }: DraftListProps) {
+export function DraftList({ communityId, detailHrefBuilder, detailHrefBasePath }: DraftListProps) {
   type DraftsQueryVars = { limit: number; communityId?: number };
 
   const variables: DraftsQueryVars = communityId
@@ -56,13 +58,33 @@ export function DraftList({ communityId }: DraftListProps) {
   return (
     <ul className="space-y-3">
       {drafts.map((draft) => (
-        <DraftListItem key={draft.id} draft={draft} />
+        <DraftListItem
+          key={draft.id}
+          draft={draft}
+          detailHref={
+            detailHrefBasePath
+              ? `${detailHrefBasePath}/${draft.id}`
+              : detailHrefBuilder
+                ? detailHrefBuilder(draft)
+                : undefined
+          }
+        />
       ))}
     </ul>
   );
 }
 
-function DraftListItem({ draft }: { draft: DraftNode }) {
+function DraftListItem({
+  draft,
+  detailHrefBuilder,
+  detailHref
+}: {
+  draft: DraftNode;
+  detailHrefBuilder?: (draft: DraftNode) => string;
+  detailHref?: string;
+}) {
+  const resolvedDetailHref = detailHref ?? (detailHrefBuilder ? detailHrefBuilder(draft) : `/drafts/${draft.id}`);
+
   return (
     <li className="card">
       <div className="flex flex-col gap-2">
@@ -79,7 +101,7 @@ function DraftListItem({ draft }: { draft: DraftNode }) {
             </Link>
           ) : null}
         </div>
-        <Link className="text-sm underline" href={`/drafts/${draft.id}`}>
+        <Link className="text-sm underline" href={resolvedDetailHref}>
           View details
         </Link>
       </div>

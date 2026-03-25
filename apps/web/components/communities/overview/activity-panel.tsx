@@ -14,8 +14,20 @@ export function ActivityPanel({ panel }: { panel: ActivityPanelState }) {
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold uppercase tracking-wide">{PANEL_LABELS[panel.domain]}</h3>
         <div className="flex gap-2">
-          <Link className="btn-ghost" href={panel.viewAllHref}>View all</Link>
-          <Link className="btn-ghost" href={panel.createHref}>Create new</Link>
+          {panel.viewAll.enabled ? (
+            <Link className="btn-ghost" href={panel.viewAll.href}>View all</Link>
+          ) : (
+            <button className="btn-ghost" disabled>
+              View all{panel.viewAll.comingSoon ? " (Coming soon)" : ""}
+            </button>
+          )}
+          {panel.create.enabled ? (
+            <Link className="btn-ghost" href={panel.create.href}>Create new</Link>
+          ) : (
+            <button className="btn-ghost" disabled>
+              Create new{panel.create.comingSoon ? " (Coming soon)" : ""}
+            </button>
+          )}
         </div>
       </div>
 

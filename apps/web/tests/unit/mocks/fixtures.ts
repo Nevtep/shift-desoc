@@ -17,6 +17,7 @@ export const fixtures = {
   },
   draft: {
     id: "10",
+    communityId: 1,
     requestId: "1",
     status: "FINALIZED",
     latestVersionCid: "draft-cid-10",

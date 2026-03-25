@@ -35,4 +35,25 @@ describe("DraftDetail", () => {
 
     expect(await screen.findByText(/Failed to load draft/i)).toBeInTheDocument();
   });
+
+  it("shows mismatch guard when route community does not match draft community", async () => {
+    mockWagmiHooks({ connected: false });
+
+    renderWithProviders(
+      <DraftDetail
+        draftId={fixtures.draft.id}
+        expectedCommunityId={8}
+        draftsListHref="/communities/8/coordination/drafts"
+        requestHrefBuilder={(requestId, communityId) =>
+          `/communities/${communityId}/coordination/requests/${requestId}`
+        }
+      />
+    );
+
+    expect(await screen.findByText(/belongs to Community #1, not Community #8/i)).toBeInTheDocument();
+    const correctedLink = screen.getByRole("link", { name: /open the correct route/i });
+    expect(correctedLink).toHaveAttribute("href", "/communities/1/coordination/drafts/10");
+    const requestLink = screen.getByRole("link", { name: "1" });
+    expect(requestLink).toHaveAttribute("href", "/communities/1/coordination/requests/1");
+  });
 });

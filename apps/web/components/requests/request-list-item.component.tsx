@@ -12,13 +12,27 @@ export type RequestNode = {
   createdAt: string;
 };
 
-export function RequestListItem({ request, communityName }: { request: RequestNode; communityName?: string }) {
+export type RequestDetailHrefBuilder = (request: RequestNode) => string;
+
+export function RequestListItem({
+  request,
+  communityName,
+  detailHrefBuilder,
+  detailHref
+}: {
+  request: RequestNode;
+  communityName?: string;
+  detailHrefBuilder?: RequestDetailHrefBuilder;
+  detailHref?: string;
+}) {
   const { data: ipfs } = useIpfsDocument(request.cid, Boolean(request.cid));
   const ipfsDoc = isIpfsDocumentResponse(ipfs) ? ipfs : null;
   const title =
     ipfsDoc?.data && typeof ipfsDoc.data === "object" && "type" in ipfsDoc.data && (ipfsDoc.data as { type?: string }).type === "request"
       ? (ipfsDoc.data as { title?: string }).title ?? null
       : null;
+
+  const resolvedDetailHref = detailHref ?? (detailHrefBuilder ? detailHrefBuilder(request) : `/requests/${request.id}`);
 
   return (
     <li className="card">
@@ -53,7 +67,7 @@ export function RequestListItem({ request, communityName }: { request: RequestNo
               ))
             : null}
         </div>
-        <a className="text-sm underline" href={`/requests/${request.id}`}>
+        <a className="text-sm underline" href={resolvedDetailHref}>
           View details
         </a>
       </div>
