@@ -318,6 +318,103 @@ export type ProposalsQueryResult = {
   };
 };
 
+export const CommunityOverviewRequestsQuery = /* GraphQL */ `
+  query CommunityOverviewRequests($communityId: Int!, $limit: Int = 3) {
+    requests: requestss(
+      where: { communityId: $communityId }
+      orderBy: "createdAt"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      nodes: items {
+        id
+        communityId
+        status
+        cid
+        createdAt
+      }
+    }
+  }
+`;
+
+export type CommunityOverviewRequestsResult = {
+  requests: {
+    nodes: {
+      id: string;
+      communityId: string;
+      status: string;
+      cid?: string | null;
+      createdAt: string;
+    }[];
+  };
+};
+
+export const CommunityOverviewDraftsQuery = /* GraphQL */ `
+  query CommunityOverviewDrafts($communityId: Int!, $limit: Int = 3) {
+    drafts: draftss(
+      where: { communityId: $communityId }
+      orderBy: "updatedAt"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      nodes: items {
+        id
+        requestId
+        status
+        latestVersionCid
+        updatedAt
+      }
+    }
+  }
+`;
+
+export type CommunityOverviewDraftsResult = {
+  drafts: {
+    nodes: {
+      id: string;
+      requestId: string;
+      status: string;
+      latestVersionCid?: string | null;
+      updatedAt: string;
+    }[];
+  };
+};
+
+export const CommunityOverviewProposalsQuery = /* GraphQL */ `
+  query CommunityOverviewProposals($communityId: Int!, $limit: Int = 3) {
+    proposals: proposalss(
+      where: { communityId: $communityId }
+      orderBy: "createdAt"
+      orderDirection: "desc"
+      limit: $limit
+    ) {
+      nodes: items {
+        id
+        communityId
+        proposer
+        state
+        createdAt
+        queuedAt
+        executedAt
+      }
+    }
+  }
+`;
+
+export type CommunityOverviewProposalsResult = {
+  proposals: {
+    nodes: {
+      id: string;
+      communityId: number;
+      proposer: string;
+      state: string;
+      createdAt: string;
+      queuedAt?: string | null;
+      executedAt?: string | null;
+    }[];
+  };
+};
+
 export const EngagementsQuery = /* GraphQL */ `
   query Engagements($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
     engagements: claimss(

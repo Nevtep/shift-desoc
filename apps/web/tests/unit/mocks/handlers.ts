@@ -53,6 +53,33 @@ export const handlers = [
       }
     });
   }),
+  graphql.query("CommunityOverviewRequests", () => {
+    return HttpResponse.json({
+      data: {
+        requests: {
+          nodes: [fixtures.request]
+        }
+      }
+    });
+  }),
+  graphql.query("CommunityOverviewDrafts", () => {
+    return HttpResponse.json({
+      data: {
+        drafts: {
+          nodes: [fixtures.draft]
+        }
+      }
+    });
+  }),
+  graphql.query("CommunityOverviewProposals", () => {
+    return HttpResponse.json({
+      data: {
+        proposals: {
+          nodes: [fixtures.proposal]
+        }
+      }
+    });
+  }),
   graphql.query("Proposals", () => {
     return HttpResponse.json({
       data: {
@@ -178,6 +205,9 @@ export const handlers = [
   }),
   http.post("/api/ipfs/upload", async () => {
     return HttpResponse.json({ cid: "uploaded-cid" });
+  }),
+  http.get(`${API_BASE}/health`, () => {
+    return HttpResponse.json({ ok: true });
   }),
   // Deploy wizard read-side placeholders (tests can override as needed)
   http.get(`${API_BASE}/manager/deploy/session/:sessionId`, ({ params }) => {

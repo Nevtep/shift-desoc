@@ -16,6 +16,18 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 4. **Scalability**: Layer 2 deployment with efficient gas usage patterns
 5. **Transparency**: All operations verifiable on-chain with rich event logs
 
+## Manager App: Community Overview Hub
+
+The Manager route `/communities/[communityId]` is the canonical community-scoped overview entrypoint.
+
+- **Strict route scoping**: all tabs and CTAs are built under `/communities/<id>/...`; no legacy query-param routing (`?communityId=`) is used from this screen.
+- **Hybrid truth model**:
+    - Activity previews (Requests, Drafts, Proposals) are indexer-backed, bounded to latest `N=3`, and filtered by route `communityId`.
+    - Configuration surfaces (module pointers, parameter summary subset) remain on-chain authoritative, read from `CommunityRegistry`/`ParamController` wiring.
+- **Honest health signaling**: Overview exposes `synced|lagging|error|unknown` indexer states. Indexer degradation never hides chain-backed config sections; unavailable values are rendered explicitly as `unavailable`/`missing`.
+- **Authority-safe UX**: privileged actions (such as `Edit parameters`) are gated and default disabled when authority signals are uncertain.
+- **Capability signaling**: all six section tabs remain visible; unavailable sections are disabled and marked `Coming soon`.
+
 ## 🎯 Stage & Roadmap
 
 - **Current stage (staging/test)**: Active on Base Sepolia; Base mainnet is the launch target. All privileged operations remain timelock-gated; ParamController is the policy source; no staking for verifiers; TreasuryAdapter guardrails stay intact.

@@ -46,3 +46,15 @@ Implement `/communities/[communityId]` as the authoritative Overview hub with st
 - Overview screenshot with header/modules/parameters/previews/tabs.
 - Unauthorized screenshot showing disabled `Edit parameters`.
 - Indexer-error screenshot showing preserved chain-backed sections.
+
+## Validation Evidence (2026-03-25)
+- Targeted overview query coverage:
+  - `pnpm exec vitest run ./lib/graphql/queries.test.ts --reporter=verbose`
+  - Result: PASS (`4/4` tests), including community-scope assertions and default `limit=3` checks for all overview preview queries.
+- Targeted `useIndexerHealth` hook coverage:
+  - `pnpm exec vitest run ./tests/unit/community-overview/indexer-health.test.tsx --reporter=verbose`
+  - Result: PASS (`4/4` tests), covering `synced`, `lagging`, `unknown`, and `error` states at hook level.
+- Full web unit suite attempt:
+  - `pnpm -C apps/web test:unit`
+  - Result: Unable to complete in current environment due Node heap OOM (`Reached heap limit`).
+  - Impact: Feature-specific overview regressions remain validated through targeted tests above.

@@ -202,6 +202,19 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 
 ---
 
+## 2026-03-25 Tactical Update (Community Overview Dashboard)
+
+- Implemented Manager overview hub at `apps/web/app/communities/[communityId]/page.tsx` with strict `/communities/<id>` route scoping and no legacy `?communityId=` link leakage.
+- Added hybrid truth composition for overview: on-chain authoritative module/parameter summaries plus indexer-backed latest-3 activity previews (Requests, Drafts, Proposals).
+- Added honest indexer health behavior (`synced|lagging|error|unknown`) and capability signaling (`Coming soon`) for unavailable sections/actions.
+- Added targeted regression coverage for route contracts, module/parameter rendering, CTA allowlist, activity preview constraints, section availability, and `useIndexerHealth` hook behavior.
+- Validation evidence:
+  - PASS: `pnpm exec vitest run ./lib/graphql/queries.test.ts --reporter=verbose`
+  - PASS: `pnpm exec vitest run ./tests/unit/community-overview/indexer-health.test.tsx --reporter=verbose`
+  - Full `apps/web` unit suite currently hits Node heap OOM in this environment (`pnpm -C apps/web test:unit`).
+
+---
+
 ## 2026-03-06 Tactical Update (Manager Home Deploy Wizard)
 
 - Added Manager Home deploy wizard scaffolding and foundational deploy domain modules in `apps/web/lib/deploy/*`, `apps/web/hooks/useDeployWizard.ts`, and `apps/web/hooks/useDeployResume.ts`.
