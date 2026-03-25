@@ -31,6 +31,27 @@ export const createFakeIndexerDb = () => {
     __state: state,
     __getEmitterWindows: (emitterAddress: string) =>
       state.windows.filter((row) => row.emitterAddress === emitterAddress.toLowerCase()),
+    sql: {
+      update(table: any) {
+        const key = keyForTable(table);
+        return {
+          set(update: any) {
+            return {
+              where(expr: any) {
+                const columnName = expr?.left?.name;
+                const value = expr?.right?.value;
+                if (!columnName) return;
+
+                state[key] = state[key].map((row) => {
+                  const pass = row[columnName] === value;
+                  return pass ? { ...row, ...update } : row;
+                });
+              },
+            };
+          },
+        };
+      },
+    },
     insert(table: any) {
       const key = keyForTable(table);
       return {

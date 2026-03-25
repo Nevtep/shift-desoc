@@ -65,4 +65,34 @@ describe("RequestDetail", () => {
     const draftLink = await screen.findByRole("link", { name: /draft 10/i });
     expect(draftLink).toHaveAttribute("href", "/communities/8/coordination/drafts/10");
   });
+
+  it("decodes URL-encoded composite request ids before querying", async () => {
+    server.use(
+      graphql.query("Request", ({ variables }) => {
+        const id = String((variables as { id?: string } | undefined)?.id ?? "");
+        if (id !== "8:1") {
+          return HttpResponse.json({ data: { request: null } });
+        }
+
+        return HttpResponse.json({
+          data: {
+            request: {
+              id: "8:1",
+              requestId: "1",
+              communityId: "8",
+              author: "0xabc",
+              status: "OPEN",
+              cid: "request-cid-1",
+              tags: [],
+              createdAt: new Date().toISOString()
+            }
+          }
+        });
+      })
+    );
+
+    renderWithProviders(<RequestDetail requestId="8%3A1" expectedCommunityId={8} />);
+
+    expect(await screen.findByText(/ID 1/i)).toBeInTheDocument();
+  });
 });

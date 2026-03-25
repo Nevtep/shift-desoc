@@ -14,6 +14,12 @@ Governance in Shift follows a deliberate path from open discussion to binding ac
 
 Once the discussion matures, contributors can formalize it into a draft proposal using the DraftsManager. A draft bundles together the specific on-chain actions needed to implement the idea—which contracts to call, with what parameters. Drafts can go through multiple versions as the community refines the approach, with each version saved for transparency.
 
+In the web app, draft composition now has two explicit modes:
+- **Guided mode (default)** for common governance actions. Users select intent-oriented options (for example reward/verification profiles), and the UI compiles those choices into deterministic ABI calls.
+- **Expert mode (separate route)** for raw ABI action editing when custom calldata is required.
+
+Both modes produce the same DraftsManager action bundle format (`targets`, `values`, `calldatas`, `actionsHash`), so execution semantics remain unchanged once a draft is escalated and timelocked.
+
 When a draft is ready for a vote, it escalates to ShiftGovernor as a formal proposal. The system reads voting thresholds and quorum requirements from ParamController, ensuring consistent rules across all proposals. Members vote using their MembershipToken balance (earned through verified work contributions). For complex decisions with multiple options, the CountingMultiChoice module enables weighted voting across alternatives.
 
 If the proposal passes, it doesn't execute immediately. Instead, it enters a queue in TimelockController with a mandatory delay period. This gives the community time to prepare for changes and provides a safety window to catch any issues. Only after the delay does the Timelock execute the approved actions, calling the target contracts with the community-approved parameters.
@@ -32,6 +38,7 @@ sequenceDiagram
     participant TG as Target Module
 
     M->>RH: createRequest(title, cid, tags)
+    Note over M,DM: Guided mode compiles presets to ABI; Expert mode encodes raw ABI directly
     M->>DM: createDraft(requestId, actions)
     M->>DM: snapshotVersion(draftId)
     M->>DM: escalateToProposal(draftId)

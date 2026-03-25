@@ -69,22 +69,34 @@ ponder.get("/requests", async (c) => {
 });
 
 ponder.get("/requests/:id", async (c) => {
-  const requestId = Number(c.req.param("id"));
-  if (!Number.isFinite(requestId)) return c.json({ error: "invalid request id" }, 400);
+  const requestKey = c.req.param("id");
+  if (!requestKey || !requestKey.includes(":")) return c.json({ error: "invalid request id" }, 400);
 
-  const request = await c.db.select().from(requests).where(eq(requests.id, requestId)).limit(1);
+  const request = await c.db.select().from(requests).where(eq(requests.id, requestKey)).limit(1);
   if (request.length === 0) return c.json({ error: "not found" }, 404);
+
+  const requestRow = request[0]!;
 
   const commentsForRequest = await c.db
     .select()
     .from(comments)
-    .where(eq(comments.requestId, requestId))
+    .where(
+      and(
+        eq(comments.communityId, requestRow.communityId),
+        eq(comments.requestId, requestRow.requestId)
+      )
+    )
     .orderBy(desc(comments.createdAt));
 
   const draftsForRequest = await c.db
     .select()
     .from(drafts)
-    .where(eq(drafts.requestId, requestId))
+    .where(
+      and(
+        eq(drafts.communityId, requestRow.communityId),
+        eq(drafts.requestId, requestRow.requestId)
+      )
+    )
     .orderBy(desc(drafts.updatedAt));
 
   return c.json({ request: { ...request[0], comments: commentsForRequest, drafts: draftsForRequest } });
@@ -112,22 +124,24 @@ ponder.get("/drafts", async (c) => {
 });
 
 ponder.get("/drafts/:id", async (c) => {
-  const draftId = Number(c.req.param("id"));
-  if (!Number.isFinite(draftId)) return c.json({ error: "invalid draft id" }, 400);
+  const draftKey = c.req.param("id");
+  if (!draftKey || !draftKey.includes(":")) return c.json({ error: "invalid draft id" }, 400);
 
-  const draft = await c.db.select().from(drafts).where(eq(drafts.id, draftId)).limit(1);
+  const draft = await c.db.select().from(drafts).where(eq(drafts.id, draftKey)).limit(1);
   if (draft.length === 0) return c.json({ error: "not found" }, 404);
+
+  const draftRow = draft[0]!;
 
   const versions = await c.db
     .select()
     .from(draftVersions)
-    .where(eq(draftVersions.draftId, draftId))
+    .where(and(eq(draftVersions.communityId, draftRow.communityId), eq(draftVersions.draftId, draftRow.draftId)))
     .orderBy(desc(draftVersions.versionNumber));
 
   const reviews = await c.db
     .select()
     .from(draftReviews)
-    .where(eq(draftReviews.draftId, draftId))
+    .where(and(eq(draftReviews.communityId, draftRow.communityId), eq(draftReviews.draftId, draftRow.draftId)))
     .orderBy(desc(draftReviews.createdAt));
 
   return c.json({ draft: draft[0], versions, reviews });
@@ -149,14 +163,21 @@ ponder.get("/proposals", async (c) => {
 });
 
 ponder.get("/proposals/:id", async (c) => {
-  const id = c.req.param("id");
-  const proposal = await c.db.select().from(proposals).where(eq(proposals.id, id)).limit(1);
+  const proposalKey = c.req.param("id");
+  const proposal = await c.db.select().from(proposals).where(eq(proposals.id, proposalKey)).limit(1);
   if (proposal.length === 0) return c.json({ error: "not found" }, 404);
+
+  const proposalRow = proposal[0]!;
 
   const votes = await c.db
     .select()
     .from(proposalVotes)
-    .where(eq(proposalVotes.proposalId, id))
+    .where(
+      and(
+        eq(proposalVotes.communityId, proposalRow.communityId),
+        eq(proposalVotes.proposalId, proposalRow.proposalId)
+      )
+    )
     .orderBy(desc(proposalVotes.castAt));
 
   return c.json({ proposal: proposal[0], votes });
@@ -178,16 +199,23 @@ ponder.get("/engagements", async (c) => {
 });
 
 ponder.get("/engagements/:id", async (c) => {
-  const engagementId = Number(c.req.param("id"));
-  if (!Number.isFinite(engagementId)) return c.json({ error: "invalid engagement id" }, 400);
+  const engagementKey = c.req.param("id");
+  if (!engagementKey || !engagementKey.includes(":")) return c.json({ error: "invalid engagement id" }, 400);
 
-  const engagement = await c.db.select().from(engagements).where(eq(engagements.id, engagementId)).limit(1);
+  const engagement = await c.db.select().from(engagements).where(eq(engagements.id, engagementKey)).limit(1);
   if (engagement.length === 0) return c.json({ error: "not found" }, 404);
+
+  const engagementRow = engagement[0]!;
 
   const jurors = await c.db
     .select()
     .from(jurorAssignments)
-    .where(eq(jurorAssignments.engagementId, engagementId))
+    .where(
+      and(
+        eq(jurorAssignments.communityId, engagementRow.communityId),
+        eq(jurorAssignments.engagementId, engagementRow.engagementId)
+      )
+    )
     .orderBy(desc(jurorAssignments.weight));
 
   return c.json({ engagement: engagement[0], jurors });
@@ -224,10 +252,19 @@ const parsePagination = (limitRaw: string | null, offsetRaw: string | null) => {
   return { limit, offset };
 };
 
-const buildDraftVersionId = (draftId: number, versionNumber: number) => `${draftId}-${versionNumber}`;
-const buildReviewId = (draftId: number, reviewer: Address) => `${draftId}-${reviewer.toLowerCase()}`;
-const buildVoteId = (proposalId: bigint, voter: Address) => `${proposalId.toString()}-${voter.toLowerCase()}`;
-const buildJurorAssignmentId = (engagementId: number, juror: Address) => `${engagementId}-${juror.toLowerCase()}`;
+const buildRequestId = (communityId: number, requestId: number) => `${communityId}:${requestId}`;
+const buildCommentId = (communityId: number, commentId: number) => `${communityId}:${commentId}`;
+const buildDraftId = (communityId: number, draftId: number) => `${communityId}:${draftId}`;
+const buildDraftVersionId = (communityId: number, draftId: number, versionNumber: number) =>
+  `${communityId}:${draftId}:${versionNumber}`;
+const buildReviewId = (communityId: number, draftId: number, reviewer: Address) =>
+  `${communityId}:${draftId}:${reviewer.toLowerCase()}`;
+const buildProposalId = (communityId: number, proposalId: bigint | string) => `${communityId}:${proposalId.toString()}`;
+const buildVoteId = (communityId: number, proposalId: bigint, voter: Address) =>
+  `${communityId}:${proposalId.toString()}:${voter.toLowerCase()}`;
+const buildEngagementId = (communityId: number, engagementId: number) => `${communityId}:${engagementId}`;
+const buildJurorAssignmentId = (communityId: number, engagementId: number, juror: Address) =>
+  `${communityId}:${engagementId}:${juror.toLowerCase()}`;
 
 const getEventMeta = (event: any) => ({
   emitterAddress: String(event?.log?.address ?? "").toLowerCase(),
@@ -254,6 +291,39 @@ const resolveOrAlert = async (
 
   if (resolved) {
     return resolved;
+  }
+
+  // Recovery path for events that emit communityId directly.
+  // This seeds mapping windows on first-seen module emitters and avoids deterministic drops.
+  const communityIdFromEvent = Number(event?.args?.communityId);
+  if (
+    Number.isFinite(communityIdFromEvent) &&
+    communityIdFromEvent > 0 &&
+    expectedModuleKeys &&
+    expectedModuleKeys.length === 1
+  ) {
+    const moduleKey = String(expectedModuleKeys[0]);
+    await applyModuleAddressUpdate(
+      {
+        db: context.db,
+        network: context.network,
+      },
+      {
+        communityId: communityIdFromEvent,
+        moduleKey,
+        oldAddress: "0x0000000000000000000000000000000000000000",
+        newAddress: meta.emitterAddress,
+        blockNumber: meta.blockNumber,
+        logIndex: meta.logIndex,
+        txHash: meta.txHash,
+        timestamp: meta.timestamp,
+      }
+    );
+
+    return {
+      communityId: communityIdFromEvent,
+      moduleKey,
+    };
   }
 
   await writeUnmappedEmitterTelemetry({
@@ -319,10 +389,13 @@ ponder.on("RequestHub:RequestCreated", async ({ event, context }) => {
   const resolved = await resolveOrAlert(context, event, "RequestHub");
   if (!resolved) return;
 
+  const requestId = Number(event.args.requestId);
+
   await context.db
     .insert(requests)
     .values({
-      id: Number(event.args.requestId),
+      id: buildRequestId(resolved.communityId, requestId),
+      requestId,
       communityId: resolved.communityId,
       author: event.args.author,
       status: requestStatuses[0],
@@ -334,10 +407,17 @@ ponder.on("RequestHub:RequestCreated", async ({ event, context }) => {
 });
 
 ponder.on("RequestHub:CommentPosted", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "RequestHub");
+  if (!resolved) return;
+
+  const commentId = Number(event.args.commentId);
+
   await context.db
     .insert(comments)
     .values({
-      id: Number(event.args.commentId),
+      id: buildCommentId(resolved.communityId, commentId),
+      commentId,
+      communityId: resolved.communityId,
       requestId: Number(event.args.requestId),
       author: event.args.author,
       cid: event.args.cid,
@@ -349,15 +429,22 @@ ponder.on("RequestHub:CommentPosted", async ({ event, context }) => {
 });
 
 ponder.on("RequestHub:RequestStatusChanged", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "RequestHub");
+  if (!resolved) return;
+
+  const requestId = Number(event.args.requestId);
   const statusIndex = Number(event.args.newStatus);
   await context.db
-    .update(requests, { id: Number(event.args.requestId) })
+    .update(requests, { id: buildRequestId(resolved.communityId, requestId) })
     .set({ status: requestStatuses[statusIndex] ?? requestStatuses[0] });
 });
 
 ponder.on("RequestHub:CommentModerated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "RequestHub");
+  if (!resolved) return;
+
   await context.db
-    .update(comments, { id: Number(event.args.commentId) })
+    .update(comments, { id: buildCommentId(resolved.communityId, Number(event.args.commentId)) })
     .set({ isModerated: event.args.hidden });
 });
 
@@ -367,11 +454,13 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
 
   const now = toDate(event.block.timestamp);
   const draftId = Number(event.args.draftId);
+  const draftKey = buildDraftId(resolved.communityId, draftId);
 
   await context.db
     .insert(drafts)
     .values({
-      id: draftId,
+      id: draftKey,
+      draftId,
       communityId: resolved.communityId,
       requestId: Number(event.args.requestId),
       status: draftStatuses[0],
@@ -381,20 +470,18 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
       updatedAt: now,
     })
     .onConflictDoUpdate({
-      target: drafts.id,
-      set: {
-        communityId: resolved.communityId,
-        requestId: Number(event.args.requestId),
-        status: draftStatuses[0],
-        latestVersionCid: event.args.versionCID,
-        updatedAt: now,
-      },
+      communityId: resolved.communityId,
+      requestId: Number(event.args.requestId),
+      status: draftStatuses[0],
+      latestVersionCid: event.args.versionCID,
+      updatedAt: now,
     });
 
   await context.db
     .insert(draftVersions)
     .values({
-      id: buildDraftVersionId(draftId, 0),
+      id: buildDraftVersionId(resolved.communityId, draftId, 0),
+      communityId: resolved.communityId,
       draftId,
       versionNumber: 0,
       cid: event.args.versionCID,
@@ -405,31 +492,36 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
 });
 
 ponder.on("DraftsManager:VersionSnapshot", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "DraftsManager");
+  if (!resolved) return;
+
   const draftId = Number(event.args.draftId);
   const versionNumber = Number(event.args.versionNumber);
   const createdAt = toDate(event.block.timestamp);
+  const draftKey = buildDraftId(resolved.communityId, draftId);
 
   await context.db
     .insert(draftVersions)
     .values({
-      id: buildDraftVersionId(draftId, versionNumber),
+      id: buildDraftVersionId(resolved.communityId, draftId, versionNumber),
+      communityId: resolved.communityId,
       draftId,
       versionNumber,
       cid: event.args.versionCID,
       contributor: event.args.contributor,
       createdAt,
     })
-    .onConflictDoUpdate({
-      target: draftVersions.id,
-      set: { cid: event.args.versionCID, contributor: event.args.contributor, createdAt },
-    });
+    .onConflictDoUpdate({ cid: event.args.versionCID, contributor: event.args.contributor, createdAt });
 
   await context.db
-    .update(drafts, { id: draftId })
+    .update(drafts, { id: draftKey })
     .set({ latestVersionCid: event.args.versionCID, updatedAt: createdAt });
 });
 
 ponder.on("DraftsManager:ReviewSubmitted", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "DraftsManager");
+  if (!resolved) return;
+
   const draftId = Number(event.args.draftId);
   const createdAt = toDate(event.block.timestamp);
   const stance = reviewTypes[Number(event.args.reviewType)] ?? reviewTypes[0];
@@ -437,33 +529,35 @@ ponder.on("DraftsManager:ReviewSubmitted", async ({ event, context }) => {
   await context.db
     .insert(draftReviews)
     .values({
-      id: buildReviewId(draftId, event.args.reviewer),
+      id: buildReviewId(resolved.communityId, draftId, event.args.reviewer),
+      communityId: resolved.communityId,
       draftId,
       reviewer: event.args.reviewer,
       stance,
       commentCid: event.args.reasonCID,
       createdAt,
     })
-    .onConflictDoUpdate({
-      target: draftReviews.id,
-      set: { stance, commentCid: event.args.reasonCID, createdAt },
-    });
+    .onConflictDoUpdate({ stance, commentCid: event.args.reasonCID, createdAt });
 });
 
 ponder.on("DraftsManager:ReviewRetracted", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "DraftsManager");
+  if (!resolved) return;
+
   const draftId = Number(event.args.draftId);
-  await context.db
-    .delete(draftReviews)
-    .where(eq(draftReviews.id, buildReviewId(draftId, event.args.reviewer)));
+  await context.db.delete(draftReviews, { id: buildReviewId(resolved.communityId, draftId, event.args.reviewer) });
 });
 
 ponder.on("DraftsManager:DraftStatusChanged", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "DraftsManager");
+  if (!resolved) return;
+
   const draftId = Number(event.args.draftId);
   const status = draftStatuses[Number(event.args.newStatus)] ?? draftStatuses[0];
   const updatedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(drafts, { id: draftId })
+    .update(drafts, { id: buildDraftId(resolved.communityId, draftId) })
     .set({ status, updatedAt });
 });
 
@@ -473,19 +567,21 @@ ponder.on("DraftsManager:ProposalEscalated", async ({ event, context }) => {
 
   const draftId = Number(event.args.draftId);
   const proposalId = event.args.proposalId;
+  const proposalKey = buildProposalId(resolved.communityId, proposalId);
   const createdAt = toDate(event.block.timestamp);
   const multiChoiceOptions = event.args.isMultiChoice
     ? Array.from({ length: Number(event.args.numOptions) }, (_, i) => i)
     : null;
 
   await context.db
-    .update(drafts, { id: draftId })
-    .set({ escalatedProposalId: proposalId.toString(), status: draftStatuses[3], updatedAt: createdAt });
+    .update(drafts, { id: buildDraftId(resolved.communityId, draftId) })
+    .set({ escalatedProposalId: proposalKey, status: draftStatuses[3], updatedAt: createdAt });
 
   await context.db
     .insert(proposals)
     .values({
-      id: proposalId.toString(),
+      id: proposalKey,
+      proposalId: proposalId.toString(),
       communityId: resolved.communityId,
       proposer: event.transaction.from,
       descriptionCid: null,
@@ -499,23 +595,23 @@ ponder.on("DraftsManager:ProposalEscalated", async ({ event, context }) => {
       executedAt: null,
       multiChoiceOptions,
     })
-    .onConflictDoUpdate({
-      target: proposals.id,
-      set: { multiChoiceOptions, state: "Active", createdAt },
-    });
+    .onConflictDoUpdate({ multiChoiceOptions, state: "Active", createdAt });
 });
 
 ponder.on("DraftsManager:ProposalOutcomeUpdated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "DraftsManager");
+  if (!resolved) return;
+
   const proposalId = event.args.proposalId.toString();
   const outcome = draftStatuses[Number(event.args.outcome)] ?? draftStatuses[5];
   const updatedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(drafts, { id: Number(event.args.draftId) })
+    .update(drafts, { id: buildDraftId(resolved.communityId, Number(event.args.draftId)) })
     .set({ status: outcome, updatedAt });
 
   await context.db
-    .update(proposals, { id: proposalId })
+    .update(proposals, { id: buildProposalId(resolved.communityId, proposalId) })
     .set({ state: outcome });
 });
 
@@ -524,13 +620,15 @@ ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
   if (!resolved) return;
 
   const createdAt = toDate(event.block.timestamp);
+  const proposalKey = buildProposalId(resolved.communityId, event.args.proposalId);
   const description = event.args.description;
   const descriptionHash = keccak256(toBytes(description));
 
   await context.db
     .insert(proposals)
     .values({
-      id: event.args.proposalId.toString(),
+      id: proposalKey,
+      proposalId: event.args.proposalId.toString(),
       communityId: resolved.communityId,
       proposer: event.args.proposer,
       descriptionCid: description,
@@ -545,17 +643,14 @@ ponder.on("ShiftGovernor:ProposalCreated", async ({ event, context }) => {
       multiChoiceOptions: null,
     })
     .onConflictDoUpdate({
-      target: proposals.id,
-      set: {
-        proposer: event.args.proposer,
-        descriptionCid: description,
-        descriptionHash,
-        targets: event.args.targets,
-        values: event.args.values.map((val) => val.toString()),
-        calldatas: event.args.calldatas,
-        state: "Active",
-        createdAt,
-      },
+      proposer: event.args.proposer,
+      descriptionCid: description,
+      descriptionHash,
+      targets: event.args.targets,
+      values: event.args.values.map((val) => val.toString()),
+      calldatas: event.args.calldatas,
+      state: "Active",
+      createdAt,
     });
 });
 
@@ -564,13 +659,15 @@ ponder.on("ShiftGovernor:MultiChoiceProposalCreated", async ({ event, context })
   if (!resolved) return;
 
   const createdAt = toDate(event.block.timestamp);
+  const proposalKey = buildProposalId(resolved.communityId, event.args.proposalId);
   const descriptionHash = keccak256(toBytes(event.args.description));
   const options = Array.from({ length: Number(event.args.numOptions) }, (_, i) => i);
 
   await context.db
     .insert(proposals)
     .values({
-      id: event.args.proposalId.toString(),
+      id: proposalKey,
+      proposalId: event.args.proposalId.toString(),
       communityId: resolved.communityId,
       proposer: event.args.proposer,
       descriptionCid: event.args.description,
@@ -585,116 +682,130 @@ ponder.on("ShiftGovernor:MultiChoiceProposalCreated", async ({ event, context })
       multiChoiceOptions: options,
     })
     .onConflictDoUpdate({
-      target: proposals.id,
-      set: {
-        proposer: event.args.proposer,
-        descriptionCid: event.args.description,
-        descriptionHash,
-        targets: event.args.targets,
-        values: event.args.values.map((val) => val.toString()),
-        calldatas: event.args.calldatas,
-        state: "Active",
-        multiChoiceOptions: options,
-      },
+      proposer: event.args.proposer,
+      descriptionCid: event.args.description,
+      descriptionHash,
+      targets: event.args.targets,
+      values: event.args.values.map((val) => val.toString()),
+      calldatas: event.args.calldatas,
+      state: "Active",
+      multiChoiceOptions: options,
     });
 });
 
 ponder.on("CountingMultiChoice:MultiChoiceEnabled", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "CountingMultiChoice");
+  if (!resolved) return;
+
   const options = Array.from({ length: Number(event.args.options) }, (_, i) => i);
   await context.db
-    .update(proposals, { id: event.args.proposalId.toString() })
+    .update(proposals, { id: buildProposalId(resolved.communityId, event.args.proposalId) })
     .set({ multiChoiceOptions: options });
 });
 
 ponder.on("ShiftGovernor:ProposalQueued", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ShiftGovernor");
+  if (!resolved) return;
+
   const queuedAt = toDate(event.block.timestamp);
   await context.db
-    .update(proposals, { id: event.args.proposalId.toString() })
+    .update(proposals, { id: buildProposalId(resolved.communityId, event.args.proposalId) })
     .set({ state: "Queued", queuedAt });
 });
 
 ponder.on("ShiftGovernor:ProposalExecuted", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ShiftGovernor");
+  if (!resolved) return;
+
   const executedAt = toDate(event.block.timestamp);
   await context.db
-    .update(proposals, { id: event.args.proposalId.toString() })
+    .update(proposals, { id: buildProposalId(resolved.communityId, event.args.proposalId) })
     .set({ state: "Executed", executedAt });
 });
 
 ponder.on("CountingMultiChoice:ProposalCanceled", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "CountingMultiChoice");
+  if (!resolved) return;
+
   await context.db
-    .update(proposals, { id: event.args.proposalId.toString() })
+    .update(proposals, { id: buildProposalId(resolved.communityId, event.args.proposalId) })
     .set({ state: "Canceled" });
 });
 
 ponder.on("ShiftGovernor:VoteCast", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ShiftGovernor");
+  if (!resolved) return;
+
   const castAt = toDate(event.block.timestamp);
-  const id = buildVoteId(event.args.proposalId, event.args.voter);
+  const id = buildVoteId(resolved.communityId, event.args.proposalId, event.args.voter);
 
   await context.db
     .insert(proposalVotes)
     .values({
       id,
+      communityId: resolved.communityId,
       proposalId: event.args.proposalId.toString(),
       voter: event.args.voter,
       weight: event.args.weight,
       optionIndex: Number(event.args.support),
       castAt,
     })
-    .onConflictDoUpdate({
-      target: proposalVotes.id,
-      set: { weight: event.args.weight, optionIndex: Number(event.args.support), castAt },
-    });
+    .onConflictDoUpdate({ weight: event.args.weight, optionIndex: Number(event.args.support), castAt });
 });
 
 ponder.on("CountingMultiChoice:VoteCastMulti", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "CountingMultiChoice");
+  if (!resolved) return;
+
   const castAt = toDate(event.block.timestamp);
-  const id = buildVoteId(event.args.proposalId, event.args.voter);
+  const id = buildVoteId(resolved.communityId, event.args.proposalId, event.args.voter);
 
   await context.db
     .insert(proposalVotes)
     .values({
       id,
+      communityId: resolved.communityId,
       proposalId: event.args.proposalId.toString(),
       voter: event.args.voter,
       weight: event.args.totalWeight,
       optionIndex: null,
       castAt,
     })
-    .onConflictDoUpdate({
-      target: proposalVotes.id,
-      set: { weight: event.args.totalWeight, optionIndex: null, castAt },
-    });
+    .onConflictDoUpdate({ weight: event.args.totalWeight, optionIndex: null, castAt });
 });
 
 ponder.on("ShiftGovernor:MultiChoiceVoteCast", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ShiftGovernor");
+  if (!resolved) return;
+
   const castAt = toDate(event.block.timestamp);
-  const id = buildVoteId(event.args.proposalId, event.args.voter);
+  const id = buildVoteId(resolved.communityId, event.args.proposalId, event.args.voter);
 
   await context.db
     .insert(proposalVotes)
     .values({
       id,
+      communityId: resolved.communityId,
       proposalId: event.args.proposalId.toString(),
       voter: event.args.voter,
       weight: event.args.totalWeight,
       optionIndex: null,
       castAt,
     })
-    .onConflictDoUpdate({
-      target: proposalVotes.id,
-      set: { weight: event.args.totalWeight, optionIndex: null, castAt },
-    });
+    .onConflictDoUpdate({ weight: event.args.totalWeight, optionIndex: null, castAt });
 });
 
 ponder.on("Engagements:EngagementSubmitted", async ({ event, context }) => {
   const resolved = await resolveOrAlert(context, event, "Engagements");
   if (!resolved) return;
 
+  const engagementId = Number(event.args.engagementId);
   const submittedAt = toDate(event.block.timestamp);
   await context.db
     .insert(engagements)
     .values({
-      id: Number(event.args.engagementId),
+      id: buildEngagementId(resolved.communityId, engagementId),
+      engagementId,
       communityId: resolved.communityId,
       valuableActionId: Number(event.args.typeId),
       participant: event.args.participant,
@@ -704,16 +815,13 @@ ponder.on("Engagements:EngagementSubmitted", async ({ event, context }) => {
       resolvedAt: null,
     })
     .onConflictDoUpdate({
-      target: engagements.id,
-      set: {
-        communityId: resolved.communityId,
-        valuableActionId: Number(event.args.typeId),
-        participant: event.args.participant,
-        status: engagementStatuses[0],
-        evidenceManifestCid: event.args.evidenceCID,
-        submittedAt,
-        resolvedAt: null,
-      },
+      communityId: resolved.communityId,
+      valuableActionId: Number(event.args.typeId),
+      participant: event.args.participant,
+      status: engagementStatuses[0],
+      evidenceManifestCid: event.args.evidenceCID,
+      submittedAt,
+      resolvedAt: null,
     });
 });
 
@@ -726,7 +834,7 @@ ponder.on("VerifierManager:JurorsSelected", async ({ event, context }) => {
   const powers = event.args.powers as bigint[];
 
   await context.db
-    .update(engagements, { id: engagementId })
+    .update(engagements, { id: buildEngagementId(resolved.communityId, engagementId) })
     .set({ communityId: resolved.communityId });
 
   for (let i = 0; i < jurors.length; i += 1) {
@@ -734,21 +842,22 @@ ponder.on("VerifierManager:JurorsSelected", async ({ event, context }) => {
     await context.db
       .insert(jurorAssignments)
       .values({
-        id: buildJurorAssignmentId(engagementId, juror),
+        id: buildJurorAssignmentId(resolved.communityId, engagementId, juror),
+        communityId: resolved.communityId,
         engagementId,
         juror,
         weight: powers[i],
         decision: null,
         decidedAt: null,
       })
-      .onConflictDoUpdate({
-        target: jurorAssignments.id,
-        set: { weight: powers[i], decision: null, decidedAt: null },
-      });
+      .onConflictDoUpdate({ weight: powers[i], decision: null, decidedAt: null });
   }
 });
 
 ponder.on("Engagements:JurorsAssigned", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "Engagements");
+  if (!resolved) return;
+
   const engagementId = Number(event.args.engagementId);
   const jurors = event.args.jurors as Address[];
 
@@ -756,7 +865,8 @@ ponder.on("Engagements:JurorsAssigned", async ({ event, context }) => {
     await context.db
       .insert(jurorAssignments)
       .values({
-        id: buildJurorAssignmentId(engagementId, juror),
+        id: buildJurorAssignmentId(resolved.communityId, engagementId, juror),
+        communityId: resolved.communityId,
         engagementId,
         juror,
         weight: null,
@@ -768,27 +878,36 @@ ponder.on("Engagements:JurorsAssigned", async ({ event, context }) => {
 });
 
 ponder.on("Engagements:EngagementVerified", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "Engagements");
+  if (!resolved) return;
+
   const engagementId = Number(event.args.engagementId);
   const decision = event.args.approve ? "APPROVE" : "REJECT";
   const decidedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(jurorAssignments, { id: buildJurorAssignmentId(engagementId, event.args.verifier) })
+    .update(jurorAssignments, { id: buildJurorAssignmentId(resolved.communityId, engagementId, event.args.verifier) })
     .set({ decision, decidedAt });
 });
 
 ponder.on("Engagements:EngagementResolved", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "Engagements");
+  if (!resolved) return;
+
   const status = engagementStatuses[Number(event.args.status)] ?? engagementStatuses[0];
   const resolvedAt = toDate(event.block.timestamp);
 
   await context.db
-    .update(engagements, { id: Number(event.args.engagementId) })
+    .update(engagements, { id: buildEngagementId(resolved.communityId, Number(event.args.engagementId)) })
     .set({ status, resolvedAt });
 });
 
 ponder.on("Engagements:EngagementRevoked", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "Engagements");
+  if (!resolved) return;
+
   const resolvedAt = toDate(event.block.timestamp);
   await context.db
-    .update(engagements, { id: Number(event.args.engagementId) })
+    .update(engagements, { id: buildEngagementId(resolved.communityId, Number(event.args.engagementId)) })
     .set({ status: engagementStatuses[3], resolvedAt });
 });

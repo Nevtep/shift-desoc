@@ -195,7 +195,6 @@ if (supportBps < supportThresholdBps) {
 ```solidity
 // Direct link from community discussions
 uint256 draftId = draftsManager.createDraft(
-    communityId,
     requestId,    // Links to specific RequestHub discussion
     actions,
     versionCID
@@ -285,10 +284,10 @@ supportThresholdBps = 6000; // 60% support required
 
 ```solidity
 // 1. Community discusses need in RequestHub
-uint256 requestId = requestHub.createRequest(communityId, "Treasury Upgrade", cid, tags);
+uint256 requestId = requestHub.createRequest("Treasury Upgrade", cid, tags);
 
 // 2. Developer creates draft proposal
-uint256 draftId = draftsManager.createDraft(communityId, requestId, actions, "v1.0");
+uint256 draftId = draftsManager.createDraft(requestId, actions, "v1.0");
 
 // 3. Collaborative development
 draftsManager.addContributor(draftId, contributor1);

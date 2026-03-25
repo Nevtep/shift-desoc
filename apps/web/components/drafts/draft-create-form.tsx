@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   keccak256,
   encodePacked,
   encodeFunctionData,
+  type Abi,
   type AbiFunction,
   type Address,
   type Hex,
@@ -17,9 +19,14 @@ import { CONTRACTS, getContractConfig } from "../../lib/contracts";
 import { COMMUNITY_MODULE_ABIS } from "../../hooks/useCommunityModules";
 import { useToast } from "../ui/toaster";
 import {
+  GUIDED_EVIDENCE_PRESETS,
+  GUIDED_REWARD_TIERS,
+  GUIDED_VALUE_ACTION_LOCKED_DEFAULTS,
+  GUIDED_VERIFICATION_STRICTNESS,
   getTargetDefinition,
   getTargetFunctions,
   listActionTargets,
+  listGuidedTemplates,
   type ActionTargetId
 } from "../../lib/actions/registry";
 
@@ -40,14 +47,45 @@ type ActionFormState = {
   tupleArrayCounts: Record<string, number>;
 };
 
+type ActionComposerMode = "guided" | "expert";
+
+type GuidedFormState = {
+  templateId: "valuableActionProposal" | "requestStatus";
+  title: string;
+  rewardTierId: "micro" | "standard" | "high";
+  strictnessId: "light" | "balanced" | "strict";
+  evidenceId: "basic" | "traceable" | "auditable";
+  revocable: boolean;
+  proposalRefSeed: string;
+  requestId: string;
+  requestStatus: "1" | "2";
+};
+
 const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+function getCreateDraftInputCount(abi: Abi): number {
+  const fn = abi.find((item) => item.type === "function" && item.name === "createDraft") as AbiFunction | undefined;
+  if (!fn) {
+    throw new Error("DraftsManager ABI missing createDraft");
+  }
+  return fn.inputs.length;
+}
 
 export function DraftCreateForm({
   fixedCommunityId,
-  successRedirectHref
+  initialRequestId,
+  successRedirectHref,
+  mode = "guided",
+  expertHref,
+  guidedHref
 }: {
   fixedCommunityId?: number;
+  initialRequestId?: number;
   successRedirectHref?: string;
+  mode?: ActionComposerMode;
+  expertHref?: string;
+  guidedHref?: string;
 } = {}) {
   const router = useRouter();
   const { push } = useToast();
@@ -58,7 +96,9 @@ export function DraftCreateForm({
   const [communityId, setCommunityId] = useState(
     Number.isFinite(fixedCommunityId) && (fixedCommunityId ?? 0) > 0 ? String(fixedCommunityId) : "1"
   );
-  const [requestId, setRequestId] = useState("0");
+  const [requestId, setRequestId] = useState(
+    Number.isFinite(initialRequestId) && (initialRequestId ?? -1) >= 0 ? String(initialRequestId) : "0"
+  );
   const [versionCid, setVersionCid] = useState("");
   const [content, setContent] = useState("");
   const [actions, setActions] = useState<PreparedAction[]>([]);
@@ -71,6 +111,7 @@ export function DraftCreateForm({
   const isConnected = status === "connected";
   const disabled = !isConnected || isPending || isUploading;
   const isFixedCommunity = Number.isFinite(fixedCommunityId) && (fixedCommunityId ?? 0) > 0;
+  const isExpertMode = mode === "expert";
 
   const communityRegistry = useMemo(() => {
     try {
@@ -156,8 +197,17 @@ export function DraftCreateForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             payload: {
+              version: "1",
               type: "draftVersion",
-              body: content,
+              draftId: "pending",
+              author: address ?? "unknown",
+              bodyMarkdown: content,
+              changelog: [],
+              actionBundlePreview: {
+                targets: actions.map((action) => action.target),
+                values: actions.map((action) => action.value.toString()),
+                signatures: actions.map((action) => action.functionName)
+              },
               createdBy: address,
               createdAt: new Date().toISOString()
             }
@@ -182,21 +232,32 @@ export function DraftCreateForm({
         throw new Error("DraftsManager module is not registered for this community.");
       }
 
+      const actionBundle = {
+        targets,
+        values,
+        calldatas,
+        actionsHash
+      };
+
+      const createDraftInputCount = getCreateDraftInputCount(COMMUNITY_MODULE_ABIS.draftsManager as Abi);
+      const draftArgs =
+        createDraftInputCount === 3
+          ? [BigInt(requestIdNum), actionBundle, cidToUse]
+          : createDraftInputCount === 4
+            ? [BigInt(communityIdNum), BigInt(requestIdNum), actionBundle, cidToUse]
+            : null;
+
+      if (!draftArgs || draftArgs.length !== createDraftInputCount) {
+        throw new Error(
+          `DraftsManager createDraft ABI mismatch: expected ${createDraftInputCount} args but built ${draftArgs?.length ?? 0}`
+        );
+      }
+
       await writeContractAsync({
         address: contractAddress,
         abi: COMMUNITY_MODULE_ABIS.draftsManager,
         functionName: "createDraft",
-        args: [
-          BigInt(communityIdNum),
-          BigInt(requestIdNum),
-          {
-            targets,
-            values,
-            calldatas,
-            actionsHash
-          },
-          cidToUse
-        ]
+        args: draftArgs
       });
 
       setSuccess("Draft created. It will surface after the indexer updates.");
@@ -222,7 +283,25 @@ export function DraftCreateForm({
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-1">
           <h2 className="text-base font-semibold">Create Draft</h2>
-          <p className="text-sm text-muted-foreground">Pin a draft version to IPFS and register on DraftsManager.</p>
+          <p className="text-sm text-muted-foreground">
+            Pin a draft version to IPFS and register on DraftsManager.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Composer mode: {isExpertMode ? "Expert (raw ABI)" : "Guided (safe presets)"}
+            {isExpertMode ? (
+              guidedHref ? (
+                <>
+                  {" "}
+                  <Link href={guidedHref} className="underline">Switch to guided</Link>
+                </>
+              ) : null
+            ) : expertHref ? (
+              <>
+                {" "}
+                <Link href={expertHref} className="underline">Open expert mode</Link>
+              </>
+            ) : null}
+          </p>
           {timelockAddress ? (
             <p className="text-xs text-muted-foreground">Timelock for community {communityId}: {timelockAddress}</p>
           ) : (
@@ -278,11 +357,20 @@ export function DraftCreateForm({
           </label>
         </div>
 
-        <ActionBuilder
-          chainId={chainId}
-          resolveTargetAddress={resolveTargetAddress}
-          onAddAction={(action) => setActions((prev) => [...prev, action])}
-        />
+        {isExpertMode ? (
+          <ExpertActionBuilder
+            chainId={chainId}
+            resolveTargetAddress={resolveTargetAddress}
+            onAddAction={(action) => setActions((prev) => [...prev, action])}
+          />
+        ) : (
+          <GuidedActionBuilder
+            communityId={communityIdNum}
+            signerAddress={address}
+            resolveTargetAddress={resolveTargetAddress}
+            onAddAction={(action) => setActions((prev) => [...prev, action])}
+          />
+        )}
 
         <ActionsTable actions={actions} onRemove={handleRemoveAction} />
 
@@ -303,7 +391,305 @@ export function DraftCreateForm({
   );
 }
 
-function ActionBuilder({
+function GuidedActionBuilder({
+  communityId,
+  signerAddress,
+  resolveTargetAddress,
+  onAddAction
+}: {
+  communityId: number;
+  signerAddress?: Address;
+  resolveTargetAddress: (targetId: ActionTargetId) => Address | null;
+  onAddAction: (action: PreparedAction) => void;
+}) {
+  const [form, setForm] = useState<GuidedFormState>({
+    templateId: "valuableActionProposal",
+    title: "",
+    rewardTierId: "standard",
+    strictnessId: "balanced",
+    evidenceId: "traceable",
+    revocable: true,
+    proposalRefSeed: "",
+    requestId: "",
+    requestStatus: "1"
+  });
+
+  const templates = useMemo(() => listGuidedTemplates(), []);
+  const currentTemplate = templates.find((template) => template.id === form.templateId);
+
+  function handleAddGuidedAction() {
+    const template = currentTemplate;
+    if (!template) {
+      alert("Select a template");
+      return;
+    }
+
+    const target = resolveTargetAddress(template.targetId);
+    if (!target) {
+      alert("Selected target is not configured for this community");
+      return;
+    }
+
+    const functionDefinition = getTargetFunctions(template.targetId).find(
+      (fn) => fn.functionName === template.functionName
+    );
+    if (!functionDefinition) {
+      alert("Target ABI function not found for template");
+      return;
+    }
+
+    try {
+      if (template.id === "valuableActionProposal") {
+        if (!form.title.trim()) {
+          alert("Title is required for Valuable Action proposals");
+          return;
+        }
+
+        const rewardTier = GUIDED_REWARD_TIERS.find((tier) => tier.id === form.rewardTierId) ?? GUIDED_REWARD_TIERS[1];
+        const strictness =
+          GUIDED_VERIFICATION_STRICTNESS.find((preset) => preset.id === form.strictnessId) ??
+          GUIDED_VERIFICATION_STRICTNESS[1];
+        const evidencePreset =
+          GUIDED_EVIDENCE_PRESETS.find((preset) => preset.id === form.evidenceId) ?? GUIDED_EVIDENCE_PRESETS[1];
+
+        const proposalSeed =
+          form.proposalRefSeed.trim() ||
+          `${communityId || 0}:${signerAddress || ZERO_ADDRESS}:${form.title}:${Date.now()}`;
+        const proposalRef = keccak256(encodePacked(["string"], [proposalSeed]));
+
+        const params = {
+          membershipTokenReward: rewardTier.membershipTokenReward,
+          communityTokenReward: rewardTier.communityTokenReward,
+          investorSBTReward: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.investorSBTReward,
+          category: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.category,
+          roleTypeId: keccak256(encodePacked(["string"], [GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.roleTypeSeed])),
+          positionPoints: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.positionPoints,
+          verifierPolicy: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.verifierPolicy,
+          metadataSchemaId: keccak256(
+            encodePacked(["string"], [GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.metadataSchemaSeed])
+          ),
+          jurorsMin: strictness.jurorsMin,
+          panelSize: strictness.panelSize,
+          verifyWindow: strictness.verifyWindowSeconds,
+          verifierRewardWeight: strictness.verifierRewardWeight,
+          slashVerifierBps: strictness.slashVerifierBps,
+          cooldownPeriod: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.cooldownPeriodSeconds,
+          maxConcurrent: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.maxConcurrent,
+          revocable: form.revocable,
+          evidenceTypes: evidencePreset.evidenceTypes,
+          proposalThreshold: BigInt(GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.proposalThreshold),
+          proposer: signerAddress ?? ZERO_ADDRESS,
+          evidenceSpecCID: evidencePreset.evidenceSpecCID,
+          titleTemplate: form.title.trim(),
+          automationRules: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.automationRuleSeeds.map((seed) =>
+            keccak256(encodePacked(["string"], [seed]))
+          ),
+          activationDelay: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.activationDelaySeconds,
+          deprecationWarning: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.deprecationWarningSeconds
+        };
+
+        const calldata = encodeFunctionData({
+          abi: [functionDefinition.abiFragment],
+          functionName: template.functionName,
+          args: [params, proposalRef]
+        });
+
+        onAddAction({
+          target,
+          value: 0n,
+          calldata,
+          targetLabel: getTargetDefinition(template.targetId).label,
+          functionName: template.functionName,
+          argsPreview: [
+            `title: ${form.title.trim()}`,
+            `reward: ${rewardTier.label}`,
+            `verification: ${strictness.label}`,
+            `evidence: ${evidencePreset.label}`,
+            `revocable: ${form.revocable ? "yes" : "no"}`
+          ]
+        });
+
+        setForm((prev) => ({ ...prev, title: "", proposalRefSeed: "" }));
+        return;
+      }
+
+      const requestId = Number(form.requestId);
+      if (!Number.isFinite(requestId) || requestId <= 0) {
+        alert("Request ID must be a positive number");
+        return;
+      }
+
+      const statusValue = Number(form.requestStatus);
+      const calldata = encodeFunctionData({
+        abi: [functionDefinition.abiFragment],
+        functionName: template.functionName,
+        args: [BigInt(requestId), statusValue]
+      });
+
+      onAddAction({
+        target,
+        value: 0n,
+        calldata,
+        targetLabel: getTargetDefinition(template.targetId).label,
+        functionName: template.functionName,
+        argsPreview: [
+          `requestId: ${requestId}`,
+          `status: ${statusValue === 1 ? "FROZEN" : "ARCHIVED"}`
+        ]
+      });
+
+      setForm((prev) => ({ ...prev, requestId: "" }));
+    } catch (err) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Failed to add guided action");
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">Guided action composer</h3>
+        <p className="text-xs text-muted-foreground">
+          Uses locked safe presets and maps your choices to ABI calldata automatically.
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="text-muted-foreground">Template</span>
+          <select
+            className="rounded border border-border bg-background px-3 py-2"
+            value={form.templateId}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                templateId: e.target.value as GuidedFormState["templateId"]
+              }))
+            }
+          >
+            {templates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.label}
+              </option>
+            ))}
+          </select>
+          {currentTemplate ? <span className="text-xs text-muted-foreground">{currentTemplate.description}</span> : null}
+        </label>
+
+        {form.templateId === "valuableActionProposal" ? (
+          <>
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+              <span className="text-muted-foreground">Action title</span>
+              <input
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.title}
+                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                placeholder="Ex: Weekly moderation sprint"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted-foreground">Reward tier</span>
+              <select
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.rewardTierId}
+                onChange={(e) => setForm((prev) => ({ ...prev, rewardTierId: e.target.value as GuidedFormState["rewardTierId"] }))}
+              >
+                {GUIDED_REWARD_TIERS.map((tier) => (
+                  <option key={tier.id} value={tier.id}>
+                    {tier.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted-foreground">Verification strictness</span>
+              <select
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.strictnessId}
+                onChange={(e) => setForm((prev) => ({ ...prev, strictnessId: e.target.value as GuidedFormState["strictnessId"] }))}
+              >
+                {GUIDED_VERIFICATION_STRICTNESS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted-foreground">Evidence profile</span>
+              <select
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.evidenceId}
+                onChange={(e) => setForm((prev) => ({ ...prev, evidenceId: e.target.value as GuidedFormState["evidenceId"] }))}
+              >
+                {GUIDED_EVIDENCE_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted-foreground">Revocable SBT</span>
+              <select
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.revocable ? "yes" : "no"}
+                onChange={(e) => setForm((prev) => ({ ...prev, revocable: e.target.value === "yes" }))}
+              >
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+              <span className="text-muted-foreground">Proposal reference seed (optional)</span>
+              <input
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.proposalRefSeed}
+                onChange={(e) => setForm((prev) => ({ ...prev, proposalRefSeed: e.target.value }))}
+                placeholder="Leave empty to auto-generate a unique hash"
+              />
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted-foreground">Request ID</span>
+              <input
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.requestId}
+                onChange={(e) => setForm((prev) => ({ ...prev, requestId: e.target.value }))}
+                placeholder="Ex: 12"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted-foreground">New status</span>
+              <select
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.requestStatus}
+                onChange={(e) => setForm((prev) => ({ ...prev, requestStatus: e.target.value as GuidedFormState["requestStatus"] }))}
+              >
+                <option value="1">FROZEN</option>
+                <option value="2">ARCHIVED</option>
+              </select>
+            </label>
+          </>
+        )}
+      </div>
+
+      <button type="button" className="btn-primary-sm" onClick={handleAddGuidedAction}>
+        Add guided action
+      </button>
+    </div>
+  );
+}
+
+function ExpertActionBuilder({
   chainId,
   resolveTargetAddress,
   onAddAction
@@ -487,7 +873,7 @@ function ActionBuilder({
 
       const value = selectedFunction.abiFragment.stateMutability === "payable" ? BigInt(form.value || "0") : 0n;
       const calldata = encodeFunctionData({
-        abi: CONTRACTS[form.targetId].abi,
+        abi: [selectedFunction.abiFragment],
         functionName: selectedFunction.functionName,
         args
       });

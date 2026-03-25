@@ -38,7 +38,9 @@ describe("DraftCreateForm scoped route behavior", () => {
       if (config?.functionName === "getCommunityModules") {
         return {
           data: {
-            draftsManager: "0x0000000000000000000000000000000000000200"
+            draftsManager: "0x0000000000000000000000000000000000000200",
+            valuableActionRegistry: "0x0000000000000000000000000000000000000201",
+            requestHub: "0x0000000000000000000000000000000000000202"
           },
           isLoading: false,
           isError: false
@@ -78,6 +80,81 @@ describe("DraftCreateForm scoped route behavior", () => {
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith("/communities/6/coordination/drafts");
     });
+
+    fetchSpy.mockRestore();
+  });
+
+  it("submits createDraft using ABI arity for current DraftsManager signature", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ cid: "draft-cid" })
+    } as Response);
+
+    const writeContractAsync = vi.fn().mockResolvedValue({ hash: "0xabc" });
+    vi.spyOn(wagmi, "useWriteContract").mockReturnValue({
+      writeContractAsync,
+      isPending: false,
+      error: null
+    } as any);
+
+    renderWithProviders(<DraftCreateForm fixedCommunityId={45} />);
+
+    await userEvent.clear(screen.getByLabelText(/request id/i));
+    await userEvent.type(screen.getByLabelText(/request id/i), "1");
+    await userEvent.type(screen.getByLabelText(/draft content/i), "test draft creation");
+    await userEvent.click(screen.getByRole("button", { name: /create draft/i }));
+
+    await waitFor(() => {
+      expect(writeContractAsync).toHaveBeenCalledTimes(1);
+    });
+
+    const call = writeContractAsync.mock.calls[0]?.[0];
+    expect(call?.functionName).toBe("createDraft");
+    expect(call?.args).toHaveLength(3);
+    expect(call?.args?.[0]).toBe(1n);
+    expect(typeof call?.args?.[2]).toBe("string");
+
+    fetchSpy.mockRestore();
+  });
+
+  it("queues guided valuable action and submits bundled draft", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ cid: "draft-cid" })
+    } as Response);
+
+    const writeContractAsync = vi.fn().mockResolvedValue({ hash: "0xabc" });
+    vi.spyOn(wagmi, "useWriteContract").mockReturnValue({
+      writeContractAsync,
+      isPending: false,
+      error: null
+    } as any);
+
+    renderWithProviders(<DraftCreateForm fixedCommunityId={11} />);
+
+    await userEvent.clear(screen.getByLabelText(/request id/i));
+    await userEvent.type(screen.getByLabelText(/request id/i), "9");
+    await userEvent.type(screen.getByLabelText(/draft content/i), "## guided test draft");
+    await userEvent.type(screen.getByLabelText(/action title/i), "Moderation review pass");
+    await userEvent.click(screen.getByRole("button", { name: /add guided action/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Actions queued/i)).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /create draft/i }));
+
+    await waitFor(() => {
+      expect(writeContractAsync).toHaveBeenCalledTimes(1);
+    });
+
+    const call = writeContractAsync.mock.calls[0]?.[0];
+    expect(call?.functionName).toBe("createDraft");
+    expect(call?.args).toHaveLength(3);
+    expect(call?.args?.[0]).toBe(9n);
+    expect(call?.args?.[1]?.targets).toHaveLength(1);
+    expect(call?.args?.[1]?.values).toHaveLength(1);
+    expect(call?.args?.[1]?.calldatas).toHaveLength(1);
 
     fetchSpy.mockRestore();
   });

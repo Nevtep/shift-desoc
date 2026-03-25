@@ -10,10 +10,15 @@ type PageProps = {
   params: Promise<{
     communityId: string;
   }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function CommunityDraftCreatePage({ params }: PageProps) {
+export default async function CommunityDraftCreatePage({ params, searchParams }: PageProps) {
   const { communityId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const requestIdParam = resolvedSearchParams?.requestId;
+  const requestIdValue = Array.isArray(requestIdParam) ? requestIdParam[0] : requestIdParam;
+  const normalizedRequestId = Number(requestIdValue);
   const numericCommunityId = Number(communityId);
   const safeCommunityId = Number.isFinite(numericCommunityId) && numericCommunityId > 0 ? numericCommunityId : 0;
 
@@ -28,7 +33,9 @@ export default async function CommunityDraftCreatePage({ params }: PageProps) {
 
       <DraftCreateForm
         fixedCommunityId={safeCommunityId}
+        initialRequestId={Number.isFinite(normalizedRequestId) && normalizedRequestId >= 0 ? normalizedRequestId : undefined}
         successRedirectHref={`/communities/${safeCommunityId}/coordination/drafts`}
+        expertHref={`/communities/${safeCommunityId}/coordination/drafts/new/expert`}
       />
     </main>
   );

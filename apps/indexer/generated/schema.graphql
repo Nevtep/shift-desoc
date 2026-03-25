@@ -19,11 +19,11 @@ type Meta {
 type Query {
   communities(id: Int!): communities
   communitiess(where: communitiesFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): communitiesPage!
-  requests(id: Int!): requests
+  requests(id: String!): requests
   requestss(where: requestsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): requestsPage!
-  comments(id: Int!): comments
+  comments(id: String!): comments
   commentss(where: commentsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): commentsPage!
-  drafts(id: Int!): drafts
+  drafts(id: String!): drafts
   draftss(where: draftsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): draftsPage!
   draftVersions(id: String!): draftVersions
   draftVersionss(where: draftVersionsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): draftVersionsPage!
@@ -33,7 +33,7 @@ type Query {
   proposalss(where: proposalsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): proposalsPage!
   proposalVotes(id: String!): proposalVotes
   proposalVotess(where: proposalVotesFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): proposalVotesPage!
-  engagements(id: Int!): engagements
+  engagements(id: String!): engagements
   engagementss(where: engagementsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementsPage!
   jurorAssignments(id: String!): jurorAssignments
   jurorAssignmentss(where: jurorAssignmentsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): jurorAssignmentsPage!
@@ -112,7 +112,8 @@ input communitiesFilter {
 }
 
 type requests {
-  id: Int!
+  id: String!
+  requestId: Int!
   communityId: Int!
   author: String!
   status: String!
@@ -130,14 +131,24 @@ type requestsPage {
 input requestsFilter {
   AND: [requestsFilter]
   OR: [requestsFilter]
-  id: Int
-  id_not: Int
-  id_in: [Int]
-  id_not_in: [Int]
-  id_gt: Int
-  id_lt: Int
-  id_gte: Int
-  id_lte: Int
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  requestId: Int
+  requestId_not: Int
+  requestId_in: [Int]
+  requestId_not_in: [Int]
+  requestId_gt: Int
+  requestId_lt: Int
+  requestId_gte: Int
+  requestId_lte: Int
   communityId: Int
   communityId_not: Int
   communityId_in: [Int]
@@ -189,7 +200,9 @@ input requestsFilter {
 }
 
 type comments {
-  id: Int!
+  id: String!
+  commentId: Int!
+  communityId: Int!
   requestId: Int!
   author: String!
   cid: String!
@@ -207,14 +220,32 @@ type commentsPage {
 input commentsFilter {
   AND: [commentsFilter]
   OR: [commentsFilter]
-  id: Int
-  id_not: Int
-  id_in: [Int]
-  id_not_in: [Int]
-  id_gt: Int
-  id_lt: Int
-  id_gte: Int
-  id_lte: Int
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  commentId: Int
+  commentId_not: Int
+  commentId_in: [Int]
+  commentId_not_in: [Int]
+  commentId_gt: Int
+  commentId_lt: Int
+  commentId_gte: Int
+  commentId_lte: Int
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
   requestId: Int
   requestId_not: Int
   requestId_in: [Int]
@@ -268,7 +299,8 @@ input commentsFilter {
 }
 
 type drafts {
-  id: Int!
+  id: String!
+  draftId: Int!
   communityId: Int!
   requestId: Int!
   status: String!
@@ -287,14 +319,24 @@ type draftsPage {
 input draftsFilter {
   AND: [draftsFilter]
   OR: [draftsFilter]
-  id: Int
-  id_not: Int
-  id_in: [Int]
-  id_not_in: [Int]
-  id_gt: Int
-  id_lt: Int
-  id_gte: Int
-  id_lte: Int
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  draftId: Int
+  draftId_not: Int
+  draftId_in: [Int]
+  draftId_not_in: [Int]
+  draftId_gt: Int
+  draftId_lt: Int
+  draftId_gte: Int
+  draftId_lte: Int
   communityId: Int
   communityId_not: Int
   communityId_in: [Int]
@@ -365,6 +407,7 @@ input draftsFilter {
 
 type draftVersions {
   id: String!
+  communityId: Int!
   draftId: Int!
   versionNumber: Int!
   cid: String!
@@ -391,6 +434,14 @@ input draftVersionsFilter {
   id_ends_with: String
   id_not_starts_with: String
   id_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
   draftId: Int
   draftId_not: Int
   draftId_in: [Int]
@@ -441,6 +492,7 @@ input draftVersionsFilter {
 
 type draftReviews {
   id: String!
+  communityId: Int!
   draftId: Int!
   reviewer: String!
   stance: String!
@@ -467,6 +519,14 @@ input draftReviewsFilter {
   id_ends_with: String
   id_not_starts_with: String
   id_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
   draftId: Int
   draftId_not: Int
   draftId_in: [Int]
@@ -519,6 +579,7 @@ input draftReviewsFilter {
 
 type proposals {
   id: String!
+  proposalId: String!
   communityId: Int!
   proposer: String!
   descriptionCid: String
@@ -552,6 +613,16 @@ input proposalsFilter {
   id_ends_with: String
   id_not_starts_with: String
   id_not_ends_with: String
+  proposalId: String
+  proposalId_not: String
+  proposalId_in: [String]
+  proposalId_not_in: [String]
+  proposalId_contains: String
+  proposalId_not_contains: String
+  proposalId_starts_with: String
+  proposalId_ends_with: String
+  proposalId_not_starts_with: String
+  proposalId_not_ends_with: String
   communityId: Int
   communityId_not: Int
   communityId_in: [Int]
@@ -634,6 +705,7 @@ input proposalsFilter {
 
 type proposalVotes {
   id: String!
+  communityId: Int!
   proposalId: String!
   voter: String!
   weight: BigInt!
@@ -660,6 +732,14 @@ input proposalVotesFilter {
   id_ends_with: String
   id_not_starts_with: String
   id_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
   proposalId: String
   proposalId_not: String
   proposalId_in: [String]
@@ -709,7 +789,8 @@ input proposalVotesFilter {
 }
 
 type engagements {
-  id: Int!
+  id: String!
+  engagementId: Int!
   communityId: Int!
   valuableActionId: Int!
   participant: String!
@@ -728,14 +809,24 @@ type engagementsPage {
 input engagementsFilter {
   AND: [engagementsFilter]
   OR: [engagementsFilter]
-  id: Int
-  id_not: Int
-  id_in: [Int]
-  id_not_in: [Int]
-  id_gt: Int
-  id_lt: Int
-  id_gte: Int
-  id_lte: Int
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  engagementId: Int
+  engagementId_not: Int
+  engagementId_in: [Int]
+  engagementId_not_in: [Int]
+  engagementId_gt: Int
+  engagementId_lt: Int
+  engagementId_gte: Int
+  engagementId_lte: Int
   communityId: Int
   communityId_not: Int
   communityId_in: [Int]
@@ -806,6 +897,7 @@ input engagementsFilter {
 
 type jurorAssignments {
   id: String!
+  communityId: Int!
   engagementId: Int!
   juror: String!
   weight: BigInt
@@ -832,6 +924,14 @@ input jurorAssignmentsFilter {
   id_ends_with: String
   id_not_starts_with: String
   id_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
   engagementId: Int
   engagementId_not: Int
   engagementId_in: [Int]

@@ -28,6 +28,22 @@ In addition to CLI operations, Manager Home now includes a user-signed deploy wi
 - Source of truth: once a community is registered, resume/completion inference must be derived from on-chain reads (CommunityRegistry/module-role checks), not deployment JSON files.
 - Verification semantics: parity with `scripts/hardhat/verify-community-deployment.ts` check set.
 
+### Draft Composer (Web)
+
+The web app draft composer now separates safe default behavior from advanced ABI editing.
+
+- Default mode is **Guided** and is intended for most operators:
+  - Community route: `/communities/[communityId]/coordination/drafts/new`
+  - Global route: `/drafts`
+- Advanced **Expert** mode is available on dedicated routes:
+  - Community route: `/communities/[communityId]/coordination/drafts/new/expert`
+  - Global route: `/drafts/expert`
+
+Operational notes:
+- Guided mode uses curated presets for common actions and compiles deterministic ABI payloads.
+- Expert mode exposes raw mutable ABI actions and should be used only when guided templates are insufficient.
+- Both modes submit through the same DraftsManager `createDraft` path and preserve governance/timelock execution semantics.
+
 ### 1. **Community Admin CLI** (`manage-communities.ts`)
 
 **Purpose**: Community lifecycle and configuration management

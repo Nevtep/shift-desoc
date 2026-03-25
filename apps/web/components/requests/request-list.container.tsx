@@ -15,7 +15,7 @@ import { RequestListItem } from "./request-list-item.component";
 
 export type RequestListProps = {
   communityId?: string;
-  detailHrefBuilder?: (request: { id: number; communityId: number }) => string;
+  detailHrefBuilder?: (request: { id: string; communityId: number }) => string;
   detailHrefBasePath?: string;
 };
 
@@ -41,7 +41,7 @@ export function RequestList({ communityId, detailHrefBuilder, detailHrefBasePath
   const requests = useMemo(() => {
     return (data?.requests.nodes ?? []).map((node) => ({
       ...node,
-      id: Number(node.id),
+      id: node.id,
       communityId: Number(node.communityId)
     }));
   }, [data]);

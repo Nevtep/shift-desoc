@@ -137,6 +137,38 @@ function normalizeDocument(raw: unknown): unknown {
     };
   }
 
+  if (maybe.type === "draftVersion") {
+    const bodyMarkdown =
+      typeof maybe.bodyMarkdown === "string" && maybe.bodyMarkdown.length
+        ? maybe.bodyMarkdown
+        : (typeof maybe.body === "string" ? maybe.body : "");
+
+    return {
+      version: typeof maybe.version === "string" && maybe.version.length ? maybe.version : "1",
+      type: "draftVersion",
+      draftId:
+        typeof maybe.draftId === "string" && maybe.draftId.length
+          ? maybe.draftId
+          : "pending",
+      author:
+        typeof maybe.author === "string" && maybe.author.length
+          ? maybe.author
+          : (typeof maybe.createdBy === "string" ? maybe.createdBy : "unknown"),
+      bodyMarkdown,
+      changelog: Array.isArray(maybe.changelog) ? maybe.changelog : [],
+      actionBundlePreview:
+        maybe.actionBundlePreview && typeof maybe.actionBundlePreview === "object"
+          ? maybe.actionBundlePreview
+          : {
+              targets: [],
+              values: [],
+              signatures: []
+            },
+      createdAt: coerceIsoDate(maybe.createdAt),
+      createdBy: maybe.createdBy
+    };
+  }
+
   return raw;
 }
 

@@ -3,7 +3,7 @@ import { useIpfsDocument } from "../../hooks/useIpfsDocument";
 import { formatDate, isIpfsDocumentResponse, shortAddress, statusBadge } from "./helpers";
 
 export type RequestNode = {
-  id: number;
+  id: string;
   communityId: number;
   author: string;
   status: string;

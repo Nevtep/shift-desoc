@@ -15,6 +15,13 @@ type PageProps = {
 
 export default async function CommunityDraftDetailPage({ params }: PageProps) {
   const { communityId, draftId } = await params;
+  const safeDraftId = (() => {
+    try {
+      return decodeURIComponent(draftId);
+    } catch {
+      return draftId;
+    }
+  })();
   const numericCommunityId = Number(communityId);
   const safeCommunityId = Number.isFinite(numericCommunityId) && numericCommunityId > 0 ? numericCommunityId : 0;
 
@@ -22,15 +29,14 @@ export default async function CommunityDraftDetailPage({ params }: PageProps) {
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
       <header className="space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Draft</p>
-        <h1 className="text-3xl font-semibold">Draft {draftId}</h1>
+        <h1 className="text-3xl font-semibold">Draft {safeDraftId}</h1>
         <Link className="text-sm underline" href={`/communities/${safeCommunityId}/coordination/drafts`}>
           Back to drafts
         </Link>
       </header>
       <DraftDetail
-        draftId={draftId}
+        draftId={safeDraftId}
         expectedCommunityId={safeCommunityId}
-        draftsListHref={`/communities/${safeCommunityId}/coordination/drafts`}
         useCommunityScopedRequestLinks
       />
     </main>

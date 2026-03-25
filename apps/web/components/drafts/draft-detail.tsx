@@ -28,8 +28,8 @@ type DraftReviewNode = {
 type DraftDetailResponse = {
   draft: (DraftNode & {
     communityId?: number;
-    versions: DraftVersionNode[];
-    reviews: DraftReviewNode[];
+    versions?: DraftVersionNode[];
+    reviews?: DraftReviewNode[];
   }) | null;
 };
 
@@ -68,7 +68,14 @@ export function DraftDetail({
     [latestVersionRaw]
   );
 
-  const versions = useMemo(() => draft?.versions ?? [], [draft]);
+  const versions = useMemo(
+    () => (Array.isArray(draft?.versions) ? draft.versions : []),
+    [draft]
+  );
+  const reviews = useMemo(
+    () => (Array.isArray(draft?.reviews) ? draft.reviews : []),
+    [draft]
+  );
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading draft…</p>;
@@ -200,9 +207,9 @@ export function DraftDetail({
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Reviews</h2>
-        {draft.reviews.length ? (
+        {reviews.length ? (
           <ul className="space-y-2 text-sm">
-            {draft.reviews.map((review) => (
+            {reviews.map((review) => (
               <li key={review.id} className="card-tight">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium">{review.reviewer}</span>

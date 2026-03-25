@@ -84,8 +84,8 @@ function createRequest(
     string calldata cid,
     string[] calldata tags
 ) external returns (uint256 requestId) {
-    _requireValidCommunity(communityId);           // Verify community exists
-    _requireNotRateLimited(communityId, msg.sender); // Anti-spam protection
+    _bindOrRequireCommunity(communityId); // Binds hub to first community in single-community mode
+    _requireNotRateLimited(msg.sender);   // Anti-spam protection
 
     // Input validation
     if (bytes(title).length == 0) revert Errors.InvalidInput("Title cannot be empty");
@@ -105,8 +105,8 @@ function createRequest(
 
     // Update community index and rate limiting
     communityRequests[communityId].push(requestId);
-    userRequestCount[communityId][msg.sender]++;
-    userLastPostTime[communityId][msg.sender] = block.timestamp;
+    userRequestCount[msg.sender]++;
+    userLastPostTime[msg.sender] = block.timestamp;
 }
 ```
 

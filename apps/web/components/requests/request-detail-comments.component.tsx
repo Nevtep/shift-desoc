@@ -1,7 +1,7 @@
 import { useMemo, type FormEvent, type ReactElement } from "react";
 
 import { CommentContent } from "./comment-content.component";
-import { buildCommentTree, formatDate } from "./helpers";
+import { buildCommentTree, commentTreeKey, formatDate } from "./helpers";
 import { RoleChip } from "./role-chip.component";
 import type { CommentView } from "./types";
 
@@ -13,7 +13,6 @@ export type RequestDetailCommentsProps = {
   onCommentBodyChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   commentError?: string | null;
-  writeErrorMessage?: string | null;
   commentDisabled: boolean;
   isSubmitting: boolean;
   isWriting: boolean;
@@ -39,7 +38,6 @@ export function RequestDetailComments({
   onCommentBodyChange,
   onSubmit,
   commentError,
-  writeErrorMessage,
   commentDisabled,
   isSubmitting,
   isWriting,
@@ -109,7 +107,7 @@ export function RequestDetailComments({
               ) : (
                 <CommentContent cid={comment.cid} />
               )}
-              {renderCommentTree(String(comment.id), depth + 1)}
+              {renderCommentTree(commentTreeKey(comment.id), depth + 1)}
             </li>
           );
         })}
@@ -160,7 +158,6 @@ export function RequestDetailComments({
             {isSubmitting ? "Posting…" : "Post comment"}
           </button>
           {commentError ? <span className="text-xs text-destructive">{commentError}</span> : null}
-          {!commentError && writeErrorMessage ? <span className="text-xs text-destructive">{writeErrorMessage}</span> : null}
           {commentDisabled && unsupportedNetworkMessage ? (
             <span className="text-xs text-destructive">{unsupportedNetworkMessage}</span>
           ) : null}

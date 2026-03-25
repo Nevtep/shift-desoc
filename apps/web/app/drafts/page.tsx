@@ -24,8 +24,11 @@ export default async function DraftsPage({ searchParams }: PageProps) {
           Drafts consolidate community collaboration before formal proposals. Filter by community to narrow
           results.
         </p>
+        <Link className="text-sm underline" href="/drafts/expert">
+          Open expert draft composer
+        </Link>
       </header>
-      <DraftCreateForm />
+      <DraftCreateForm expertHref="/drafts/expert" />
       <section className="space-y-4">
         <CommunityFilter currentCommunityId={communityId} />
         <DraftList communityId={communityId ?? undefined} />

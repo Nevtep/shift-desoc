@@ -44,9 +44,35 @@ type RequestDetailRequest = {
 
 type StatusOption = { key: string; label: string; value: number };
 
-type RequestQueryVars = { id: number };
+type RequestQueryVars = { id: string };
 type DraftsByRequestVars = { requestId: number; limit: number };
 type CommentsByRequestVars = { requestId: number; limit: number; after?: string };
+
+function normalizeRequestId(rawRequestId: string): string {
+  let normalized = rawRequestId.trim();
+
+  // Route params can arrive percent-encoded depending on navigation origin.
+  // Decode until stable (max 2 passes) to handle accidental double-encoding.
+  for (let i = 0; i < 2; i += 1) {
+    if (!/%[0-9A-Fa-f]{2}/.test(normalized)) break;
+    try {
+      const decoded = decodeURIComponent(normalized);
+      if (decoded === normalized) break;
+      normalized = decoded;
+    } catch {
+      break;
+    }
+  }
+
+  return normalized;
+}
+
+function parseNativeId(value: string | number): number {
+  if (typeof value === "number") return value;
+  const normalized = value.trim();
+  const candidate = normalized.includes(":") ? normalized.split(":").pop() ?? normalized : normalized;
+  return Number(candidate);
+}
 
 export function RequestDetail({
   requestId,
@@ -55,7 +81,10 @@ export function RequestDetail({
   draftHrefBuilder,
   draftHrefBasePath
 }: RequestDetailProps) {
-  const numericId = Number(requestId);
+  const normalizedRequestId = useMemo(() => normalizeRequestId(requestId), [requestId]);
+  const nativeRequestId = Number(
+    normalizedRequestId.includes(":") ? normalizedRequestId.split(":").pop() : normalizedRequestId
+  );
   const chainId = useChainId();
   const { address, status: accountStatus } = useAccount();
   const { writeContractAsync, isPending: isWriting, error: writeError } = useWriteContract();
@@ -90,36 +119,47 @@ export function RequestDetail({
     setCommentBody("");
     setReplyTo(null);
     setCommentError(null);
-  }, [numericId]);
+  }, [normalizedRequestId]);
 
   const {
     data: requestData,
     isLoading,
     isError,
     refetch
-  } = useGraphQLQuery<RequestQueryResult, RequestQueryVars>(["request", requestId], RequestQuery, { id: numericId });
+  } = useGraphQLQuery<RequestQueryResult, RequestQueryVars>(
+    ["request", normalizedRequestId],
+    RequestQuery,
+    { id: normalizedRequestId }
+  );
 
   const { data: draftsData } = useGraphQLQuery<DraftsQueryResult, DraftsByRequestVars>(
-    ["drafts", "request", requestId],
+    ["drafts", "request", normalizedRequestId],
     DraftsQuery,
-    { requestId: numericId, limit: 20 }
+    { requestId: nativeRequestId, limit: 20 }
   );
 
   const {
     data: commentsData,
     refetch: refetchComments
   } = useGraphQLQuery<CommentsByRequestResult, CommentsByRequestVars>(
-    ["comments", "request", requestId, commentsCursor ?? "start"],
+    ["comments", "request", normalizedRequestId, commentsCursor ?? "start"],
     CommentsByRequestQuery,
-    { requestId: numericId, limit: 10, after: commentsCursor ?? undefined }
+    { requestId: nativeRequestId, limit: 10, after: commentsCursor ?? undefined }
   );
 
   const request = useMemo<RequestDetailRequest | null>(() => {
     if (!requestData?.request) return null;
+    const resolvedId = Number(requestData.request.requestId ?? requestData.request.id);
+    const resolvedCommunityId = Number(requestData.request.communityId);
+
+    if (!Number.isFinite(resolvedId) || !Number.isFinite(resolvedCommunityId)) {
+      return null;
+    }
+
     return {
       ...requestData.request,
-      id: Number(requestData.request.id),
-      communityId: Number(requestData.request.communityId)
+      id: resolvedId,
+      communityId: resolvedCommunityId
     };
   }, [requestData?.request]);
 
@@ -283,7 +323,7 @@ export function RequestDetail({
       return;
     }
 
-    const parentCommentId = replyTo ? Number(replyTo) : 0;
+    const parentCommentId = replyTo ? parseNativeId(replyTo) : 0;
     if (!Number.isFinite(parentCommentId) || parentCommentId < 0) {
       setCommentError("Invalid parent comment.");
       return;
@@ -406,13 +446,19 @@ export function RequestDetail({
       return;
     }
 
+    const nativeCommentId = parseNativeId(commentId);
+    if (!Number.isFinite(nativeCommentId) || nativeCommentId <= 0) {
+      push("Invalid comment id.", "error");
+      return;
+    }
+
     try {
       setModeratingCommentId(String(commentId));
       await writeContractAsync({
         address: requestHubAddress,
         abi: requestHubAbi,
         functionName: "moderateComment",
-        args: [BigInt(commentId), hide]
+        args: [BigInt(nativeCommentId), hide]
       });
       await refetchComments();
       push(hide ? "Comment hidden." : "Comment unhidden.", "success");
@@ -529,6 +575,10 @@ export function RequestDetail({
     ? `/communities/${request.communityId}/coordination/requests/${request.id}`
     : null;
 
+  const createDraftHref = draftHrefBasePath
+    ? `${draftHrefBasePath}/new?requestId=${request.id}`
+    : `/communities/${request.communityId}/coordination/drafts/new?requestId=${request.id}`;
+
   return (
     <div className="space-y-8">
       {hasCommunityMismatch ? (
@@ -584,6 +634,7 @@ export function RequestDetail({
         drafts={drafts}
         draftHrefBuilder={draftHrefBuilder}
         draftHrefBasePath={draftHrefBasePath}
+        createDraftHref={createDraftHref}
       />
 
       <RequestDetailComments
@@ -594,7 +645,6 @@ export function RequestDetail({
         onCommentBodyChange={setCommentBody}
         onSubmit={handleCommentSubmit}
         commentError={commentError}
-        writeErrorMessage={writeError?.message ?? "Transaction failed"}
         commentDisabled={commentDisabled}
         isSubmitting={isSubmittingComment}
         isWriting={isWriting}

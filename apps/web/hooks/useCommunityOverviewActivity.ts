@@ -14,11 +14,25 @@ import {
 } from "../lib/graphql/queries";
 import { buildOverviewActivityQueryVariables, mapOverviewActivity, newestPreviewTimestamp } from "../lib/community-overview/activity";
 import { buildOverviewRoutes } from "../lib/community-overview/routes";
-import type { ActivityDomain, ActivityPanelState } from "../lib/community-overview/types";
+import type { ActivityDomain, ActivityPanelState, IndexerHealthState } from "../lib/community-overview/types";
+
+type ActivityHealthOverrides = {
+  state?: IndexerHealthState;
+  refetch?: () => Promise<unknown>;
+};
+
+function pickNodes(value: unknown): Record<string, unknown>[] {
+  if (!value || typeof value !== "object") return [];
+  const obj = value as { nodes?: unknown; items?: unknown };
+  if (Array.isArray(obj.nodes)) return obj.nodes as Record<string, unknown>[];
+  if (Array.isArray(obj.items)) return obj.items as Record<string, unknown>[];
+  return [];
+}
 
 function derivePanelState(args: {
   domain: ActivityDomain;
   loading: boolean;
+  queryError: boolean;
   items: ReturnType<typeof mapOverviewActivity>;
   health: "synced" | "lagging" | "error" | "unknown";
   viewAllHref: string;
@@ -43,6 +57,17 @@ function derivePanelState(args: {
       state: "loading",
       items: [],
       canRetry: false,
+      viewAll,
+      create
+    };
+  }
+
+  if (args.queryError) {
+    return {
+      domain: args.domain,
+      state: "error",
+      items: [],
+      canRetry: true,
       viewAll,
       create
     };
@@ -91,7 +116,7 @@ function derivePanelState(args: {
   };
 }
 
-export function useCommunityOverviewActivity(communityId: number) {
+export function useCommunityOverviewActivity(communityId: number, healthOverrides?: ActivityHealthOverrides) {
   const variables = buildOverviewActivityQueryVariables(communityId);
   const enabled = communityId > 0;
 
@@ -117,22 +142,24 @@ export function useCommunityOverviewActivity(communityId: number) {
   );
 
   const requestItems = useMemo(
-    () => mapOverviewActivity("requests", requests.data?.requests.nodes as Record<string, unknown>[] | undefined),
-    [requests.data?.requests.nodes]
+    () => mapOverviewActivity("requests", pickNodes(requests.data?.requests)),
+    [requests.data?.requests]
   );
 
   const draftItems = useMemo(
-    () => mapOverviewActivity("drafts", drafts.data?.drafts.nodes as Record<string, unknown>[] | undefined),
-    [drafts.data?.drafts.nodes]
+    () => mapOverviewActivity("drafts", pickNodes(drafts.data?.drafts)),
+    [drafts.data?.drafts]
   );
 
   const proposalItems = useMemo(
-    () => mapOverviewActivity("proposals", proposals.data?.proposals.nodes as Record<string, unknown>[] | undefined),
-    [proposals.data?.proposals.nodes]
+    () => mapOverviewActivity("proposals", pickNodes(proposals.data?.proposals)),
+    [proposals.data?.proposals]
   );
 
   const newest = newestPreviewTimestamp([requestItems, draftItems, proposalItems]);
   const health = useIndexerHealth(newest);
+  const healthState = healthOverrides?.state ?? health.state;
+  const refetchHealth = healthOverrides?.refetch ?? health.refetch;
   const routes = buildOverviewRoutes(communityId);
 
   const panels = useMemo(() => {
@@ -142,8 +169,9 @@ export function useCommunityOverviewActivity(communityId: number) {
       requests: derivePanelState({
         domain: "requests",
         loading,
+        queryError: requests.isError,
         items: requestItems,
-        health: health.state,
+        health: healthState,
         viewAllHref: routes.previews.requests.viewAll,
         createHref: routes.previews.requests.create,
         ctasEnabled: true
@@ -151,8 +179,9 @@ export function useCommunityOverviewActivity(communityId: number) {
       drafts: derivePanelState({
         domain: "drafts",
         loading,
+        queryError: drafts.isError,
         items: draftItems,
-        health: health.state,
+        health: healthState,
         viewAllHref: routes.previews.drafts.viewAll,
         createHref: routes.previews.drafts.create,
         ctasEnabled: true
@@ -160,18 +189,19 @@ export function useCommunityOverviewActivity(communityId: number) {
       proposals: derivePanelState({
         domain: "proposals",
         loading,
+        queryError: proposals.isError,
         items: proposalItems,
-        health: health.state,
+        health: healthState,
         viewAllHref: routes.previews.proposals.viewAll,
         createHref: routes.previews.proposals.create,
         ctasEnabled: false
       })
     };
-  }, [draftItems, drafts.isLoading, health.state, proposalItems, proposals.isLoading, requestItems, requests.isLoading, routes.previews.drafts.create, routes.previews.drafts.viewAll, routes.previews.proposals.create, routes.previews.proposals.viewAll, routes.previews.requests.create, routes.previews.requests.viewAll]);
+  }, [draftItems, drafts.isError, drafts.isLoading, healthState, proposalItems, proposals.isError, proposals.isLoading, requestItems, requests.isError, requests.isLoading, routes.previews.drafts.create, routes.previews.drafts.viewAll, routes.previews.proposals.create, routes.previews.proposals.viewAll, routes.previews.requests.create, routes.previews.requests.viewAll]);
 
   return {
     panels,
-    health: health.state,
-    refetch: () => Promise.all([requests.refetch(), drafts.refetch(), proposals.refetch(), health.refetch()])
+    health: healthState,
+    refetch: () => Promise.all([requests.refetch(), drafts.refetch(), proposals.refetch(), refetchHealth()])
   };
 }

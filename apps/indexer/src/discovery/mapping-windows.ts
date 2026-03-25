@@ -32,17 +32,28 @@ export const applyModuleAddressUpdate = async (ctx: DbContext, input: WindowInpu
   const newAddress = normalizeAddress(input.newAddress);
 
   if (!isZeroAddress(oldAddress)) {
-    await db
-      .update(emitterMappingWindows, { emitterAddress: oldAddress })
-      .set({
-        activeToBlock: input.blockNumber,
-        activeToLogIndex: Math.max(input.logIndex - 1, 0),
-        closedAt: input.timestamp,
-      });
+    if (typeof db.__getEmitterWindows === "function") {
+      await db
+        .update(emitterMappingWindows, { emitterAddress: oldAddress })
+        .set({
+          activeToBlock: input.blockNumber,
+          activeToLogIndex: Math.max(input.logIndex - 1, 0),
+          closedAt: input.timestamp,
+        });
 
-    await db
-      .delete(emitterMappingActive)
-      .where(eq(emitterMappingActive.emitterAddress, oldAddress));
+      await db.delete(emitterMappingActive).where(eq(emitterMappingActive.emitterAddress, oldAddress));
+    } else {
+      await db.sql
+        .update(emitterMappingWindows)
+        .set({
+          activeToBlock: input.blockNumber,
+          activeToLogIndex: Math.max(input.logIndex - 1, 0),
+          closedAt: input.timestamp,
+        })
+        .where(eq(emitterMappingWindows.emitterAddress, oldAddress));
+
+      await db.delete(emitterMappingActive, { emitterAddress: oldAddress });
+    }
   }
 
   if (isZeroAddress(newAddress)) {
@@ -78,14 +89,11 @@ export const applyModuleAddressUpdate = async (ctx: DbContext, input: WindowInpu
       updatedAt: input.timestamp,
     })
     .onConflictDoUpdate({
-      target: emitterMappingActive.emitterAddress,
-      set: {
-        chainId,
-        communityId: input.communityId,
-        moduleKey: input.moduleKey,
-        activeFromBlock: input.blockNumber,
-        activeFromLogIndex: input.logIndex,
-        updatedAt: input.timestamp,
-      },
+      chainId,
+      communityId: input.communityId,
+      moduleKey: input.moduleKey,
+      activeFromBlock: input.blockNumber,
+      activeFromLogIndex: input.logIndex,
+      updatedAt: input.timestamp,
     });
 };

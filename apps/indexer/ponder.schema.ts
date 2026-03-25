@@ -12,7 +12,8 @@ export const communities = schema.table("communities", (t) => ({
 }));
 
 export const requests = schema.table("requests", (t) => ({
-  id: t.integer().primaryKey(),
+  id: t.text().primaryKey(),
+  requestId: t.integer().notNull(),
   communityId: t.integer().notNull(),
   author: t.text().notNull(),
   status: t.text().notNull(),
@@ -22,7 +23,9 @@ export const requests = schema.table("requests", (t) => ({
 }));
 
 export const comments = schema.table("comments", (t) => ({
-  id: t.integer().primaryKey(),
+  id: t.text().primaryKey(),
+  commentId: t.integer().notNull(),
+  communityId: t.integer().notNull(),
   requestId: t.integer().notNull(),
   author: t.text().notNull(),
   cid: t.text().notNull(),
@@ -32,7 +35,8 @@ export const comments = schema.table("comments", (t) => ({
 }));
 
 export const drafts = schema.table("drafts", (t) => ({
-  id: t.integer().primaryKey(),
+  id: t.text().primaryKey(),
+  draftId: t.integer().notNull(),
   communityId: t.integer().notNull(),
   requestId: t.integer().notNull(),
   status: t.text().notNull(),
@@ -44,6 +48,7 @@ export const drafts = schema.table("drafts", (t) => ({
 
 export const draftVersions = schema.table("draft_versions", (t) => ({
   id: t.text().primaryKey(),
+  communityId: t.integer().notNull(),
   draftId: t.integer().notNull(),
   versionNumber: t.integer().notNull(),
   cid: t.text().notNull(),
@@ -53,6 +58,7 @@ export const draftVersions = schema.table("draft_versions", (t) => ({
 
 export const draftReviews = schema.table("draft_reviews", (t) => ({
   id: t.text().primaryKey(),
+  communityId: t.integer().notNull(),
   draftId: t.integer().notNull(),
   reviewer: t.text().notNull(),
   stance: t.text().notNull(),
@@ -62,6 +68,7 @@ export const draftReviews = schema.table("draft_reviews", (t) => ({
 
 export const proposals = schema.table("proposals", (t) => ({
   id: t.text().primaryKey(),
+  proposalId: t.text().notNull(),
   communityId: t.integer().notNull(),
   proposer: t.text().notNull(),
   descriptionCid: t.text(),
@@ -78,6 +85,7 @@ export const proposals = schema.table("proposals", (t) => ({
 
 export const proposalVotes = schema.table("proposal_votes", (t) => ({
   id: t.text().primaryKey(),
+  communityId: t.integer().notNull(),
   proposalId: t.text().notNull(),
   voter: t.text().notNull(),
   weight: t.bigint().notNull(),
@@ -86,7 +94,8 @@ export const proposalVotes = schema.table("proposal_votes", (t) => ({
 }));
 
 export const engagements = schema.table("engagements", (t) => ({
-  id: t.integer().primaryKey(),
+  id: t.text().primaryKey(),
+  engagementId: t.integer().notNull(),
   communityId: t.integer().notNull(),
   valuableActionId: t.integer().notNull(),
   participant: t.text().notNull(),
@@ -98,6 +107,7 @@ export const engagements = schema.table("engagements", (t) => ({
 
 export const jurorAssignments = schema.table("juror_assignments", (t) => ({
   id: t.text().primaryKey(),
+  communityId: t.integer().notNull(),
   engagementId: t.integer().notNull(),
   juror: t.text().notNull(),
   weight: t.bigint(),

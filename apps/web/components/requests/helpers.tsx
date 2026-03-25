@@ -75,13 +75,20 @@ export function normalizeDateString(value: unknown): string | undefined {
   return undefined;
 }
 
+export function commentTreeKey(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "root";
+  const raw = String(value).trim();
+  if (!raw) return "root";
+  return raw.includes(":") ? (raw.split(":").pop() ?? raw) : raw;
+}
+
 export function buildCommentTree<T extends { id: string | number; parentId?: string | number | null; createdAt?: string | number | Date | null }>(
   items: T[]
 ): Map<string, T[]> {
   const map = new Map<string, T[]>();
 
   items.forEach((item) => {
-    const key = item.parentId ? String(item.parentId) : "root";
+    const key = commentTreeKey(item.parentId);
     const list = map.get(key) ?? [];
     list.push(item);
     map.set(key, list);

@@ -77,6 +77,12 @@ For step-by-step lifecycle walkthroughs, see [docs/EN/Flows.md](docs/EN/Flows.md
 - **DraftsManager**: Collaborative proposal development with versioning and review
 - **ParamController**: Dynamic parameter management with governance control
 
+**Draft Authoring Surfaces (Web App)**:
+- **Guided composer (default)**: The draft creation UI starts in guided mode and converts human-readable choices into deterministic ABI calldata for Timelock execution.
+- **Locked safety presets**: High-risk parameters for common governance actions are preconfigured in curated presets so non-technical operators can compose valid actions without manual bytes32 editing.
+- **Expert composer (explicit route)**: Raw ABI editing remains available on dedicated expert routes for advanced operators who need full function-level control.
+- **Invariant alignment**: Both guided and expert modes emit the same action bundle payload consumed by DraftsManager, preserving governance/timelock authority boundaries.
+
 📖 **Detailed Documentation**:
 - [CommunityRegistry](./contracts/CommunityRegistry.md) - Complete technical specification
 - [RequestHub](./contracts/RequestHub.md) - Discussion and moderation system

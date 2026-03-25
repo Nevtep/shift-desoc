@@ -12,7 +12,10 @@ import { buildSectionTabs } from "../../../lib/community-overview/availability";
 
 export function CommunityOverviewPage({ communityId }: { communityId: number }) {
   const overview = useCommunityOverview(communityId);
-  const activity = useCommunityOverviewActivity(communityId);
+  const activity = useCommunityOverviewActivity(communityId, {
+    state: overview.indexer.state,
+    refetch: overview.indexer.refetch
+  });
   const tabs = buildSectionTabs(communityId);
 
   return (

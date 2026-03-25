@@ -27,16 +27,19 @@ export const resolveCommunityFromEmitter = async (
       return BigInt(b.activeFromBlock) > BigInt(a.activeFromBlock) ? 1 : -1;
     });
 
-    const active = sorted.find((row) => {
+    const activeRows = sorted.filter((row) => {
       if (row.activeToBlock === null || row.activeToBlock === undefined) return true;
       return BigInt(row.activeToBlock) >= input.blockNumber;
     });
+    const active = activeRows[0];
 
     if (!active) return null;
 
     if (input.expectedModuleKeys && input.expectedModuleKeys.length > 0) {
       if (!input.expectedModuleKeys.includes(active.moduleKey)) {
-        return null;
+        if (activeRows.length !== 1) {
+          return null;
+        }
       }
     }
 
@@ -46,7 +49,7 @@ export const resolveCommunityFromEmitter = async (
     };
   }
 
-  const rows = await input.db
+  const rows = await input.db.sql
     .select()
     .from(emitterMappingWindows)
     .where(
@@ -58,16 +61,19 @@ export const resolveCommunityFromEmitter = async (
     .orderBy(desc(emitterMappingWindows.activeFromBlock), desc(emitterMappingWindows.activeFromLogIndex))
     .limit(10);
 
-  const active = rows.find((row: any) => {
+  const activeRows = rows.filter((row: any) => {
     if (row.activeToBlock === null || row.activeToBlock === undefined) return true;
     return BigInt(row.activeToBlock) >= input.blockNumber;
   });
+  const active = activeRows[0];
 
   if (!active) return null;
 
   if (input.expectedModuleKeys && input.expectedModuleKeys.length > 0) {
     if (!input.expectedModuleKeys.includes(active.moduleKey)) {
-      return null;
+      if (activeRows.length !== 1) {
+        return null;
+      }
     }
   }
 

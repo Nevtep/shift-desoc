@@ -56,4 +56,23 @@ describe("DraftDetail", () => {
     const requestLink = screen.getByRole("link", { name: "1" });
     expect(requestLink).toHaveAttribute("href", "/communities/1/coordination/requests/1");
   });
+
+  it("renders safely when draft payload omits reviews", async () => {
+    mockWagmiHooks({ connected: false });
+
+    server.use(
+      http.get("http://localhost:4000/drafts/:draftId", () => {
+        return HttpResponse.json({
+          draft: {
+            ...fixtures.draft,
+            versions: fixtures.draftVersions
+          }
+        });
+      })
+    );
+
+    renderWithProviders(<DraftDetail draftId={fixtures.draft.id} />);
+
+    expect(await screen.findByText(/No reviews submitted yet/i)).toBeInTheDocument();
+  });
 });

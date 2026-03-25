@@ -35,9 +35,9 @@ export type CommunitiesQueryResult = {
 };
 
 export const RequestsQuery = /* GraphQL */ `
-  query Requests($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
+  query Requests($communityId: Int, $limit: Int = 20, $after: String) {
     requests: requestss(
-      where: { communityId: $communityId, status_in: $status }
+      where: { communityId: $communityId }
       orderBy: "createdAt"
       orderDirection: "desc"
       after: $after
@@ -81,9 +81,10 @@ export type RequestsQueryResult = {
 };
 
 export const RequestQuery = /* GraphQL */ `
-  query Request($id: Int!) {
+  query Request($id: String!) {
     request: requests(id: $id) {
       id
+      requestId
       communityId
       author
       status
@@ -97,6 +98,7 @@ export const RequestQuery = /* GraphQL */ `
 export type RequestQueryResult = {
   request: {
     id: string;
+    requestId: number;
     communityId: string;
     author: string;
     status: string;
