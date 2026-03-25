@@ -206,7 +206,7 @@ export const handlers = [
   http.post("/api/ipfs/upload", async () => {
     return HttpResponse.json({ cid: "uploaded-cid" });
   }),
-  http.get(`${API_BASE}/health`, () => {
+  http.get(`${API_BASE}/api/health`, () => {
     return HttpResponse.json({ ok: true });
   }),
   // Deploy wizard read-side placeholders (tests can override as needed)

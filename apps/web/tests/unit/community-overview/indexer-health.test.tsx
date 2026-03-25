@@ -53,7 +53,7 @@ describe("useIndexerHealth", () => {
 
   it("returns error when health endpoint fails", async () => {
     server.use(
-      http.get("http://localhost:4000/health", () => {
+      http.get("http://localhost:4000/api/health", () => {
         return HttpResponse.json({ ok: false }, { status: 503 });
       })
     );

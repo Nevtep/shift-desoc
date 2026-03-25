@@ -32,7 +32,7 @@ export function resolveIndexerHealth(args: {
 }
 
 export function useIndexerHealth(newestPreviewTimestamp: string | null) {
-  const query = useApiQuery<HealthResponse>(["indexer-health"], "/health", {
+  const query = useApiQuery<HealthResponse>(["indexer-health"], "/api/health", {
     staleTime: 30_000,
     retry: false
   });
