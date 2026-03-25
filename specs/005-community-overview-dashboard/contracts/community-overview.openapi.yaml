@@ -1,0 +1,43 @@
+openapi: 3.1.0
+info:
+  title: Community Overview Read API Contract
+  version: 0.1.0
+  description: Read-only REST endpoints used by the community overview for health/fallback status.
+servers:
+  - url: /api
+paths:
+  /health:
+    get:
+      summary: Indexer health status
+      operationId: getIndexerHealth
+      responses:
+        '200':
+          description: Indexer reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    const: true
+        '503':
+          description: Indexer unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    const: false
+components:
+  schemas:
+    IndexerHealth:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean

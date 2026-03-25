@@ -1,0 +1,54 @@
+# GraphQL Operations Contract: Community Overview Dashboard
+
+query CommunityOverviewRequests($communityId: Int!, $limit: Int = 3) {
+  requests: requestss(
+    where: { communityId: $communityId }
+    orderBy: "createdAt"
+    orderDirection: "desc"
+    limit: $limit
+  ) {
+    items {
+      id
+      communityId
+      status
+      cid
+      createdAt
+    }
+  }
+}
+
+query CommunityOverviewDrafts($communityId: Int!, $limit: Int = 3) {
+  drafts: draftss(
+    where: { communityId: $communityId }
+    orderBy: "updatedAt"
+    orderDirection: "desc"
+    limit: $limit
+  ) {
+    items {
+      id
+      requestId
+      status
+      latestVersionCid
+      updatedAt
+    }
+  }
+}
+
+query CommunityOverviewProposals($communityId: Int!, $limit: Int = 3) {
+  proposals: proposalss(
+    where: { communityId: $communityId }
+    orderBy: "createdAt"
+    orderDirection: "desc"
+    limit: $limit
+  ) {
+    items {
+      id
+      communityId
+      proposer
+      state
+      createdAt
+      queuedAt
+      executedAt
+    }
+  }
+}
