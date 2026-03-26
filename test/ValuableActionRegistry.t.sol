@@ -221,15 +221,15 @@ contract ValuableActionRegistryTest is Test {
         address newFounder = makeAddr("newFounder");
         uint256 communityId = COMMUNITY_ID;
 
-        address[] memory foundersBefore = registry.getCommunityFounders(communityId);
+        address[] memory foundersBefore = registry.getCommunityFounders();
         uint256 lengthBefore = foundersBefore.length;
         
         vm.startPrank(governance);
         registry.addFounder(newFounder);
         
         // Check founder was added to whitelist and list
-        assertTrue(registry.founderWhitelist(newFounder, communityId));
-        address[] memory founders = registry.getCommunityFounders(communityId);
+        assertTrue(registry.founderWhitelist(newFounder));
+        address[] memory founders = registry.getCommunityFounders();
         assertEq(founders.length, lengthBefore + 1);
         assertEq(founders[founders.length - 1], newFounder);
         
@@ -241,12 +241,12 @@ contract ValuableActionRegistryTest is Test {
         vm.startPrank(governance);
         registry.addFounder(founder1);
         
-        address[] memory foundersBefore = registry.getCommunityFounders(COMMUNITY_ID);
+        address[] memory foundersBefore = registry.getCommunityFounders();
         uint256 lengthBefore = foundersBefore.length;
         
         registry.addFounder(founder1); // Add again
         
-        address[] memory foundersAfter = registry.getCommunityFounders(COMMUNITY_ID);
+        address[] memory foundersAfter = registry.getCommunityFounders();
         assertEq(foundersAfter.length, lengthBefore); // No increase
         
         vm.stopPrank();

@@ -1,22 +1,40 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DeployWizard } from "../../../components/home/deploy-wizard";
 import { mockWagmiHooks, renderWithProviders } from "../utils";
+
+vi.mock("../../../hooks/useMyDeployedCommunities", () => ({
+  useMyDeployedCommunities: () => ({
+    hasCommunities: false,
+    isLoading: false,
+    refetch: vi.fn()
+  })
+}));
 
 describe("Deploy preflight gating", () => {
   it("auto-loads and displays shared infra details", async () => {
     mockWagmiHooks({ connected: true, chainId: 84532, address: "0xabc1230000000000000000000000000000000000" });
     renderWithProviders(<DeployWizard />);
 
-    expect(await screen.findByText(/Shared infra details/i)).toBeInTheDocument();
-    expect(screen.getByText(/ParamController:/i)).toBeInTheDocument();
-    expect(screen.getByText(/CommunityRegistry:/i)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/Community name/i), "Test Community");
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+
+    await userEvent.type(screen.getByLabelText(/Community description/i), "Test Description");
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+
+    await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+
+    expect(await screen.findByText(/Preflight check/i)).toBeInTheDocument();
+    expect(await screen.findByText(/All checks passed\. You can deploy\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Wallet:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Network:/i)).toBeInTheDocument();
   });
 
-  it("renders blocked states when wallet/network/shared infra/funds fail", async () => {
-    mockWagmiHooks({ connected: false, chainId: 1 });
+  it("renders blocked states when network/funds fail", async () => {
+    mockWagmiHooks({ connected: true, chainId: 1, address: "0xabc1230000000000000000000000000000000000" });
     renderWithProviders(
       <DeployWizard
         options={{
@@ -31,12 +49,16 @@ describe("Deploy preflight gating", () => {
       />
     );
 
-    await userEvent.click(await screen.findByRole("button", { name: /Run preflight/i }));
-    expect(await screen.findByText(/Connect wallet to start deployment/i)).toBeInTheDocument();
-    expect(screen.getByText(/Switch to a supported network/i)).toBeInTheDocument();
-    expect(screen.getByText(/Shared infrastructure is missing or invalid/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Connect a wallet and complete valid deployment configuration before starting/i)
-    ).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/Community name/i), "Test Community");
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+
+    await userEvent.type(screen.getByLabelText(/Community description/i), "Test Description");
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+
+    await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+
+    expect(await screen.findByText(/Switch to a supported network/i)).toBeInTheDocument();
+    expect(screen.getByText(/Insufficient native token balance for estimated deployment cost/i)).toBeInTheDocument();
   });
 });

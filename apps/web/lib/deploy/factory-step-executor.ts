@@ -1,5 +1,6 @@
 import type { Abi, PublicClient } from "viem";
 import { decodeEventLog, encodeDeployData, encodeFunctionData, keccak256, stringToBytes } from "viem";
+import { getAddress } from "viem";
 
 import type { StepExecutor, StepExecutionResult, WriteContractAsync } from "./step-executor-types";
 import type {
@@ -343,28 +344,28 @@ const REVENUE_ROUTER_ABI = [
     type: "function",
     name: "communityTreasuries",
     stateMutability: "view",
-    inputs: [{ type: "uint256" }],
+    inputs: [],
     outputs: [{ type: "address" }]
   },
   {
     type: "function",
     name: "supportedTokens",
     stateMutability: "view",
-    inputs: [{ type: "uint256" }, { type: "address" }],
+    inputs: [{ type: "address" }],
     outputs: [{ type: "bool" }]
   },
   {
     type: "function",
     name: "setCommunityTreasury",
     stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "address" }],
+    inputs: [{ type: "address" }],
     outputs: []
   },
   {
     type: "function",
     name: "setSupportedToken",
     stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "address" }, { type: "bool" }],
+    inputs: [{ type: "address" }, { type: "bool" }],
     outputs: []
   }
 ] as const satisfies Abi;
@@ -461,28 +462,28 @@ const MARKETPLACE_ABI = [
     type: "function",
     name: "communityActive",
     stateMutability: "view",
-    inputs: [{ type: "uint256" }],
+    inputs: [],
     outputs: [{ type: "bool" }]
   },
   {
     type: "function",
     name: "communityTokens",
     stateMutability: "view",
-    inputs: [{ type: "uint256" }],
+    inputs: [],
     outputs: [{ type: "address" }]
   },
   {
     type: "function",
     name: "setCommunityActive",
     stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "bool" }],
+    inputs: [{ type: "bool" }],
     outputs: []
   },
   {
     type: "function",
     name: "setCommunityToken",
     stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "address" }],
+    inputs: [{ type: "address" }],
     outputs: []
   }
 ] as const satisfies Abi;
@@ -578,9 +579,17 @@ const BOOTSTRAP_COORDINATOR_ABI = [
 const ACCESS_MANAGED_UNAUTHORIZED_SELECTOR = "0x068ca9d8";
 const VPT_ELECTION_POWER_ROLE = 1001n;
 const ROLES = {
+  COHORT_REVENUE_ROUTER_ROLE: 1n,
+  COHORT_INVESTMENT_RECORDER_ROLE: 2n,
   VALUABLE_ACTION_REGISTRY_ISSUER_ROLE: 3n,
+  VALUABLE_ACTION_SBT_MANAGER_ROLE: 4n,
+  VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE: 17n,
   REVENUE_ROUTER_DISTRIBUTOR_ROLE: 6n,
   REVENUE_ROUTER_POSITION_MANAGER_ROLE: 7n,
+  MEMBERSHIP_TOKEN_MINTER_ROLE: 11n,
+  MEMBERSHIP_TOKEN_GOVERNANCE_ROLE: 12n,
+  VERIFIER_MANAGER_CALLER_ROLE: 15n,
+  CREDENTIAL_MANAGER_APPROVER_ROLE: 16n,
   COMMERCE_DISPUTES_CALLER_ROLE: 13n,
   HOUSING_MARKETPLACE_CALLER_ROLE: 14n
 } as const;
@@ -945,7 +954,11 @@ function requiredAddress(value: string | undefined, label: string): `0x${string}
   if (!value) {
     throw new Error(`Missing ${label}. Set the corresponding NEXT_PUBLIC_* env var for wizard factory deploy.`);
   }
-  return value as `0x${string}`;
+  try {
+    return getAddress(value) as `0x${string}`;
+  } catch {
+    throw new Error(`Invalid ${label}. Set a valid 20-byte EVM address in the corresponding NEXT_PUBLIC_* env var.`);
+  }
 }
 
 function resolveFactoryAddresses(): FactoryAddresses {
@@ -980,10 +993,14 @@ function resolveFactoryAddressesFromPreflight(preflight: PreflightAssessment): F
 
 function resolveBootstrapCoordinatorAddress(): `0x${string}` | undefined {
   const value = process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ?? FACTORY_ENV_VALUES.bootstrapCoordinator;
-  if (!value || !/^0x[a-fA-F0-9]{40}$/.test(value)) {
+  if (!value) {
     return undefined;
   }
-  return value as `0x${string}`;
+  try {
+    return getAddress(value) as `0x${string}`;
+  } catch {
+    return undefined;
+  }
 }
 
 function resolveSharedInfra(preflight: PreflightAssessment): SharedInfra {
@@ -1747,6 +1764,7 @@ async function executeDeployStackWithFactories(
       "valuableActionSBT",
       "engagements",
       "positionManager",
+      "credentialManager",
     ])
   ) {
     verification = {
@@ -1757,7 +1775,7 @@ async function executeDeployStackWithFactories(
       valuableActionSBT: requireAddressArg(runAddresses.valuableActionSBT, "run.valuableActionSBT"),
       engagements: requireAddressArg(runAddresses.engagements, "run.engagements"),
       positionManager: requireAddressArg(runAddresses.positionManager, "run.positionManager"),
-      credentialManager: ZERO_ADDRESS as `0x${string}`,
+      credentialManager: requireAddressArg(runAddresses.credentialManager, "run.credentialManager"),
     };
   } else {
     if (accessManagerFromPriorDeployProgress && wasAddressTouchedInPriorTx(factories.verification)) {
@@ -1779,6 +1797,7 @@ async function executeDeployStackWithFactories(
           verifierElection: verification.verifierElection,
           verifierManager: verification.verifierManager,
           positionManager: verification.positionManager,
+          credentialManager: verification.credentialManager,
           valuableActionRegistry: verification.valuableActionRegistry,
           valuableActionSBT: verification.valuableActionSBT,
           engagements: verification.engagements,
@@ -1832,6 +1851,7 @@ async function executeDeployStackWithFactories(
       verifierElection: verification.verifierElection,
       verifierManager: verification.verifierManager,
       positionManager: verification.positionManager,
+      credentialManager: verification.credentialManager,
       valuableActionRegistry: verification.valuableActionRegistry,
       valuableActionSBT: verification.valuableActionSBT,
       engagements: verification.engagements,
@@ -1866,10 +1886,13 @@ async function executeDeployStackWithFactories(
     }
     | undefined;
 
-  if (accessManagerFromPriorDeployProgress && hasAddresses(runAddresses, ["revenueRouter", "communityToken", "treasuryAdapter"])) {
+  if (
+    accessManagerFromPriorDeployProgress &&
+    hasAddresses(runAddresses, ["cohortRegistry", "investmentCohortManager", "revenueRouter", "communityToken", "treasuryAdapter"])
+  ) {
     economic = {
-      cohortRegistry: ZERO_ADDRESS as `0x${string}`,
-      investmentCohortManager: ZERO_ADDRESS as `0x${string}`,
+      cohortRegistry: requireAddressArg(runAddresses.cohortRegistry, "run.cohortRegistry"),
+      investmentCohortManager: requireAddressArg(runAddresses.investmentCohortManager, "run.investmentCohortManager"),
       revenueRouter: requireAddressArg(runAddresses.revenueRouter, "run.revenueRouter"),
       communityToken: requireAddressArg(runAddresses.communityToken, "run.communityToken"),
       treasuryAdapter: requireAddressArg(runAddresses.treasuryAdapter, "run.treasuryAdapter"),
@@ -1890,6 +1913,8 @@ async function executeDeployStackWithFactories(
           treasuryAdapter: economic.treasuryAdapter,
         });
         publishAddresses({
+          cohortRegistry: economic.cohortRegistry,
+          investmentCohortManager: economic.investmentCohortManager,
           revenueRouter: economic.revenueRouter,
           communityToken: economic.communityToken,
           treasuryAdapter: economic.treasuryAdapter,
@@ -1938,6 +1963,8 @@ async function executeDeployStackWithFactories(
       );
     }
     publishAddresses({
+      cohortRegistry: economic.cohortRegistry,
+      investmentCohortManager: economic.investmentCohortManager,
       revenueRouter: economic.revenueRouter,
       communityToken: economic.communityToken,
       treasuryAdapter: economic.treasuryAdapter,
@@ -1961,11 +1988,14 @@ async function executeDeployStackWithFactories(
     }
     | undefined;
 
-  if (accessManagerFromPriorDeployProgress && hasAddresses(runAddresses, ["marketplace"])) {
+  if (
+    accessManagerFromPriorDeployProgress &&
+    hasAddresses(runAddresses, ["commerceDisputes", "marketplace", "housingManager"])
+  ) {
     commerce = {
-      commerceDisputes: ZERO_ADDRESS as `0x${string}`,
+      commerceDisputes: requireAddressArg(runAddresses.commerceDisputes, "run.commerceDisputes"),
       marketplace: requireAddressArg(runAddresses.marketplace, "run.marketplace"),
-      housingManager: ZERO_ADDRESS as `0x${string}`,
+      housingManager: requireAddressArg(runAddresses.housingManager, "run.housingManager"),
       projectFactory: ZERO_ADDRESS as `0x${string}`,
     };
   } else {
@@ -1982,6 +2012,10 @@ async function executeDeployStackWithFactories(
           marketplace: commerce.marketplace,
         });
         publishAddresses({ marketplace: commerce.marketplace });
+        publishAddresses({
+          commerceDisputes: commerce.commerceDisputes,
+          housingManager: commerce.housingManager,
+        });
       } catch {
         // Fall through to normal deploy path.
       }
@@ -2019,7 +2053,11 @@ async function executeDeployStackWithFactories(
         normalizeCommerceDeployment
       );
     }
-    publishAddresses({ marketplace: commerce.marketplace });
+    publishAddresses({
+      commerceDisputes: commerce.commerceDisputes,
+      marketplace: commerce.marketplace,
+      housingManager: commerce.housingManager,
+    });
     console.log("[DeployWizard] Commerce layer deployed", {
       commerceDisputes: commerce.commerceDisputes,
       marketplace: commerce.marketplace,
@@ -2110,21 +2148,27 @@ async function executeDeployStackWithFactories(
     communityRegistry: sharedInfra.communityRegistry,
     paramController: sharedInfra.paramController,
     accessManager,
+    membershipToken: governance.membershipToken,
     governor: governance.governor,
     timelock: governance.timelock,
     requestHub: coordination.requestHub,
     draftsManager: coordination.draftsManager,
     engagements: verification.engagements,
     positionManager: verification.positionManager,
+    credentialManager: verification.credentialManager,
     valuableActionRegistry: verification.valuableActionRegistry,
     verifierPowerToken: verification.verifierPowerToken,
     verifierElection: verification.verifierElection,
     verifierManager: verification.verifierManager,
     valuableActionSBT: verification.valuableActionSBT,
+    cohortRegistry: economic.cohortRegistry,
+    investmentCohortManager: economic.investmentCohortManager,
     treasuryAdapter: economic.treasuryAdapter,
     communityToken: economic.communityToken,
     revenueRouter: economic.revenueRouter,
+    commerceDisputes: commerce.commerceDisputes,
     marketplace: commerce.marketplace,
+    housingManager: commerce.housingManager,
   };
   publishAddresses(deploymentAddresses);
 
@@ -2382,19 +2426,170 @@ async function executeConfigureAccessPermissions(
   });
 
   const runAddresses = requireRunScopedAddresses(session);
-  const requestHub = runAddresses.requestHub;
-  const positionManager = runAddresses.positionManager;
-  const valuableActionRegistry = runAddresses.valuableActionRegistry;
-  const verifierPowerToken = runAddresses.verifierPowerToken;
-  const verifierElection = runAddresses.verifierElection;
-  const valuableActionSBT = runAddresses.valuableActionSBT;
-  const treasuryAdapter = runAddresses.treasuryAdapter;
-  const communityToken = runAddresses.communityToken;
-  const revenueRouter = runAddresses.revenueRouter;
-  const marketplace = runAddresses.marketplace;
+  const hydratedRunAddresses = await (async () => {
+    const sender = requireAddressArg(connectedAddress ?? session.deployerAddress, "deployment sender");
+    const factories = resolveFactoryAddressesFromPreflight(context.preflight);
+    const artifacts = await loadFactoryArtifacts();
+    let nextAddresses: DeploymentRunAddresses = { ...runAddresses };
+
+    const needsVerificationHydration = [
+      nextAddresses.verifierPowerToken,
+      nextAddresses.verifierElection,
+      nextAddresses.verifierManager,
+      nextAddresses.valuableActionRegistry,
+      nextAddresses.valuableActionSBT,
+      nextAddresses.engagements,
+      nextAddresses.positionManager,
+      nextAddresses.credentialManager,
+    ].some((value) => !isNonZeroAddress(value));
+
+    if (needsVerificationHydration) {
+      try {
+        const verification = await readFactoryDeploymentWithRetry(
+          publicClient,
+          factories.verification,
+          artifacts.verificationAbi,
+          sender,
+          normalizeVerificationDeployment
+        );
+        const patch: Partial<DeploymentRunAddresses> = {
+          verifierPowerToken: verification.verifierPowerToken,
+          verifierElection: verification.verifierElection,
+          verifierManager: verification.verifierManager,
+          valuableActionRegistry: verification.valuableActionRegistry,
+          valuableActionSBT: verification.valuableActionSBT,
+          engagements: verification.engagements,
+          positionManager: verification.positionManager,
+          credentialManager: verification.credentialManager,
+        };
+        nextAddresses = { ...nextAddresses, ...patch };
+        context.onDeploymentAddresses?.(patch);
+        console.log("[DeployWizard] Hydrated verification addresses for configure step", patch);
+      } catch (error) {
+        console.warn("[DeployWizard] Unable to hydrate verification addresses for configure step", {
+          error: String(error),
+        });
+      }
+    }
+
+    const needsEconomicHydration = [
+      nextAddresses.cohortRegistry,
+      nextAddresses.investmentCohortManager,
+      nextAddresses.revenueRouter,
+      nextAddresses.communityToken,
+      nextAddresses.treasuryAdapter,
+    ].some((value) => !isNonZeroAddress(value));
+
+    if (needsEconomicHydration) {
+      try {
+        const economic = await readFactoryDeploymentWithRetry(
+          publicClient,
+          factories.economic,
+          artifacts.economicAbi,
+          sender,
+          normalizeEconomicDeployment
+        );
+        const patch: Partial<DeploymentRunAddresses> = {
+          cohortRegistry: economic.cohortRegistry,
+          investmentCohortManager: economic.investmentCohortManager,
+          revenueRouter: economic.revenueRouter,
+          communityToken: economic.communityToken,
+          treasuryAdapter: economic.treasuryAdapter,
+        };
+        nextAddresses = { ...nextAddresses, ...patch };
+        context.onDeploymentAddresses?.(patch);
+        console.log("[DeployWizard] Hydrated economic addresses for configure step", patch);
+      } catch (error) {
+        console.warn("[DeployWizard] Unable to hydrate economic addresses for configure step", {
+          error: String(error),
+        });
+      }
+    }
+
+    const needsCommerceHydration = [
+      nextAddresses.commerceDisputes,
+      nextAddresses.marketplace,
+      nextAddresses.housingManager,
+    ].some((value) => !isNonZeroAddress(value));
+
+    if (needsCommerceHydration) {
+      try {
+        const commerce = await readFactoryDeploymentWithRetry(
+          publicClient,
+          factories.commerce,
+          artifacts.commerceAbi,
+          sender,
+          normalizeCommerceDeployment
+        );
+        const patch: Partial<DeploymentRunAddresses> = {
+          commerceDisputes: commerce.commerceDisputes,
+          marketplace: commerce.marketplace,
+          housingManager: commerce.housingManager,
+        };
+        nextAddresses = { ...nextAddresses, ...patch };
+        context.onDeploymentAddresses?.(patch);
+        console.log("[DeployWizard] Hydrated commerce addresses for configure step", patch);
+      } catch (error) {
+        console.warn("[DeployWizard] Unable to hydrate commerce addresses for configure step", {
+          error: String(error),
+        });
+      }
+    }
+
+    const needsGovernanceHydration = [
+      nextAddresses.membershipToken,
+      nextAddresses.governor,
+      nextAddresses.timelock,
+    ].some((value) => !isNonZeroAddress(value));
+
+    if (needsGovernanceHydration) {
+      try {
+        const governance = await readFactoryDeploymentWithRetry(
+          publicClient,
+          factories.governance,
+          artifacts.governanceAbi,
+          sender,
+          normalizeGovernanceDeployment
+        );
+        const patch: Partial<DeploymentRunAddresses> = {
+          membershipToken: governance.membershipToken,
+          governor: governance.governor,
+          timelock: governance.timelock,
+        };
+        nextAddresses = { ...nextAddresses, ...patch };
+        context.onDeploymentAddresses?.(patch);
+        console.log("[DeployWizard] Hydrated governance addresses for configure step", patch);
+      } catch (error) {
+        console.warn("[DeployWizard] Unable to hydrate governance addresses for configure step", {
+          error: String(error),
+        });
+      }
+    }
+
+    return nextAddresses;
+  })();
+  const requestHub = hydratedRunAddresses.requestHub;
+  const positionManager = requireAddressArg(hydratedRunAddresses.positionManager, "run.positionManager");
+  const verifierManager = hydratedRunAddresses.verifierManager;
+  const engagements = hydratedRunAddresses.engagements;
+  const credentialManager = requireAddressArg(hydratedRunAddresses.credentialManager, "run.credentialManager");
+  const cohortRegistry = requireAddressArg(hydratedRunAddresses.cohortRegistry, "run.cohortRegistry");
+  const investmentCohortManager = requireAddressArg(hydratedRunAddresses.investmentCohortManager, "run.investmentCohortManager");
+  const valuableActionRegistry = hydratedRunAddresses.valuableActionRegistry;
+  const verifierPowerToken = hydratedRunAddresses.verifierPowerToken;
+  const verifierElection = hydratedRunAddresses.verifierElection;
+  const valuableActionSBT = hydratedRunAddresses.valuableActionSBT;
+  const treasuryAdapter = hydratedRunAddresses.treasuryAdapter;
+  const communityToken = hydratedRunAddresses.communityToken;
+  const revenueRouter = hydratedRunAddresses.revenueRouter;
+  const membershipToken = requireAddressArg(hydratedRunAddresses.membershipToken, "run.membershipToken");
+  const commerceDisputes = requireAddressArg(hydratedRunAddresses.commerceDisputes, "run.commerceDisputes");
+  const marketplace = hydratedRunAddresses.marketplace;
+  const housingManager = requireAddressArg(hydratedRunAddresses.housingManager, "run.housingManager");
+  const timelock = hydratedRunAddresses.timelock;
 
   const founder = connectedAddress ?? session.deployerAddress;
-  const accessManager = runAddresses.accessManager;
+  const accessManager = hydratedRunAddresses.accessManager;
 
   try {
     const registryAuthority = await publicClient.readContract({
@@ -2490,15 +2685,57 @@ async function executeConfigureAccessPermissions(
       role: adminRole,
       signatures: [
         "setValuableActionSBT(address)",
+        "setIssuancePaused(bool)",
         "setIssuanceModule(address,bool)",
+        "setCommunityNarrowing(bool)",
+        "setCommunityIssuanceModule(address,bool)",
         "addFounder(address)",
-        "addFounder(address,uint256)"
+        "proposeValuableAction((uint32,uint32,uint32,uint8,bytes32,uint32,uint8,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64),bytes32)",
+        "activateFromGovernance(uint256,bytes32)",
+        "update(uint256,(uint32,uint32,uint32,uint8,bytes32,uint32,uint8,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64))",
+        "deactivate(uint256)"
       ]
+    },
+    {
+      target: valuableActionRegistry,
+      role: ROLES.VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE,
+      signatures: ["setModerator(address,bool)"]
+    },
+    {
+      target: valuableActionRegistry,
+      role: ROLES.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE,
+      signatures: [
+        "issueEngagement(address,uint8,bytes32,bytes)",
+        "issuePosition(address,bytes32,uint32,bytes)",
+        "issueInvestment(address,uint256,uint32,bytes)",
+        "closePositionToken(uint256,uint8)",
+        "issueRoleFromPosition(address,bytes32,uint32,uint64,uint64,uint8,bytes)"
+      ]
+    },
+    {
+      target: engagements,
+      role: adminRole,
+      signatures: ["revoke(uint256)", "updateContracts(address,address)"]
+    },
+    {
+      target: verifierElection,
+      role: adminRole,
+      signatures: [
+        "setVerifierSet(address[],uint256[],string)",
+        "banVerifiers(address[],string)",
+        "unbanVerifier(address,string)",
+        "adjustVerifierPower(address,uint256,string)"
+      ]
+    },
+    {
+      target: verifierManager,
+      role: ROLES.VERIFIER_MANAGER_CALLER_ROLE,
+      signatures: ["selectJurors(uint256,uint256,uint256,bool)", "reportFraud(uint256,address[],string)"]
     },
     {
       target: verifierPowerToken,
       role: adminRole,
-      signatures: ["initializeCommunity(string)", "initializeCommunity(uint256,string)", "setURI(string)"]
+      signatures: ["initializeCommunity(string)", "adminTransfer(address,address,uint256,string)", "setURI(string)"]
     },
     {
       target: verifierPowerToken,
@@ -2513,38 +2750,158 @@ async function executeConfigureAccessPermissions(
     {
       target: revenueRouter,
       role: adminRole,
-      signatures: ["setCommunityTreasury(uint256,address)", "setSupportedToken(uint256,address,bool)"]
+      signatures: [
+        "setCommunityTreasury(address)",
+        "setSupportedToken(address,bool)",
+        "setParamController(address)",
+        "setCohortRegistry(address)"
+      ]
+    },
+    {
+      target: revenueRouter,
+      role: ROLES.REVENUE_ROUTER_POSITION_MANAGER_ROLE,
+      signatures: ["registerPosition(uint256)", "unregisterPosition(uint256)"]
+    },
+    {
+      target: revenueRouter,
+      role: ROLES.REVENUE_ROUTER_DISTRIBUTOR_ROLE,
+      signatures: ["routeRevenue(address,uint256)"]
+    },
+    {
+      target: positionManager,
+      role: adminRole,
+      signatures: [
+        "setRevenueRouter(address)",
+        "definePositionType(bytes32,uint32,bool)",
+        "approveApplication(uint256,bytes)",
+        "closePosition(uint256,uint8,bytes)"
+      ]
+    },
+    {
+      target: cohortRegistry,
+      role: adminRole,
+      signatures: ["createCohort(uint16,uint32,bytes32,uint64,uint64,bool)", "setCohortActive(uint256,bool)"]
+    },
+    {
+      target: cohortRegistry,
+      role: ROLES.COHORT_REVENUE_ROUTER_ROLE,
+      signatures: ["markRecovered(uint256,uint256)"]
+    },
+    {
+      target: cohortRegistry,
+      role: ROLES.COHORT_INVESTMENT_RECORDER_ROLE,
+      signatures: ["addInvestment(uint256,address,uint256,uint256)"]
+    },
+    {
+      target: investmentCohortManager,
+      role: adminRole,
+      signatures: [
+        "createCohort(uint16,uint32,bytes32,uint64,uint64,bool)",
+        "setCohortActive(uint256,bool)",
+        "issueInvestment(address,uint256,uint32,bytes)"
+      ]
+    },
+    {
+      target: credentialManager,
+      role: adminRole,
+      signatures: [
+        "defineCourse(bytes32,address,bool)",
+        "setCourseActive(bytes32,bool)",
+        "revokeCredential(uint256,bytes32,bytes)"
+      ]
+    },
+    {
+      target: credentialManager,
+      role: ROLES.CREDENTIAL_MANAGER_APPROVER_ROLE,
+      signatures: ["approveApplication(uint256)"]
     },
     {
       target: treasuryAdapter,
       role: adminRole,
       signatures: [
         "setTokenAllowed(address,bool)",
-        "setTokenAllowed(uint256,address,bool)",
         "setCapBps(address,uint16)",
-        "setCapBps(uint256,address,uint16)",
         "setDestinationAllowed(address,bool)",
-        "setDestinationAllowed(uint256,address,bool)"
+        "setVaultAdapterAllowed(address,bool)"
       ]
     },
     {
       target: marketplace,
       role: adminRole,
-      signatures: ["setCommunityActive(uint256,bool)", "setCommunityToken(uint256,address)"]
+      signatures: [
+        "setCommunityActive(bool)",
+        "setCommunityToken(address)",
+        "setCommerceDisputes(address)",
+        "setRevenueRouter(address)"
+      ]
+    },
+    {
+      target: membershipToken,
+      role: ROLES.MEMBERSHIP_TOKEN_MINTER_ROLE,
+      signatures: ["mint(address,uint256,string)", "batchMint(address[],uint256[],string)"]
+    },
+    {
+      target: membershipToken,
+      role: ROLES.MEMBERSHIP_TOKEN_GOVERNANCE_ROLE,
+      signatures: ["emergencyBurn(address,uint256)"]
+    },
+    {
+      target: valuableActionSBT,
+      role: ROLES.VALUABLE_ACTION_SBT_MANAGER_ROLE,
+      signatures: [
+        "mintEngagement(address,uint8,bytes32,bytes)",
+        "mintPosition(address,bytes32,uint32,bytes)",
+        "mintRoleFromPosition(address,bytes32,uint32,uint64,uint64,uint8,bytes)",
+        "mintInvestment(address,uint256,uint32,bytes)",
+        "setEndedAt(uint256,uint64)",
+        "closePositionToken(uint256,uint8)",
+        "updateTokenURI(uint256,string)"
+      ]
+    },
+    {
+      target: commerceDisputes,
+      role: adminRole,
+      signatures: [
+        "setDisputeReceiver(address)",
+        "finalizeDispute(uint256,uint8)",
+        "cancelDispute(uint256)"
+      ]
+    },
+    {
+      target: commerceDisputes,
+      role: ROLES.COMMERCE_DISPUTES_CALLER_ROLE,
+      signatures: ["openDispute(uint8,uint256,address,address,uint256,string)"]
+    },
+    {
+      target: housingManager,
+      role: adminRole,
+      signatures: ["createUnit(address,string,uint256,uint256,uint256)"]
+    },
+    {
+      target: housingManager,
+      role: ROLES.HOUSING_MARKETPLACE_CALLER_ROLE,
+      signatures: ["consume(uint256,address,bytes,uint256)", "onOrderSettled(uint256,uint256,uint8)"]
     }
   ] as const;
 
   const roleGrants = [
     { role: VPT_ELECTION_POWER_ROLE, account: verifierElection as `0x${string}`, executionDelay: 0 },
-    ...(positionManager
-      ? [
-          {
-            role: ROLES.REVENUE_ROUTER_POSITION_MANAGER_ROLE,
-            account: positionManager as `0x${string}`,
-            executionDelay: 0
-          }
-        ]
-      : []),
+    { role: ROLES.VERIFIER_MANAGER_CALLER_ROLE, account: engagements as `0x${string}`, executionDelay: 0 },
+    {
+      role: ROLES.REVENUE_ROUTER_POSITION_MANAGER_ROLE,
+      account: positionManager as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.COHORT_REVENUE_ROUTER_ROLE,
+      account: revenueRouter as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.COHORT_INVESTMENT_RECORDER_ROLE,
+      account: investmentCohortManager as `0x${string}`,
+      executionDelay: 0
+    },
     {
       role: ROLES.REVENUE_ROUTER_DISTRIBUTOR_ROLE,
       account: marketplace as `0x${string}`,
@@ -2563,6 +2920,56 @@ async function executeConfigureAccessPermissions(
     {
       role: ROLES.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE,
       account: requestHub as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE,
+      account: positionManager as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE,
+      account: investmentCohortManager as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE,
+      account: credentialManager as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_REGISTRY_MODERATOR_ROLE,
+      account: timelock as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.MEMBERSHIP_TOKEN_MINTER_ROLE,
+      account: engagements as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_SBT_MANAGER_ROLE,
+      account: valuableActionRegistry as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_SBT_MANAGER_ROLE,
+      account: engagements as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_SBT_MANAGER_ROLE,
+      account: positionManager as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_SBT_MANAGER_ROLE,
+      account: investmentCohortManager as `0x${string}`,
+      executionDelay: 0
+    },
+    {
+      role: ROLES.VALUABLE_ACTION_SBT_MANAGER_ROLE,
+      account: credentialManager as `0x${string}`,
       executionDelay: 0
     }
   ] as const;

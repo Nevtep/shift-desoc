@@ -5,6 +5,21 @@ import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { server } from "./server";
 import { wagmiMockState, buildMockedHooks } from "./mocks/wagmiMock";
 
+const mockedPublicClient = {
+  waitForTransactionReceipt: async () => ({
+    status: "success",
+    logs: [],
+    contractAddress: "0x000000000000000000000000000000000000dEaD"
+  }),
+  estimateContractGas: async () => 300000n,
+  readContract: async () => 1n,
+  getBytecode: async () => "0x1234",
+  getBalance: async () => 10_000_000_000_000_000_000n,
+  getTransactionCount: async () => 0n,
+  getBlockNumber: async () => 38_600_000n,
+  getLogs: async () => []
+};
+
 // Default envs for client code
 process.env.NEXT_PUBLIC_GRAPHQL_URL ||= "http://localhost:4000/graphql";
 process.env.NEXT_PUBLIC_INDEXER_API_URL ||= "http://localhost:4000";
@@ -50,20 +65,7 @@ vi.mock("wagmi", async () => {
     useWriteContract: () => buildMockedHooks().writeContract,
     useWalletClient: () => buildMockedHooks().walletClient,
     useReadContract: () => ({ data: undefined, isLoading: false, isError: false }),
-    usePublicClient: () => ({
-      waitForTransactionReceipt: async () => ({
-        status: "success",
-        logs: [],
-        contractAddress: "0x000000000000000000000000000000000000dEaD"
-      }),
-      estimateContractGas: async () => 300000n,
-      readContract: async () => 1n,
-      getBytecode: async () => "0x1234",
-      getBalance: async () => 10_000_000_000_000_000_000n,
-      getTransactionCount: async () => 0n,
-      getBlockNumber: async () => 38_600_000n,
-      getLogs: async () => []
-    })
+    usePublicClient: () => mockedPublicClient
   };
 });
 

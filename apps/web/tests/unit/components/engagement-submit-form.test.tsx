@@ -5,9 +5,28 @@ import { describe, expect, it, vi } from "vitest";
 import { EngagementSubmitForm } from "../../../components/engagements/engagement-submit-form";
 import { renderWithProviders, mockWagmiHooks } from "../utils";
 
-vi.mock("../../../lib/contracts", () => {
+vi.mock("../../../lib/contracts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/contracts")>();
   return {
+    ...actual,
     getContractConfig: () => ({ address: "0x0000000000000000000000000000000000000001", abi: [] })
+  };
+});
+
+vi.mock("../../../hooks/useCommunityModules", () => {
+  return {
+    useCommunityModules: () => ({
+      modules: {
+        engagementsManager: "0x0000000000000000000000000000000000000008"
+      },
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null
+    }),
+    COMMUNITY_MODULE_ABIS: {
+      engagements: []
+    }
   };
 });
 

@@ -5,7 +5,7 @@ import { useAccount, useChainId } from "wagmi";
 import { parseAbiItem } from "viem";
 import { getContractAddress } from "../lib/contracts";
 import { findResumeCandidate, listSessions, saveSession } from "../lib/deploy/session-store";
-import type { DeploymentWizardSession } from "../lib/deploy/types";
+import type { DeploymentWizardSession, VerificationSnapshot } from "../lib/deploy/types";
 import type { CommunityDeploymentConfig } from "../lib/deploy/config";
 import { readVerificationSnapshot as readVerificationSnapshotFromChain } from "../lib/deploy/onchain";
 import { evaluateVerificationSnapshot } from "../lib/deploy/verification";
@@ -20,19 +20,7 @@ export type ResumeTarget = {
 export type OnchainResumeReader = (
   communityId: number,
   chainId: number
-) => Promise<{
-  modules: { valuableActionRegistryMatches: boolean };
-  vptInitialized: boolean;
-  roles: {
-    rrPositionManager: boolean;
-    rrDistributor: boolean;
-    commerceDisputesCaller: boolean;
-    housingMarketplaceCaller: boolean;
-    vaIssuerRequestHub: boolean;
-  };
-  marketplaceActive: boolean;
-  revenueTreasurySet: boolean;
-}>;
+) => Promise<VerificationSnapshot>;
 
 export type CommunityIdRecoveryReader = (
   deployerAddress: `0x${string}`,
@@ -280,10 +268,7 @@ export function useDeployResume(
             continue;
           }
 
-          const checks = evaluateVerificationSnapshot({
-            communityId: candidateCommunityId,
-            ...snapshot
-          });
+          const checks = evaluateVerificationSnapshot(snapshot);
           const allPassed = checks.every((check) => check.passed);
 
           log("Recovered community verification result", {
@@ -349,10 +334,7 @@ export function useDeployResume(
 
       if (session.communityId && readOnchainSnapshot) {
         const snapshot = await readOnchainSnapshot(session.communityId, chainId);
-        const checks = evaluateVerificationSnapshot({
-          communityId: session.communityId,
-          ...snapshot
-        });
+        const checks = evaluateVerificationSnapshot(snapshot);
         const allPassed = checks.every((check) => check.passed);
 
         const updated: DeploymentWizardSession = {

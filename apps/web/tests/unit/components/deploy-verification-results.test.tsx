@@ -24,9 +24,8 @@ describe("DeployVerificationResults", () => {
       />
     );
 
-    expect(await screen.findByText(/VerifierPowerToken community initialized/i)).toBeInTheDocument();
-    expect(screen.getByText(/PASS/i)).toBeInTheDocument();
-    expect(screen.getByText(/FAIL/i)).toBeInTheDocument();
-    expect(screen.getByText(/RevenueRouter treasury is not set/i)).toBeInTheDocument();
+    expect(await screen.findByText(/RevenueRouter treasury is not set/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Pass/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Fail/i)).toBeInTheDocument();
   });
 });

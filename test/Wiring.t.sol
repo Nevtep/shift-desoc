@@ -252,8 +252,8 @@ contract WiringTest is Test {
 
         // Revenue policy + router wiring
         paramController.setRevenuePolicy(communityId, 1000, 0, 0, 0); // 10% treasury, spillover to positions
-        router.setCommunityTreasury(communityId, treasury);
-        router.setSupportedToken(communityId, address(token), true);
+        router.setCommunityTreasury(treasury);
+        router.setSupportedToken(address(token), true);
         positionManager.setRevenueRouter(address(router));
 
         // Position type setup
@@ -306,7 +306,7 @@ contract WiringTest is Test {
         token.mint(distributor, 1_000e18);
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(communityId, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
         vm.stopPrank();
 
         uint256 claimablePosition = router.getClaimablePosition(positionTokenId, address(token));
@@ -319,14 +319,14 @@ contract WiringTest is Test {
         vm.prank(governance);
         positionManager.closePosition(positionTokenId, PositionManager.CloseOutcome.SUCCESS, bytes("role"));
 
-        uint256 treasuryBeforeSecondRoute = router.treasuryAccrual(communityId, address(token));
+        uint256 treasuryBeforeSecondRoute = router.treasuryAccrual(address(token));
 
         token.mint(distributor, 1_000e18);
         vm.prank(distributor);
-        router.routeRevenue(communityId, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
 
         assertEq(router.getClaimablePosition(positionTokenId, address(token)), 0);
-        assertGt(router.treasuryAccrual(communityId, address(token)), treasuryBeforeSecondRoute);
+        assertGt(router.treasuryAccrual(address(token)), treasuryBeforeSecondRoute);
         assertFalse(router.positionRegistered(positionTokenId));
 
         // ---- Investment flow ----
@@ -346,7 +346,7 @@ contract WiringTest is Test {
         token.mint(distributor, 1_000e18);
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(communityId, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
         vm.stopPrank();
 
         uint256 claimableInvestment = router.getClaimableInvestment(investmentTokenId, address(token));
@@ -376,7 +376,7 @@ contract WiringTest is Test {
         assertEq(token.balanceOf(treasury), 0);
         assertEq(token.balanceOf(address(requestHub)), 0);
 
-        uint256 treasuryAfterRequest = router.treasuryAccrual(communityId, address(token));
+        uint256 treasuryAfterRequest = router.treasuryAccrual(address(token));
 
         // ---- Credential flow ----
         vm.prank(governance);
@@ -393,7 +393,7 @@ contract WiringTest is Test {
         vm.prank(governance);
         credentialManager.revokeCredential(credentialTokenId, COURSE_ID, bytes("reason"));
 
-        assertEq(router.treasuryAccrual(communityId, address(token)), treasuryAfterRequest);
+        assertEq(router.treasuryAccrual(address(token)), treasuryAfterRequest);
         assertEq(router.getClaimableInvestment(investmentTokenId, address(token)), 0);
     }
 
@@ -427,11 +427,12 @@ contract WiringTest is Test {
         positionManager.definePositionType(postHandoffRole, 5, true);
     }
 
-    function testCrossCommunityPrivilegedMutationFails() public {
-        vm.expectRevert();
-        router.setSupportedToken(communityIdTwo, address(token), true);
+    function testScopedPrivilegedMutationUpdatesLocalState() public {
+        router.setSupportedToken(address(token), false);
+        assertFalse(router.supportedTokens(address(token)));
 
-        vm.expectRevert();
-        router.setCommunityTreasury(communityIdTwo, treasury);
+        address nextTreasury = address(0xBEEF);
+        router.setCommunityTreasury(nextTreasury);
+        assertEq(router.communityTreasuries(), nextTreasury);
     }
 }

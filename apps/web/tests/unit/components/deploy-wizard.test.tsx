@@ -37,10 +37,18 @@ describe("DeployWizard", () => {
             vptInitialized: true,
             roles: {
               rrPositionManager: true,
+              verifierManagerCallerEngagements: true,
               rrDistributor: true,
               commerceDisputesCaller: true,
+              cohortRevenueRouter: true,
               housingMarketplaceCaller: true,
-              vaIssuerRequestHub: true
+              cohortInvestmentRecorder: true,
+              vaIssuerRequestHub: true,
+              vaIssuerPositionManager: true,
+              vaIssuerInvestmentCohortManager: true,
+              vaIssuerCredentialManager: true,
+              membershipMinterEngagements: true,
+              vaSbtManagerRegistry: true
             },
             marketplaceActive: true,
             revenueTreasurySet: true
@@ -89,10 +97,18 @@ describe("DeployWizard", () => {
             vptInitialized: true,
             roles: {
               rrPositionManager: true,
+              verifierManagerCallerEngagements: true,
               rrDistributor: true,
               commerceDisputesCaller: true,
+              cohortRevenueRouter: true,
               housingMarketplaceCaller: true,
-              vaIssuerRequestHub: true
+              cohortInvestmentRecorder: true,
+              vaIssuerRequestHub: true,
+              vaIssuerPositionManager: true,
+              vaIssuerInvestmentCohortManager: true,
+              vaIssuerCredentialManager: true,
+              membershipMinterEngagements: true,
+              vaSbtManagerRegistry: true
             },
             marketplaceActive: true,
             revenueTreasurySet: true
@@ -115,10 +131,18 @@ describe("DeployWizard", () => {
             vptInitialized: true,
             roles: {
               rrPositionManager: true,
+              verifierManagerCallerEngagements: true,
               rrDistributor: true,
               commerceDisputesCaller: true,
+              cohortRevenueRouter: true,
               housingMarketplaceCaller: true,
-              vaIssuerRequestHub: true
+              cohortInvestmentRecorder: true,
+              vaIssuerRequestHub: true,
+              vaIssuerPositionManager: true,
+              vaIssuerInvestmentCohortManager: true,
+              vaIssuerCredentialManager: true,
+              membershipMinterEngagements: true,
+              vaSbtManagerRegistry: true
             },
             marketplaceActive: true,
             revenueTreasurySet: true

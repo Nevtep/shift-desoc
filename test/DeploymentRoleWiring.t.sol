@@ -156,9 +156,9 @@ contract DeploymentRoleWiringTest is Test {
         stable.mint(distributor, 10_000e18);
         stable.mint(buyer, 10_000e18);
 
-        revenueRouter.setCommunityTreasury(communityId, treasury);
-        revenueRouter.setSupportedToken(communityId, address(stable), true);
-        marketplace.setCommunityActive(communityId, true);
+        revenueRouter.setCommunityTreasury(treasury);
+        revenueRouter.setSupportedToken(address(stable), true);
+        marketplace.setCommunityActive(true);
         commerceDisputes.setDisputeReceiver(address(marketplace));
 
         valuableActionRegistry.setValuableActionSBT(address(sbt));
@@ -172,7 +172,7 @@ contract DeploymentRoleWiringTest is Test {
 
         vm.prank(distributor);
         vm.expectRevert();
-        revenueRouter.routeRevenue(communityId, address(stable), 100e18);
+        revenueRouter.routeRevenue(address(stable), 100e18);
 
         bytes4[] memory routeSel = new bytes4[](1);
         routeSel[0] = revenueRouter.routeRevenue.selector;
@@ -180,7 +180,7 @@ contract DeploymentRoleWiringTest is Test {
         accessManager.grantRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, distributor, 0);
 
         vm.prank(distributor);
-        revenueRouter.routeRevenue(communityId, address(stable), 100e18);
+        revenueRouter.routeRevenue(address(stable), 100e18);
     }
 
     function testPositionRegisterRequiresPositionManagerRole() public {
@@ -213,7 +213,6 @@ contract DeploymentRoleWiringTest is Test {
     function testMarketplaceDisputeOpenRequiresCallerRole() public {
         vm.prank(seller);
         uint256 offerId = marketplace.createOffer(
-            communityId,
             Marketplace.OfferKind.GENERIC,
             address(0),
             0,
@@ -276,11 +275,10 @@ contract DeploymentRoleWiringTest is Test {
         vm.prank(seller);
         stable.approve(address(housingManager), type(uint256).max);
 
-        uint256 unitId = housingManager.createUnit(communityId, seller, "", 5e18, 2, 0);
+        uint256 unitId = housingManager.createUnit(seller, "", 5e18, 2, 0);
 
         vm.prank(seller);
         uint256 offerId = marketplace.createOffer(
-            communityId,
             Marketplace.OfferKind.HOUSING,
             address(housingManager),
             unitId,
@@ -342,18 +340,18 @@ contract DeploymentRoleWiringTest is Test {
         assertFalse(governanceHasAdmin);
 
         vm.expectRevert();
-        revenueRouter.setSupportedToken(communityId, address(stable), false);
+        revenueRouter.setSupportedToken(address(stable), false);
 
         vm.prank(timelockAdmin);
-        revenueRouter.setSupportedToken(communityId, address(stable), false);
+        revenueRouter.setSupportedToken(address(stable), false);
     }
 
-    function testCrossCommunityPrivilegedMutationFails() public {
-        vm.expectRevert();
-        revenueRouter.setSupportedToken(communityIdTwo, address(stable), true);
+    function testScopedPrivilegedMutationUpdatesLocalState() public {
+        revenueRouter.setSupportedToken(address(stable), false);
+        assertFalse(revenueRouter.supportedTokens(address(stable)));
 
-        vm.expectRevert();
-        marketplace.setCommunityActive(communityIdTwo, true);
+        marketplace.setCommunityActive(false);
+        assertFalse(marketplace.communityActive());
     }
 
     function testPostHandoffManagerRestrictedWritesFail() public {
@@ -365,7 +363,7 @@ contract DeploymentRoleWiringTest is Test {
 
         vm.prank(distributor);
         vm.expectRevert();
-        revenueRouter.setSupportedToken(communityId, address(stable), false);
+        revenueRouter.setSupportedToken(address(stable), false);
     }
 
     function testPostHandoffBootstrapAdminCannotBeReclaimed() public {

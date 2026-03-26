@@ -1031,17 +1031,17 @@ export async function wireCommunityRoles(
   await (await valuableActionRegistry.addFounder(config.founderAddress, txOverrides)).wait();
 
   await (await positionManager.setRevenueRouter(addresses.revenueRouter, txOverrides)).wait();
-  await (await revenueRouter.setCommunityTreasury(communityId, config.treasuryVault, txOverrides)).wait();
+  await (await revenueRouter.setCommunityTreasury(config.treasuryVault, txOverrides)).wait();
   for (const token of config.supportedTokens) {
-    await (await revenueRouter.setSupportedToken(communityId, token, true, txOverrides)).wait();
+    await (await revenueRouter.setSupportedToken(token, true, txOverrides)).wait();
     await (await treasuryAdapter.setTokenAllowed(token, true, txOverrides)).wait();
     await (await treasuryAdapter.setCapBps(token, 1000, txOverrides)).wait();
   }
   await (await treasuryAdapter.setDestinationAllowed(addresses.requestHub, true, txOverrides)).wait();
 
   await (await commerceDisputes.setDisputeReceiver(addresses.marketplace, txOverrides)).wait();
-  await (await marketplace.setCommunityActive(communityId, true, txOverrides)).wait();
-  await (await marketplace.setCommunityToken(communityId, addresses.communityToken, txOverrides)).wait();
+  await (await marketplace.setCommunityActive(true, txOverrides)).wait();
+  await (await marketplace.setCommunityToken(addresses.communityToken, txOverrides)).wait();
 
   if (config.initialMembershipTokens > 0n) {
     await grantRole(Roles.MEMBERSHIP_TOKEN_MINTER_ROLE, deployer);
@@ -1111,11 +1111,11 @@ export async function verifyCommunityDeployment(communityId: number, addresses: 
   const [issuerRole] = await accessManager.hasRole(Roles.VALUABLE_ACTION_REGISTRY_ISSUER_ROLE, addresses.requestHub);
   if (!issuerRole) throw new Error("RequestHub missing VALUABLE_ACTION_REGISTRY_ISSUER_ROLE");
 
-  if (!(await marketplace.communityActive(communityId))) {
+  if (!(await marketplace.communityActive())) {
     throw new Error("Marketplace not activated for community");
   }
 
-  if ((await revenueRouter.communityTreasuries(communityId)).toLowerCase() === ethers.ZeroAddress) {
+  if ((await revenueRouter.communityTreasuries()).toLowerCase() === ethers.ZeroAddress) {
     throw new Error("RevenueRouter treasury is not set");
   }
 }

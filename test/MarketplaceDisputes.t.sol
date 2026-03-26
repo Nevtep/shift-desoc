@@ -96,20 +96,19 @@ contract MarketplaceDisputesTest is Test {
         accessManager.setTargetFunctionRole(address(disputes), disputeCaller, Roles.COMMERCE_DISPUTES_CALLER_ROLE);
 
         // Configure marketplace
-        marketplace.setCommunityActive(COMMUNITY_ID, true);
-        marketplace.setCommunityToken(COMMUNITY_ID, address(communityToken));
+        marketplace.setCommunityActive(true);
+        marketplace.setCommunityToken(address(communityToken));
 
         // Authorize marketplace as dispute caller via AccessManager
         accessManager.grantRole(Roles.COMMERCE_DISPUTES_CALLER_ROLE, address(marketplace), 0);
         disputes.setDisputeReceiver(address(marketplace));
 
         // Create housing unit
-        unitId = housing.createUnit(COMMUNITY_ID, seller, "ipfs://unit1", UNIT_PRICE, 4, 0);
+        unitId = housing.createUnit(seller, "ipfs://unit1", UNIT_PRICE, 4, 0);
 
         // Seller creates marketplace offer
         vm.startPrank(seller);
         offerId = marketplace.createOffer(
-            COMMUNITY_ID,
             Marketplace.OfferKind.HOUSING,
             address(housing),
             unitId,
@@ -354,7 +353,7 @@ contract MarketplaceDisputesTest is Test {
         disputes.finalizeDispute(disputeId, CommerceDisputes.DisputeOutcome.PAY_SELLER);
 
         assertEq(usdc.balanceOf(seller), sellerBalanceBefore + escrowAmount);
-        assertEq(unsupportedRouter.treasuryAccrual(COMMUNITY_ID, address(usdc)), 0);
+        assertEq(unsupportedRouter.treasuryAccrual(address(usdc)), 0);
 
         order = marketplace.getOrder(orderId);
         assertEq(uint8(order.status), uint8(Marketplace.OrderStatus.SETTLED));

@@ -1,4 +1,5 @@
 import type { Abi, Address } from "viem";
+import { getAddress } from "viem";
 import { baseSepolia } from "wagmi/chains";
 
 import communityRegistryArtifact from "../abis/CommunityRegistry.json" assert { type: "json" };
@@ -120,7 +121,11 @@ export function getContractAddress(key: ContractKey, chainId?: ChainId): Address
     throw new Error(`Missing or invalid address for ${key}. Set ${envKey} in .env for the web app.`);
   }
 
-  return rawAddress as Address;
+  try {
+    return getAddress(rawAddress) as Address;
+  } catch {
+    throw new Error(`Missing or invalid address for ${key}. Set ${envKey} in .env for the web app.`);
+  }
 }
 
 export function getContractConfig<TAbi extends Abi>(key: keyof typeof CONTRACTS, chainId?: ChainId) {

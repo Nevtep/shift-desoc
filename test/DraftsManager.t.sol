@@ -302,7 +302,7 @@ contract DraftsManagerTest is Test {
         assertEq(proposalId, 0);
         
         // Check mappings
-        uint256[] memory communityDrafts = draftsManager.getDraftsByCommunity(COMMUNITY_ID);
+        uint256[] memory communityDrafts = draftsManager.getDraftsByCommunity();
         assertEq(communityDrafts.length, 1);
         assertEq(communityDrafts[0], draftId);
         
@@ -364,12 +364,12 @@ contract DraftsManagerTest is Test {
         missingCommunityManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
     }
 
-    function testGetDraftsByCommunityMismatchedCommunityReturnsEmpty() public {
+    function testGetDraftsByCommunityReturnsLocalDrafts() public {
         vm.prank(user1);
         draftsManager.createDraft(REQUEST_ID, testActions, VERSION_CID);
 
-        uint256[] memory drafts = draftsManager.getDraftsByCommunity(COMMUNITY_ID + 1);
-        assertEq(drafts.length, 0);
+        uint256[] memory drafts = draftsManager.getDraftsByCommunity();
+        assertEq(drafts.length, 1);
     }
 
     function testCreateDraftRevertsWhenRequestHubNotConfigured() public {
@@ -411,7 +411,7 @@ contract DraftsManagerTest is Test {
         assertEq(draftsManager.getDraftsCount(), 2);
         
         // Check community drafts
-        uint256[] memory communityDrafts = draftsManager.getDraftsByCommunity(COMMUNITY_ID);
+        uint256[] memory communityDrafts = draftsManager.getDraftsByCommunity();
         assertEq(communityDrafts.length, 2);
         assertEq(communityDrafts[0], draft1);
         assertEq(communityDrafts[1], draft2);
@@ -1093,11 +1093,8 @@ contract DraftsManagerTest is Test {
         draftsManager.addContributor(draft1, user2);
         
         // Test community mappings
-        uint256[] memory community1Drafts = draftsManager.getDraftsByCommunity(COMMUNITY_ID);
+        uint256[] memory community1Drafts = draftsManager.getDraftsByCommunity();
         assertEq(community1Drafts.length, 2);
-        
-        uint256[] memory community2Drafts = draftsManager.getDraftsByCommunity(COMMUNITY_ID + 1);
-        assertEq(community2Drafts.length, 0);
         
         // Test request mappings
         uint256[] memory request1Drafts = draftsManager.getDraftsByRequest(REQUEST_ID);

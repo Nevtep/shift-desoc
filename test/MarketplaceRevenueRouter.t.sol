@@ -253,8 +253,8 @@ contract MarketplaceRevenueRouterTest is Test {
         accessManager.grantRole(Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE, admin, 0);
         vm.stopPrank();
 
-        router.setCommunityTreasury(COMMUNITY_ID, treasury);
-        router.setSupportedToken(COMMUNITY_ID, address(token), true);
+        router.setCommunityTreasury(treasury);
+        router.setSupportedToken(address(token), true);
 
         token.mint(distributor, 1_000e18);
     }
@@ -267,7 +267,7 @@ contract MarketplaceRevenueRouterTest is Test {
 
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
         vm.stopPrank();
 
         uint256 claimable = router.getClaimablePosition(positionId, address(token));
@@ -277,7 +277,7 @@ contract MarketplaceRevenueRouterTest is Test {
         router.claimPosition(positionId, address(token), positionHolder);
         assertEq(token.balanceOf(positionHolder), 800e18);
 
-        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 200e18); // min treasury
+        assertEq(router.treasuryAccrual(address(token)), 200e18); // min treasury
     }
 
     function testRegisterPositionRejectsEndedToken() public {
@@ -296,7 +296,7 @@ contract MarketplaceRevenueRouterTest is Test {
 
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
         vm.stopPrank();
 
         address other = address(0xBB);
@@ -319,10 +319,10 @@ contract MarketplaceRevenueRouterTest is Test {
 
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
         vm.stopPrank();
 
-        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 1_000e18);
+        assertEq(router.treasuryAccrual(address(token)), 1_000e18);
     }
 
     function testWithdrawTreasuryAuthAndBalance() public {
@@ -330,19 +330,19 @@ contract MarketplaceRevenueRouterTest is Test {
 
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
         vm.stopPrank();
 
         address payout = address(0xFEED);
         vm.prank(treasury);
-        router.withdrawTreasury(COMMUNITY_ID, address(token), 500e18, payout);
+        router.withdrawTreasury(address(token), 500e18, payout);
 
         assertEq(token.balanceOf(payout), 500e18);
-        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 500e18);
+        assertEq(router.treasuryAccrual(address(token)), 500e18);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, distributor));
         vm.prank(distributor);
-        router.withdrawTreasury(COMMUNITY_ID, address(token), 1, distributor);
+        router.withdrawTreasury(address(token), 1, distributor);
     }
 
     function testSpilloverSplitDefaultsToHalf() public {
@@ -353,11 +353,11 @@ contract MarketplaceRevenueRouterTest is Test {
 
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
         vm.stopPrank();
 
         // Treasury: 10% min = 100, plus half of remaining 900 -> 450 => 550 total
-        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 550e18);
+        assertEq(router.treasuryAccrual(address(token)), 550e18);
 
         // Positions: half of remaining 900 => 450 claimable
         uint256 claimable = router.getClaimablePosition(positionId, address(token));
@@ -369,7 +369,7 @@ contract MarketplaceRevenueRouterTest is Test {
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Zero amount"));
-        router.routeRevenue(COMMUNITY_ID, address(token), 0);
+        router.routeRevenue(address(token), 0);
         vm.stopPrank();
     }
 }
@@ -421,9 +421,9 @@ contract MarketplaceSettlementRegressionTest is Test {
         accessManager.grantRole(Roles.REVENUE_ROUTER_DISTRIBUTOR_ROLE, address(marketplace), 0);
         vm.stopPrank();
 
-        marketplace.setCommunityActive(COMMUNITY_ID, true);
-        marketplace.setCommunityToken(COMMUNITY_ID, address(0xCAFE));
-        router.setCommunityTreasury(COMMUNITY_ID, treasury);
+        marketplace.setCommunityActive(true);
+        marketplace.setCommunityToken(address(0xCAFE));
+        router.setCommunityTreasury(treasury);
 
         token.mint(buyer, 1_000e18);
         vm.prank(buyer);
@@ -435,7 +435,6 @@ contract MarketplaceSettlementRegressionTest is Test {
     function _createGenericOffer() internal returns (uint256 offerId) {
         vm.prank(seller);
         offerId = marketplace.createOffer(
-            COMMUNITY_ID,
             Marketplace.OfferKind.GENERIC,
             address(0),
             0,
@@ -451,7 +450,7 @@ contract MarketplaceSettlementRegressionTest is Test {
     }
 
     function testSettleRoutesWhenTokenSupported() public {
-        router.setSupportedToken(COMMUNITY_ID, address(token), true);
+        router.setSupportedToken(address(token), true);
 
         uint256 offerId = _createGenericOffer();
 
@@ -469,7 +468,7 @@ contract MarketplaceSettlementRegressionTest is Test {
         Marketplace.Order memory order = marketplace.getOrder(orderId);
         assertEq(uint8(order.status), uint8(Marketplace.OrderStatus.SETTLED));
         assertEq(token.balanceOf(address(marketplace)), 0);
-        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), order.amount);
+        assertEq(router.treasuryAccrual(address(token)), order.amount);
         assertEq(token.balanceOf(seller), 0);
     }
 
@@ -491,6 +490,6 @@ contract MarketplaceSettlementRegressionTest is Test {
         Marketplace.Order memory order = marketplace.getOrder(orderId);
         assertEq(uint8(order.status), uint8(Marketplace.OrderStatus.SETTLED));
         assertEq(token.balanceOf(seller), sellerBefore + order.amount);
-        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 0);
+        assertEq(router.treasuryAccrual(address(token)), 0);
     }
 }

@@ -50,10 +50,18 @@ describe("useDeployWizard execution flow", () => {
             vptInitialized: true,
             roles: {
               rrPositionManager: true,
+              verifierManagerCallerEngagements: true,
               rrDistributor: true,
               commerceDisputesCaller: true,
+              cohortRevenueRouter: true,
               housingMarketplaceCaller: true,
-              vaIssuerRequestHub: true
+              cohortInvestmentRecorder: true,
+              vaIssuerRequestHub: true,
+              vaIssuerPositionManager: true,
+              vaIssuerInvestmentCohortManager: true,
+              vaIssuerCredentialManager: true,
+              membershipMinterEngagements: true,
+              vaSbtManagerRegistry: true
             },
             marketplaceActive: true,
             revenueTreasurySet: true
@@ -147,10 +155,18 @@ describe("useDeployWizard execution flow", () => {
               vptInitialized: verificationCallCount > 1,
               roles: {
                 rrPositionManager: verificationCallCount > 1,
+                verifierManagerCallerEngagements: verificationCallCount > 1,
                 rrDistributor: verificationCallCount > 1,
                 commerceDisputesCaller: verificationCallCount > 1,
+                cohortRevenueRouter: verificationCallCount > 1,
                 housingMarketplaceCaller: verificationCallCount > 1,
-                vaIssuerRequestHub: verificationCallCount > 1
+                cohortInvestmentRecorder: verificationCallCount > 1,
+                vaIssuerRequestHub: verificationCallCount > 1,
+                vaIssuerPositionManager: verificationCallCount > 1,
+                vaIssuerInvestmentCohortManager: verificationCallCount > 1,
+                vaIssuerCredentialManager: verificationCallCount > 1,
+                membershipMinterEngagements: verificationCallCount > 1,
+                vaSbtManagerRegistry: verificationCallCount > 1
               },
               marketplaceActive: verificationCallCount > 1,
               revenueTreasurySet: verificationCallCount > 1
@@ -212,10 +228,18 @@ describe("useDeployWizard execution flow", () => {
             vptInitialized: true,
             roles: {
               rrPositionManager: true,
+              verifierManagerCallerEngagements: true,
               rrDistributor: true,
               commerceDisputesCaller: true,
+              cohortRevenueRouter: true,
               housingMarketplaceCaller: true,
-              vaIssuerRequestHub: true
+              cohortInvestmentRecorder: true,
+              vaIssuerRequestHub: true,
+              vaIssuerPositionManager: true,
+              vaIssuerInvestmentCohortManager: true,
+              vaIssuerCredentialManager: true,
+              membershipMinterEngagements: true,
+              vaSbtManagerRegistry: true
             },
             marketplaceActive: true,
             revenueTreasurySet: true

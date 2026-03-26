@@ -205,8 +205,8 @@ contract RevenueRouterCohortTest is Test {
         accessManager.grantRole(Roles.REVENUE_ROUTER_POSITION_MANAGER_ROLE, admin, 0);
         vm.stopPrank();
 
-        router.setCommunityTreasury(COMMUNITY_ID, treasury);
-        router.setSupportedToken(COMMUNITY_ID, address(token), true);
+        router.setCommunityTreasury(treasury);
+        router.setSupportedToken(address(token), true);
     }
 
     function testDistributeToCohortsProRata() public {
@@ -224,11 +224,11 @@ contract RevenueRouterCohortTest is Test {
         token.mint(distributor, 1_000e18);
             vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(COMMUNITY_ID, address(token), 1_000e18);
+        router.routeRevenue(address(token), 1_000e18);
         vm.stopPrank();
 
         // Treasury gets min 10%
-        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 100e18);
+        assertEq(router.treasuryAccrual(address(token)), 100e18);
 
         // Remaining 900 split 1:3 -> 225 and 675 via indices
         uint256 claimable1 = router.getClaimableInvestment(investment1, address(token));
@@ -251,7 +251,7 @@ contract RevenueRouterCohortTest is Test {
             vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Unsupported token"));
-        router.routeRevenue(COMMUNITY_ID, address(0xDEAD), 1);
+        router.routeRevenue(address(0xDEAD), 1);
         vm.stopPrank();
     }
 
@@ -268,10 +268,10 @@ contract RevenueRouterCohortTest is Test {
         token.mint(distributor, 500e18);
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(COMMUNITY_ID, address(token), 500e18);
+        router.routeRevenue(address(token), 500e18);
         vm.stopPrank();
 
-        assertEq(router.treasuryAccrual(COMMUNITY_ID, address(token)), 500e18);
+        assertEq(router.treasuryAccrual(address(token)), 500e18);
         assertEq(router.getClaimableInvestment(investment, address(token)), 0);
     }
 
@@ -287,7 +287,7 @@ contract RevenueRouterCohortTest is Test {
         token.mint(distributor, 100e18);
         vm.startPrank(distributor, distributor);
         token.approve(address(router), type(uint256).max);
-        router.routeRevenue(COMMUNITY_ID, address(token), 100e18);
+        router.routeRevenue(address(token), 100e18);
         vm.stopPrank();
 
         address other = address(0xEEE);

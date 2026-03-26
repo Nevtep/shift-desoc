@@ -39,6 +39,21 @@ Hardhat implementations:
 - `scripts/copy-web-abis.js` — sync ABIs to web app.
 - `scripts/generate-wallets.sh` — local wallet generation helper.
 
+### Web Deploy Wiring Verification
+- `apps/web/scripts/verify-access-wiring.mjs` — verifies AccessManager selector-role mappings and Timelock role viability from explicit wizard/session addresses (no community deployments JSON read required).
+
+Example:
+
+```bash
+pnpm --filter @shift/web run verify:access-wiring -- \
+	--rpcUrl "$RPC_BASE_SEPOLIA" --chain base_sepolia \
+	--accessManager 0x... --timelock 0x... \
+	--valuableActionRegistry 0x... --verifierElection 0x... --verifierManager 0x... \
+	--verifierPowerToken 0x... --positionManager 0x... --cohortRegistry 0x... \
+	--investmentCohortManager 0x... --revenueRouter 0x... --treasuryAdapter 0x... \
+	--marketplace 0x...
+```
+
 ## Archived Scripts
 
 - `scripts/legacy/` contains historical scripts that are not maintained for current architecture.

@@ -13,10 +13,18 @@ export type VerificationCheckKey =
   | "MODULE_WIRING_VALUABLE_ACTION_REGISTRY"
   | "VPT_COMMUNITY_INITIALIZED"
   | "ROLE_RR_POSITION_MANAGER"
+  | "ROLE_VERIFIER_MANAGER_CALLER_ENGAGEMENTS"
   | "ROLE_RR_DISTRIBUTOR"
   | "ROLE_COMMERCE_DISPUTES_CALLER"
+  | "ROLE_COHORT_REVENUE_ROUTER"
   | "ROLE_HOUSING_MARKETPLACE_CALLER"
+  | "ROLE_COHORT_INVESTMENT_RECORDER"
   | "ROLE_VA_ISSUER_REQUEST_HUB"
+  | "ROLE_VA_ISSUER_POSITION_MANAGER"
+  | "ROLE_VA_ISSUER_INVESTMENT_COHORT_MANAGER"
+  | "ROLE_VA_ISSUER_CREDENTIAL_MANAGER"
+  | "ROLE_MEMBERSHIP_MINTER_ENGAGEMENTS"
+  | "ROLE_VA_SBT_MANAGER_REGISTRY"
   | "MARKETPLACE_COMMUNITY_ACTIVE"
   | "REVENUE_ROUTER_TREASURY_SET";
 
@@ -31,15 +39,20 @@ export type DeploymentRunAddresses = {
   draftsManager: `0x${string}`;
   engagements: `0x${string}`;
   positionManager?: `0x${string}`;
+  credentialManager?: `0x${string}`;
   valuableActionRegistry: `0x${string}`;
   verifierPowerToken: `0x${string}`;
   verifierElection: `0x${string}`;
   verifierManager: `0x${string}`;
   valuableActionSBT: `0x${string}`;
+  cohortRegistry?: `0x${string}`;
+  investmentCohortManager?: `0x${string}`;
   treasuryAdapter: `0x${string}`;
   communityToken: `0x${string}`;
   revenueRouter: `0x${string}`;
+  commerceDisputes?: `0x${string}`;
   marketplace: `0x${string}`;
+  housingManager?: `0x${string}`;
 };
 
 export type DeploymentStepState = {
@@ -133,10 +146,18 @@ export type VerificationSnapshot = {
   vptInitialized: boolean;
   roles: {
     rrPositionManager: boolean;
+    verifierManagerCallerEngagements: boolean;
     rrDistributor: boolean;
     commerceDisputesCaller: boolean;
+    cohortRevenueRouter: boolean;
     housingMarketplaceCaller: boolean;
+    cohortInvestmentRecorder: boolean;
     vaIssuerRequestHub: boolean;
+    vaIssuerPositionManager: boolean;
+    vaIssuerInvestmentCohortManager: boolean;
+    vaIssuerCredentialManager: boolean;
+    membershipMinterEngagements: boolean;
+    vaSbtManagerRegistry: boolean;
   };
   marketplaceActive: boolean;
   revenueTreasurySet: boolean;

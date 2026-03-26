@@ -16,20 +16,27 @@ function makeSession() {
       communityRegistry: "0x1000000000000000000000000000000000000001",
       paramController: "0x1000000000000000000000000000000000000002",
       accessManager: "0x1000000000000000000000000000000000000003",
+      membershipToken: "0x1000000000000000000000000000000000000019",
       governor: "0x1000000000000000000000000000000000000004",
       timelock: "0x1000000000000000000000000000000000000005",
       requestHub: "0x1000000000000000000000000000000000000006",
       draftsManager: "0x1000000000000000000000000000000000000007",
       engagements: "0x1000000000000000000000000000000000000008",
+      positionManager: "0x1000000000000000000000000000000000000018",
+      credentialManager: "0x1000000000000000000000000000000000000028",
       valuableActionRegistry: "0x1000000000000000000000000000000000000009",
       verifierPowerToken: "0x1000000000000000000000000000000000000010",
       verifierElection: "0x1000000000000000000000000000000000000011",
       verifierManager: "0x1000000000000000000000000000000000000012",
       valuableActionSBT: "0x1000000000000000000000000000000000000013",
+      cohortRegistry: "0x1000000000000000000000000000000000000029",
+      investmentCohortManager: "0x1000000000000000000000000000000000000030",
       treasuryAdapter: "0x1000000000000000000000000000000000000014",
       communityToken: "0x1000000000000000000000000000000000000015",
       revenueRouter: "0x1000000000000000000000000000000000000016",
-      marketplace: "0x1000000000000000000000000000000000000017"
+      commerceDisputes: "0x1000000000000000000000000000000000000031",
+      marketplace: "0x1000000000000000000000000000000000000017",
+      housingManager: "0x1000000000000000000000000000000000000032"
     },
     steps: []
   } as any;
@@ -104,7 +111,7 @@ describe("factory-step-executor strict staging guards", () => {
 
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(1n),
-      getBytecode: vi.fn().mockResolvedValue("0x"),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
       readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
         switch (functionName) {
           case "nextCommunityId": {
@@ -239,9 +246,9 @@ describe("factory-step-executor strict staging guards", () => {
     expect(result.txHashes ?? []).toHaveLength(3);
     expect(writeContractAsync).toHaveBeenCalledTimes(3);
 
-    const thirdCall = writeContractAsync.mock.calls[2]?.[0];
-    expect(thirdCall?.functionName).toBe("revokeRole");
-    expect(thirdCall?.args?.[1]).toBe("0x2000000000000000000000000000000000000002");
+    const secondCall = writeContractAsync.mock.calls[1]?.[0];
+    expect(secondCall?.functionName).toBe("revokeRole");
+    expect(secondCall?.args?.[1]).toBe("0x2000000000000000000000000000000000000002");
 
     delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
   });

@@ -28,6 +28,36 @@ In addition to CLI operations, Manager Home now includes a user-signed deploy wi
 - Source of truth: once a community is registered, resume/completion inference must be derived from on-chain reads (CommunityRegistry/module-role checks), not deployment JSON files.
 - Verification semantics: parity with `scripts/hardhat/verify-community-deployment.ts` check set.
 
+#### Access Wiring Invariants (Wizard)
+
+- Explicit selector-role mappings are applied during `CONFIGURE_ACCESS_PERMISSIONS` through `BootstrapCoordinator.bootstrapAccessAndRuntime`.
+- Governance setters are mapped to `ADMIN_ROLE` (`0`) for deterministic timelock execution templates.
+- `HANDOFF_ADMIN_TO_TIMELOCK` must leave Timelock as the sole `ADMIN_ROLE` holder; deployer and bootstrap coordinator are revoked.
+- Wizard deploy/address-loading flow remains unchanged; only role and permission assignments are expanded for parity with canonical wiring.
+
+#### Verify Access Wiring (No Deployments JSON Dependency)
+
+Run verification with run-scoped addresses from the same wizard session (or explicit address args):
+
+```bash
+pnpm --filter @shift/web run verify:access-wiring -- \
+  --rpcUrl "$RPC_BASE_SEPOLIA" --chain base_sepolia \
+  --accessManager 0x... --timelock 0x... \
+  --valuableActionRegistry 0x... --verifierElection 0x... --verifierManager 0x... \
+  --verifierPowerToken 0x... --positionManager 0x... --cohortRegistry 0x... \
+  --investmentCohortManager 0x... --revenueRouter 0x... --treasuryAdapter 0x... \
+  --marketplace 0x...
+```
+
+The script prints JSON rows with:
+
+- `target`
+- `signature`
+- `selector`
+- `role` / `expectedRole`
+- `timelockHasRole`
+- `ok`
+
 ### Draft Composer (Web)
 
 The web app draft composer now separates safe default behavior from advanced ABI editing.

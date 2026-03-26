@@ -4,29 +4,78 @@ const path = require("path");
 const root = path.join(__dirname, "..");
 const outDir = path.join(root, "out");
 const destDir = path.join(root, "apps", "indexer", "abis");
+const contractsDir = path.join(root, "contracts");
 
-const files = [
-  { src: "CommunityRegistry.sol/CommunityRegistry.json", dest: "CommunityRegistry.json" },
-  { src: "RequestHub.sol/RequestHub.json", dest: "RequestHub.json" },
-  { src: "DraftsManager.sol/DraftsManager.json", dest: "DraftsManager.json" },
-  { src: "ShiftGovernor.sol/ShiftGovernor.json", dest: "ShiftGovernor.json" },
-  { src: "CountingMultiChoice.sol/CountingMultiChoice.json", dest: "CountingMultiChoice.json" },
-  { src: "Engagements.sol/Engagements.json", dest: "Engagements.json" },
-  { src: "VerifierManager.sol/VerifierManager.json", dest: "VerifierManager.json" },
-  { src: "ValuableActionRegistry.sol/ValuableActionRegistry.json", dest: "ValuableActionRegistry.json" }
-];
+function walkSolidityFiles(dir) {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...walkSolidityFiles(fullPath));
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith(".sol")) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+function collectProtocolContractNames() {
+  const solidityFiles = walkSolidityFiles(contractsDir);
+  const names = solidityFiles.map((filePath) => path.basename(filePath, ".sol"));
+  const duplicates = names.filter((name, index) => names.indexOf(name) !== index);
+  if (duplicates.length > 0) {
+    const uniqueDuplicates = [...new Set(duplicates)].sort();
+    throw new Error(
+      `Duplicate contract base names found in contracts/: ${uniqueDuplicates.join(", ")}. ` +
+        "ABI copier requires unique .sol base names to map out/<Name>.sol/<Name>.json."
+    );
+  }
+  return names.sort();
+}
+
+function clearJsonFiles(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const fileName of fs.readdirSync(dir)) {
+    if (fileName.endsWith(".json")) {
+      fs.unlinkSync(path.join(dir, fileName));
+    }
+  }
+}
 
 fs.mkdirSync(destDir, { recursive: true });
+clearJsonFiles(destDir);
 
-files.forEach(({ src, dest }) => {
-  const from = path.join(outDir, src);
-  const to = path.join(destDir, dest);
+const contractNames = collectProtocolContractNames();
+const copied = [];
+const missing = [];
+
+for (const name of contractNames) {
+  const from = path.join(outDir, `${name}.sol`, `${name}.json`);
+  const to = path.join(destDir, `${name}.json`);
 
   if (!fs.existsSync(from)) {
-    throw new Error(`ABI not found at ${from}`);
+    missing.push(`${name}.sol/${name}.json`);
+    continue;
   }
 
   fs.copyFileSync(from, to);
-});
+  copied.push(name);
+}
 
-console.log(`Copied ${files.length} ABI files to ${destDir}`);
+if (copied.length === 0) {
+  throw new Error("No ABI files copied to apps/indexer/abis. Run `forge build` first.");
+}
+
+if (missing.length > 0) {
+  console.warn(
+    `[copy-ponder-abis] Missing ${missing.length} compiled ABI files in out/:\n` +
+      missing.map((item) => `  - ${item}`).join("\n")
+  );
+}
+
+console.log(`Copied ${copied.length} ABI files to ${destDir}`);

@@ -32,10 +32,18 @@ describe("useDeployResume multi-community targeting", () => {
           vptInitialized: communityId === 2,
           roles: {
             rrPositionManager: communityId === 2,
+            verifierManagerCallerEngagements: communityId === 2,
             rrDistributor: communityId === 2,
             commerceDisputesCaller: communityId === 2,
+            cohortRevenueRouter: communityId === 2,
             housingMarketplaceCaller: communityId === 2,
-            vaIssuerRequestHub: communityId === 2
+            cohortInvestmentRecorder: communityId === 2,
+            vaIssuerRequestHub: communityId === 2,
+            vaIssuerPositionManager: communityId === 2,
+            vaIssuerInvestmentCohortManager: communityId === 2,
+            vaIssuerCredentialManager: communityId === 2,
+            membershipMinterEngagements: communityId === 2,
+            vaSbtManagerRegistry: communityId === 2
           },
           marketplaceActive: communityId === 2,
           revenueTreasurySet: communityId === 2

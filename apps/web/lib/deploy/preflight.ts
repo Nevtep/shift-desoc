@@ -165,11 +165,20 @@ export type BuildPreflightInput = {
 export function buildPreflightAssessment(input: BuildPreflightInput): PreflightAssessment {
   const supportedNetwork = input.supportedChainIds.includes(input.chainId);
   const blockingReasons: string[] = [];
+  const missingRequiredFactory =
+    !input.sharedInfra.governanceLayerFactory.hasCode ||
+    !input.sharedInfra.verificationLayerFactory.hasCode ||
+    !input.sharedInfra.economicLayerFactory.hasCode ||
+    !input.sharedInfra.commerceLayerFactory.hasCode ||
+    !input.sharedInfra.coordinationLayerFactory.hasCode;
 
   if (!input.walletConnected) blockingReasons.push("Connect wallet to start deployment.");
   if (!supportedNetwork) blockingReasons.push("Switch to a supported network.");
   if (supportedNetwork && !input.sharedInfra.isUsable) {
     blockingReasons.push("Shared infrastructure is missing or invalid.");
+  }
+  if (supportedNetwork && input.sharedInfra.isUsable && missingRequiredFactory) {
+    blockingReasons.push("One or more layer factory addresses are missing or invalid.");
   }
   if (!input.funding.isSufficient) blockingReasons.push("Insufficient native token balance for estimated deployment cost.");
 

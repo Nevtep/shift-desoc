@@ -30,7 +30,13 @@ import {
   saveSession
 } from "../lib/deploy/session-store";
 import { useCachedPublicClient } from "./useCachedPublicClient";
-import type { DeploymentWizardSession, PreflightAssessment, StepKey, VerificationCheckResult } from "../lib/deploy/types";
+import type {
+  DeploymentWizardSession,
+  PreflightAssessment,
+  StepKey,
+  VerificationCheckResult,
+  VerificationSnapshot
+} from "../lib/deploy/types";
 import {
   createInitialSession,
   isCreatedState,
@@ -45,19 +51,7 @@ export type VerificationSnapshotReader = (
   communityId: number,
   chainId: number,
   deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"]
-) => Promise<{
-  modules: { valuableActionRegistryMatches: boolean };
-  vptInitialized: boolean;
-  roles: {
-    rrPositionManager: boolean;
-    rrDistributor: boolean;
-    commerceDisputesCaller: boolean;
-    housingMarketplaceCaller: boolean;
-    vaIssuerRequestHub: boolean;
-  };
-  marketplaceActive: boolean;
-  revenueTreasurySet: boolean;
-}>;
+) => Promise<VerificationSnapshot>;
 
 export type UseDeployWizardOptions = {
   supportedChainIds?: number[];
@@ -202,10 +196,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
           ) =>
               readVerificationSnapshotFromChain(publicClient!, currentChainId, communityId, deploymentAddresses));
       const snapshot = await reader(activeSession.communityId, chainId, activeSession.deploymentAddresses);
-      const results = evaluateVerificationSnapshot({
-        communityId: activeSession.communityId,
-        ...snapshot
-      });
+      const results = evaluateVerificationSnapshot(snapshot);
       setVerificationResults(results);
       log("Verification checks completed", {
         totalChecks: results.length,

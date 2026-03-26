@@ -43,10 +43,18 @@ describe("useDeployResume", () => {
           vptInitialized: true,
           roles: {
             rrPositionManager: true,
+            verifierManagerCallerEngagements: true,
             rrDistributor: true,
             commerceDisputesCaller: true,
+            cohortRevenueRouter: true,
             housingMarketplaceCaller: true,
-            vaIssuerRequestHub: true
+            cohortInvestmentRecorder: true,
+            vaIssuerRequestHub: true,
+            vaIssuerPositionManager: true,
+            vaIssuerInvestmentCohortManager: true,
+            vaIssuerCredentialManager: true,
+            membershipMinterEngagements: true,
+            vaSbtManagerRegistry: true
           },
           marketplaceActive: true,
           revenueTreasurySet: true
@@ -71,10 +79,18 @@ describe("useDeployResume", () => {
                 vptInitialized: true,
                 roles: {
                   rrPositionManager: true,
+                  verifierManagerCallerEngagements: true,
                   rrDistributor: true,
                   commerceDisputesCaller: true,
+                  cohortRevenueRouter: true,
                   housingMarketplaceCaller: true,
-                  vaIssuerRequestHub: true
+                  cohortInvestmentRecorder: true,
+                  vaIssuerRequestHub: true,
+                  vaIssuerPositionManager: true,
+                  vaIssuerInvestmentCohortManager: true,
+                  vaIssuerCredentialManager: true,
+                  membershipMinterEngagements: true,
+                  vaSbtManagerRegistry: true
                 },
                 marketplaceActive: true,
                 revenueTreasurySet: true
@@ -86,10 +102,18 @@ describe("useDeployResume", () => {
               vptInitialized: false,
               roles: {
                 rrPositionManager: false,
+                verifierManagerCallerEngagements: false,
                 rrDistributor: false,
                 commerceDisputesCaller: false,
+                cohortRevenueRouter: false,
                 housingMarketplaceCaller: false,
-                vaIssuerRequestHub: false
+                cohortInvestmentRecorder: false,
+                vaIssuerRequestHub: false,
+                vaIssuerPositionManager: false,
+                vaIssuerInvestmentCohortManager: false,
+                vaIssuerCredentialManager: false,
+                membershipMinterEngagements: false,
+                vaSbtManagerRegistry: false
               },
               marketplaceActive: false,
               revenueTreasurySet: false
@@ -119,10 +143,18 @@ describe("useDeployResume", () => {
             vptInitialized: false,
             roles: {
               rrPositionManager: false,
+              verifierManagerCallerEngagements: false,
               rrDistributor: false,
               commerceDisputesCaller: false,
+              cohortRevenueRouter: false,
               housingMarketplaceCaller: false,
-              vaIssuerRequestHub: false
+              cohortInvestmentRecorder: false,
+              vaIssuerRequestHub: false,
+              vaIssuerPositionManager: false,
+              vaIssuerInvestmentCohortManager: false,
+              vaIssuerCredentialManager: false,
+              membershipMinterEngagements: false,
+              vaSbtManagerRegistry: false
             },
             marketplaceActive: false,
             revenueTreasurySet: false

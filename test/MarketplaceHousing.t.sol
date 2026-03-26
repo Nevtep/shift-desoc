@@ -102,11 +102,10 @@ contract MarketplaceHousingTest is Test {
         disputes.setDisputeReceiver(address(marketplace));
 
         // Configure marketplace
-        marketplace.setCommunityActive(COMMUNITY_ID, true);
+        marketplace.setCommunityActive(true);
 
         // Create housing unit
         unitId = housing.createUnit(
-            COMMUNITY_ID,
             unitOwner,
             "ipfs://unit1-metadata",
             PRICE_PER_NIGHT,
@@ -117,7 +116,6 @@ contract MarketplaceHousingTest is Test {
         // Unit owner creates marketplace offer
         vm.startPrank(unitOwner);
         offerId = marketplace.createOffer(
-            COMMUNITY_ID,
             Marketplace.OfferKind.HOUSING,
             address(housing),
             unitId,
@@ -481,7 +479,6 @@ contract MarketplaceHousingTest is Test {
     function test_MultipleUnitsIndependentAvailability() public {
         // Create second unit
         uint256 unitId2 = housing.createUnit(
-            COMMUNITY_ID,
             unitOwner,
             "ipfs://unit2",
             PRICE_PER_NIGHT * 2, // Different price
@@ -491,7 +488,6 @@ contract MarketplaceHousingTest is Test {
 
         vm.startPrank(unitOwner);
         uint256 offerId2 = marketplace.createOffer(
-            COMMUNITY_ID,
             Marketplace.OfferKind.HOUSING,
             address(housing),
             unitId2,
@@ -581,7 +577,7 @@ contract HousingManagerReentrancyTest is Test {
     }
 
     function testUnstakeReentrancyBlocked() public {
-        uint256 unitId = housing.createUnit(COMMUNITY_ID, unitOwner, "ipfs://unit", 1e18, 2, 0);
+        uint256 unitId = housing.createUnit(unitOwner, "ipfs://unit", 1e18, 2, 0);
 
         vm.startPrank(attacker);
         maliciousToken.approve(address(housing), type(uint256).max);

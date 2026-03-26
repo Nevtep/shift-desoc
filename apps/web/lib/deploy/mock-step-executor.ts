@@ -5,7 +5,7 @@
  */
 
 import type { CommunityDeploymentConfig } from "./config";
-import type { DeploymentWizardSession, PreflightAssessment, StepKey } from "./types";
+import type { DeploymentWizardSession, PreflightAssessment, StepKey, VerificationSnapshot } from "./types";
 import type { StepExecutionResult } from "./step-executor-types";
 import { STEP_META } from "./wizard-machine";
 
@@ -77,28 +77,25 @@ export function createMockStepExecutor(): (
 export async function mockReadVerificationSnapshot(
   _communityId: number,
   _chainId: number
-): Promise<{
-  modules: { valuableActionRegistryMatches: boolean };
-  vptInitialized: boolean;
-  roles: {
-    rrPositionManager: boolean;
-    rrDistributor: boolean;
-    commerceDisputesCaller: boolean;
-    housingMarketplaceCaller: boolean;
-    vaIssuerRequestHub: boolean;
-  };
-  marketplaceActive: boolean;
-  revenueTreasurySet: boolean;
-}> {
+): Promise<VerificationSnapshot> {
   return {
+    communityId: _communityId,
     modules: { valuableActionRegistryMatches: true },
     vptInitialized: true,
     roles: {
       rrPositionManager: true,
+      verifierManagerCallerEngagements: true,
       rrDistributor: true,
       commerceDisputesCaller: true,
+      cohortRevenueRouter: true,
       housingMarketplaceCaller: true,
-      vaIssuerRequestHub: true
+      cohortInvestmentRecorder: true,
+      vaIssuerRequestHub: true,
+      vaIssuerPositionManager: true,
+      vaIssuerInvestmentCohortManager: true,
+      vaIssuerCredentialManager: true,
+      membershipMinterEngagements: true,
+      vaSbtManagerRegistry: true
     },
     marketplaceActive: true,
     revenueTreasurySet: true
