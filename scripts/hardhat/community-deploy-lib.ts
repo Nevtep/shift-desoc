@@ -166,8 +166,11 @@ async function syncDeploymentSignerNonce(): Promise<void> {
 }
 
 export type CommunityModuleAddresses = {
+  accessManager: string;
+  membershipToken: string;
   governor: string;
   timelock: string;
+  countingMultiChoice: string;
   requestHub: string;
   draftsManager: string;
   engagementsManager: string;
@@ -176,10 +179,19 @@ export type CommunityModuleAddresses = {
   verifierElection: string;
   verifierManager: string;
   valuableActionSBT: string;
+  positionManager: string;
+  credentialManager: string;
+  cohortRegistry: string;
+  investmentCohortManager: string;
+  revenueRouter: string;
   treasuryVault: string;
   treasuryAdapter: string;
   communityToken: string;
   paramController: string;
+  commerceDisputes: string;
+  marketplace: string;
+  housingManager: string;
+  projectFactory: string;
 };
 
 const DEPLOYMENTS_DIR = path.join(process.cwd(), "deployments");
@@ -545,8 +557,11 @@ export async function registerAndConfigureCommunity(
   )).wait();
 
   const moduleEntries: Array<[string, string]> = [
+    ["accessManager", moduleAddresses.accessManager],
+    ["membershipToken", moduleAddresses.membershipToken],
     ["governor", moduleAddresses.governor],
     ["timelock", moduleAddresses.timelock],
+    ["countingMultiChoice", moduleAddresses.countingMultiChoice],
     ["requestHub", moduleAddresses.requestHub],
     ["draftsManager", moduleAddresses.draftsManager],
     ["engagementsManager", moduleAddresses.engagementsManager],
@@ -555,10 +570,19 @@ export async function registerAndConfigureCommunity(
     ["verifierElection", moduleAddresses.verifierElection],
     ["verifierManager", moduleAddresses.verifierManager],
     ["valuableActionSBT", moduleAddresses.valuableActionSBT],
+    ["positionManager", moduleAddresses.positionManager],
+    ["credentialManager", moduleAddresses.credentialManager],
+    ["cohortRegistry", moduleAddresses.cohortRegistry],
+    ["investmentCohortManager", moduleAddresses.investmentCohortManager],
+    ["revenueRouter", moduleAddresses.revenueRouter],
     ["treasuryVault", moduleAddresses.treasuryVault],
     ["treasuryAdapter", moduleAddresses.treasuryAdapter],
     ["communityToken", moduleAddresses.communityToken],
     ["paramController", moduleAddresses.paramController],
+    ["commerceDisputes", moduleAddresses.commerceDisputes],
+    ["marketplace", moduleAddresses.marketplace],
+    ["housingManager", moduleAddresses.housingManager],
+    ["projectFactory", moduleAddresses.projectFactory],
   ];
 
   for (const [key, value] of moduleEntries) {
@@ -720,8 +744,11 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
   const projectFactory = await deploy<any>("ProjectFactory", nextCommunityId);
 
   const moduleAddresses: CommunityModuleAddresses = {
+    accessManager: accessManagerAddress,
+    membershipToken: await membershipToken.getAddress(),
     governor: await governor.getAddress(),
     timelock: await timelock.getAddress(),
+    countingMultiChoice: await countingMultiChoice.getAddress(),
     requestHub: await requestHub.getAddress(),
     draftsManager: await draftsManager.getAddress(),
     engagementsManager: await engagements.getAddress(),
@@ -730,11 +757,23 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
     verifierElection: await verifierElection.getAddress(),
     verifierManager: await verifierManager.getAddress(),
     valuableActionSBT: await valuableActionSBT.getAddress(),
+    positionManager: await positionManager.getAddress(),
+    credentialManager: await credentialManager.getAddress(),
+    cohortRegistry: await cohortRegistry.getAddress(),
+    investmentCohortManager: await investmentCohortManager.getAddress(),
+    revenueRouter: await revenueRouter.getAddress(),
     treasuryVault: config.treasuryVault,
     treasuryAdapter: await treasuryAdapter.getAddress(),
     communityToken: await communityToken.getAddress(),
     paramController: shared.paramController,
+    commerceDisputes: await commerceDisputes.getAddress(),
+    marketplace: await marketplace.getAddress(),
+    housingManager: await housingManager.getAddress(),
+    projectFactory: await projectFactory.getAddress(),
   };
+
+  // Refresh nonce right before registry writes to avoid drift after long deploy bursts on shared RPC backends.
+  await syncDeploymentSignerNonce();
 
   const communityId = await registerAndConfigureCommunity(
     shared.communityRegistry,
@@ -1054,11 +1093,22 @@ export async function wireCommunityRoles(
     await (await accessManager.revokeRole(adminRole, deployer, txOverrides)).wait();
   }
 
-  const [deployerHasAdminAfterRevoke] = await accessManager.hasRole(adminRole, deployer);
+  let deployerHasAdminAfterRevoke = true;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    [deployerHasAdminAfterRevoke] = await accessManager.hasRole(adminRole, deployer);
+    if (!deployerHasAdminAfterRevoke) break;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
   if (deployerHasAdminAfterRevoke) {
     throw new Error("AccessManager handoff failed: deployer still has admin role");
   }
-  const [timelockHasAdmin] = await accessManager.hasRole(adminRole, addresses.timelock);
+
+  let timelockHasAdmin = false;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    [timelockHasAdmin] = await accessManager.hasRole(adminRole, addresses.timelock);
+    if (timelockHasAdmin) break;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+  }
   if (!timelockHasAdmin) {
     throw new Error("AccessManager handoff failed: timelock missing admin role");
   }

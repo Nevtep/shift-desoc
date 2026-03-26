@@ -370,8 +370,11 @@ async function benchmarkFactory(config: CommunityDeployConfig): Promise<{ totalS
   )).wait().then((r: any) => addGas(deployGasByContract, "setRevenuePolicy", r.gasUsed));
 
   await (await communityRegistry.setModuleAddresses(communityId, {
+    accessManager: accessManagerAddress,
+    membershipToken: governance.membershipToken,
     governor: governance.governor,
     timelock: governance.timelock,
+    countingMultiChoice: governance.countingMultiChoice,
     requestHub: coordination.requestHub,
     draftsManager: coordination.draftsManager,
     engagementsManager: verification.engagements,
@@ -380,10 +383,19 @@ async function benchmarkFactory(config: CommunityDeployConfig): Promise<{ totalS
     verifierElection: verification.verifierElection,
     verifierManager: verification.verifierManager,
     valuableActionSBT: verification.valuableActionSBT,
+    positionManager: verification.positionManager,
+    credentialManager: verification.credentialManager,
+    cohortRegistry: economic.cohortRegistry,
+    investmentCohortManager: economic.investmentCohortManager,
+    revenueRouter: economic.revenueRouter,
     treasuryVault: config.treasuryVault,
     treasuryAdapter: economic.treasuryAdapter,
     communityToken: economic.communityToken,
     paramController: shared.paramController,
+    commerceDisputes: commerce.commerceDisputes,
+    marketplace: commerce.marketplace,
+    housingManager: commerce.housingManager,
+    projectFactory: commerce.projectFactory,
   }, txOverrides)).wait().then((r: any) => addGas(deployGasByContract, "setModuleAddresses", r.gasUsed));
 
   const endBlock = await ethers.provider.getBlockNumber();

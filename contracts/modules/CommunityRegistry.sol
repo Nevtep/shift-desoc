@@ -23,8 +23,11 @@ contract CommunityRegistry {
         uint256 createdAt;            // Creation timestamp
         
         // Module Addresses
+        address accessManager;       // ShiftAccessManager contract
+        address membershipToken;     // MembershipTokenERC20Votes contract
         address governor;             // Governor contract
         address timelock;             // Timelock contract
+        address countingMultiChoice;  // CountingMultiChoice contract
         address requestHub;           // RequestHub contract
         address draftsManager;        // DraftsManager contract
         address engagementsManager;   // Engagements contract
@@ -33,10 +36,19 @@ contract CommunityRegistry {
         address verifierElection;     // VerifierElection contract (VPT system)
         address verifierManager;      // VerifierManager contract (VPT system)
         address valuableActionSBT;    // ValuableActionSBT contract
+        address positionManager;      // PositionManager contract
+        address credentialManager;    // CredentialManager contract
+        address cohortRegistry;       // CohortRegistry contract
+        address investmentCohortManager; // InvestmentCohortManager contract
+        address revenueRouter;        // RevenueRouter contract
         address treasuryVault;        // Community treasury Safe (for manual custody)
         address treasuryAdapter;      // TreasuryAdapter contract
         address communityToken;       // CommunityToken contract
         address paramController;      // ParamController contract
+        address commerceDisputes;     // CommerceDisputes contract
+        address marketplace;          // Marketplace contract
+        address housingManager;       // HousingManager contract
+        address projectFactory;       // ProjectFactory contract
         
         // Cross-Community Links
         uint256 parentCommunityId;   // Parent community (0 if root)
@@ -45,8 +57,11 @@ contract CommunityRegistry {
     
     /// @notice Module addresses structure for easy return
     struct ModuleAddresses {
+        address accessManager;
+        address membershipToken;
         address governor;
         address timelock;
+        address countingMultiChoice;
         address requestHub;
         address draftsManager;
         address engagementsManager;
@@ -55,10 +70,19 @@ contract CommunityRegistry {
         address verifierElection;
         address verifierManager;
         address valuableActionSBT;
+        address positionManager;
+        address credentialManager;
+        address cohortRegistry;
+        address investmentCohortManager;
+        address revenueRouter;
         address treasuryVault;
         address treasuryAdapter;
         address communityToken;
         address paramController;
+        address commerceDisputes;
+        address marketplace;
+        address housingManager;
+        address projectFactory;
     }
 
     /// @notice Bootstrap parameter bundle used for one-tx community setup
@@ -310,12 +334,21 @@ contract CommunityRegistry {
         Community storage community = communities[communityId];
         address oldAddress;
         
-        if (moduleKey == keccak256("governor")) {
+        if (moduleKey == keccak256("accessManager")) {
+            oldAddress = community.accessManager;
+            community.accessManager = moduleAddress;
+        } else if (moduleKey == keccak256("membershipToken")) {
+            oldAddress = community.membershipToken;
+            community.membershipToken = moduleAddress;
+        } else if (moduleKey == keccak256("governor")) {
             oldAddress = community.governor;
             community.governor = moduleAddress;
         } else if (moduleKey == keccak256("timelock")) {
             oldAddress = community.timelock;
             community.timelock = moduleAddress;
+        } else if (moduleKey == keccak256("countingMultiChoice")) {
+            oldAddress = community.countingMultiChoice;
+            community.countingMultiChoice = moduleAddress;
         } else if (moduleKey == keccak256("requestHub")) {
             oldAddress = community.requestHub;
             community.requestHub = moduleAddress;
@@ -340,6 +373,21 @@ contract CommunityRegistry {
         } else if (moduleKey == keccak256("valuableActionSBT")) {
             oldAddress = community.valuableActionSBT;
             community.valuableActionSBT = moduleAddress;
+        } else if (moduleKey == keccak256("positionManager")) {
+            oldAddress = community.positionManager;
+            community.positionManager = moduleAddress;
+        } else if (moduleKey == keccak256("credentialManager")) {
+            oldAddress = community.credentialManager;
+            community.credentialManager = moduleAddress;
+        } else if (moduleKey == keccak256("cohortRegistry")) {
+            oldAddress = community.cohortRegistry;
+            community.cohortRegistry = moduleAddress;
+        } else if (moduleKey == keccak256("investmentCohortManager")) {
+            oldAddress = community.investmentCohortManager;
+            community.investmentCohortManager = moduleAddress;
+        } else if (moduleKey == keccak256("revenueRouter")) {
+            oldAddress = community.revenueRouter;
+            community.revenueRouter = moduleAddress;
         } else if (moduleKey == keccak256("treasuryVault")) {
             oldAddress = community.treasuryVault;
             community.treasuryVault = moduleAddress;
@@ -352,6 +400,18 @@ contract CommunityRegistry {
         } else if (moduleKey == keccak256("paramController")) {
             oldAddress = community.paramController;
             community.paramController = moduleAddress;
+        } else if (moduleKey == keccak256("commerceDisputes")) {
+            oldAddress = community.commerceDisputes;
+            community.commerceDisputes = moduleAddress;
+        } else if (moduleKey == keccak256("marketplace")) {
+            oldAddress = community.marketplace;
+            community.marketplace = moduleAddress;
+        } else if (moduleKey == keccak256("housingManager")) {
+            oldAddress = community.housingManager;
+            community.housingManager = moduleAddress;
+        } else if (moduleKey == keccak256("projectFactory")) {
+            oldAddress = community.projectFactory;
+            community.projectFactory = moduleAddress;
         } else {
             revert Errors.InvalidInput("Unknown module key");
         }
@@ -374,6 +434,14 @@ contract CommunityRegistry {
     function _setModuleAddresses(uint256 communityId, ModuleAddresses calldata modules) internal {
         Community storage community = communities[communityId];
 
+        if (modules.accessManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("accessManager"), community.accessManager, modules.accessManager);
+            community.accessManager = modules.accessManager;
+        }
+        if (modules.membershipToken != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("membershipToken"), community.membershipToken, modules.membershipToken);
+            community.membershipToken = modules.membershipToken;
+        }
         if (modules.governor != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("governor"), community.governor, modules.governor);
             community.governor = modules.governor;
@@ -381,6 +449,10 @@ contract CommunityRegistry {
         if (modules.timelock != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("timelock"), community.timelock, modules.timelock);
             community.timelock = modules.timelock;
+        }
+        if (modules.countingMultiChoice != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("countingMultiChoice"), community.countingMultiChoice, modules.countingMultiChoice);
+            community.countingMultiChoice = modules.countingMultiChoice;
         }
         if (modules.requestHub != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("requestHub"), community.requestHub, modules.requestHub);
@@ -414,6 +486,26 @@ contract CommunityRegistry {
             emit ModuleAddressUpdated(communityId, keccak256("valuableActionSBT"), community.valuableActionSBT, modules.valuableActionSBT);
             community.valuableActionSBT = modules.valuableActionSBT;
         }
+        if (modules.positionManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("positionManager"), community.positionManager, modules.positionManager);
+            community.positionManager = modules.positionManager;
+        }
+        if (modules.credentialManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("credentialManager"), community.credentialManager, modules.credentialManager);
+            community.credentialManager = modules.credentialManager;
+        }
+        if (modules.cohortRegistry != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("cohortRegistry"), community.cohortRegistry, modules.cohortRegistry);
+            community.cohortRegistry = modules.cohortRegistry;
+        }
+        if (modules.investmentCohortManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("investmentCohortManager"), community.investmentCohortManager, modules.investmentCohortManager);
+            community.investmentCohortManager = modules.investmentCohortManager;
+        }
+        if (modules.revenueRouter != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("revenueRouter"), community.revenueRouter, modules.revenueRouter);
+            community.revenueRouter = modules.revenueRouter;
+        }
         if (modules.treasuryVault != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("treasuryVault"), community.treasuryVault, modules.treasuryVault);
             community.treasuryVault = modules.treasuryVault;
@@ -429,6 +521,22 @@ contract CommunityRegistry {
         if (modules.paramController != address(0)) {
             emit ModuleAddressUpdated(communityId, keccak256("paramController"), community.paramController, modules.paramController);
             community.paramController = modules.paramController;
+        }
+        if (modules.commerceDisputes != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("commerceDisputes"), community.commerceDisputes, modules.commerceDisputes);
+            community.commerceDisputes = modules.commerceDisputes;
+        }
+        if (modules.marketplace != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("marketplace"), community.marketplace, modules.marketplace);
+            community.marketplace = modules.marketplace;
+        }
+        if (modules.housingManager != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("housingManager"), community.housingManager, modules.housingManager);
+            community.housingManager = modules.housingManager;
+        }
+        if (modules.projectFactory != address(0)) {
+            emit ModuleAddressUpdated(communityId, keccak256("projectFactory"), community.projectFactory, modules.projectFactory);
+            community.projectFactory = modules.projectFactory;
         }
     }
 
@@ -666,8 +774,11 @@ contract CommunityRegistry {
         Community storage community = communities[communityId];
         
         return ModuleAddresses({
+            accessManager: community.accessManager,
+            membershipToken: community.membershipToken,
             governor: community.governor,
             timelock: community.timelock,
+            countingMultiChoice: community.countingMultiChoice,
             requestHub: community.requestHub,
             draftsManager: community.draftsManager,
             engagementsManager: community.engagementsManager,
@@ -676,10 +787,19 @@ contract CommunityRegistry {
             verifierElection: community.verifierElection,
             verifierManager: community.verifierManager,
             valuableActionSBT: community.valuableActionSBT,
+            positionManager: community.positionManager,
+            credentialManager: community.credentialManager,
+            cohortRegistry: community.cohortRegistry,
+            investmentCohortManager: community.investmentCohortManager,
+            revenueRouter: community.revenueRouter,
             treasuryVault: community.treasuryVault,
             treasuryAdapter: community.treasuryAdapter,
             communityToken: community.communityToken,
-            paramController: community.paramController
+            paramController: community.paramController,
+            commerceDisputes: community.commerceDisputes,
+            marketplace: community.marketplace,
+            housingManager: community.housingManager,
+            projectFactory: community.projectFactory
         });
     }
 

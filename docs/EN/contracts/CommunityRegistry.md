@@ -1,5 +1,75 @@
 # CommunityRegistry Contract
 
+## Mar 2026 Canonical Module Inventory Update
+
+CommunityRegistry now stores a complete per-community module inventory for new deployments, so module recovery and manager UI summaries can be reconstructed directly from `getCommunityModules(communityId)` without relying on run-scoped deployment memory.
+
+### Canonical `ModuleAddresses` fields
+
+- `accessManager`
+- `membershipToken`
+- `governor`
+- `timelock`
+- `countingMultiChoice`
+- `requestHub`
+- `draftsManager`
+- `engagementsManager`
+- `valuableActionRegistry`
+- `verifierPowerToken`
+- `verifierElection`
+- `verifierManager`
+- `valuableActionSBT`
+- `positionManager`
+- `credentialManager`
+- `cohortRegistry`
+- `investmentCohortManager`
+- `revenueRouter`
+- `treasuryVault`
+- `treasuryAdapter`
+- `communityToken`
+- `paramController`
+- `commerceDisputes`
+- `marketplace`
+- `housingManager`
+- `projectFactory`
+
+### Supported module keys in `setModuleAddress`
+
+The following `bytes32` keys are recognized (hashed via `keccak256("...")`):
+
+- `accessManager`
+- `membershipToken`
+- `governor`
+- `timelock`
+- `countingMultiChoice`
+- `requestHub`
+- `draftsManager`
+- `engagementsManager`
+- `valuableActionRegistry`
+- `verifierPowerToken`
+- `verifierElection`
+- `verifierManager`
+- `valuableActionSBT`
+- `positionManager`
+- `credentialManager`
+- `cohortRegistry`
+- `investmentCohortManager`
+- `revenueRouter`
+- `treasuryVault`
+- `treasuryAdapter`
+- `communityToken`
+- `paramController`
+- `commerceDisputes`
+- `marketplace`
+- `housingManager`
+- `projectFactory`
+
+### Backward-scope note
+
+- No historical backfill is required.
+- Completeness is required for new deployments.
+- Legacy scripts under `scripts/legacy/` remain out of scope for this change.
+
 ## 🎯 Purpose & Role
 
 The **CommunityRegistry** serves as the single source of truth for community metadata, governance parameters, module addresses, and cross-community relationships in the Shift DeSoc ecosystem. It acts as the central coordination hub that enables communities to configure their governance systems, manage their organizational structure, and establish relationships with other communities.

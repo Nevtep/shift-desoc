@@ -26,6 +26,7 @@ dotenv.config();
 interface AddressBook {
   communityRegistry: string;
   paramController: string;
+  accessManager?: string;
   membershipToken?: string;
   timelock: string;
   governor: string;
@@ -38,9 +39,14 @@ interface AddressBook {
   valuableActionSBT: string;
   communityToken: string;
   revenueRouter?: string;
+  cohortRegistry?: string;
+  investmentCohortManager?: string;
+  positionManager?: string;
+  credentialManager?: string;
   treasuryAdapter: string;
   requestHub: string;
   draftsManager: string;
+  commerceDisputes?: string;
   housingManager?: string;
   marketplace?: string;
   projectFactory?: string;
@@ -64,6 +70,7 @@ function loadDeploymentAddresses(network: string): AddressBook {
     return {
       communityRegistry: process.env.COMMUNITY_REGISTRY_ADDRESS || "",
       paramController: process.env.PARAM_CONTROLLER_ADDRESS || "",
+      accessManager: process.env.ACCESS_MANAGER_ADDRESS || "",
       membershipToken: process.env.MEMBERSHIP_TOKEN_ADDRESS || "",
       timelock: process.env.TIMELOCK_ADDRESS || "",
       governor: process.env.GOVERNOR_ADDRESS || "",
@@ -76,9 +83,14 @@ function loadDeploymentAddresses(network: string): AddressBook {
       valuableActionSBT: process.env.VALUABLE_ACTION_SBT_ADDRESS || "",
       communityToken: process.env.COMMUNITY_TOKEN_ADDRESS || "",
       revenueRouter: process.env.REVENUE_ROUTER_ADDRESS || "",
+      cohortRegistry: process.env.COHORT_REGISTRY_ADDRESS || "",
+      investmentCohortManager: process.env.INVESTMENT_COHORT_MANAGER_ADDRESS || "",
+      positionManager: process.env.POSITION_MANAGER_ADDRESS || "",
+      credentialManager: process.env.CREDENTIAL_MANAGER_ADDRESS || "",
       treasuryAdapter: process.env.TREASURY_ADAPTER_ADDRESS || "",
       requestHub: process.env.REQUEST_HUB_ADDRESS || "",
       draftsManager: process.env.DRAFTS_MANAGER_ADDRESS || "",
+      commerceDisputes: process.env.COMMERCE_DISPUTES_ADDRESS || "",
       housingManager: process.env.HOUSING_MANAGER_ADDRESS || "",
       marketplace: process.env.MARKETPLACE_ADDRESS || "",
       projectFactory: process.env.PROJECT_FACTORY_ADDRESS || "",
@@ -179,8 +191,11 @@ class CommunityAdmin {
     console.log(`✅ Community registered with ID ${communityId}`);
 
     const modules = {
+      accessManager: this.addresses.accessManager || ethers.ZeroAddress,
+      membershipToken: this.addresses.membershipToken || ethers.ZeroAddress,
       governor: this.addresses.governor,
       timelock: this.addresses.timelock,
+      countingMultiChoice: this.addresses.countingMultiChoice || ethers.ZeroAddress,
       requestHub: this.addresses.requestHub,
       draftsManager: this.addresses.draftsManager,
       engagementsManager: this.addresses.engagements,
@@ -189,9 +204,19 @@ class CommunityAdmin {
       verifierElection: this.addresses.verifierElection || ethers.ZeroAddress,
       verifierManager: this.addresses.verifierManager || ethers.ZeroAddress,
       valuableActionSBT: this.addresses.valuableActionSBT,
+      positionManager: this.addresses.positionManager || ethers.ZeroAddress,
+      credentialManager: this.addresses.credentialManager || ethers.ZeroAddress,
+      cohortRegistry: this.addresses.cohortRegistry || ethers.ZeroAddress,
+      investmentCohortManager: this.addresses.investmentCohortManager || ethers.ZeroAddress,
+      revenueRouter: this.addresses.revenueRouter || ethers.ZeroAddress,
+      treasuryVault: ethers.ZeroAddress,
       treasuryAdapter: this.addresses.treasuryAdapter,
       communityToken: this.addresses.communityToken,
       paramController: this.addresses.paramController,
+      commerceDisputes: this.addresses.commerceDisputes || ethers.ZeroAddress,
+      marketplace: this.addresses.marketplace || ethers.ZeroAddress,
+      housingManager: this.addresses.housingManager || ethers.ZeroAddress,
+      projectFactory: this.addresses.projectFactory || ethers.ZeroAddress,
     };
 
     console.log("🔗 Setting module addresses...");

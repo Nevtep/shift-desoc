@@ -51,8 +51,11 @@ export type OverviewRawParameters = {
 };
 
 const MODULE_DEFS: Array<{ key: keyof CommunityModules; label: string; moduleKey: string }> = [
+  { key: "accessManager", label: "ShiftAccessManager", moduleKey: "accessManager" },
+  { key: "membershipToken", label: "MembershipTokenERC20Votes", moduleKey: "membershipToken" },
   { key: "governor", label: "Governor", moduleKey: "governor" },
   { key: "timelock", label: "Timelock", moduleKey: "timelock" },
+  { key: "countingMultiChoice", label: "CountingMultiChoice", moduleKey: "countingMultiChoice" },
   { key: "requestHub", label: "RequestHub", moduleKey: "requestHub" },
   { key: "draftsManager", label: "DraftsManager", moduleKey: "draftsManager" },
   { key: "engagementsManager", label: "Engagements", moduleKey: "engagements" },
@@ -61,9 +64,19 @@ const MODULE_DEFS: Array<{ key: keyof CommunityModules; label: string; moduleKey
   { key: "verifierElection", label: "VerifierElection", moduleKey: "verifierElection" },
   { key: "verifierManager", label: "VerifierManager", moduleKey: "verifierManager" },
   { key: "valuableActionSBT", label: "ValuableActionSBT", moduleKey: "valuableActionSBT" },
+  { key: "positionManager", label: "PositionManager", moduleKey: "positionManager" },
+  { key: "credentialManager", label: "CredentialManager", moduleKey: "credentialManager" },
+  { key: "cohortRegistry", label: "CohortRegistry", moduleKey: "cohortRegistry" },
+  { key: "investmentCohortManager", label: "InvestmentCohortManager", moduleKey: "investmentCohortManager" },
+  { key: "revenueRouter", label: "RevenueRouter", moduleKey: "revenueRouter" },
+  { key: "treasuryVault", label: "TreasuryVault", moduleKey: "treasuryVault" },
   { key: "treasuryAdapter", label: "TreasuryAdapter", moduleKey: "treasuryAdapter" },
   { key: "communityToken", label: "CommunityToken", moduleKey: "communityToken" },
-  { key: "paramController", label: "ParamController", moduleKey: "paramController" }
+  { key: "paramController", label: "ParamController", moduleKey: "paramController" },
+  { key: "commerceDisputes", label: "CommerceDisputes", moduleKey: "commerceDisputes" },
+  { key: "marketplace", label: "Marketplace", moduleKey: "marketplace" },
+  { key: "housingManager", label: "HousingManager", moduleKey: "housingManager" },
+  { key: "projectFactory", label: "ProjectFactory", moduleKey: "projectFactory" }
 ];
 
 export function buildOverviewHeaderState(args: {

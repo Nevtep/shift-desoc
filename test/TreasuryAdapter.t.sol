@@ -19,8 +19,11 @@ contract CommunityRegistryMock {
     address public treasuryVault;
 
     struct ModuleAddresses {
+        address accessManager;
+        address membershipToken;
         address governor;
         address timelock;
+        address countingMultiChoice;
         address requestHub;
         address draftsManager;
         address engagementsManager;
@@ -29,10 +32,19 @@ contract CommunityRegistryMock {
         address verifierElection;
         address verifierManager;
         address valuableActionSBT;
+        address positionManager;
+        address credentialManager;
+        address cohortRegistry;
+        address investmentCohortManager;
+        address revenueRouter;
         address treasuryVault;
         address treasuryAdapter;
         address communityToken;
         address paramController;
+        address commerceDisputes;
+        address marketplace;
+        address housingManager;
+        address projectFactory;
     }
 
     function setTreasuryVault(address vault) external {
@@ -41,8 +53,11 @@ contract CommunityRegistryMock {
 
     function getCommunityModules(uint256) external view returns (ModuleAddresses memory) {
         return ModuleAddresses({
+            accessManager: address(0),
+            membershipToken: address(0),
             governor: address(0),
             timelock: address(0),
+            countingMultiChoice: address(0),
             requestHub: address(0),
             draftsManager: address(0),
             engagementsManager: address(0),
@@ -51,10 +66,19 @@ contract CommunityRegistryMock {
             verifierElection: address(0),
             verifierManager: address(0),
             valuableActionSBT: address(0),
+            positionManager: address(0),
+            credentialManager: address(0),
+            cohortRegistry: address(0),
+            investmentCohortManager: address(0),
+            revenueRouter: address(0),
             treasuryVault: treasuryVault,
             treasuryAdapter: address(0),
             communityToken: address(0),
-            paramController: address(0)
+            paramController: address(0),
+            commerceDisputes: address(0),
+            marketplace: address(0),
+            housingManager: address(0),
+            projectFactory: address(0)
         });
     }
 }

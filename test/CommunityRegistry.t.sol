@@ -128,8 +128,11 @@ contract CommunityRegistryTest is Test {
         });
 
         CommunityRegistry.ModuleAddresses memory modules = CommunityRegistry.ModuleAddresses({
+            accessManager: address(0x1000),
+            membershipToken: address(0x100A),
             governor: address(0x1001),
             timelock: address(0),
+            countingMultiChoice: address(0x100B),
             requestHub: address(0x1002),
             draftsManager: address(0x1003),
             engagementsManager: address(0x1004),
@@ -138,10 +141,19 @@ contract CommunityRegistryTest is Test {
             verifierElection: address(0x1007),
             verifierManager: address(0x1008),
             valuableActionSBT: address(0x1009),
+            positionManager: address(0x1013),
+            credentialManager: address(0x1014),
+            cohortRegistry: address(0x1015),
+            investmentCohortManager: address(0x1016),
+            revenueRouter: address(0x1017),
             treasuryVault: address(0x1010),
             treasuryAdapter: address(0x1011),
             communityToken: address(0x1012),
-            paramController: address(paramController)
+            paramController: address(paramController),
+            commerceDisputes: address(0x1018),
+            marketplace: address(0x1019),
+            housingManager: address(0x1020),
+            projectFactory: address(0x1021)
         });
 
         vm.prank(user1);
@@ -338,43 +350,73 @@ contract CommunityRegistryTest is Test {
         vm.prank(user1);
         uint256 communityId = registry.registerCommunity("Test Community", "Description", "ipfs://metadata", 0);
         
-        address[] memory addresses = new address[](11);
-        for (uint256 i = 0; i < 11; i++) {
+        address[] memory addresses = new address[](26);
+        for (uint256 i = 0; i < 26; i++) {
             addresses[i] = address(uint160(0x1000 + i));
         }
         
-        bytes32[] memory moduleKeys = new bytes32[](11);
-        moduleKeys[0] = keccak256("governor");
-        moduleKeys[1] = keccak256("timelock");
-        moduleKeys[2] = keccak256("requestHub");
-        moduleKeys[3] = keccak256("draftsManager");
-        moduleKeys[4] = keccak256("engagementsManager");
-        moduleKeys[5] = keccak256("valuableActionRegistry");
-        moduleKeys[6] = keccak256("valuableActionSBT");
-        moduleKeys[7] = keccak256("treasuryVault");
-        moduleKeys[8] = keccak256("treasuryAdapter");
-        moduleKeys[9] = keccak256("communityToken");
-        moduleKeys[10] = keccak256("paramController");
+        bytes32[] memory moduleKeys = new bytes32[](26);
+        moduleKeys[0] = keccak256("accessManager");
+        moduleKeys[1] = keccak256("membershipToken");
+        moduleKeys[2] = keccak256("governor");
+        moduleKeys[3] = keccak256("timelock");
+        moduleKeys[4] = keccak256("countingMultiChoice");
+        moduleKeys[5] = keccak256("requestHub");
+        moduleKeys[6] = keccak256("draftsManager");
+        moduleKeys[7] = keccak256("engagementsManager");
+        moduleKeys[8] = keccak256("valuableActionRegistry");
+        moduleKeys[9] = keccak256("verifierPowerToken");
+        moduleKeys[10] = keccak256("verifierElection");
+        moduleKeys[11] = keccak256("verifierManager");
+        moduleKeys[12] = keccak256("valuableActionSBT");
+        moduleKeys[13] = keccak256("positionManager");
+        moduleKeys[14] = keccak256("credentialManager");
+        moduleKeys[15] = keccak256("cohortRegistry");
+        moduleKeys[16] = keccak256("investmentCohortManager");
+        moduleKeys[17] = keccak256("revenueRouter");
+        moduleKeys[18] = keccak256("treasuryVault");
+        moduleKeys[19] = keccak256("treasuryAdapter");
+        moduleKeys[20] = keccak256("communityToken");
+        moduleKeys[21] = keccak256("paramController");
+        moduleKeys[22] = keccak256("commerceDisputes");
+        moduleKeys[23] = keccak256("marketplace");
+        moduleKeys[24] = keccak256("housingManager");
+        moduleKeys[25] = keccak256("projectFactory");
         
         vm.startPrank(user1, user1);
-        for (uint256 i = 0; i < 11; i++) {
+        for (uint256 i = 0; i < 26; i++) {
             registry.setModuleAddress(communityId, moduleKeys[i], addresses[i]);
         }
         vm.stopPrank();
         
         CommunityRegistry.ModuleAddresses memory modules = registry.getCommunityModules(communityId);
         
-        assertEq(modules.governor, addresses[0]);
-        assertEq(modules.timelock, addresses[1]);
-        assertEq(modules.requestHub, addresses[2]);
-        assertEq(modules.draftsManager, addresses[3]);
-        assertEq(modules.engagementsManager, addresses[4]);
-        assertEq(modules.valuableActionRegistry, addresses[5]);
-        assertEq(modules.valuableActionSBT, addresses[6]);
-        assertEq(modules.treasuryVault, addresses[7]);
-        assertEq(modules.treasuryAdapter, addresses[8]);
-        assertEq(modules.communityToken, addresses[9]);
-        assertEq(modules.paramController, addresses[10]);
+        assertEq(modules.accessManager, addresses[0]);
+        assertEq(modules.membershipToken, addresses[1]);
+        assertEq(modules.governor, addresses[2]);
+        assertEq(modules.timelock, addresses[3]);
+        assertEq(modules.countingMultiChoice, addresses[4]);
+        assertEq(modules.requestHub, addresses[5]);
+        assertEq(modules.draftsManager, addresses[6]);
+        assertEq(modules.engagementsManager, addresses[7]);
+        assertEq(modules.valuableActionRegistry, addresses[8]);
+        assertEq(modules.verifierPowerToken, addresses[9]);
+        assertEq(modules.verifierElection, addresses[10]);
+        assertEq(modules.verifierManager, addresses[11]);
+        assertEq(modules.valuableActionSBT, addresses[12]);
+        assertEq(modules.positionManager, addresses[13]);
+        assertEq(modules.credentialManager, addresses[14]);
+        assertEq(modules.cohortRegistry, addresses[15]);
+        assertEq(modules.investmentCohortManager, addresses[16]);
+        assertEq(modules.revenueRouter, addresses[17]);
+        assertEq(modules.treasuryVault, addresses[18]);
+        assertEq(modules.treasuryAdapter, addresses[19]);
+        assertEq(modules.communityToken, addresses[20]);
+        assertEq(modules.paramController, addresses[21]);
+        assertEq(modules.commerceDisputes, addresses[22]);
+        assertEq(modules.marketplace, addresses[23]);
+        assertEq(modules.housingManager, addresses[24]);
+        assertEq(modules.projectFactory, addresses[25]);
     }
     
     /*//////////////////////////////////////////////////////////////

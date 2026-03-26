@@ -15,8 +15,11 @@ import communityTokenArtifact from "../abis/CommunityToken.json" assert { type: 
 import paramControllerArtifact from "../abis/ParamController.json" assert { type: "json" };
 
 export type CommunityModules = {
+  accessManager?: Address;
+  membershipToken?: Address;
   governor?: Address;
   timelock?: Address;
+  countingMultiChoice?: Address;
   requestHub?: Address;
   draftsManager?: Address;
   engagementsManager?: Address;
@@ -25,9 +28,19 @@ export type CommunityModules = {
   verifierElection?: Address;
   verifierManager?: Address;
   valuableActionSBT?: Address;
+  positionManager?: Address;
+  credentialManager?: Address;
+  cohortRegistry?: Address;
+  investmentCohortManager?: Address;
+  revenueRouter?: Address;
+  treasuryVault?: Address;
   treasuryAdapter?: Address;
   communityToken?: Address;
   paramController?: Address;
+  commerceDisputes?: Address;
+  marketplace?: Address;
+  housingManager?: Address;
+  projectFactory?: Address;
 };
 
 type HookParams = {
@@ -47,19 +60,32 @@ function mapModules(raw: unknown): CommunityModules | null {
   const value = raw as Record<string, unknown> & unknown[];
 
   return {
-    governor: parseAddress(value.governor ?? value[0]),
-    timelock: parseAddress(value.timelock ?? value[1]),
-    requestHub: parseAddress(value.requestHub ?? value[2]),
-    draftsManager: parseAddress(value.draftsManager ?? value[3]),
-    engagementsManager: parseAddress(value.engagementsManager ?? value[4]),
-    valuableActionRegistry: parseAddress(value.valuableActionRegistry ?? value[5]),
-    verifierPowerToken: parseAddress(value.verifierPowerToken ?? value[6]),
-    verifierElection: parseAddress(value.verifierElection ?? value[7]),
-    verifierManager: parseAddress(value.verifierManager ?? value[8]),
-    valuableActionSBT: parseAddress(value.valuableActionSBT ?? value[9]),
-    treasuryAdapter: parseAddress(value.treasuryAdapter ?? value[11]),
-    communityToken: parseAddress(value.communityToken ?? value[12]),
-    paramController: parseAddress(value.paramController ?? value[13])
+    accessManager: parseAddress(value.accessManager ?? value[0]),
+    membershipToken: parseAddress(value.membershipToken ?? value[1]),
+    governor: parseAddress(value.governor ?? value[2]),
+    timelock: parseAddress(value.timelock ?? value[3]),
+    countingMultiChoice: parseAddress(value.countingMultiChoice ?? value[4]),
+    requestHub: parseAddress(value.requestHub ?? value[5]),
+    draftsManager: parseAddress(value.draftsManager ?? value[6]),
+    engagementsManager: parseAddress(value.engagementsManager ?? value[7]),
+    valuableActionRegistry: parseAddress(value.valuableActionRegistry ?? value[8]),
+    verifierPowerToken: parseAddress(value.verifierPowerToken ?? value[9]),
+    verifierElection: parseAddress(value.verifierElection ?? value[10]),
+    verifierManager: parseAddress(value.verifierManager ?? value[11]),
+    valuableActionSBT: parseAddress(value.valuableActionSBT ?? value[12]),
+    positionManager: parseAddress(value.positionManager ?? value[13]),
+    credentialManager: parseAddress(value.credentialManager ?? value[14]),
+    cohortRegistry: parseAddress(value.cohortRegistry ?? value[15]),
+    investmentCohortManager: parseAddress(value.investmentCohortManager ?? value[16]),
+    revenueRouter: parseAddress(value.revenueRouter ?? value[17]),
+    treasuryVault: parseAddress(value.treasuryVault ?? value[18]),
+    treasuryAdapter: parseAddress(value.treasuryAdapter ?? value[19]),
+    communityToken: parseAddress(value.communityToken ?? value[20]),
+    paramController: parseAddress(value.paramController ?? value[21]),
+    commerceDisputes: parseAddress(value.commerceDisputes ?? value[22]),
+    marketplace: parseAddress(value.marketplace ?? value[23]),
+    housingManager: parseAddress(value.housingManager ?? value[24]),
+    projectFactory: parseAddress(value.projectFactory ?? value[25])
   };
 }
 

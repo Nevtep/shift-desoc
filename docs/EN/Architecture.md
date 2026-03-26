@@ -24,6 +24,7 @@ The Manager route `/communities/[communityId]` is the canonical community-scoped
 - **Hybrid truth model**:
     - Activity previews (Requests, Drafts, Proposals) are indexer-backed, bounded to latest `N=3`, and filtered by route `communityId`.
     - Configuration surfaces (module pointers, parameter summary subset) remain on-chain authoritative, read from `CommunityRegistry`/`ParamController` wiring.
+- **Canonical module inventory (Mar 2026)**: for new deployments, `CommunityRegistry.getCommunityModules(communityId)` stores the complete per-community contract inventory (governance, verification, economic, commerce, and access modules), enabling cross-device recovery and complete manager module summaries without legacy run-state dependence.
 - **Honest health signaling**: Overview exposes `synced|lagging|error|unknown` indexer states. Indexer degradation never hides chain-backed config sections; unavailable values are rendered explicitly as `unavailable`/`missing`.
 - **Authority-safe UX**: privileged actions (such as `Edit parameters`) are gated and default disabled when authority signals are uncertain.
 - **Capability signaling**: all six section tabs remain visible; unavailable sections are disabled and marked `Coming soon`.

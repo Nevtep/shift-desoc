@@ -35,6 +35,7 @@ export type DeploymentRunAddresses = {
   membershipToken?: `0x${string}`;
   governor: `0x${string}`;
   timelock: `0x${string}`;
+  countingMultiChoice?: `0x${string}`;
   requestHub: `0x${string}`;
   draftsManager: `0x${string}`;
   engagements: `0x${string}`;
@@ -53,6 +54,7 @@ export type DeploymentRunAddresses = {
   commerceDisputes?: `0x${string}`;
   marketplace: `0x${string}`;
   housingManager?: `0x${string}`;
+  projectFactory?: `0x${string}`;
 };
 
 export type DeploymentStepState = {

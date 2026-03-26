@@ -12,8 +12,11 @@ import {Roles} from "contracts/libs/Roles.sol";
 
 contract CommunityRegistryMock {
     struct ModuleAddresses {
+        address accessManager;
+        address membershipToken;
         address governor;
         address timelock;
+        address countingMultiChoice;
         address requestHub;
         address draftsManager;
         address engagementsManager;
@@ -22,10 +25,19 @@ contract CommunityRegistryMock {
         address verifierElection;
         address verifierManager;
         address valuableActionSBT;
+        address positionManager;
+        address credentialManager;
+        address cohortRegistry;
+        address investmentCohortManager;
+        address revenueRouter;
         address treasuryVault;
         address treasuryAdapter;
         address communityToken;
         address paramController;
+        address commerceDisputes;
+        address marketplace;
+        address housingManager;
+        address projectFactory;
     }
 
     mapping(uint256 => ModuleAddresses) internal modulesByCommunity;
@@ -63,8 +75,11 @@ contract CredentialManagerTest is Test {
         communityRegistry.setModuleAddresses(
             COMMUNITY_ID,
             CommunityRegistryMock.ModuleAddresses({
+                accessManager: address(0),
+                membershipToken: address(0),
                 governor: address(0xBEEF),
                 timelock: governance,
+                countingMultiChoice: address(0),
                 requestHub: address(0),
                 draftsManager: address(0),
                 engagementsManager: address(0),
@@ -73,10 +88,19 @@ contract CredentialManagerTest is Test {
                 verifierElection: address(0),
                 verifierManager: address(0),
                 valuableActionSBT: address(0),
+                positionManager: address(0),
+                credentialManager: address(0),
+                cohortRegistry: address(0),
+                investmentCohortManager: address(0),
+                revenueRouter: address(0),
                 treasuryVault: address(0),
                 treasuryAdapter: address(0),
                 communityToken: address(0),
-                paramController: address(0)
+                paramController: address(0),
+                commerceDisputes: address(0),
+                marketplace: address(0),
+                housingManager: address(0),
+                projectFactory: address(0)
             })
         );
 

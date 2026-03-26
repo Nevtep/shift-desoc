@@ -2265,8 +2265,11 @@ async function registerAndWireCommunity(
 
   const treasuryVault = requireAddressArg(context.config.treasuryVault, "treasury vault");
   const modulePayload = {
+    accessManager: runAddresses.accessManager,
+    membershipToken: runAddresses.membershipToken ?? ZERO_ADDRESS,
     governor: runAddresses.governor,
     timelock: runAddresses.timelock,
+    countingMultiChoice: runAddresses.countingMultiChoice ?? ZERO_ADDRESS,
     requestHub: runAddresses.requestHub,
     draftsManager: runAddresses.draftsManager,
     engagementsManager: runAddresses.engagements,
@@ -2275,10 +2278,19 @@ async function registerAndWireCommunity(
     verifierElection: runAddresses.verifierElection,
     verifierManager: runAddresses.verifierManager,
     valuableActionSBT: runAddresses.valuableActionSBT,
+    positionManager: runAddresses.positionManager ?? ZERO_ADDRESS,
+    credentialManager: runAddresses.credentialManager ?? ZERO_ADDRESS,
+    cohortRegistry: runAddresses.cohortRegistry ?? ZERO_ADDRESS,
+    investmentCohortManager: runAddresses.investmentCohortManager ?? ZERO_ADDRESS,
+    revenueRouter: runAddresses.revenueRouter,
     treasuryVault,
     treasuryAdapter: runAddresses.treasuryAdapter,
     communityToken: runAddresses.communityToken,
     paramController: runAddresses.paramController,
+    commerceDisputes: runAddresses.commerceDisputes ?? ZERO_ADDRESS,
+    marketplace: runAddresses.marketplace,
+    housingManager: runAddresses.housingManager ?? ZERO_ADDRESS,
+    projectFactory: runAddresses.projectFactory ?? ZERO_ADDRESS,
   };
 
   const beforeNextId = (await publicClient.readContract({

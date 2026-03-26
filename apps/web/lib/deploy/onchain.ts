@@ -51,13 +51,25 @@ export async function readVerificationSnapshot(
     args: [BigInt(communityId)]
   })) as {
     requestHub: `0x${string}`;
+    engagementsManager: `0x${string}`;
+    positionManager: `0x${string}`;
+    credentialManager: `0x${string}`;
+    investmentCohortManager: `0x${string}`;
     valuableActionRegistry: `0x${string}`;
     verifierPowerToken: `0x${string}`;
+    revenueRouter: `0x${string}`;
+    marketplace: `0x${string}`;
   };
 
   const requestHub = modules.requestHub;
+  const engagementsFromRegistry = modules.engagementsManager;
+  const positionManagerFromRegistry = modules.positionManager;
+  const credentialManagerFromRegistry = modules.credentialManager;
+  const investmentCohortManagerFromRegistry = modules.investmentCohortManager;
   const valuableActionRegistry = modules.valuableActionRegistry;
   const verifierPowerToken = modules.verifierPowerToken;
+  const revenueRouterFromRegistry = modules.revenueRouter;
+  const marketplaceFromRegistry = modules.marketplace;
 
   const accessManager = (deploymentAddresses?.accessManager ??
     ((await publicClient.readContract({
@@ -66,46 +78,64 @@ export async function readVerificationSnapshot(
       functionName: "authority"
     })) as `0x${string}`)) as `0x${string}`;
 
-  const marketplace = deploymentAddresses?.marketplace as `0x${string}` | undefined;
+  const marketplace =
+    (marketplaceFromRegistry && marketplaceFromRegistry !== "0x0000000000000000000000000000000000000000"
+      ? marketplaceFromRegistry
+      : deploymentAddresses?.marketplace) as `0x${string}` | undefined;
   if (!marketplace) {
     throw new Error(
-      "Missing marketplace address in deployment run state. Wizard verification now uses run-scoped community module addresses, not NEXT_PUBLIC_MARKETPLACE."
+      "Missing marketplace module address (registry/run-scoped)."
     );
   }
 
-  const positionManager = deploymentAddresses?.positionManager as `0x${string}` | undefined;
+  const positionManager =
+    (positionManagerFromRegistry && positionManagerFromRegistry !== "0x0000000000000000000000000000000000000000"
+      ? positionManagerFromRegistry
+      : deploymentAddresses?.positionManager) as `0x${string}` | undefined;
   if (!positionManager) {
     throw new Error(
-      "Missing positionManager address in deployment run state. Wizard verification now uses run-scoped community module addresses, not NEXT_PUBLIC_POSITION_MANAGER."
+      "Missing positionManager module address (registry/run-scoped)."
     );
   }
 
-  const engagements = deploymentAddresses?.engagements as `0x${string}` | undefined;
+  const engagements =
+    (engagementsFromRegistry && engagementsFromRegistry !== "0x0000000000000000000000000000000000000000"
+      ? engagementsFromRegistry
+      : deploymentAddresses?.engagements) as `0x${string}` | undefined;
   if (!engagements) {
     throw new Error(
-      "Missing engagements address in deployment run state. Wizard verification now uses run-scoped community module addresses."
+      "Missing engagements module address (registry/run-scoped)."
     );
   }
 
-  const credentialManager = deploymentAddresses?.credentialManager as `0x${string}` | undefined;
+  const credentialManager =
+    (credentialManagerFromRegistry && credentialManagerFromRegistry !== "0x0000000000000000000000000000000000000000"
+      ? credentialManagerFromRegistry
+      : deploymentAddresses?.credentialManager) as `0x${string}` | undefined;
   if (!credentialManager) {
     throw new Error(
-      "Missing credentialManager address in deployment run state. Wizard verification now uses run-scoped community module addresses."
+      "Missing credentialManager module address (registry/run-scoped)."
     );
   }
 
-  const investmentCohortManager = deploymentAddresses?.investmentCohortManager as `0x${string}` | undefined;
+  const investmentCohortManager =
+    (investmentCohortManagerFromRegistry && investmentCohortManagerFromRegistry !== "0x0000000000000000000000000000000000000000"
+      ? investmentCohortManagerFromRegistry
+      : deploymentAddresses?.investmentCohortManager) as `0x${string}` | undefined;
   if (!investmentCohortManager) {
     throw new Error(
-      "Missing investmentCohortManager address in deployment run state. Wizard verification now uses run-scoped community module addresses."
+      "Missing investmentCohortManager module address (registry/run-scoped)."
     );
   }
 
-  const revenueRouter = (await publicClient.readContract({
-    address: marketplace,
-    abi: marketplaceAbi,
-    functionName: "revenueRouter"
-  })) as `0x${string}`;
+  const revenueRouter =
+    revenueRouterFromRegistry && revenueRouterFromRegistry !== "0x0000000000000000000000000000000000000000"
+      ? revenueRouterFromRegistry
+      : ((await publicClient.readContract({
+          address: marketplace,
+          abi: marketplaceAbi,
+          functionName: "revenueRouter"
+        })) as `0x${string}`);
 
   const vptInitializedRaw = await publicClient.readContract({
     address: verifierPowerToken,
