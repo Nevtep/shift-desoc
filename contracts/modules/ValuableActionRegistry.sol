@@ -369,23 +369,21 @@ contract ValuableActionRegistry is AccessManaged {
         }
     }
 
-    /// @notice Get founders for a community
-    /// @param communityId_ Community ID
+    /// @notice Get founders for this community-scoped registry
     /// @return founders Array of founder addresses
-    function getCommunityFounders(uint256 communityId_) external view returns (address[] memory founders) {
-        communityId_; // Compatibility parameter is intentionally ignored in single-community mode.
+    function getCommunityFounders() external view returns (address[] memory founders) {
         return _communityFounders;
     }
 
-    function founderWhitelist(address founder, uint256) external view returns (bool) {
+    function founderWhitelist(address founder) external view returns (bool) {
         return _founderWhitelist[founder];
     }
 
-    function isCommunityIssuanceModule(uint256, address module) external view returns (bool) {
+    function isCommunityIssuanceModule(address module) external view returns (bool) {
         return _isCommunityIssuanceModule[module];
     }
 
-    function communityNarrowingEnabled(uint256) external view returns (bool) {
+    function communityNarrowingEnabled() external view returns (bool) {
         return _communityNarrowingEnabled;
     }
 

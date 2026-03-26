@@ -678,14 +678,10 @@ contract DraftsManager is AccessManaged {
     }
 
     /**
-     * @notice Get drafts by community
-    * @param communityId_ The community ID
+     * @notice Get drafts for this community-scoped manager
      * @return Array of draft IDs
      */
-    function getDraftsByCommunity(uint256 communityId_) external view returns (uint256[] memory) {
-        if (communityId_ != communityId) {
-            return new uint256[](0);
-        }
+    function getDraftsByCommunity() external view returns (uint256[] memory) {
         return localDrafts;
     }
 

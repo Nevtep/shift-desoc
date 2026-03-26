@@ -169,14 +169,12 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged, Reentra
      * @dev Mints UnitToken (ERC1155) to owner
      */
     function createUnit(
-        uint256 communityId_,
         address unitOwner,
         string calldata metadataURI,
         uint256 basePrice,
         uint256 capacity,
         uint256 cancellationPolicyBps
     ) external restricted returns (uint256 unitId) {
-        _requireBoundCommunity(communityId_);
         unitId = nextUnitId++;
 
         units[unitId] = Unit({
@@ -475,9 +473,6 @@ contract HousingManager is IModuleProduct, ERC1155Supply, AccessManaged, Reentra
 
     function getInvestorStake(uint256 unitId, address investor) external view returns (uint256) {
         return investorStakes[unitId][investor];
-    }
-    function _requireBoundCommunity(uint256 communityId_) internal view {
-        if (communityId_ != communityId) revert Errors.InvalidInput("Community mismatch");
     }
 }
 

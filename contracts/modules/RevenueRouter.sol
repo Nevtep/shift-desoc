@@ -33,7 +33,6 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
 
     // Position accounting
     mapping(uint256 => bool) public positionRegistered; // tokenId => registered
-    mapping(uint256 => uint256) public positionCommunity; // tokenId => communityId
     mapping(uint256 => uint32) public positionPoints; // tokenId => points
     uint256 internal _activePositionPoints;
     mapping(address => uint256) internal _positionsIndex;
@@ -72,16 +71,14 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                                     ADMIN ACTIONS
     //////////////////////////////////////////////////////////////*/
-    function setCommunityTreasury(uint256 communityId_, address treasury) external restricted {
-        _requireBoundCommunity(communityId_);
+    function setCommunityTreasury(address treasury) external restricted {
         if (treasury == address(0)) revert Errors.ZeroAddress();
         address old = _communityTreasury;
         _communityTreasury = treasury;
         emit CommunityTreasuryUpdated(communityId, old, treasury);
     }
 
-    function setSupportedToken(uint256 communityId_, address token, bool supported) external restricted {
-        _requireBoundCommunity(communityId_);
+    function setSupportedToken(address token, bool supported) external restricted {
         if (token == address(0)) revert Errors.ZeroAddress();
         _supportedTokens[token] = supported;
         emit TokenSupportUpdated(communityId, token, supported);
@@ -113,7 +110,6 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         if (data.communityId != communityId) revert Errors.InvalidInput("Community mismatch");
 
         positionRegistered[tokenId] = true;
-        positionCommunity[tokenId] = communityId;
         positionPoints[tokenId] = data.points;
         _activePositionPoints += data.points;
 
@@ -122,28 +118,25 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
 
     function unregisterPosition(uint256 tokenId) external restricted {
         if (!positionRegistered[tokenId]) revert Errors.InvalidInput("Not registered");
-        uint256 communityId_ = positionCommunity[tokenId];
         uint32 points = positionPoints[tokenId];
 
         positionRegistered[tokenId] = false;
-        positionCommunity[tokenId] = 0;
         positionPoints[tokenId] = 0;
         if (points > 0 && _activePositionPoints >= points) {
             _activePositionPoints -= points;
         }
 
-        emit PositionUnregistered(tokenId, communityId_, points);
+        emit PositionUnregistered(tokenId, communityId, points);
     }
 
     /*//////////////////////////////////////////////////////////////
                                   REVENUE ROUTING
     //////////////////////////////////////////////////////////////*/
-    function routeRevenue(uint256 communityId_, address token, uint256 amount)
+    function routeRevenue(address token, uint256 amount)
         external
         restricted
         nonReentrant
     {
-        _requireBoundCommunity(communityId_);
         if (amount == 0) revert Errors.InvalidInput("Zero amount");
         if (!_supportedTokens[token]) revert Errors.InvalidInput("Unsupported token");
 
@@ -304,8 +297,7 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         IERC20(token).safeTransfer(to, claimable);
     }
 
-    function withdrawTreasury(uint256 communityId_, address token, uint256 amount, address to) external nonReentrant {
-        _requireBoundCommunity(communityId_);
+    function withdrawTreasury(address token, uint256 amount, address to) external nonReentrant {
         if (to == address(0)) revert Errors.ZeroAddress();
         address treasury = _communityTreasury;
         if (treasury == address(0)) revert Errors.ZeroAddress();
@@ -351,38 +343,23 @@ contract RevenueRouter is AccessManaged, ReentrancyGuard {
         if (!ok || res.length == 0) revert Errors.InvalidInput("ownerOf failed");
         owner = abi.decode(res, (address));
     }
-    /// Compatibility getters retain historical community-keyed read shape.
-    /// @notice Compatibility getter preserving historical community-keyed read shape.
-    function communityTreasuries(uint256 communityId_) external view returns (address) {
-        if (communityId_ != communityId) return address(0);
+    function communityTreasuries() external view returns (address) {
         return _communityTreasury;
     }
 
-    /// @notice Compatibility getter preserving historical community-keyed read shape.
-    function supportedTokens(uint256 communityId_, address token) external view returns (bool) {
-        if (communityId_ != communityId) return false;
+    function supportedTokens(address token) external view returns (bool) {
         return _supportedTokens[token];
     }
 
-    /// @notice Compatibility getter preserving historical community-keyed read shape.
-    function treasuryAccrual(uint256 communityId_, address token) external view returns (uint256) {
-        if (communityId_ != communityId) return 0;
+    function treasuryAccrual(address token) external view returns (uint256) {
         return _treasuryAccrual[token];
     }
 
-    /// @notice Compatibility getter preserving historical community-keyed read shape.
-    function activePositionPoints(uint256 communityId_) external view returns (uint256) {
-        if (communityId_ != communityId) return 0;
+    function activePositionPoints() external view returns (uint256) {
         return _activePositionPoints;
     }
 
-    /// @notice Compatibility getter preserving historical community-keyed read shape.
-    function positionsIndex(uint256 communityId_, address token) external view returns (uint256) {
-        if (communityId_ != communityId) return 0;
+    function positionsIndex(address token) external view returns (uint256) {
         return _positionsIndex[token];
-    }
-
-    function _requireBoundCommunity(uint256 communityId_) internal view {
-        if (communityId_ != communityId) revert Errors.InvalidInput("Community mismatch");
     }
 }

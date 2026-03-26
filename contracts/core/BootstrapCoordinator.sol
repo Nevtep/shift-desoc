@@ -18,7 +18,7 @@ interface IValuableActionRegistryBootstrap {
 
     function isIssuanceModule(address module) external view returns (bool);
 
-    function founderWhitelist(address founder, uint256 communityId) external view returns (bool);
+    function founderWhitelist(address founder) external view returns (bool);
 
     function setValuableActionSBT(address sbt) external;
 
@@ -34,13 +34,13 @@ interface IVerifierPowerTokenBootstrap {
 }
 
 interface IRevenueRouterBootstrap {
-    function communityTreasuries(uint256 communityId) external view returns (address);
+    function communityTreasuries() external view returns (address);
 
-    function supportedTokens(uint256 communityId, address token) external view returns (bool);
+    function supportedTokens(address token) external view returns (bool);
 
-    function setCommunityTreasury(uint256 communityId, address treasury) external;
+    function setCommunityTreasury(address treasury) external;
 
-    function setSupportedToken(uint256 communityId, address token, bool supported) external;
+    function setSupportedToken(address token, bool supported) external;
 }
 
 interface ITreasuryAdapterBootstrap {
@@ -58,13 +58,13 @@ interface ITreasuryAdapterBootstrap {
 }
 
 interface IMarketplaceBootstrap {
-    function communityActive(uint256 communityId) external view returns (bool);
+    function communityActive() external view returns (bool);
 
-    function communityTokens(uint256 communityId) external view returns (address);
+    function communityTokens() external view returns (address);
 
-    function setCommunityActive(uint256 communityId, bool active) external;
+    function setCommunityActive(bool active) external;
 
-    function setCommunityToken(uint256 communityId, address token) external;
+    function setCommunityToken(address token) external;
 }
 
 /// @title BootstrapCoordinator
@@ -204,7 +204,7 @@ contract BootstrapCoordinator {
             registry.setIssuanceModule(cfg.requestHub, true);
         }
 
-        if (!registry.founderWhitelist(cfg.founder, cfg.communityId)) {
+        if (!registry.founderWhitelist(cfg.founder)) {
             registry.addFounder(cfg.founder);
         }
 
@@ -214,8 +214,8 @@ contract BootstrapCoordinator {
         }
 
         IRevenueRouterBootstrap router = IRevenueRouterBootstrap(cfg.revenueRouter);
-        if (router.communityTreasuries(cfg.communityId) != cfg.treasuryVault) {
-            router.setCommunityTreasury(cfg.communityId, cfg.treasuryVault);
+        if (router.communityTreasuries() != cfg.treasuryVault) {
+            router.setCommunityTreasury(cfg.treasuryVault);
         }
 
         ITreasuryAdapterBootstrap adapter = ITreasuryAdapterBootstrap(cfg.treasuryAdapter);
@@ -223,8 +223,8 @@ contract BootstrapCoordinator {
             address token = cfg.supportedTokens[i];
             if (token == address(0)) revert Errors.ZeroAddress();
 
-            if (!router.supportedTokens(cfg.communityId, token)) {
-                router.setSupportedToken(cfg.communityId, token, true);
+            if (!router.supportedTokens(token)) {
+                router.setSupportedToken(token, true);
             }
 
             if (!adapter.tokenAllowed(token)) {
@@ -241,12 +241,12 @@ contract BootstrapCoordinator {
         }
 
         IMarketplaceBootstrap marketplace = IMarketplaceBootstrap(cfg.marketplace);
-        if (!marketplace.communityActive(cfg.communityId)) {
-            marketplace.setCommunityActive(cfg.communityId, true);
+        if (!marketplace.communityActive()) {
+            marketplace.setCommunityActive(true);
         }
 
-        if (marketplace.communityTokens(cfg.communityId) != cfg.communityToken) {
-            marketplace.setCommunityToken(cfg.communityId, cfg.communityToken);
+        if (marketplace.communityTokens() != cfg.communityToken) {
+            marketplace.setCommunityToken(cfg.communityToken);
         }
     }
 }
