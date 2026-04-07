@@ -117,7 +117,16 @@ export function buildModuleSummaryItems(
     const normalized = address && address !== ZERO_ADDRESS ? address : null;
     const code = bytecodes[def.key];
     const hasCode = Boolean(code && code !== "0x");
-    const status = normalized && hasCode ? "present" : "missing";
+    const isTreasuryVault = def.key === "treasuryVault";
+    const status = normalized && (hasCode || isTreasuryVault) ? "present" : "missing";
+    const source =
+      status === "present"
+        ? isTreasuryVault
+          ? hasCode
+            ? "contract treasury vault"
+            : "EOA treasury vault"
+          : "on-chain verified"
+        : "unavailable";
     return {
       moduleKey: def.moduleKey,
       label: def.label,
@@ -125,7 +134,7 @@ export function buildModuleSummaryItems(
       shortAddress: formatModuleAddress(normalized),
       hasCode,
       status,
-      source: status === "present" ? "on-chain verified" : "unavailable"
+      source
     };
   });
 }

@@ -178,4 +178,32 @@ describe("useDeployResume", () => {
       "0x2222222222222222222222222222222222222222"
     );
   });
+
+  it("recovers target community when snapshot read throws", async () => {
+    mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000", chainId: 84532 });
+
+    const { result } = renderHook(
+      () =>
+        useDeployResume(
+          async () => {
+            throw new Error("communityInitialized() call failed on partial wiring");
+          },
+          async () => [2],
+          async () => ({
+            communityName: "Recovered Community",
+            communityDescription: "Recovered description",
+            communityMetadataUri: "ipfs://recovered",
+            treasuryVault: "0x1111111111111111111111111111111111111111",
+            treasuryStableToken: "0x2222222222222222222222222222222222222222",
+            supportedTokensCsv: "0x2222222222222222222222222222222222222222"
+          })
+        ),
+      { wrapper: TestWrapper }
+    );
+
+    const resumed = await result.current.resume({ communityId: 2 });
+    expect(resumed?.communityId).toBe(2);
+    expect(resumed?.status).toBe("in-progress");
+    expect(resumed?.steps.find((step) => step.key === "DEPLOY_STACK")?.status).toBe("pending");
+  });
 });

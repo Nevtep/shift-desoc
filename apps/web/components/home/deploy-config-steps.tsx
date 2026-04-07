@@ -59,6 +59,7 @@ type Props = {
   designMode?: boolean;
   onDesignModeChange?: (enabled: boolean) => void;
   onExit?: () => void;
+  forcedStepIndex?: number | null;
 };
 
 function updateField(
@@ -81,7 +82,8 @@ export function DeployConfigSteps({
   connectedAddress,
   designMode = false,
   onDesignModeChange,
-  onExit
+  onExit,
+  forcedStepIndex = null
 }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -97,6 +99,12 @@ export function DeployConfigSteps({
   useEffect(() => {
     if (isPreflightStep) void runPreflight();
   }, [isPreflightStep, runPreflight]);
+
+  useEffect(() => {
+    if (typeof forcedStepIndex !== "number") return;
+    if (forcedStepIndex < 0 || forcedStepIndex >= CONFIG_STEPS.length) return;
+    setStepIndex(forcedStepIndex);
+  }, [forcedStepIndex]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);

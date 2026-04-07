@@ -87,7 +87,7 @@ describe("factory-step-executor strict staging guards", () => {
     ).rejects.toThrow("Strict staging mode only supports Base Sepolia");
   });
 
-  it("rejects legacy mode environment flags", async () => {
+  it("rejects compatibility mode environment flags", async () => {
     process.env.NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE = "1";
 
     const executor = createFactoryDeployStepExecutor({
@@ -101,7 +101,7 @@ describe("factory-step-executor strict staging guards", () => {
         chainId: 84532,
         preflight: {} as any
       })
-    ).rejects.toThrow("Legacy deploy modes are disabled in strict staging mode");
+    ).rejects.toThrow("Compatibility deploy overrides are not supported in strict staging mode");
 
     delete process.env.NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE;
   });
@@ -169,6 +169,57 @@ describe("factory-step-executor strict staging guards", () => {
     expect(result.communityId).toBe(1);
     expect(result.txHashes?.length ?? 0).toBeGreaterThan(0);
     expect(writeContractAsync).toHaveBeenCalled();
+
+    const bootstrapCallArgs = writeContractAsync.mock.calls.find(
+      ([args]) => args?.functionName === "bootstrapCommunity"
+    )?.[0];
+    const bootstrapAbiEntry = (bootstrapCallArgs?.abi ?? []).find(
+      (entry: any) => entry?.type === "function" && entry?.name === "bootstrapCommunity"
+    );
+    const modulesInput = bootstrapAbiEntry?.inputs?.[5];
+    expect(modulesInput?.components?.length).toBe(26);
+
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("fails fast when ParamController registry wiring is missing", async () => {
+    process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = "0x2000000000000000000000000000000000000002";
+
+    const publicClient = {
+      getTransactionCount: vi.fn().mockResolvedValue(1n),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
+        switch (functionName) {
+          case "registrySet":
+            return false;
+          case "nextCommunityId":
+            return 1n;
+          case "ADMIN_ROLE":
+            return 0n;
+          case "authority":
+            return "0x1000000000000000000000000000000000000003";
+          case "hasRole":
+            return [true, 0];
+          default:
+            return true;
+        }
+      }),
+      estimateContractGas: vi.fn().mockResolvedValue(21000n),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
+    } as any;
+
+    const writeContractAsync = vi.fn();
+    const executor = createFactoryDeployStepExecutor({
+      publicClient,
+      writeContractAsync,
+      deployContractAsync: vi.fn(),
+      connectedAddress: "0xabc1230000000000000000000000000000000000"
+    });
+
+    await expect(executor("CONFIGURE_ACCESS_PERMISSIONS", makeSession(), makeContext())).rejects.toThrow(
+      "ParamController is not wired to any CommunityRegistry"
+    );
+    expect(writeContractAsync).not.toHaveBeenCalled();
 
     delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
   });

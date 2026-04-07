@@ -22,6 +22,15 @@ Ponder-based indexer for Shift contracts writing to Postgres and exposing GraphQ
 
 Startup fails fast when the required discovery env vars are missing/invalid.
 
+## RPC Rate Limits During Startup
+
+- `scripts/prepare-start.js` probes `COMMUNITY_REGISTRY_ADDRESS` bytecode with `eth_getCode` before launching Ponder.
+- If your RPC returns `429`, startup now retries and can use optional fallback RPCs:
+	- `RPC_BASE_FALLBACK`
+	- `RPC_BASE_SEPOLIA_FALLBACK`
+- By default, repeated `429` responses only warn and startup continues (useful for local dev).
+- Set `INDEXER_STRICT_RPC_CHECK=1` to make rate-limit probe failures fatal.
+
 ## Replay And Backfill
 
 1. Set `COMMUNITY_REGISTRY_START_BLOCK` to the desired replay boundary.

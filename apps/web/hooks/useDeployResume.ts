@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
-import { parseAbiItem } from "viem";
+import { parseAbiItem, type Abi } from "viem";
 import { getContractAddress } from "../lib/contracts";
 import { findResumeCandidate, listSessions, saveSession } from "../lib/deploy/session-store";
 import type { DeploymentWizardSession, VerificationSnapshot } from "../lib/deploy/types";
@@ -11,6 +11,7 @@ import { readVerificationSnapshot as readVerificationSnapshotFromChain } from ".
 import { evaluateVerificationSnapshot } from "../lib/deploy/verification";
 import { createInitialSteps, firstIncompleteStep, transitionStep } from "../lib/deploy/wizard-machine";
 import { useCachedPublicClient, type CachedPublicClient } from "./useCachedPublicClient";
+import CommunityRegistryArtifact from "../abis/CommunityRegistry.json";
 
 export type ResumeTarget = {
   sessionId?: string;
@@ -46,14 +47,6 @@ function log(message: string, meta?: unknown): void {
   }
   console.log(`${RESUME_LOG_PREFIX} ${message}`, meta);
 }
-
-const GET_COMMUNITY_ITEM = parseAbiItem(
-  "function getCommunity(uint256 communityId) view returns ((string name,string description,string metadataURI,address governor,address timelock,address membershipToken,address communityToken,address requestHub,address draftsManager,address engagementsManager,address verifierElection,address verifierManager,address verifierPowerToken,address valuableActionRegistry,address valuableActionSBT,address treasuryVault,address treasuryAdapter,address paramController,uint256 parentCommunityId,uint256[] allyCommunityIds))"
-);
-
-const GET_ECONOMIC_PARAMETERS_ITEM = parseAbiItem(
-  "function getEconomicParameters(uint256 communityId) view returns (uint256 minTreasuryBps, uint256 minPositionsBps, uint256 feeOnWithdraw, address[] backingAssets)"
-);
 
 async function inferCommunityIdsFromChain(params: {
   publicClient: CachedPublicClient;
@@ -150,33 +143,75 @@ async function recoverDeploymentConfigFromChain(
 
   try {
     const registry = getContractAddress("communityRegistry", chainId);
+    const communityRegistryAbi = CommunityRegistryArtifact.abi as Abi;
 
     const community = (await publicClient.readContract({
       address: registry,
-      abi: [GET_COMMUNITY_ITEM],
+      abi: communityRegistryAbi,
       functionName: "getCommunity",
       args: [BigInt(communityId)]
-    }, 20_000)) as {
-      name: string;
-      description: string;
-      metadataURI: string;
-      treasuryVault: `0x${string}`;
-    };
+    }, 20_000)) as
+      | {
+          name?: string;
+          description?: string;
+          metadataURI?: string;
+          treasuryVault?: `0x${string}`;
+        }
+      | readonly unknown[];
 
     const economic = (await publicClient.readContract({
       address: registry,
-      abi: [GET_ECONOMIC_PARAMETERS_ITEM],
+      abi: communityRegistryAbi,
       functionName: "getEconomicParameters",
       args: [BigInt(communityId)]
-    }, 20_000)) as readonly [bigint, bigint, bigint, readonly `0x${string}`[]];
+    }, 20_000)) as
+      | {
+          backingAssets?: readonly `0x${string}`[];
+        }
+      | readonly unknown[];
 
-    const backingAssets = (economic[3] ?? []).map((token) => normalizeAddress(token)).filter(Boolean);
+    const communityName =
+      (typeof (community as { name?: unknown }).name === "string"
+        ? (community as { name: string }).name
+        : undefined) ??
+      (typeof (community as readonly unknown[])[0] === "string"
+        ? ((community as readonly unknown[])[0] as string)
+        : "");
+
+    const communityDescription =
+      (typeof (community as { description?: unknown }).description === "string"
+        ? (community as { description: string }).description
+        : undefined) ??
+      (typeof (community as readonly unknown[])[1] === "string"
+        ? ((community as readonly unknown[])[1] as string)
+        : "");
+
+    const communityMetadataUri =
+      (typeof (community as { metadataURI?: unknown }).metadataURI === "string"
+        ? (community as { metadataURI: string }).metadataURI
+        : undefined) ??
+      (typeof (community as readonly unknown[])[2] === "string"
+        ? ((community as readonly unknown[])[2] as string)
+        : "");
+
+    const treasuryVault = normalizeAddress(
+      ((community as { treasuryVault?: unknown }).treasuryVault as string | undefined) ??
+        ((community as readonly unknown[])[23] as string | undefined)
+    );
+
+    const rawBackingAssets =
+      (economic as { backingAssets?: readonly `0x${string}`[] }).backingAssets ??
+      (((economic as readonly unknown[])[5] as readonly `0x${string}`[] | undefined) ??
+        ((economic as readonly unknown[])[3] as readonly `0x${string}`[] | undefined) ??
+        []);
+
+    const backingAssets = rawBackingAssets.map((token) => normalizeAddress(token)).filter(Boolean);
 
     return {
-      communityName: community.name ?? "",
-      communityDescription: community.description ?? "",
-      communityMetadataUri: community.metadataURI ?? "",
-      treasuryVault: normalizeAddress(community.treasuryVault),
+      communityName,
+      communityDescription,
+      communityMetadataUri,
+      treasuryVault,
       treasuryStableToken: backingAssets[0] ?? "",
       supportedTokensCsv: backingAssets.join(",")
     };
@@ -250,16 +285,34 @@ export function useDeployResume(
             candidateCommunityId
           });
 
-          const snapshot = readOnchainSnapshot
-            ? await readOnchainSnapshot(candidateCommunityId, chainId)
-            : publicClient.raw
-              ? await readVerificationSnapshotFromChain(
-                  publicClient.raw,
-                  chainId,
-                  candidateCommunityId,
-                  session?.deploymentAddresses
-                )
-              : null;
+          let snapshot: VerificationSnapshot | null = null;
+          let snapshotReadFailed = false;
+          try {
+            snapshot = readOnchainSnapshot
+              ? await readOnchainSnapshot(candidateCommunityId, chainId)
+              : publicClient.raw
+                ? await readVerificationSnapshotFromChain(
+                    publicClient.raw,
+                    chainId,
+                    candidateCommunityId,
+                    session?.deploymentAddresses
+                  )
+                : null;
+          } catch (snapshotError) {
+            snapshotReadFailed = true;
+            log("Recovered community snapshot read failed; treating as unfinished", {
+              candidateCommunityId,
+              snapshotError
+            });
+          }
+
+          if (snapshotReadFailed) {
+            recoveredCommunityId = candidateCommunityId;
+            log("Selected recovered community for resume after snapshot failure", {
+              recoveredCommunityId
+            });
+            break;
+          }
 
           if (!snapshot) {
             log("Skipping recovered community: no snapshot available", {
@@ -333,38 +386,11 @@ export function useDeployResume(
       });
 
       if (session.communityId && readOnchainSnapshot) {
-        const snapshot = await readOnchainSnapshot(session.communityId, chainId);
-        const checks = evaluateVerificationSnapshot(snapshot);
-        const allPassed = checks.every((check) => check.passed);
-
-        const updated: DeploymentWizardSession = {
-          ...session,
-          deploymentConfig: deploymentConfig ?? session.deploymentConfig,
-          status: allPassed ? "completed" : "in-progress",
-          targetType: "registered",
-          updatedAt: new Date().toISOString()
-        };
-        saveSession(updated);
-        log("Resume resolved using custom snapshot reader", {
-          sessionId: updated.sessionId,
-          communityId: updated.communityId,
-          status: updated.status
-        });
-        return updated;
-      }
-
-      if (session.communityId && !readOnchainSnapshot) {
-        if (publicClient.raw) {
-          const snapshot = await readVerificationSnapshotFromChain(
-            publicClient.raw,
-            chainId,
-            session.communityId,
-            session.deploymentAddresses
-          );
-          const checks = evaluateVerificationSnapshot({
-            ...snapshot
-          });
+        try {
+          const snapshot = await readOnchainSnapshot(session.communityId, chainId);
+          const checks = evaluateVerificationSnapshot(snapshot);
           const allPassed = checks.every((check) => check.passed);
+
           const updated: DeploymentWizardSession = {
             ...session,
             deploymentConfig: deploymentConfig ?? session.deploymentConfig,
@@ -373,12 +399,54 @@ export function useDeployResume(
             updatedAt: new Date().toISOString()
           };
           saveSession(updated);
-          log("Resume resolved using on-chain snapshot reader", {
+          log("Resume resolved using custom snapshot reader", {
             sessionId: updated.sessionId,
             communityId: updated.communityId,
             status: updated.status
           });
           return updated;
+        } catch (snapshotError) {
+          log("Custom snapshot read failed during resume; continuing with local step recovery", {
+            communityId: session.communityId,
+            snapshotError
+          });
+        }
+      }
+
+      if (session.communityId && !readOnchainSnapshot) {
+        if (publicClient.raw) {
+          try {
+            const snapshot = await readVerificationSnapshotFromChain(
+              publicClient.raw,
+              chainId,
+              session.communityId,
+              session.deploymentAddresses
+            );
+            const checks = evaluateVerificationSnapshot({
+              ...snapshot
+            });
+            const allPassed = checks.every((check) => check.passed);
+            const updated: DeploymentWizardSession = {
+              ...session,
+              deploymentConfig: deploymentConfig ?? session.deploymentConfig,
+              status: allPassed ? "completed" : "in-progress",
+              targetType: "registered",
+              updatedAt: new Date().toISOString()
+            };
+            saveSession(updated);
+            log("Resume resolved using on-chain snapshot reader", {
+              sessionId: updated.sessionId,
+              communityId: updated.communityId,
+              status: updated.status
+            });
+            return updated;
+          } catch (snapshotError) {
+            // Partially wired communities can fail deterministic checks until bootstrap is resumed.
+            log("On-chain snapshot read failed during resume; continuing with local step recovery", {
+              communityId: session.communityId,
+              snapshotError
+            });
+          }
         }
       }
 

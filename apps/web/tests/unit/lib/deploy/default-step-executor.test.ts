@@ -87,7 +87,7 @@ describe("factory-step-executor strict staging guards", () => {
     ).rejects.toThrow("Strict staging mode only supports Base Sepolia");
   });
 
-  it("rejects legacy mode environment flags", async () => {
+  it("rejects compatibility mode environment flags", async () => {
     process.env.NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE = "1";
 
     const executor = createFactoryDeployStepExecutor({
@@ -101,7 +101,7 @@ describe("factory-step-executor strict staging guards", () => {
         chainId: 84532,
         preflight: {} as any
       })
-    ).rejects.toThrow("Legacy deploy modes are disabled in strict staging mode");
+    ).rejects.toThrow("Compatibility deploy overrides are not supported in strict staging mode");
 
     delete process.env.NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE;
   });

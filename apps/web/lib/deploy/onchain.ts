@@ -37,6 +37,23 @@ const ROLES = {
   VERIFIER_MANAGER_CALLER_ROLE: 15n
 };
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
+function isNonZeroAddress(value: string | undefined | null): value is `0x${string}` {
+  if (value == null) return false;
+  return value.toLowerCase() !== ZERO_ADDRESS;
+}
+
+function requireResolvedAddress(
+  registryValue: `0x${string}` | undefined,
+  runScopedValue: `0x${string}` | undefined,
+  label: string
+): `0x${string}` {
+  if (isNonZeroAddress(registryValue)) return registryValue;
+  if (isNonZeroAddress(runScopedValue)) return runScopedValue;
+  throw new Error(`Missing ${label} module address (registry/run-scoped).`);
+}
+
 export async function readVerificationSnapshot(
   publicClient: PublicClient,
   chainId: number,
@@ -67,9 +84,15 @@ export async function readVerificationSnapshot(
   const credentialManagerFromRegistry = modules.credentialManager;
   const investmentCohortManagerFromRegistry = modules.investmentCohortManager;
   const valuableActionRegistry = modules.valuableActionRegistry;
-  const verifierPowerToken = modules.verifierPowerToken;
+  const verifierPowerTokenFromRegistry = modules.verifierPowerToken;
   const revenueRouterFromRegistry = modules.revenueRouter;
   const marketplaceFromRegistry = modules.marketplace;
+
+  const verifierPowerToken = requireResolvedAddress(
+    verifierPowerTokenFromRegistry,
+    deploymentAddresses?.verifierPowerToken,
+    "verifierPowerToken"
+  );
 
   const accessManager = (deploymentAddresses?.accessManager ??
     ((await publicClient.readContract({
@@ -78,58 +101,38 @@ export async function readVerificationSnapshot(
       functionName: "authority"
     })) as `0x${string}`)) as `0x${string}`;
 
-  const marketplace =
-    (marketplaceFromRegistry && marketplaceFromRegistry !== "0x0000000000000000000000000000000000000000"
-      ? marketplaceFromRegistry
-      : deploymentAddresses?.marketplace) as `0x${string}` | undefined;
-  if (!marketplace) {
-    throw new Error(
-      "Missing marketplace module address (registry/run-scoped)."
-    );
-  }
+  const marketplace = requireResolvedAddress(
+    marketplaceFromRegistry,
+    deploymentAddresses?.marketplace,
+    "marketplace"
+  );
 
-  const positionManager =
-    (positionManagerFromRegistry && positionManagerFromRegistry !== "0x0000000000000000000000000000000000000000"
-      ? positionManagerFromRegistry
-      : deploymentAddresses?.positionManager) as `0x${string}` | undefined;
-  if (!positionManager) {
-    throw new Error(
-      "Missing positionManager module address (registry/run-scoped)."
-    );
-  }
+  const positionManager = requireResolvedAddress(
+    positionManagerFromRegistry,
+    deploymentAddresses?.positionManager,
+    "positionManager"
+  );
 
-  const engagements =
-    (engagementsFromRegistry && engagementsFromRegistry !== "0x0000000000000000000000000000000000000000"
-      ? engagementsFromRegistry
-      : deploymentAddresses?.engagements) as `0x${string}` | undefined;
-  if (!engagements) {
-    throw new Error(
-      "Missing engagements module address (registry/run-scoped)."
-    );
-  }
+  const engagements = requireResolvedAddress(
+    engagementsFromRegistry,
+    deploymentAddresses?.engagements,
+    "engagements"
+  );
 
-  const credentialManager =
-    (credentialManagerFromRegistry && credentialManagerFromRegistry !== "0x0000000000000000000000000000000000000000"
-      ? credentialManagerFromRegistry
-      : deploymentAddresses?.credentialManager) as `0x${string}` | undefined;
-  if (!credentialManager) {
-    throw new Error(
-      "Missing credentialManager module address (registry/run-scoped)."
-    );
-  }
+  const credentialManager = requireResolvedAddress(
+    credentialManagerFromRegistry,
+    deploymentAddresses?.credentialManager,
+    "credentialManager"
+  );
 
-  const investmentCohortManager =
-    (investmentCohortManagerFromRegistry && investmentCohortManagerFromRegistry !== "0x0000000000000000000000000000000000000000"
-      ? investmentCohortManagerFromRegistry
-      : deploymentAddresses?.investmentCohortManager) as `0x${string}` | undefined;
-  if (!investmentCohortManager) {
-    throw new Error(
-      "Missing investmentCohortManager module address (registry/run-scoped)."
-    );
-  }
+  const investmentCohortManager = requireResolvedAddress(
+    investmentCohortManagerFromRegistry,
+    deploymentAddresses?.investmentCohortManager,
+    "investmentCohortManager"
+  );
 
   const revenueRouter =
-    revenueRouterFromRegistry && revenueRouterFromRegistry !== "0x0000000000000000000000000000000000000000"
+    revenueRouterFromRegistry && revenueRouterFromRegistry !== ZERO_ADDRESS
       ? revenueRouterFromRegistry
       : ((await publicClient.readContract({
           address: marketplace,
@@ -272,13 +275,13 @@ export async function readVerificationSnapshot(
   const membershipMinterEngagements = pickBool(membershipMinterRaw);
   const vaSbtManagerRegistry = pickBool(valuableActionSbtManagerRaw);
   const communityActive = pickBool(communityActiveRaw);
-  const treasury = typeof treasuryRaw === "string" ? treasuryRaw : "0x0000000000000000000000000000000000000000";
+  const treasury = typeof treasuryRaw === "string" ? treasuryRaw : ZERO_ADDRESS;
 
   return {
     communityId,
     modules: {
       valuableActionRegistryMatches:
-        valuableActionRegistry.toLowerCase() !== "0x0000000000000000000000000000000000000000"
+        valuableActionRegistry.toLowerCase() !== ZERO_ADDRESS
     },
     vptInitialized,
     roles: {
@@ -297,6 +300,6 @@ export async function readVerificationSnapshot(
       vaSbtManagerRegistry
     },
     marketplaceActive: communityActive,
-    revenueTreasurySet: treasury.toLowerCase() !== "0x0000000000000000000000000000000000000000"
+    revenueTreasurySet: treasury.toLowerCase() !== ZERO_ADDRESS
   };
 }

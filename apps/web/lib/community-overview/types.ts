@@ -29,7 +29,7 @@ export type ModuleSummaryItem = {
   shortAddress: string;
   hasCode: boolean;
   status: ModuleSummaryStatus;
-  source: "on-chain verified" | "unavailable";
+  source: "on-chain verified" | "unavailable" | "EOA treasury vault" | "contract treasury vault";
 };
 
 export type ParameterUnit = "seconds" | "bps" | "integer threshold";

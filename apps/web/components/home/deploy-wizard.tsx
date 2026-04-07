@@ -65,10 +65,94 @@ function saveDraft(config: CommunityDeploymentConfig, address?: `0x${string}`, c
   );
 }
 
+function preferredString(primary: string | undefined, fallback: string | undefined): string {
+  if (primary && primary.trim().length > 0) return primary;
+  return fallback ?? "";
+}
+
+function mergeResumeConfig(
+  current: CommunityDeploymentConfig,
+  resumed: CommunityDeploymentConfig | undefined,
+  connectedAddress?: `0x${string}`
+): CommunityDeploymentConfig {
+  if (!resumed) {
+    return {
+      ...current,
+      treasuryVault: preferredString(current.treasuryVault, connectedAddress)
+    };
+  }
+
+  const supportedTokensCsv = preferredString(resumed.supportedTokensCsv, current.supportedTokensCsv);
+  const firstSupportedToken = supportedTokensCsv
+    .split(",")
+    .map((token) => token.trim())
+    .find((token) => token.length > 0);
+  const treasuryStableToken =
+    preferredString(resumed.treasuryStableToken, current.treasuryStableToken) || firstSupportedToken || "";
+
+  return {
+    communityName: preferredString(resumed.communityName, current.communityName),
+    communityDescription: preferredString(resumed.communityDescription, current.communityDescription),
+    communityMetadataUri: preferredString(resumed.communityMetadataUri, current.communityMetadataUri),
+    treasuryVault: preferredString(resumed.treasuryVault, current.treasuryVault || connectedAddress),
+    treasuryStableToken,
+    supportedTokensCsv: supportedTokensCsv || treasuryStableToken
+  };
+}
+
+function getResumeConfigGuidance(errors: string[]): { stepIndex: number; message: string } {
+  const hasNameError = errors.some((error) => /community name/i.test(error));
+  if (hasNameError) {
+    return {
+      stepIndex: 0,
+      message: "Resume needs a community name before continuing. Complete this step and press Next."
+    };
+  }
+
+  const hasDescriptionError = errors.some((error) => /description/i.test(error));
+  if (hasDescriptionError) {
+    return {
+      stepIndex: 1,
+      message: "Resume needs a community description before continuing. Complete this step and press Next."
+    };
+  }
+
+  const hasTreasuryTokenError = errors.some(
+    (error) => /treasury stable token|supported token/i.test(error)
+  );
+  if (hasTreasuryTokenError) {
+    return {
+      stepIndex: 2,
+      message:
+        "Resume needs treasury token settings. Select the community currency in this step, then continue deployment."
+    };
+  }
+
+  const hasTreasuryVaultError = errors.some((error) => /treasury vault/i.test(error));
+  if (hasTreasuryVaultError) {
+    return {
+      stepIndex: 2,
+      message:
+        "Resume needs a treasury vault address. Reconnect your deployer wallet and select currency, then continue deployment."
+    };
+  }
+
+  return {
+    stepIndex: 0,
+    message: "Resume needs additional configuration values. Complete the highlighted steps and try again."
+  };
+}
+
+function hasMissingRequiredConfigErrors(errors: string[]): boolean {
+  return errors.some((error) => /is required/i.test(error));
+}
+
 export function DeployWizard({ options }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const designModeFromUrl = searchParams.get("designMode") === "1";
+  const autoResumeRequested = searchParams.get("resume") === "1";
+  const resumeCommunityIdFromUrlRaw = searchParams.get("resumeCommunityId");
   const [designMode, setDesignMode] = useState(designModeFromUrl);
 
   useEffect(() => {
@@ -93,13 +177,24 @@ export function DeployWizard({ options }: Props) {
   const { hasCommunities, isLoading: isLoadingMyCommunities, refetch: refetchMyCommunities } = useMyDeployedCommunities();
   const [config, setConfig] = useState<CommunityDeploymentConfig>(() => createDefaultDeploymentConfig());
   const [isResuming, setIsResuming] = useState(false);
+  const [resumeGuidance, setResumeGuidance] = useState<string | null>(null);
+  const [resumeForcedStepIndex, setResumeForcedStepIndex] = useState<number | null>(null);
   const [completedDismissed, setCompletedDismissed] = useState(false);
   const [wizardExpanded, setWizardExpanded] = useState(false);
   const [wizardClosed, setWizardClosed] = useState(false);
   const resumeRequestIdRef = useRef(0);
+  const autoResumeHandledRef = useRef(false);
+
+  const resumeCommunityIdFromUrl = useMemo(() => {
+    if (!resumeCommunityIdFromUrlRaw) return undefined;
+    const parsed = Number(resumeCommunityIdFromUrlRaw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  }, [resumeCommunityIdFromUrlRaw]);
 
   const isCompleted = session?.status === "completed";
+  const showingResumeConfigFix = Boolean(resumeGuidance);
   const isDeploying =
+    !showingResumeConfigFix &&
     session != null &&
     (session.status === "in-progress" || session.status === "preflight-blocked" || session.status === "failed");
   const showFullScreen = !isCompleted || !completedDismissed;
@@ -137,23 +232,31 @@ export function DeployWizard({ options }: Props) {
     [configValidation.isValid, isRunning, status]
   );
   const canResume = useMemo(() => status === "connected" && !isRunning, [isRunning, status]);
+  const resumableSession = session ?? resumeCandidate;
   const hasResumableSession = Boolean(
-    (session?.communityId ?? resumeCandidate?.communityId) && session?.status !== "completed"
+    resumableSession && resumableSession.status !== "completed"
   );
   const showResume = hasResumableSession;
+  const showResumeInDeployView = showResume && session?.status !== "completed";
+  const isPausedInDeployView = isDeploying && !isRunning;
 
-  async function handleResume() {
+  async function handleResume(targetCommunityId?: number) {
     console.log("[DeployWizard] Resume button clicked", {
       currentSessionId: session?.sessionId,
       currentCommunityId: session?.communityId,
       resumeCandidateCommunityId: resumeCandidate?.communityId,
+      requestedCommunityId: targetCommunityId,
       connectedStatus: status
     });
 
     const requestId = ++resumeRequestIdRef.current;
     setIsResuming(true);
+    setResumeGuidance(null);
+    setResumeForcedStepIndex(null);
     try {
-      const resumed = await resume({ communityId: session?.communityId ?? resumeCandidate?.communityId });
+      const resumed = await resume({
+        communityId: targetCommunityId ?? session?.communityId ?? resumeCandidate?.communityId
+      });
       if (requestId !== resumeRequestIdRef.current) return;
       if (!resumed) {
         console.log("[DeployWizard] Resume returned no session");
@@ -168,10 +271,10 @@ export function DeployWizard({ options }: Props) {
         hasDeploymentConfig: Boolean(resumed.deploymentConfig)
       });
 
-      const resumeConfig = resumed.deploymentConfig ?? config;
+      const resumeConfig = mergeResumeConfig(config, resumed.deploymentConfig, address);
       if (resumed.deploymentConfig) {
-        setConfig(resumed.deploymentConfig);
-        saveDraft(resumed.deploymentConfig, address, chainId);
+        setConfig(resumeConfig);
+        saveDraft(resumeConfig, address, chainId);
       }
 
       // Resume should continue execution from the first incomplete step.
@@ -188,6 +291,14 @@ export function DeployWizard({ options }: Props) {
           reason: resumed.status === "completed" ? "session-already-completed" : "invalid-config",
           validationErrors: validation.errors
         });
+
+        if (resumed.status !== "completed" && hasMissingRequiredConfigErrors(validation.errors)) {
+          const guidance = getResumeConfigGuidance(validation.errors);
+          setResumeGuidance(guidance.message);
+          setResumeForcedStepIndex(guidance.stepIndex);
+          setWizardClosed(false);
+          setWizardExpanded(true);
+        }
       }
     } catch (error) {
       console.log("[DeployWizard] Resume handler failed", {
@@ -199,6 +310,22 @@ export function DeployWizard({ options }: Props) {
       }
     }
   }
+
+  useEffect(() => {
+    if (!autoResumeRequested || autoResumeHandledRef.current) return;
+    if (status !== "connected" || isRunning || isResuming) return;
+
+    autoResumeHandledRef.current = true;
+    void handleResume(resumeCommunityIdFromUrl);
+    router.replace("/");
+  }, [
+    autoResumeRequested,
+    isResuming,
+    isRunning,
+    resumeCommunityIdFromUrl,
+    router,
+    status
+  ]);
 
   async function handleStartDeploy() {
     // Cancel any in-flight resume result application before starting a new run.
@@ -301,7 +428,7 @@ export function DeployWizard({ options }: Props) {
             <>
               <div className="space-y-4 text-center">
                 <h2 className="text-2xl font-semibold">
-                  {session?.status === "failed"
+                  {session?.status === "failed" || isPausedInDeployView
                     ? "Deployment paused"
                     : (session?.steps ?? []).some(
                         (s) => s.key === "VERIFY_DEPLOYMENT" && (s.status === "running" || s.status === "succeeded")
@@ -310,15 +437,15 @@ export function DeployWizard({ options }: Props) {
                       : "Deploying your community"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {session?.status === "failed"
-                    ? "An error occurred. Fix the issue and use Resume to continue."
+                  {session?.status === "failed" || isPausedInDeployView
+                    ? "Deployment is ready to continue. Use Resume deployment to proceed from the next pending step."
                     : (session?.steps ?? []).some(
                         (s) => s.key === "VERIFY_DEPLOYMENT" && (s.status === "running" || s.status === "succeeded")
                       )
                       ? "Running verification checks."
                       : "Confirm transactions in your wallet when prompted. Do not close this page."}
                 </p>
-                {session?.status === "failed" ? (
+                {showResumeInDeployView ? (
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <button
                       type="button"
@@ -326,12 +453,13 @@ export function DeployWizard({ options }: Props) {
                       onClick={() => void handleResume()}
                       className="btn-primary cursor-pointer"
                     >
-                      {isResuming ? "Resuming..." : "Resume"}
+                      {isResuming ? "Resuming..." : "Resume deployment"}
                     </button>
                   </div>
                 ) : null}
                 {error ? <p className="text-sm text-destructive">{error}</p> : null}
                 {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
+                {resumeGuidance ? <p className="text-sm text-amber-700">{resumeGuidance}</p> : null}
               </div>
 
               <div className="mt-8 flex w-full flex-col items-center gap-8">
@@ -421,6 +549,7 @@ export function DeployWizard({ options }: Props) {
                 ) : null}
                 {error ? <p className="text-sm text-destructive">{error}</p> : null}
                 {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
+                {resumeGuidance ? <p className="text-sm text-amber-700">{resumeGuidance}</p> : null}
               </div>
               <DeployConfigSteps
                 value={config}
@@ -433,6 +562,7 @@ export function DeployWizard({ options }: Props) {
                 connectedAddress={address}
                 designMode={designMode}
                 onDesignModeChange={setDesignMode}
+                forcedStepIndex={resumeForcedStepIndex}
                 onExit={() => {
                   setWizardClosed(true);
                   setWizardExpanded(false);

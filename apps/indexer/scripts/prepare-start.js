@@ -6,10 +6,96 @@ dotenv.config({ path: path.join(__dirname, "../../../.env") });
 
 const START_BLOCK_META_KEY = "shift_start_block";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const RPC_CHECK_MAX_ATTEMPTS = 3;
+const RPC_CHECK_BASE_DELAY_MS = 500;
 
 async function tableExists(client, name) {
   const result = await client.query("select to_regclass($1) as reg", [name]);
   return Boolean(result.rows[0] && result.rows[0].reg);
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function readRegistryCode(rpcUrl, registryAddress) {
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "eth_getCode",
+      params: [registryAddress, "latest"],
+    }),
+  });
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      message: `RPC status ${response.status}`,
+    };
+  }
+
+  const result = await response.json();
+  return {
+    ok: true,
+    status: response.status,
+    code: result?.result,
+    message: result?.error?.message,
+  };
+}
+
+async function assertRegistryUsable(params) {
+  const { rpcUrls, registryAddress, strict } = params;
+  const usableUrls = rpcUrls.filter(Boolean);
+  if (usableUrls.length === 0) {
+    throw new Error("No RPC URL configured for registry usability check");
+  }
+
+  let lastRateLimit = null;
+  let lastFailure = null;
+
+  for (const rpcUrl of usableUrls) {
+    for (let attempt = 1; attempt <= RPC_CHECK_MAX_ATTEMPTS; attempt += 1) {
+      let result;
+      try {
+        result = await readRegistryCode(rpcUrl, registryAddress);
+      } catch (error) {
+        lastFailure = `RPC request failed for ${rpcUrl}: ${String(error)}`;
+        break;
+      }
+
+      if (result.ok) {
+        if (!result.code || result.code === "0x") {
+          throw new Error("COMMUNITY_REGISTRY_ADDRESS has no deployed bytecode on selected network");
+        }
+        return;
+      }
+
+      if (result.status === 429) {
+        lastRateLimit = `RPC rate limited (${result.status}) on ${rpcUrl}`;
+        if (attempt < RPC_CHECK_MAX_ATTEMPTS) {
+          await sleep(RPC_CHECK_BASE_DELAY_MS * attempt);
+          continue;
+        }
+        break;
+      }
+
+      lastFailure = `Failed registry usability check at ${rpcUrl} with RPC status ${result.status}`;
+      break;
+    }
+  }
+
+  if (lastRateLimit && !strict) {
+    console.warn(
+      `[indexer] Skipping strict registry usability check due RPC rate limits. Last issue: ${lastRateLimit}`
+    );
+    return;
+  }
+
+  throw new Error(lastFailure ?? lastRateLimit ?? "Failed registry usability check");
 }
 
 async function main() {
@@ -21,6 +107,11 @@ async function main() {
     network === "base"
       ? process.env.RPC_BASE ?? "https://mainnet.base.org"
       : process.env.RPC_BASE_SEPOLIA ?? "https://sepolia.base.org";
+  const fallbackRpcUrl =
+    network === "base"
+      ? process.env.RPC_BASE_FALLBACK
+      : process.env.RPC_BASE_SEPOLIA_FALLBACK;
+  const strictRpcCheck = process.env.INDEXER_STRICT_RPC_CHECK === "1";
 
   if (!registryAddressRaw) {
     throw new Error("Missing required env COMMUNITY_REGISTRY_ADDRESS");
@@ -39,25 +130,11 @@ async function main() {
     throw new Error("Invalid COMMUNITY_REGISTRY_START_BLOCK");
   }
 
-  const codeResponse = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "eth_getCode",
-      params: [registryAddressRaw, "latest"],
-    }),
+  await assertRegistryUsable({
+    rpcUrls: [rpcUrl, fallbackRpcUrl],
+    registryAddress: registryAddressRaw,
+    strict: strictRpcCheck,
   });
-
-  if (!codeResponse.ok) {
-    throw new Error(`Failed registry usability check with RPC status ${codeResponse.status}`);
-  }
-
-  const codeResult = await codeResponse.json();
-  if (!codeResult?.result || codeResult.result === "0x") {
-    throw new Error("COMMUNITY_REGISTRY_ADDRESS has no deployed bytecode on selected network");
-  }
 
   if (!databaseUrl || !startBlockRaw) {
     return;

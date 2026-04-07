@@ -13,7 +13,7 @@ import type {
 } from "./types";
 
 const STRICT_STAGING_CHAIN_ID = 84532;
-const LEGACY_MODE_ENV_FLAGS = [
+const DISALLOWED_DEPLOY_MODE_FLAGS = [
   "NEXT_PUBLIC_SHIFT_ENABLE_LEGACY_DEPLOY",
   "NEXT_PUBLIC_SHIFT_ENABLE_BACKFILL",
   "NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE"
@@ -100,8 +100,11 @@ const COMMUNITY_REGISTRY_ABI = [
         name: "modules",
         type: "tuple",
         components: [
+          { name: "accessManager", type: "address" },
+          { name: "membershipToken", type: "address" },
           { name: "governor", type: "address" },
           { name: "timelock", type: "address" },
+          { name: "countingMultiChoice", type: "address" },
           { name: "requestHub", type: "address" },
           { name: "draftsManager", type: "address" },
           { name: "engagementsManager", type: "address" },
@@ -110,10 +113,19 @@ const COMMUNITY_REGISTRY_ABI = [
           { name: "verifierElection", type: "address" },
           { name: "verifierManager", type: "address" },
           { name: "valuableActionSBT", type: "address" },
+          { name: "positionManager", type: "address" },
+          { name: "credentialManager", type: "address" },
+          { name: "cohortRegistry", type: "address" },
+          { name: "investmentCohortManager", type: "address" },
+          { name: "revenueRouter", type: "address" },
           { name: "treasuryVault", type: "address" },
           { name: "treasuryAdapter", type: "address" },
           { name: "communityToken", type: "address" },
           { name: "paramController", type: "address" },
+          { name: "commerceDisputes", type: "address" },
+          { name: "marketplace", type: "address" },
+          { name: "housingManager", type: "address" },
+          { name: "projectFactory", type: "address" },
         ],
       },
     ],
@@ -154,8 +166,11 @@ const COMMUNITY_REGISTRY_ABI = [
         name: "modules",
         type: "tuple",
         components: [
+          { name: "accessManager", type: "address" },
+          { name: "membershipToken", type: "address" },
           { name: "governor", type: "address" },
           { name: "timelock", type: "address" },
+          { name: "countingMultiChoice", type: "address" },
           { name: "requestHub", type: "address" },
           { name: "draftsManager", type: "address" },
           { name: "engagementsManager", type: "address" },
@@ -164,10 +179,19 @@ const COMMUNITY_REGISTRY_ABI = [
           { name: "verifierElection", type: "address" },
           { name: "verifierManager", type: "address" },
           { name: "valuableActionSBT", type: "address" },
+          { name: "positionManager", type: "address" },
+          { name: "credentialManager", type: "address" },
+          { name: "cohortRegistry", type: "address" },
+          { name: "investmentCohortManager", type: "address" },
+          { name: "revenueRouter", type: "address" },
           { name: "treasuryVault", type: "address" },
           { name: "treasuryAdapter", type: "address" },
           { name: "communityToken", type: "address" },
           { name: "paramController", type: "address" },
+          { name: "commerceDisputes", type: "address" },
+          { name: "marketplace", type: "address" },
+          { name: "housingManager", type: "address" },
+          { name: "projectFactory", type: "address" },
         ],
       },
     ],
@@ -176,6 +200,20 @@ const COMMUNITY_REGISTRY_ABI = [
 ] as const satisfies Abi;
 
 const PARAM_CONTROLLER_ABI = [
+  {
+    type: "function",
+    name: "registrySet",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "communityRegistry",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
   {
     type: "function",
     name: "setVerifierParams",
@@ -205,6 +243,47 @@ const PARAM_CONTROLLER_ABI = [
     outputs: [],
   },
 ] as const satisfies Abi;
+
+async function assertBootstrapWiring(
+  publicClient: PublicClient,
+  sharedInfra: SharedInfra,
+  runAddresses: DeploymentRunAddresses
+): Promise<void> {
+  const configuredParamController = runAddresses.paramController;
+  if (configuredParamController.toLowerCase() !== sharedInfra.paramController.toLowerCase()) {
+    throw new Error(
+      `Deployment address mismatch: run paramController (${configuredParamController}) does not match shared infra paramController (${sharedInfra.paramController}).`
+    );
+  }
+
+  const registrySetRaw = await publicClient.readContract({
+    address: sharedInfra.paramController,
+    abi: PARAM_CONTROLLER_ABI,
+    functionName: "registrySet",
+  }).catch(() => undefined);
+
+  if (registrySetRaw === false) {
+    throw new Error(
+      "ParamController is not wired to any CommunityRegistry (registrySet=false). Run shared infra setup so ParamController.setCommunityRegistry points to the active CommunityRegistry before deploying communities."
+    );
+  }
+
+  const wiredRegistryRaw = await publicClient.readContract({
+    address: sharedInfra.paramController,
+    abi: PARAM_CONTROLLER_ABI,
+    functionName: "communityRegistry",
+  }).catch(() => undefined);
+
+  if (typeof wiredRegistryRaw === "string") {
+    const wiredRegistry = getAddress(wiredRegistryRaw as `0x${string}`);
+    const expectedRegistry = getAddress(sharedInfra.communityRegistry);
+    if (wiredRegistry.toLowerCase() !== expectedRegistry.toLowerCase()) {
+      throw new Error(
+        `ParamController is wired to a different CommunityRegistry (${wiredRegistry}). Expected ${expectedRegistry}. Update shared infra wiring before retrying deployment.`
+      );
+    }
+  }
+}
 
 const SHIFT_ACCESS_MANAGER_ABI = [
   {
@@ -937,15 +1016,15 @@ function assertStrictStagingMode(chainId: number): void {
     );
   }
 
-  const enabledLegacyFlags = LEGACY_MODE_ENV_FLAGS.filter((flag) => {
+  const enabledCompatibilityFlags = DISALLOWED_DEPLOY_MODE_FLAGS.filter((flag) => {
     const value = process.env[flag];
     if (!value) return false;
     const normalized = value.trim().toLowerCase();
     return normalized === "1" || normalized === "true" || normalized === "yes";
   });
-  if (enabledLegacyFlags.length > 0) {
+  if (enabledCompatibilityFlags.length > 0) {
     throw new Error(
-      `Legacy deploy modes are disabled in strict staging mode. Unset: ${enabledLegacyFlags.join(", ")}.`,
+      `Compatibility deploy overrides are not supported in strict staging mode. Disable extra deploy mode flags and retry.`,
     );
   }
 }
@@ -2264,6 +2343,7 @@ async function registerAndWireCommunity(
   };
 
   const treasuryVault = requireAddressArg(context.config.treasuryVault, "treasury vault");
+  await assertBootstrapWiring(publicClient, sharedInfra, runAddresses);
   const modulePayload = {
     accessManager: runAddresses.accessManager,
     membershipToken: runAddresses.membershipToken ?? ZERO_ADDRESS,
@@ -2351,68 +2431,14 @@ async function registerAndWireCommunity(
       communityId: decodeCommunityId(bootstrapResult.receipt as { logs?: unknown }, beforeNextId, afterNextId),
     };
   } catch (error) {
-    console.warn("[DeployWizard] bootstrapCommunity failed; falling back to legacy register+setters path", {
+    console.error("[DeployWizard] bootstrapCommunity failed in strict bootstrap-only mode", {
       error,
       communityRegistry: sharedInfra.communityRegistry,
     });
-
-    // Compatibility fallback for older registry deployments that do not include bootstrapCommunity.
-    const registerResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.communityRegistry,
-      abi: COMMUNITY_REGISTRY_ABI,
-      functionName: "registerCommunity",
-      args: [
-        context.config.communityName,
-        context.config.communityDescription,
-        context.config.communityMetadataUri,
-        0n,
-      ],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    const afterNextId = (await publicClient.readContract({
-      address: sharedInfra.communityRegistry,
-      abi: COMMUNITY_REGISTRY_ABI,
-      functionName: "nextCommunityId",
-    })) as bigint;
-
-    const communityId = decodeCommunityId(registerResult.receipt as { logs?: unknown }, beforeNextId, afterNextId);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.paramController,
-      abi: PARAM_CONTROLLER_ABI,
-      functionName: "setVerifierParams",
-      args: [BigInt(communityId), 5n, 3n, 20n, true, 1000n, 86400n],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.paramController,
-      abi: PARAM_CONTROLLER_ABI,
-      functionName: "setGovernanceParams",
-      args: [BigInt(communityId), 7200n, 86400n, 21600n],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.paramController,
-      abi: PARAM_CONTROLLER_ABI,
-      functionName: "setEligibilityParams",
-      args: [BigInt(communityId), 0n, 0n, 0n],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.paramController,
-      abi: PARAM_CONTROLLER_ABI,
-      functionName: "setRevenuePolicy",
-      args: [BigInt(communityId), 1000n, 2000n, 1n, 5000n],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.communityRegistry,
-      abi: COMMUNITY_REGISTRY_ABI,
-      functionName: "setModuleAddresses",
-      args: [BigInt(communityId), modulePayload],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    return { txHashes, communityId };
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `bootstrapCommunity failed and deployment cannot continue. Root cause: ${message}`
+    );
   }
 }
 
