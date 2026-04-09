@@ -13,7 +13,11 @@
 - Q: How should targets with zero allowlisted functions be presented? → A: Option B (show target disabled with a clear reason).
 - Q: How should runtime allowlist sourcing work for expert mode? → A: Option A (runtime uses a committed versioned allowlist file; updates are script-generated and PR-reviewed).
 - Q: How many allowlist profiles should v1 support? → A: Option A (single canonical allowlist profile for v1 based on Base Sepolia staging wiring).
-- Q: How should guided mode choose between global and community-scoped overloads? → A: Option A (always use community-scoped overloads when available).
+- Q: How should guided mode choose between global and community-scoped overloads? → A: Superseded by 2026-04-09 policy: community-scoped contracts must not expose selector overloads.
+
+### Session 2026-04-09
+
+- Q: What is the selector policy for community-scoped contracts? → A: Community-scoped contracts MUST NOT expose overloaded function names; any detected overload is an invariant violation and must be documented and blocked from guided-template inclusion.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -83,7 +87,7 @@ As a governance operator, I can access Timelock-allowed targets across coordinat
 
 - Community module address is zero or absent for a target required by a template.
 - Target contract exists but has zero currently allowlisted Timelock functions.
-- Function has overloads where only some signatures are Timelock-allowlisted.
+- Community-scoped contract exposes overloaded function names and must be flagged as an invariant violation for remediation outside this feature scope.
 - Expert mode input includes invalid tuple or array shapes.
 - Queue contains no actions and must still produce deterministic empty bundle semantics.
 - Queue edits occur after calldata generation and must rehydrate preview/hash without stale data.
@@ -103,10 +107,10 @@ As a governance operator, I can access Timelock-allowed targets across coordinat
 - **FR-005**: Expert mode MUST make it impossible to select or encode non-allowlisted functions.
 - **FR-005A**: Targets with zero currently allowlisted functions MUST remain visible and MUST be disabled with a clear reason.
 - **FR-006**: Action targets MUST include, at minimum, ValuableActionRegistry, VerifierElection, VerifierManager (only if allowlisted functions exist), VerifierPowerToken1155, RevenueRouter, TreasuryAdapter, Marketplace, ParamController, CohortRegistry, InvestmentCohortManager, PositionManager (only if allowlisted functions exist), CredentialManager (only if allowlisted functions exist), and CommunityRegistry (only if allowlisted functions exist).
-- **FR-007**: Guided templates MUST be safe by construction and constrain inputs with validation and bounded ranges appropriate to governance usage.
-- **FR-007A**: When both global and community-scoped function overloads exist, guided mode MUST encode the community-scoped overload.
+- **FR-007**: Guided templates MUST be safe by construction via explicit per-template input schemas, required/type/range validation, and deterministic pre-encode error messages appropriate to governance usage.
+- **FR-007A**: Templates MUST use exact ABI-verified signatures from the committed allowlist; if only one signature exists for a function name, there is no overload selection.
 - **FR-008**: Guided templates MUST include v1 coverage for currently Timelock-allowed functions in these groups: ValuableActionRegistry governance config, VerifierPowerToken1155 community init/config, RevenueRouter treasury/token config, TreasuryAdapter allowlist/caps/destination config, Marketplace community toggles, conditional ParamController presets, and conditional VerifierElection governance operations.
-- **FR-008A**: Guided templates for overloaded functions (including TreasuryAdapter and similar surfaces) MUST hide overload complexity and consistently encode community-scoped variants.
+- **FR-008A**: Guided templates MUST only reference exact ABI-verified signatures and MUST NOT include selector-choice logic when no overload exists in ABI/source.
 - **FR-009**: Guided templates MUST only be available for functions that are currently Timelock-executable by allowlist or explicit contract-level Timelock guard.
 - **FR-010**: If a guided function is governance-relevant but not currently Timelock-permitted, template availability MUST be disabled with clear "not available until permission wiring is updated" messaging.
 - **FR-011**: Templates for non-governance actions MUST be excluded, including request status change, draft contributor/version operations, and draft escalation to proposal.
@@ -115,6 +119,7 @@ As a governance operator, I can access Timelock-allowed targets across coordinat
 - **FR-014**: The action queue MUST always be visible and show target, selected function signature, calldata preview, and queue controls for remove and reorder.
 - **FR-015**: Bundle hashing MUST use `keccak256(encodePacked(address[] targets, uint256[] values, bytes[] calldatas))` in strict queue order, yielding identical output for identical ordered actions and different output when order changes.
 - **FR-016**: Guided template encoding MUST be deterministic for identical template inputs.
+- **FR-016A**: An empty action queue MUST produce deterministic canonical empty bundle semantics (`targets=[]`, `values=[]`, `calldatas=[]`) and a stable empty-queue hash.
 - **FR-017**: The feature MUST include measurable tests for allowlist gating, guided template encoding snapshots, determinism, and module availability behavior.
 
 ### Monorepo Impact Requirements *(mandatory)*
@@ -138,7 +143,7 @@ As a governance operator, I can access Timelock-allowed targets across coordinat
 - **DT-002**: Documentation MUST state explicit exclusions for RequestHub moderation actions, DraftsManager contributor/version operations, and escalation flow actions.
 - **DT-003**: Documentation MUST identify wizard/canonical permission wiring as the allowlist source and explain disabled behavior when a function is not currently Timelock-executable.
 - **DT-004**: Specification and related docs MUST use current Shift terminology (RequestHub, Drafts, Governor/Timelock, VPS, ValuableActionRegistry, VerifierElection, VerifierManager, RevenueRouter, TreasuryAdapter, Marketplace, CohortRegistry, PositionManager, CredentialManager).
-- **DT-005**: If shipped scope changes implementation status or risk posture, synchronized status update requirements for `.github/project-management/STATUS_REVIEW.md` apply.
+- **DT-005**: If shipped scope changes implementation status, risks, priorities, architecture expectations, or workflow requirements, updates MUST synchronize both `.github/project-management/IMPLEMENTATION_STATUS.md` and `.github/project-management/STATUS_REVIEW.md` in the same change set.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -164,7 +169,10 @@ As a governance operator, I can access Timelock-allowed targets across coordinat
 - **SC-003**: Guided template snapshot tests pass for every v1 template with expected selector and encoded argument output.
 - **SC-004**: Determinism tests show identical hash for identical ordered bundles and different hash for reordered bundles in 100% of test cases.
 - **SC-005**: Availability tests confirm 100% of templates dependent on missing modules are disabled with explanatory messaging.
+- **SC-006**: 0 excluded non-governance actions appear in guided templates or expert allowlist options.
 - **SC-007**: Expert target visibility tests confirm 100% of targets lacking allowlisted functions are shown disabled with explanatory messaging, never hidden.
 - **SC-008**: v1 configuration tests confirm exactly one canonical allowlist profile is loaded at runtime.
-- **SC-009**: Guided overload tests confirm 100% of applicable template encodings use community-scoped overloads when both global and community-scoped overloads are present.
-- **SC-006**: 0 excluded non-governance actions appear in guided templates or expert allowlist options.
+- **SC-009**: ABI reality checks confirm templates and allowlist entries use only existing exact signatures; no selector-choice logic is applied when a single signature exists.
+- **SC-010**: Empty queue determinism tests confirm canonical empty bundle semantics and stable empty-queue hash across runs.
+- **SC-011**: Existing drafts created before this feature remain renderable and valid without migration or replay.
+- **SC-012**: Queue visibility tests confirm the action queue remains visible in both empty and non-empty states with consistent preview controls.

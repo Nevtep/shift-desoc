@@ -88,7 +88,7 @@ export function getAllowlistedFunctionsForTarget(
 Behavioral contract:
 - No heuristic mutable-function scanning.
 - Signature+inputs must match ABI fragment exactly.
-- Overloads represented as distinct entries.
+- Overloads represented as distinct entries when they exist in ABI.
 - Tuple/array raw param support reuses existing expert encoder path.
 
 ## 4) Guided Template Contract
@@ -116,7 +116,7 @@ export type GuidedTemplate = {
 
 Behavioral contract:
 - SAFE-only inputs and bounds.
-- Community-scoped overload chosen when both global/community overloads exist.
+- No overload-selection logic; templates use exact ABI-verified signatures only.
 - Disabled if module missing or signature not allowlisted.
 
 ## 5) Bundle Hash Contract

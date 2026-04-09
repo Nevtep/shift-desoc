@@ -20,6 +20,7 @@
 - Select `ADMIN_ROLE` signatures only.
 - Resolve `target -> contract ABI`, verify signature exists.
 - Emit stable sorted JSON and metadata report.
+- Run: `pnpm generate:composer-allowlist` from repo root whenever selector wiring or composer-safe signature policies change.
 
 3. Refactor action registry into composable modules
 - Extend `ActionTargetId` and target definitions to required scope.
@@ -29,7 +30,7 @@
 4. Guided template catalog
 - Move to schema-driven templates in `apps/web/lib/actions/guided-templates.ts`.
 - Implement v1 template groups required by spec.
-- For overloads, always select community-scoped signature.
+- Templates use exact ABI-verified signatures from the committed allowlist; no overload-selection logic is performed.
 - Enforce disabled-if-not-allowlisted and disabled-if-module-missing.
 
 5. Update `DraftCreateForm`

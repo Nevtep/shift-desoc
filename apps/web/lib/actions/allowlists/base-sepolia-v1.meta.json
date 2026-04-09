@@ -1,0 +1,29 @@
+{
+  "abiValidationFailures": [],
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "generatorVersion": "1",
+  "ignoredNonAdminAssignments": 14,
+  "overloadNames": {
+    "cohortRegistry": [
+      "getCohortWeight"
+    ],
+    "credentialManager": [],
+    "investmentCohortManager": [],
+    "marketplace": [],
+    "positionManager": [],
+    "revenueRouter": [],
+    "treasuryAdapter": [],
+    "valuableActionRegistry": [],
+    "verifierElection": [],
+    "verifierPowerToken": []
+  },
+  "profileHash": "a1d79917e52f86db4fcec96bb8a2814123bf0ec6659e0e26820bd95ebd1bd7af",
+  "profileId": "base-sepolia-v1",
+  "signatureCount": 38,
+  "skippedTargets": [
+    "commerceDisputes",
+    "engagements",
+    "housingManager"
+  ],
+  "targetCount": 10
+}

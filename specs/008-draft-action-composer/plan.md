@@ -17,8 +17,8 @@ Evolve `DraftCreateForm` into the canonical governance action bundle composer by
 **Testing**: Vitest + Testing Library unit tests in `apps/web/tests/unit/**`  
 **Target Platform**: Web dApp (`apps/web`) for Base Sepolia staging-first operations
 **Project Type**: Monorepo web app feature (frontend + supporting scripts/docs)  
-**Performance Goals**: Deterministic local encoding and hash computation with no perceptible UI regression for action composition workflows  
-**Constraints**: No contract changes; no indexer changes; explicit allowlist only (no heuristics); one canonical v1 allowlist profile; guided mode always community-scoped overload when available  
+**Performance Goals**: Deterministic local encoding and hash recomputation with composition interactions remaining responsive under typical draft workloads (up to 20 queued actions)  
+**Constraints**: No contract changes; no indexer changes; explicit allowlist only (no heuristics); one canonical v1 allowlist profile; community-scoped contracts must not require selector-overload resolution  
 **Scale/Scope**: Draft composer surfaces, action registry/target resolution, one allowlist generation script, targeted unit/snapshot tests, and documentation updates
 
 ## Constitution Check
@@ -27,7 +27,7 @@ Evolve `DraftCreateForm` into the canonical governance action bundle composer by
 
 - Protocol infrastructure first: PASS. No protocol primitive changes; feature remains app-layer authoring UX for existing governance surfaces.
 - Contract-first authority: PASS. Authority derives from canonical AccessManager/TL wiring selectors; app consumes committed allowlist generated from canonical source, not heuristic authority.
-- Security/invariant preservation: PASS. Preserved invariants: Timelock-only privileged mutations, SAFE guided templates, non-governance exclusions, deterministic hash computation, overload safety.
+- Security/invariant preservation: PASS. Preserved invariants: Timelock-only privileged mutations, SAFE guided templates, non-governance exclusions, deterministic hash computation, and selector-uniqueness enforcement for community-scoped surfaces.
 - Event/indexer discipline: PASS. No ABI/event/indexer changes; no replay/migration required.
 - Monorepo vertical-slice scope: PASS with constrained slice. Impacted: web app code, web tests, docs, planning artifacts, script for allowlist generation. Unimpacted: contracts/indexer.
 - Project-management docs sync: PASS (no status architecture/workflow changes requiring project-management files at plan stage).
@@ -146,18 +146,18 @@ Templates below are included only if signature is allowlisted and target address
 | `var.setValuableActionSBT` | `valuableActionRegistry` | `setValuableActionSBT(address)` | `sbtAddress` (must be non-zero address) | N/A | Missing target/module or signature not allowlisted |
 | `var.setIssuanceModule` | `valuableActionRegistry` | `setIssuanceModule(address,bool)` | `moduleAddress` (non-zero), `enabled` (bool) | N/A | Same |
 | `var.addFounder` | `valuableActionRegistry` | `addFounder(address)` | `founderAddress` (non-zero) | Prefer one-arg founder add for v1 guided simplicity | Same |
-| `vpt.initializeCommunity` | `verifierPowerToken` | `initializeCommunity(string)` or community-scoped ABI variant if canonical allowlist uses it | `metadataURI` (non-empty, max length guard) | If both exist, pick community-scoped variant | Same |
+| `vpt.initializeCommunity` | `verifierPowerToken` | `initializeCommunity(string)` | `metadataURI` (non-empty, max length guard) | N/A (single ABI signature) | Same |
 | `vpt.setURI` | `verifierPowerToken` | `setURI(string)` | `uri` (non-empty, max length guard) | N/A | Same |
-| `rr.setCommunityTreasury` | `revenueRouter` | `setCommunityTreasury(address)` or community-scoped variant in allowlist | `treasury` (non-zero address) | Prefer community-scoped overload when present | Same |
-| `rr.setSupportedToken` | `revenueRouter` | `setSupportedToken(address,bool)` or community-scoped variant | `token` (non-zero), `enabled` | Prefer community-scoped overload when present | Same |
-| `ta.setTokenAllowed` | `treasuryAdapter` | `setTokenAllowed(uint256,address,bool)` | `communityId` (from context), `token`, `allowed` | Always community-scoped overload | Same |
-| `ta.setCapBps` | `treasuryAdapter` | `setCapBps(uint256,address,uint16)` | `communityId` (context), `token`, `capBps` ($1-10000$) | Always community-scoped overload | Same |
-| `ta.setDestinationAllowed` | `treasuryAdapter` | `setDestinationAllowed(uint256,address,bool)` | `communityId` (context), `destination`, `allowed` | Always community-scoped overload | Same |
-| `mp.setCommunityActive` | `marketplace` | `setCommunityActive(bool)` or community-scoped variant | `active` (bool) | Prefer community-scoped overload when present | Same |
-| `mp.setCommunityToken` | `marketplace` | `setCommunityToken(address)` or community-scoped variant | `token` (non-zero) | Prefer community-scoped overload when present | Same |
-| `pc.revenuePolicyPreset` | `paramController` | matching allowlisted revenue policy setter signature | `preset` enum + bounded scalar fields | Prefer community-scoped overload | Disabled entirely if not allowlisted |
-| `pc.feePreset` | `paramController` | matching allowlisted fee setter signature | `preset` enum + bounded bps | Prefer community-scoped overload | Same |
-| `pc.eligibilityPreset` | `paramController` | matching allowlisted eligibility setter signature | bounded ints from preset | Prefer community-scoped overload | Same |
+| `rr.setCommunityTreasury` | `revenueRouter` | unique allowlisted exact signature | `treasury` (non-zero address) | N/A (no overloads accepted for community-scoped contracts) | Same |
+| `rr.setSupportedToken` | `revenueRouter` | unique allowlisted exact signature | `token` (non-zero), `enabled` | N/A (no overloads accepted for community-scoped contracts) | Same |
+| `ta.setTokenAllowed` | `treasuryAdapter` | `setTokenAllowed(address,bool)` | `token`, `allowed` | N/A (single ABI signature) | Same |
+| `ta.setCapBps` | `treasuryAdapter` | `setCapBps(address,uint16)` | `token`, `capBps` ($1-10000$) | N/A (single ABI signature) | Same |
+| `ta.setDestinationAllowed` | `treasuryAdapter` | `setDestinationAllowed(address,bool)` | `destination`, `allowed` | N/A (single ABI signature) | Same |
+| `mp.setCommunityActive` | `marketplace` | unique allowlisted exact signature | `active` (bool) | N/A (no overloads accepted for community-scoped contracts) | Same |
+| `mp.setCommunityToken` | `marketplace` | unique allowlisted exact signature | `token` (non-zero) | N/A (no overloads accepted for community-scoped contracts) | Same |
+| `pc.revenuePolicyPreset` | `paramController` | matching unique allowlisted revenue policy setter signature | `preset` enum + bounded scalar fields | N/A (no overloads accepted for community-scoped contracts) | Disabled entirely if not allowlisted |
+| `pc.feePreset` | `paramController` | matching unique allowlisted fee setter signature | `preset` enum + bounded bps | N/A (no overloads accepted for community-scoped contracts) | Same |
+| `pc.eligibilityPreset` | `paramController` | matching unique allowlisted eligibility setter signature | bounded ints from preset | N/A (no overloads accepted for community-scoped contracts) | Same |
 | `ve.setVerifierSet` | `verifierElection` | `setVerifierSet(address[],uint256[],string)` | verifier addresses/powers length match; power > 0; reason length bounds | N/A | Disabled if signature not allowlisted |
 | `ve.banVerifiers` | `verifierElection` | `banVerifiers(address[],string)` | non-empty addresses; reason bounds | N/A | Same |
 | `ve.unbanVerifier` | `verifierElection` | `unbanVerifier(address,string)` | single non-zero address + reason bounds | N/A | Same |
@@ -196,7 +196,7 @@ Notes:
 
 ## Delivery phases
 
-- Phase 0 (Research): lock authority source, hashing, overload policy, profile strategy.
+- Phase 0 (Research): lock authority source, hashing, exact-signature policy, profile strategy.
 - Phase 1 (Design): data model, contracts, quickstart, concrete implementation plan.
 - Phase 2 (Tasks, separate command): generate dependency-ordered tasks from this plan.
 

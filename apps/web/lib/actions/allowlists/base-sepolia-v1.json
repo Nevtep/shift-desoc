@@ -1,0 +1,109 @@
+{
+  "profileId": "base-sepolia-v1",
+  "source": {
+    "generatedAt": "1970-01-01T00:00:00.000Z",
+    "generatorVersion": "1",
+    "selectionRule": "ADMIN_ROLE signatures handed to Timelock",
+    "wiringFile": "apps/web/lib/deploy/factory-step-executor.ts"
+  },
+  "targets": [
+    {
+      "contractName": "CohortRegistry",
+      "signatures": [
+        "createCohort(uint16,uint32,bytes32,uint64,uint64,bool)",
+        "setCohortActive(uint256,bool)"
+      ],
+      "targetId": "cohortRegistry"
+    },
+    {
+      "contractName": "CredentialManager",
+      "signatures": [
+        "defineCourse(bytes32,address,bool)",
+        "revokeCredential(uint256,bytes32,bytes)",
+        "setCourseActive(bytes32,bool)"
+      ],
+      "targetId": "credentialManager"
+    },
+    {
+      "contractName": "InvestmentCohortManager",
+      "signatures": [
+        "createCohort(uint16,uint32,bytes32,uint64,uint64,bool)",
+        "issueInvestment(address,uint256,uint32,bytes)",
+        "setCohortActive(uint256,bool)"
+      ],
+      "targetId": "investmentCohortManager"
+    },
+    {
+      "contractName": "Marketplace",
+      "signatures": [
+        "setCommerceDisputes(address)",
+        "setCommunityActive(bool)",
+        "setCommunityToken(address)",
+        "setRevenueRouter(address)"
+      ],
+      "targetId": "marketplace"
+    },
+    {
+      "contractName": "PositionManager",
+      "signatures": [
+        "approveApplication(uint256,bytes)",
+        "closePosition(uint256,uint8,bytes)",
+        "definePositionType(bytes32,uint32,bool)",
+        "setRevenueRouter(address)"
+      ],
+      "targetId": "positionManager"
+    },
+    {
+      "contractName": "RevenueRouter",
+      "signatures": [
+        "setCohortRegistry(address)",
+        "setCommunityTreasury(address)",
+        "setParamController(address)",
+        "setSupportedToken(address,bool)"
+      ],
+      "targetId": "revenueRouter"
+    },
+    {
+      "contractName": "TreasuryAdapter",
+      "signatures": [
+        "setCapBps(address,uint16)",
+        "setDestinationAllowed(address,bool)",
+        "setTokenAllowed(address,bool)"
+      ],
+      "targetId": "treasuryAdapter"
+    },
+    {
+      "contractName": "ValuableActionRegistry",
+      "signatures": [
+        "activateFromGovernance(uint256,bytes32)",
+        "addFounder(address)",
+        "deactivate(uint256)",
+        "setCommunityIssuanceModule(address,bool)",
+        "setCommunityNarrowing(bool)",
+        "setIssuanceModule(address,bool)",
+        "setIssuancePaused(bool)",
+        "setValuableActionSBT(address)"
+      ],
+      "targetId": "valuableActionRegistry"
+    },
+    {
+      "contractName": "VerifierElection",
+      "signatures": [
+        "adjustVerifierPower(address,uint256,string)",
+        "banVerifiers(address[],string)",
+        "setVerifierSet(address[],uint256[],string)",
+        "unbanVerifier(address,string)"
+      ],
+      "targetId": "verifierElection"
+    },
+    {
+      "contractName": "VerifierPowerToken1155",
+      "signatures": [
+        "adminTransfer(address,address,uint256,string)",
+        "initializeCommunity(string)",
+        "setURI(string)"
+      ],
+      "targetId": "verifierPowerToken"
+    }
+  ]
+}

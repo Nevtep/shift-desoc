@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as wagmi from "wagmi";
 
 import { DraftCreateForm } from "../../../components/drafts/draft-create-form";
-import { renderWithProviders, mockWagmiHooks } from "../utils";
+import { mockWagmiHooks, renderWithProviders } from "../utils";
 
 vi.mock("../../../lib/contracts", async () => {
   const actual = await vi.importActual<typeof import("../../../lib/contracts")>("../../../lib/contracts");
@@ -22,7 +22,7 @@ describe("DraftCreateForm", () => {
           data: {
             draftsManager: "0x0000000000000000000000000000000000000200",
             valuableActionRegistry: "0x0000000000000000000000000000000000000201",
-            requestHub: "0x0000000000000000000000000000000000000202"
+            verifierManager: "0x0000000000000000000000000000000000000202"
           },
           isLoading: false,
           isError: false
@@ -67,7 +67,7 @@ describe("DraftCreateForm", () => {
     await userEvent.clear(screen.getByLabelText(/Request ID/i));
     await userEvent.type(screen.getByLabelText(/Request ID/i), "0");
     await userEvent.type(screen.getByLabelText(/Draft content/i), "## Draft body");
-    await userEvent.type(screen.getByLabelText(/Action title/i), "Weekly moderation sweep");
+    await userEvent.type(screen.getByLabelText(/SBT address/i), "0x0000000000000000000000000000000000001234");
     await userEvent.click(screen.getByRole("button", { name: /Add guided action/i }));
 
     await userEvent.click(screen.getByRole("button", { name: /Create draft/i }));
@@ -80,5 +80,37 @@ describe("DraftCreateForm", () => {
 
     alertSpy.mockRestore();
     fetchSpy.mockRestore();
+  });
+
+  it("shows disabled expert targets for missing module and zero allowlisted functions", () => {
+    mockWagmiHooks({ connected: true });
+
+    renderWithProviders(<DraftCreateForm mode="expert" />);
+
+    expect(screen.getAllByText(/Module not configured for this community/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/No timelock-allowlisted functions available/i).length).toBeGreaterThan(0);
+  });
+
+  it("keeps queue visible for empty and non-empty states", async () => {
+    mockWagmiHooks({ connected: true });
+
+    renderWithProviders(<DraftCreateForm />);
+
+    expect(screen.getByText(/Actions queued \(0\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Queue is empty/i)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(/SBT address/i), "0x0000000000000000000000000000000000001234");
+    await userEvent.click(screen.getByRole("button", { name: /Add guided action/i }));
+
+    expect(screen.getByText(/Actions queued \(1\)/i)).toBeInTheDocument();
+  });
+
+  it("renders with fixed community and legacy props without migration", () => {
+    mockWagmiHooks({ connected: true });
+
+    renderWithProviders(<DraftCreateForm fixedCommunityId={3} initialRequestId={0} />);
+
+    expect(screen.getByRole("heading", { name: /Create Draft/i })).toBeInTheDocument();
+    expect(screen.getByText(/Community #3/i)).toBeInTheDocument();
   });
 });

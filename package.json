@@ -41,7 +41,8 @@
     "verify:base-sepolia": "npx hardhat run scripts/verify-base-sepolia.ts --network base_sepolia",
     "check:balance": "npx hardhat run scripts/check-balance.ts --network",
     "check:engagements": "npx hardhat run scripts/check-claim-status.ts --network",
-    "dev:generate-wallets": "./scripts/generate-wallets.sh"
+    "dev:generate-wallets": "./scripts/generate-wallets.sh",
+    "generate:composer-allowlist": "pnpm exec ts-node --esm scripts/generate-draft-composer-allowlist.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^3.0.6",

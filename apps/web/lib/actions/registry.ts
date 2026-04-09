@@ -1,237 +1,123 @@
-import type { Abi, AbiFunction } from "viem";
+import type { Abi } from "viem";
 
-import { CONTRACTS } from "../contracts";
+import communityRegistryArtifact from "../../abis/CommunityRegistry.json" assert { type: "json" };
+import cohortRegistryArtifact from "../../abis/CohortRegistry.json" assert { type: "json" };
+import credentialManagerArtifact from "../../abis/CredentialManager.json" assert { type: "json" };
+import investmentCohortManagerArtifact from "../../abis/InvestmentCohortManager.json" assert { type: "json" };
+import marketplaceArtifact from "../../abis/Marketplace.json" assert { type: "json" };
+import paramControllerArtifact from "../../abis/ParamController.json" assert { type: "json" };
+import positionManagerArtifact from "../../abis/PositionManager.json" assert { type: "json" };
+import revenueRouterArtifact from "../../abis/RevenueRouter.json" assert { type: "json" };
+import treasuryAdapterArtifact from "../../abis/TreasuryAdapter.json" assert { type: "json" };
+import valuableActionRegistryArtifact from "../../abis/ValuableActionRegistry.json" assert { type: "json" };
+import verifierElectionArtifact from "../../abis/VerifierElection.json" assert { type: "json" };
+import verifierManagerArtifact from "../../abis/VerifierManager.json" assert { type: "json" };
+import verifierPowerTokenArtifact from "../../abis/VerifierPowerToken1155.json" assert { type: "json" };
 
-export type ActionTargetId = keyof typeof CONTRACTS;
+import type { AllowlistTargetId } from "./allowlist";
+
+export type ActionTargetId = AllowlistTargetId;
 
 export type ActionTargetDefinition = {
   id: ActionTargetId;
   label: string;
-  description?: string;
-};
-
-export type TargetFunctionDefinition = {
-  functionName: string;
-  abiFragment: AbiFunction;
-};
-
-export type GuidedTemplateId = "valuableActionProposal" | "requestStatus";
-
-export type GuidedTemplateDefinition = {
-  id: GuidedTemplateId;
-  label: string;
   description: string;
-  targetId: ActionTargetId;
-  functionName: string;
-};
-
-export type RewardTierPreset = {
-  id: "micro" | "standard" | "high";
-  label: string;
-  membershipTokenReward: number;
-  communityTokenReward: number;
-};
-
-export type VerificationStrictnessPreset = {
-  id: "light" | "balanced" | "strict";
-  label: string;
-  jurorsMin: number;
-  panelSize: number;
-  verifyWindowSeconds: number;
-  verifierRewardWeight: number;
-  slashVerifierBps: number;
-};
-
-export type EvidencePreset = {
-  id: "basic" | "traceable" | "auditable";
-  label: string;
-  evidenceTypes: number;
-  evidenceSpecCID: string;
+  abi: Abi;
 };
 
 const TARGET_DEFINITIONS: Record<ActionTargetId, ActionTargetDefinition> = {
   communityRegistry: {
     id: "communityRegistry",
     label: "CommunityRegistry",
-    description: "Community metadata, module wiring, and role management"
+    description: "Community metadata, module wiring, and role management",
+    abi: communityRegistryArtifact.abi as Abi
   },
-  draftsManager: {
-    id: "draftsManager",
-    label: "DraftsManager",
-    description: "Draft lifecycle and governance escalation actions"
+  cohortRegistry: {
+    id: "cohortRegistry",
+    label: "CohortRegistry",
+    description: "Investment cohort lifecycle and cohort status governance",
+    abi: cohortRegistryArtifact.abi as Abi
   },
-  engagements: {
-    id: "engagements",
-    label: "Engagements",
-    description: "Work verification flow and engagement lifecycle actions"
+  credentialManager: {
+    id: "credentialManager",
+    label: "CredentialManager",
+    description: "Credential course management and credential revocation",
+    abi: credentialManagerArtifact.abi as Abi
   },
-  governor: {
-    id: "governor",
-    label: "ShiftGovernor",
-    description: "Governance proposal and voting actions"
+  investmentCohortManager: {
+    id: "investmentCohortManager",
+    label: "InvestmentCohortManager",
+    description: "Investment cohort orchestration and investment issuance",
+    abi: investmentCohortManagerArtifact.abi as Abi
   },
-  requestHub: {
-    id: "requestHub",
-    label: "RequestHub",
-    description: "Community discussion and moderation actions"
+  marketplace: {
+    id: "marketplace",
+    label: "Marketplace",
+    description: "Commerce marketplace configuration and routing",
+    abi: marketplaceArtifact.abi as Abi
+  },
+  paramController: {
+    id: "paramController",
+    label: "ParamController",
+    description: "Community governance and economics parameter controls",
+    abi: paramControllerArtifact.abi as Abi
+  },
+  positionManager: {
+    id: "positionManager",
+    label: "PositionManager",
+    description: "Position lifecycle and position type definitions",
+    abi: positionManagerArtifact.abi as Abi
+  },
+  revenueRouter: {
+    id: "revenueRouter",
+    label: "RevenueRouter",
+    description: "Treasury routing and token support controls",
+    abi: revenueRouterArtifact.abi as Abi
+  },
+  treasuryAdapter: {
+    id: "treasuryAdapter",
+    label: "TreasuryAdapter",
+    description: "Treasury spend guardrails and token/destination permissions",
+    abi: treasuryAdapterArtifact.abi as Abi
   },
   valuableActionRegistry: {
     id: "valuableActionRegistry",
     label: "ValuableActionRegistry",
-    description: "Valuable action definitions and activation controls"
+    description: "Valuable action issuance and activation policy controls",
+    abi: valuableActionRegistryArtifact.abi as Abi
+  },
+  verifierElection: {
+    id: "verifierElection",
+    label: "VerifierElection",
+    description: "Verifier roster, bans, and power management",
+    abi: verifierElectionArtifact.abi as Abi
+  },
+  verifierManager: {
+    id: "verifierManager",
+    label: "VerifierManager",
+    description: "Verifier juror operations and fraud reporting controls",
+    abi: verifierManagerArtifact.abi as Abi
+  },
+  verifierPowerToken: {
+    id: "verifierPowerToken",
+    label: "VerifierPowerToken1155",
+    description: "Verifier power token community initialization and metadata",
+    abi: verifierPowerTokenArtifact.abi as Abi
   }
 };
-
-function getMutableFunctions(abi: Abi): TargetFunctionDefinition[] {
-  const byName = new Map<string, TargetFunctionDefinition>();
-
-  for (const item of abi) {
-    if (item.type !== "function") continue;
-
-    const fn = item as AbiFunction;
-    if (fn.stateMutability !== "nonpayable" && fn.stateMutability !== "payable") continue;
-
-    // Keep one entry per function name to avoid ambiguous overload selection in the UI.
-    if (!byName.has(fn.name)) {
-      byName.set(fn.name, {
-        functionName: fn.name,
-        abiFragment: fn
-      });
-    }
-  }
-
-  return [...byName.values()].sort((a, b) => a.functionName.localeCompare(b.functionName));
-}
-
-const TARGET_FUNCTIONS: Record<ActionTargetId, TargetFunctionDefinition[]> = {
-  communityRegistry: getMutableFunctions(CONTRACTS.communityRegistry.abi),
-  draftsManager: getMutableFunctions(CONTRACTS.draftsManager.abi),
-  engagements: getMutableFunctions(CONTRACTS.engagements.abi),
-  governor: getMutableFunctions(CONTRACTS.governor.abi),
-  requestHub: getMutableFunctions(CONTRACTS.requestHub.abi),
-  valuableActionRegistry: getMutableFunctions(CONTRACTS.valuableActionRegistry.abi)
-};
-
-const GUIDED_TEMPLATES: Record<GuidedTemplateId, GuidedTemplateDefinition> = {
-  valuableActionProposal: {
-    id: "valuableActionProposal",
-    label: "Valuable action proposal",
-    description: "Propose a new work type with guided defaults and verifier policy safeguards.",
-    targetId: "valuableActionRegistry",
-    functionName: "proposeValuableAction"
-  },
-  requestStatus: {
-    id: "requestStatus",
-    label: "Request status change",
-    description: "Freeze or archive an existing request through governance.",
-    targetId: "requestHub",
-    functionName: "setRequestStatus"
-  }
-};
-
-export const GUIDED_REWARD_TIERS: readonly RewardTierPreset[] = [
-  {
-    id: "micro",
-    label: "Micro (quick contribution)",
-    membershipTokenReward: 15,
-    communityTokenReward: 5
-  },
-  {
-    id: "standard",
-    label: "Standard (core contribution)",
-    membershipTokenReward: 50,
-    communityTokenReward: 20
-  },
-  {
-    id: "high",
-    label: "High impact",
-    membershipTokenReward: 120,
-    communityTokenReward: 55
-  }
-];
-
-export const GUIDED_VERIFICATION_STRICTNESS: readonly VerificationStrictnessPreset[] = [
-  {
-    id: "light",
-    label: "Light review (2 of 3 jurors)",
-    jurorsMin: 2,
-    panelSize: 3,
-    verifyWindowSeconds: 48 * 60 * 60,
-    verifierRewardWeight: 5,
-    slashVerifierBps: 100
-  },
-  {
-    id: "balanced",
-    label: "Balanced review (3 of 5 jurors)",
-    jurorsMin: 3,
-    panelSize: 5,
-    verifyWindowSeconds: 72 * 60 * 60,
-    verifierRewardWeight: 10,
-    slashVerifierBps: 250
-  },
-  {
-    id: "strict",
-    label: "Strict review (5 of 7 jurors)",
-    jurorsMin: 5,
-    panelSize: 7,
-    verifyWindowSeconds: 96 * 60 * 60,
-    verifierRewardWeight: 15,
-    slashVerifierBps: 500
-  }
-];
-
-export const GUIDED_EVIDENCE_PRESETS: readonly EvidencePreset[] = [
-  {
-    id: "basic",
-    label: "Basic evidence",
-    evidenceTypes: 1,
-    evidenceSpecCID: "ipfs://shift/evidence/basic"
-  },
-  {
-    id: "traceable",
-    label: "Traceable evidence",
-    evidenceTypes: 3,
-    evidenceSpecCID: "ipfs://shift/evidence/traceable"
-  },
-  {
-    id: "auditable",
-    label: "Auditable evidence",
-    evidenceTypes: 7,
-    evidenceSpecCID: "ipfs://shift/evidence/auditable"
-  }
-];
-
-export const GUIDED_VALUE_ACTION_LOCKED_DEFAULTS = {
-  category: 0,
-  roleTypeSeed: "role.default.worker",
-  metadataSchemaSeed: "schema.default.proof.v1",
-  verifierPolicy: 3,
-  positionPoints: 0,
-  investorSBTReward: 0,
-  cooldownPeriodSeconds: 24 * 60 * 60,
-  maxConcurrent: 1,
-  proposalThreshold: 0,
-  activationDelaySeconds: 60 * 60,
-  deprecationWarningSeconds: 14 * 24 * 60 * 60,
-  automationRuleSeeds: ["automation.none"]
-} as const;
 
 export function listActionTargets(): ActionTargetDefinition[] {
   return Object.values(TARGET_DEFINITIONS);
+}
+
+export function listActionTargetIds(): ActionTargetId[] {
+  return Object.keys(TARGET_DEFINITIONS) as ActionTargetId[];
 }
 
 export function getTargetDefinition(targetId: ActionTargetId): ActionTargetDefinition {
   return TARGET_DEFINITIONS[targetId];
 }
 
-export function getTargetFunctions(targetId: ActionTargetId): TargetFunctionDefinition[] {
-  return TARGET_FUNCTIONS[targetId];
-}
-
-export function listGuidedTemplates(): GuidedTemplateDefinition[] {
-  return Object.values(GUIDED_TEMPLATES);
-}
-
-export function getGuidedTemplate(id: GuidedTemplateId): GuidedTemplateDefinition {
-  return GUIDED_TEMPLATES[id];
+export function getTargetAbi(targetId: ActionTargetId): Abi {
+  return TARGET_DEFINITIONS[targetId].abi;
 }

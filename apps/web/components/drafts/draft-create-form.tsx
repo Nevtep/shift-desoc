@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  keccak256,
-  encodePacked,
   encodeFunctionData,
   type Abi,
   type AbiFunction,
@@ -15,18 +13,36 @@ import {
 } from "viem";
 import { useAccount, useChainId, useReadContract, useWriteContract } from "wagmi";
 
-import { CONTRACTS, getContractConfig } from "../../lib/contracts";
+import { getContractConfig } from "../../lib/contracts";
 import { COMMUNITY_MODULE_ABIS } from "../../hooks/useCommunityModules";
 import { useToast } from "../ui/toaster";
 import {
-  GUIDED_EVIDENCE_PRESETS,
-  GUIDED_REWARD_TIERS,
-  GUIDED_VALUE_ACTION_LOCKED_DEFAULTS,
-  GUIDED_VERIFICATION_STRICTNESS,
+  getAllowlistedSignatures,
+  getAllowlistedSignatureSet,
+  type AllowlistTargetId
+} from "../../lib/actions/allowlist";
+import { computeActionsHash } from "../../lib/actions/bundle-hash";
+import {
+  getAllowlistedFunctionsForTarget,
+  type AllowlistedFunctionDefinition
+} from "../../lib/actions/expert-functions";
+import {
+  encodeGuidedTemplateCalldata,
+  getGuidedTemplateAvailability,
+  getGuidedTemplateById,
+  listGuidedTemplates
+} from "../../lib/actions/guided-templates";
+import {
+  buildTargetAvailability,
+  resolveTargetAddress,
+  type ActionTargetAvailability,
+  type CommunityModuleAddressMap
+} from "../../lib/actions/target-resolution";
+import {
+  getTargetAbi,
   getTargetDefinition,
-  getTargetFunctions,
+  listActionTargetIds,
   listActionTargets,
-  listGuidedTemplates,
   type ActionTargetId
 } from "../../lib/actions/registry";
 
@@ -35,13 +51,13 @@ type PreparedAction = {
   value: bigint;
   calldata: Hex;
   targetLabel: string;
-  functionName: string;
+  functionSignature: string;
   argsPreview: string[];
 };
 
 type ActionFormState = {
   targetId?: ActionTargetId;
-  functionName?: string;
+  signature?: string;
   value: string;
   paramValues: Record<string, string>;
   tupleArrayCounts: Record<string, number>;
@@ -50,19 +66,9 @@ type ActionFormState = {
 type ActionComposerMode = "guided" | "expert";
 
 type GuidedFormState = {
-  templateId: "valuableActionProposal" | "requestStatus";
-  title: string;
-  rewardTierId: "micro" | "standard" | "high";
-  strictnessId: "light" | "balanced" | "strict";
-  evidenceId: "basic" | "traceable" | "auditable";
-  revocable: boolean;
-  proposalRefSeed: string;
-  requestId: string;
-  requestStatus: "1" | "2";
+  templateId: string;
+  inputValues: Record<string, string>;
 };
-
-const ZERO_HASH = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 function getCreateDraftInputCount(abi: Abi): number {
   const fn = abi.find((item) => item.type === "function" && item.name === "createDraft") as AbiFunction | undefined;
@@ -130,45 +136,68 @@ export function DraftCreateForm({
     query: { enabled: Boolean(communityRegistry) && Number.isFinite(communityIdNum) && communityIdNum > 0 }
   });
 
-  const moduleAddressMap = useMemo(() => {
-    if (!moduleAddresses) return {} as Record<string, Address>;
+  const moduleAddressMap = useMemo<CommunityModuleAddressMap>(() => {
+    if (!moduleAddresses) return {};
 
-    // CommunityRegistry.getCommunityModules returns ModuleAddresses struct; wagmi returns as array with named keys
     const modules = moduleAddresses as unknown as Record<string, Address> & Address[];
     return {
-      governor: modules.governor ?? modules[0],
-      timelock: modules.timelock ?? modules[1],
-      requestHub: modules.requestHub ?? modules[2],
-      draftsManager: modules.draftsManager ?? modules[3],
-      engagementsManager: modules.engagementsManager ?? modules[4],
-      valuableActionRegistry: modules.valuableActionRegistry ?? modules[5],
-      verifierPowerToken: modules.verifierPowerToken ?? modules[6],
-      verifierElection: modules.verifierElection ?? modules[7],
-      verifierManager: modules.verifierManager ?? modules[8],
-      valuableActionSBT: modules.valuableActionSBT ?? modules[9],
-      treasuryAdapter: modules.treasuryAdapter ?? modules[10],
-      communityToken: modules.communityToken ?? modules[11],
-      paramController: modules.paramController ?? modules[12]
+      valuableActionRegistry: modules.valuableActionRegistry ?? modules[8],
+      verifierPowerToken: modules.verifierPowerToken ?? modules[9],
+      verifierElection: modules.verifierElection ?? modules[10],
+      verifierManager: modules.verifierManager ?? modules[11],
+      positionManager: modules.positionManager ?? modules[13],
+      credentialManager: modules.credentialManager ?? modules[14],
+      cohortRegistry: modules.cohortRegistry ?? modules[15],
+      investmentCohortManager: modules.investmentCohortManager ?? modules[16],
+      revenueRouter: modules.revenueRouter ?? modules[17],
+      treasuryAdapter: modules.treasuryAdapter ?? modules[19],
+      paramController: modules.paramController ?? modules[21],
+      marketplace: modules.marketplace ?? modules[23]
     };
   }, [moduleAddresses]);
 
-  const timelockAddress = moduleAddressMap.timelock ?? null;
+  const timelockAddress = (moduleAddresses as any)?.timelock ?? (moduleAddresses as any)?.[3] ?? null;
+  const targetIds = useMemo(() => listActionTargetIds(), []);
 
-  function resolveTargetAddress(targetId: ActionTargetId): Address | null {
-    // Resolve module targets from per-community registry wiring.
-    if (targetId === "draftsManager" && moduleAddressMap.draftsManager) return moduleAddressMap.draftsManager;
-    if (targetId === "engagements" && moduleAddressMap.engagementsManager) return moduleAddressMap.engagementsManager;
-    if (targetId === "valuableActionRegistry" && moduleAddressMap.valuableActionRegistry)
-      return moduleAddressMap.valuableActionRegistry;
-    if (targetId === "communityRegistry") return getContractConfig("communityRegistry", chainId).address;
-    if (targetId === "requestHub" && moduleAddressMap.requestHub) return moduleAddressMap.requestHub;
-    if (targetId === "governor" && moduleAddressMap.governor) return moduleAddressMap.governor;
+  const targetAvailability = useMemo(() => {
+    return buildTargetAvailability(targetIds, chainId, moduleAddressMap, (targetId) => getAllowlistedSignatures(targetId));
+  }, [targetIds, chainId, moduleAddressMap]);
 
-    return null;
+  const targetAvailabilityMap = useMemo(() => {
+    return targetAvailability.reduce<Record<ActionTargetId, ActionTargetAvailability>>((acc, availability) => {
+      acc[availability.targetId] = availability;
+      return acc;
+    }, {} as Record<ActionTargetId, ActionTargetAvailability>);
+  }, [targetAvailability]);
+
+  const allowlistedSignatureMap = useMemo(() => {
+    return targetIds.reduce<Record<ActionTargetId, Set<string>>>((acc, targetId) => {
+      acc[targetId] = getAllowlistedSignatureSet(targetId);
+      return acc;
+    }, {} as Record<ActionTargetId, Set<string>>);
+  }, [targetIds]);
+
+  function resolveActionTarget(targetId: AllowlistTargetId): Address | null {
+    try {
+      return resolveTargetAddress(targetId, chainId, moduleAddressMap);
+    } catch {
+      return null;
+    }
   }
 
   function handleRemoveAction(index: number) {
     setActions((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function handleMoveAction(index: number, direction: -1 | 1) {
+    setActions((prev) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
+      const copy = [...prev];
+      const [item] = copy.splice(index, 1);
+      copy.splice(nextIndex, 0, item);
+      return copy;
+    });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -206,7 +235,7 @@ export function DraftCreateForm({
               actionBundlePreview: {
                 targets: actions.map((action) => action.target),
                 values: actions.map((action) => action.value.toString()),
-                signatures: actions.map((action) => action.functionName)
+                signatures: actions.map((action) => action.functionSignature)
               },
               createdBy: address,
               createdAt: new Date().toISOString()
@@ -223,11 +252,9 @@ export function DraftCreateForm({
       const targets = actions.map((action) => action.target);
       const values = actions.map((action) => action.value);
       const calldatas = actions.map((action) => action.calldata);
-      const actionsHash = actions.length
-        ? keccak256(encodePacked(["address[]", "uint256[]", "bytes[]"], [targets, values, calldatas]))
-        : ZERO_HASH;
+      const actionsHash = computeActionsHash(targets, values, calldatas);
 
-      const contractAddress = moduleAddressMap.draftsManager;
+      const contractAddress = (moduleAddresses as any)?.draftsManager ?? (moduleAddresses as any)?.[6];
       if (!contractAddress) {
         throw new Error("DraftsManager module is not registered for this community.");
       }
@@ -287,7 +314,7 @@ export function DraftCreateForm({
             Pin a draft version to IPFS and register on DraftsManager.
           </p>
           <p className="text-xs text-muted-foreground">
-            Composer mode: {isExpertMode ? "Expert (raw ABI)" : "Guided (safe presets)"}
+            Composer mode: {isExpertMode ? "Expert (allowlist-only exact signatures)" : "Guided (SAFE-only templates)"}
             {isExpertMode ? (
               guidedHref ? (
                 <>
@@ -359,20 +386,21 @@ export function DraftCreateForm({
 
         {isExpertMode ? (
           <ExpertActionBuilder
-            chainId={chainId}
-            resolveTargetAddress={resolveTargetAddress}
+            targetAvailability={targetAvailabilityMap}
+            allowlistedSignatureMap={allowlistedSignatureMap}
+            resolveTargetAddress={resolveActionTarget}
             onAddAction={(action) => setActions((prev) => [...prev, action])}
           />
         ) : (
           <GuidedActionBuilder
-            communityId={communityIdNum}
-            signerAddress={address}
-            resolveTargetAddress={resolveTargetAddress}
+            targetAvailability={targetAvailabilityMap}
+            allowlistedSignatureMap={allowlistedSignatureMap}
+            resolveTargetAddress={resolveActionTarget}
             onAddAction={(action) => setActions((prev) => [...prev, action])}
           />
         )}
 
-        <ActionsTable actions={actions} onRemove={handleRemoveAction} />
+        <ActionsTable actions={actions} onRemove={handleRemoveAction} onMove={handleMoveAction} />
 
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -392,153 +420,71 @@ export function DraftCreateForm({
 }
 
 function GuidedActionBuilder({
-  communityId,
-  signerAddress,
+  targetAvailability,
+  allowlistedSignatureMap,
   resolveTargetAddress,
   onAddAction
 }: {
-  communityId: number;
-  signerAddress?: Address;
+  targetAvailability: Record<ActionTargetId, ActionTargetAvailability>;
+  allowlistedSignatureMap: Record<ActionTargetId, Set<string>>;
   resolveTargetAddress: (targetId: ActionTargetId) => Address | null;
   onAddAction: (action: PreparedAction) => void;
 }) {
+  const templates = useMemo(() => listGuidedTemplates(), []);
   const [form, setForm] = useState<GuidedFormState>({
-    templateId: "valuableActionProposal",
-    title: "",
-    rewardTierId: "standard",
-    strictnessId: "balanced",
-    evidenceId: "traceable",
-    revocable: true,
-    proposalRefSeed: "",
-    requestId: "",
-    requestStatus: "1"
+    templateId: templates[0]?.id ?? "",
+    inputValues: {}
   });
 
-  const templates = useMemo(() => listGuidedTemplates(), []);
-  const currentTemplate = templates.find((template) => template.id === form.templateId);
+  const selectedTemplate = getGuidedTemplateById(form.templateId);
+  const availability = selectedTemplate
+    ? getGuidedTemplateAvailability(selectedTemplate, {
+        moduleAddress: targetAvailability[selectedTemplate.targetId]?.moduleAddress ?? null,
+        allowlistedSignatures: allowlistedSignatureMap[selectedTemplate.targetId]
+      })
+    : { enabled: false, disabledReason: "Select a template" };
+
+  function updateInput(key: string, value: string) {
+    setForm((prev) => ({
+      ...prev,
+      inputValues: {
+        ...prev.inputValues,
+        [key]: value
+      }
+    }));
+  }
+
+  function handleTemplateChange(templateId: string) {
+    setForm({ templateId, inputValues: {} });
+  }
 
   function handleAddGuidedAction() {
-    const template = currentTemplate;
-    if (!template) {
+    if (!selectedTemplate) {
       alert("Select a template");
       return;
     }
+    if (!availability.enabled) {
+      alert(availability.disabledReason ?? "Template is unavailable");
+      return;
+    }
 
-    const target = resolveTargetAddress(template.targetId);
+    const target = resolveTargetAddress(selectedTemplate.targetId);
     if (!target) {
       alert("Selected target is not configured for this community");
       return;
     }
 
-    const functionDefinition = getTargetFunctions(template.targetId).find(
-      (fn) => fn.functionName === template.functionName
-    );
-    if (!functionDefinition) {
-      alert("Target ABI function not found for template");
-      return;
-    }
-
     try {
-      if (template.id === "valuableActionProposal") {
-        if (!form.title.trim()) {
-          alert("Title is required for Valuable Action proposals");
-          return;
-        }
-
-        const rewardTier = GUIDED_REWARD_TIERS.find((tier) => tier.id === form.rewardTierId) ?? GUIDED_REWARD_TIERS[1];
-        const strictness =
-          GUIDED_VERIFICATION_STRICTNESS.find((preset) => preset.id === form.strictnessId) ??
-          GUIDED_VERIFICATION_STRICTNESS[1];
-        const evidencePreset =
-          GUIDED_EVIDENCE_PRESETS.find((preset) => preset.id === form.evidenceId) ?? GUIDED_EVIDENCE_PRESETS[1];
-
-        const proposalSeed =
-          form.proposalRefSeed.trim() ||
-          `${communityId || 0}:${signerAddress || ZERO_ADDRESS}:${form.title}:${Date.now()}`;
-        const proposalRef = keccak256(encodePacked(["string"], [proposalSeed]));
-
-        const params = {
-          membershipTokenReward: rewardTier.membershipTokenReward,
-          communityTokenReward: rewardTier.communityTokenReward,
-          investorSBTReward: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.investorSBTReward,
-          category: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.category,
-          roleTypeId: keccak256(encodePacked(["string"], [GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.roleTypeSeed])),
-          positionPoints: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.positionPoints,
-          verifierPolicy: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.verifierPolicy,
-          metadataSchemaId: keccak256(
-            encodePacked(["string"], [GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.metadataSchemaSeed])
-          ),
-          jurorsMin: strictness.jurorsMin,
-          panelSize: strictness.panelSize,
-          verifyWindow: strictness.verifyWindowSeconds,
-          verifierRewardWeight: strictness.verifierRewardWeight,
-          slashVerifierBps: strictness.slashVerifierBps,
-          cooldownPeriod: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.cooldownPeriodSeconds,
-          maxConcurrent: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.maxConcurrent,
-          revocable: form.revocable,
-          evidenceTypes: evidencePreset.evidenceTypes,
-          proposalThreshold: BigInt(GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.proposalThreshold),
-          proposer: signerAddress ?? ZERO_ADDRESS,
-          evidenceSpecCID: evidencePreset.evidenceSpecCID,
-          titleTemplate: form.title.trim(),
-          automationRules: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.automationRuleSeeds.map((seed) =>
-            keccak256(encodePacked(["string"], [seed]))
-          ),
-          activationDelay: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.activationDelaySeconds,
-          deprecationWarning: GUIDED_VALUE_ACTION_LOCKED_DEFAULTS.deprecationWarningSeconds
-        };
-
-        const calldata = encodeFunctionData({
-          abi: [functionDefinition.abiFragment],
-          functionName: template.functionName,
-          args: [params, proposalRef]
-        });
-
-        onAddAction({
-          target,
-          value: 0n,
-          calldata,
-          targetLabel: getTargetDefinition(template.targetId).label,
-          functionName: template.functionName,
-          argsPreview: [
-            `title: ${form.title.trim()}`,
-            `reward: ${rewardTier.label}`,
-            `verification: ${strictness.label}`,
-            `evidence: ${evidencePreset.label}`,
-            `revocable: ${form.revocable ? "yes" : "no"}`
-          ]
-        });
-
-        setForm((prev) => ({ ...prev, title: "", proposalRefSeed: "" }));
-        return;
-      }
-
-      const requestId = Number(form.requestId);
-      if (!Number.isFinite(requestId) || requestId <= 0) {
-        alert("Request ID must be a positive number");
-        return;
-      }
-
-      const statusValue = Number(form.requestStatus);
-      const calldata = encodeFunctionData({
-        abi: [functionDefinition.abiFragment],
-        functionName: template.functionName,
-        args: [BigInt(requestId), statusValue]
-      });
-
+      const encoded = encodeGuidedTemplateCalldata(selectedTemplate, form.inputValues);
       onAddAction({
         target,
         value: 0n,
-        calldata,
-        targetLabel: getTargetDefinition(template.targetId).label,
-        functionName: template.functionName,
-        argsPreview: [
-          `requestId: ${requestId}`,
-          `status: ${statusValue === 1 ? "FROZEN" : "ARCHIVED"}`
-        ]
+        calldata: encoded.calldata,
+        targetLabel: getTargetDefinition(selectedTemplate.targetId).label,
+        functionSignature: selectedTemplate.signature,
+        argsPreview: encoded.argsPreview
       });
-
-      setForm((prev) => ({ ...prev, requestId: "" }));
+      setForm((prev) => ({ ...prev, inputValues: {} }));
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "Failed to add guided action");
@@ -550,7 +496,7 @@ function GuidedActionBuilder({
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">Guided action composer</h3>
         <p className="text-xs text-muted-foreground">
-          Uses locked safe presets and maps your choices to ABI calldata automatically.
+          SAFE-only templates with explicit input validation and exact allowlisted signatures.
         </p>
       </div>
 
@@ -560,129 +506,51 @@ function GuidedActionBuilder({
           <select
             className="rounded border border-border bg-background px-3 py-2"
             value={form.templateId}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                templateId: e.target.value as GuidedFormState["templateId"]
-              }))
-            }
+            onChange={(e) => handleTemplateChange(e.target.value)}
           >
-            {templates.map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.label}
-              </option>
-            ))}
+            {templates.map((template) => {
+              const templateAvailability = getGuidedTemplateAvailability(template, {
+                moduleAddress: targetAvailability[template.targetId]?.moduleAddress ?? null,
+                allowlistedSignatures: allowlistedSignatureMap[template.targetId]
+              });
+              return (
+                <option key={template.id} value={template.id} disabled={!templateAvailability.enabled}>
+                  {template.label}{!templateAvailability.enabled ? " (unavailable)" : ""}
+                </option>
+              );
+            })}
           </select>
-          {currentTemplate ? <span className="text-xs text-muted-foreground">{currentTemplate.description}</span> : null}
+          {selectedTemplate ? <span className="text-xs text-muted-foreground">{selectedTemplate.description}</span> : null}
+          {!availability.enabled && availability.disabledReason ? (
+            <span className="text-xs text-amber-600">{availability.disabledReason}</span>
+          ) : null}
         </label>
 
-        {form.templateId === "valuableActionProposal" ? (
-          <>
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              <span className="text-muted-foreground">Action title</span>
+        {selectedTemplate?.fields.map((field) => (
+          <label key={field.key} className="flex flex-col gap-1 text-sm sm:col-span-2">
+            <span className="text-muted-foreground">{field.label}</span>
+            {field.type === "bool" ? (
+              <select
+                className="rounded border border-border bg-background px-3 py-2"
+                value={form.inputValues[field.key] ?? "false"}
+                onChange={(e) => updateInput(field.key, e.target.value)}
+              >
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+            ) : (
               <input
                 className="rounded border border-border bg-background px-3 py-2"
-                value={form.title}
-                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="Ex: Weekly moderation sprint"
+                value={form.inputValues[field.key] ?? ""}
+                onChange={(e) => updateInput(field.key, e.target.value)}
+                placeholder={field.placeholder}
               />
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted-foreground">Reward tier</span>
-              <select
-                className="rounded border border-border bg-background px-3 py-2"
-                value={form.rewardTierId}
-                onChange={(e) => setForm((prev) => ({ ...prev, rewardTierId: e.target.value as GuidedFormState["rewardTierId"] }))}
-              >
-                {GUIDED_REWARD_TIERS.map((tier) => (
-                  <option key={tier.id} value={tier.id}>
-                    {tier.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted-foreground">Verification strictness</span>
-              <select
-                className="rounded border border-border bg-background px-3 py-2"
-                value={form.strictnessId}
-                onChange={(e) => setForm((prev) => ({ ...prev, strictnessId: e.target.value as GuidedFormState["strictnessId"] }))}
-              >
-                {GUIDED_VERIFICATION_STRICTNESS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted-foreground">Evidence profile</span>
-              <select
-                className="rounded border border-border bg-background px-3 py-2"
-                value={form.evidenceId}
-                onChange={(e) => setForm((prev) => ({ ...prev, evidenceId: e.target.value as GuidedFormState["evidenceId"] }))}
-              >
-                {GUIDED_EVIDENCE_PRESETS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted-foreground">Revocable SBT</span>
-              <select
-                className="rounded border border-border bg-background px-3 py-2"
-                value={form.revocable ? "yes" : "no"}
-                onChange={(e) => setForm((prev) => ({ ...prev, revocable: e.target.value === "yes" }))}
-              >
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-              <span className="text-muted-foreground">Proposal reference seed (optional)</span>
-              <input
-                className="rounded border border-border bg-background px-3 py-2"
-                value={form.proposalRefSeed}
-                onChange={(e) => setForm((prev) => ({ ...prev, proposalRefSeed: e.target.value }))}
-                placeholder="Leave empty to auto-generate a unique hash"
-              />
-            </label>
-          </>
-        ) : (
-          <>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted-foreground">Request ID</span>
-              <input
-                className="rounded border border-border bg-background px-3 py-2"
-                value={form.requestId}
-                onChange={(e) => setForm((prev) => ({ ...prev, requestId: e.target.value }))}
-                placeholder="Ex: 12"
-              />
-            </label>
-
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted-foreground">New status</span>
-              <select
-                className="rounded border border-border bg-background px-3 py-2"
-                value={form.requestStatus}
-                onChange={(e) => setForm((prev) => ({ ...prev, requestStatus: e.target.value as GuidedFormState["requestStatus"] }))}
-              >
-                <option value="1">FROZEN</option>
-                <option value="2">ARCHIVED</option>
-              </select>
-            </label>
-          </>
-        )}
+            )}
+          </label>
+        ))}
       </div>
 
-      <button type="button" className="btn-primary-sm" onClick={handleAddGuidedAction}>
+      <button type="button" className="btn-primary-sm" onClick={handleAddGuidedAction} disabled={!availability.enabled}>
         Add guided action
       </button>
     </div>
@@ -690,11 +558,13 @@ function GuidedActionBuilder({
 }
 
 function ExpertActionBuilder({
-  chainId,
+  targetAvailability,
+  allowlistedSignatureMap,
   resolveTargetAddress,
   onAddAction
 }: {
-  chainId: number | undefined;
+  targetAvailability: Record<ActionTargetId, ActionTargetAvailability>;
+  allowlistedSignatureMap: Record<ActionTargetId, Set<string>>;
   resolveTargetAddress: (targetId: ActionTargetId) => Address | null;
   onAddAction: (action: PreparedAction) => void;
 }) {
@@ -702,8 +572,14 @@ function ExpertActionBuilder({
 
   const targetOptions = useMemo(() => listActionTargets(), []);
   const targetDef = form.targetId ? getTargetDefinition(form.targetId) : undefined;
-  const functionOptions = useMemo(() => (form.targetId ? getTargetFunctions(form.targetId) : []), [form.targetId]);
-  const selectedFunction = functionOptions.find((fn) => fn.functionName === form.functionName);
+  const targetState = form.targetId ? targetAvailability[form.targetId] : undefined;
+
+  const functionOptions = useMemo(() => {
+    if (!form.targetId) return [] as AllowlistedFunctionDefinition[];
+    return getAllowlistedFunctionsForTarget(getTargetAbi(form.targetId), getAllowlistedSignatures(form.targetId));
+  }, [form.targetId]);
+
+  const selectedFunction = functionOptions.find((fn) => fn.signature === form.signature);
 
   function handleParamChange(key: string, value: string) {
     setForm((prev) => ({ ...prev, paramValues: { ...prev.paramValues, [key]: value } }));
@@ -864,6 +740,11 @@ function ExpertActionBuilder({
       return;
     }
 
+    if (!allowlistedSignatureMap[form.targetId]?.has(selectedFunction.signature)) {
+      alert("Selected function is not timelock-allowlisted");
+      return;
+    }
+
     try {
       const resolved = resolveTargetAddress(form.targetId);
       if (!resolved) {
@@ -874,7 +755,7 @@ function ExpertActionBuilder({
       const value = selectedFunction.abiFragment.stateMutability === "payable" ? BigInt(form.value || "0") : 0n;
       const calldata = encodeFunctionData({
         abi: [selectedFunction.abiFragment],
-        functionName: selectedFunction.functionName,
+        functionName: selectedFunction.abiFragment.name,
         args
       });
 
@@ -883,7 +764,7 @@ function ExpertActionBuilder({
         value,
         calldata,
         targetLabel: targetDef?.label ?? form.targetId,
-        functionName: selectedFunction.functionName,
+        functionSignature: selectedFunction.signature,
         argsPreview: describeArgs(selectedFunction.abiFragment.inputs, form.paramValues)
       };
 
@@ -900,7 +781,7 @@ function ExpertActionBuilder({
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">Add governed action</h3>
           <p className="text-xs text-muted-foreground">
-            Only Timelock-executable actions are listed. Pick a target, choose an action, fill params, then add it to this draft. Tuples render nested fields; tuple[] lets you add multiple items.
+          Expert mode is exact-signature allowlist only. Targets stay visible even when disabled.
           </p>
       </div>
 
@@ -913,7 +794,7 @@ function ExpertActionBuilder({
             onChange={(e) =>
               setForm({
                 targetId: e.target.value as ActionTargetId,
-                functionName: undefined,
+                signature: undefined,
                 paramValues: {},
                 tupleArrayCounts: {},
                 value: "0"
@@ -923,32 +804,44 @@ function ExpertActionBuilder({
             <option value="" disabled>
               Select target
             </option>
-            {targetOptions.map((target) => (
-              <option key={target.id} value={target.id}>
-                {target.label}
-              </option>
-            ))}
+            {targetOptions.map((target) => {
+              const availability = targetAvailability[target.id];
+              return (
+                <option key={target.id} value={target.id} disabled={!availability?.enabled}>
+                  {target.label}
+                  {availability?.enabled ? "" : ` (disabled: ${availability?.disabledReason ?? "unavailable"})`}
+                </option>
+              );
+            })}
           </select>
           {targetDef?.description ? <span className="text-xs text-muted-foreground">{targetDef.description}</span> : null}
+          {!targetState?.enabled && targetState?.disabledReason ? (
+            <span className="text-xs text-amber-600">{targetState.disabledReason}</span>
+          ) : null}
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground">Action</span>
+          <span className="text-muted-foreground">Action signature</span>
           <select
             className="rounded border border-border bg-background px-3 py-2"
-            value={form.functionName ?? ""}
-            onChange={(e) => setForm((prev) => ({ ...prev, functionName: e.target.value, paramValues: {}, tupleArrayCounts: {} }))}
-            disabled={!form.targetId}
+            value={form.signature ?? ""}
+            onChange={(e) => setForm((prev) => ({ ...prev, signature: e.target.value, paramValues: {}, tupleArrayCounts: {} }))}
+            disabled={!form.targetId || !targetState?.enabled}
           >
             <option value="" disabled>
               {form.targetId ? "Select action" : "Pick a target first"}
             </option>
             {functionOptions.map((fn) => (
-              <option key={`${fn.functionName}`} value={fn.functionName}>
-                {fn.functionName}
+              <option key={fn.signature} value={fn.signature}>
+                {fn.signature}
               </option>
             ))}
           </select>
+          {form.targetId ? (
+            <span className="text-xs text-muted-foreground">
+              Allowlisted functions: {targetAvailability[form.targetId]?.allowlistedCount ?? 0}
+            </span>
+          ) : null}
         </label>
 
         {selectedFunction?.abiFragment.inputs.map((input, idx) => renderParamInput(input, idx))}
@@ -970,7 +863,7 @@ function ExpertActionBuilder({
           type="button"
           onClick={handleAdd}
           className="btn-primary-sm"
-          disabled={!form.targetId || !form.functionName}
+          disabled={!form.targetId || !form.signature}
         >
           Add action
         </button>
@@ -986,36 +879,38 @@ function ExpertActionBuilder({
   );
 }
 
-function ActionsTable({ actions, onRemove }: { actions: PreparedAction[]; onRemove: (index: number) => void }) {
-  if (!actions.length) {
-    return (
-      <div className="card-tight bg-muted/30 text-sm text-muted-foreground">
-        No actions added yet. Add governed actions above to queue calls for Timelock execution.
-      </div>
-    );
-  }
-
+function ActionsTable({
+  actions,
+  onRemove,
+  onMove
+}: {
+  actions: PreparedAction[];
+  onRemove: (index: number) => void;
+  onMove: (index: number, direction: -1 | 1) => void;
+}) {
   return (
     <div className="card-tight space-y-2">
       <h3 className="text-sm font-semibold">Actions queued ({actions.length})</h3>
-      <div className="space-y-2 text-sm">
-        {actions.map((action, idx) => (
-          <div key={`${action.target}-${idx}`} className="flex flex-col gap-1 rounded border border-border p-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <div className="font-medium">{action.targetLabel} — {action.functionName}</div>
-              <div className="text-xs text-muted-foreground">Target: {action.target}</div>
-              <div className="text-xs text-muted-foreground">Args: {action.argsPreview.join("; ")}</div>
+      {!actions.length ? (
+        <div className="text-sm text-muted-foreground">Queue is empty. Add governed actions above to compose deterministic bundles.</div>
+      ) : (
+        <div className="space-y-2 text-sm">
+          {actions.map((action, idx) => (
+            <div key={`${action.target}-${idx}`} className="flex flex-col gap-2 rounded border border-border p-2">
+              <div className="space-y-1">
+                <div className="font-medium">{action.targetLabel} - {action.functionSignature}</div>
+                <div className="text-xs text-muted-foreground">Target: {action.target}</div>
+                <div className="text-xs text-muted-foreground">Args: {action.argsPreview.join("; ")}</div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => onMove(idx, -1)} className="rounded border border-border px-2 py-1 text-xs" disabled={idx === 0}>Move up</button>
+                <button type="button" onClick={() => onMove(idx, 1)} className="rounded border border-border px-2 py-1 text-xs" disabled={idx === actions.length - 1}>Move down</button>
+                <button type="button" onClick={() => onRemove(idx)} className="rounded border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/10">Remove</button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => onRemove(idx)}
-              className="self-start rounded border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/10 sm:self-center"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

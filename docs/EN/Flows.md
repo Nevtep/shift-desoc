@@ -18,6 +18,23 @@ In the web app, draft composition now has two explicit modes:
 - **Guided mode (default)** for common governance actions. Users select intent-oriented options (for example reward/verification profiles), and the UI compiles those choices into deterministic ABI calls.
 - **Expert mode (separate route)** for raw ABI action editing when custom calldata is required.
 
+Composer safety and authority rules are strict:
+- **Expert mode is exact-signature allowlist only**. The function list is loaded from a committed profile generated from canonical AccessManager wiring (`selectorRoleAssignments`) and ABI-verified signatures.
+- **Guided mode is SAFE-only**. It only exposes governance-safe templates and never exposes excluded non-governance actions.
+- **Targets are always visible** in expert mode, but disabled with an explicit reason when the community module is missing or when there are zero allowlisted functions.
+- **Bundle hashing is deterministic** in strict queue order using `keccak256(encodePacked(address[] targets, uint256[] values, bytes[] calldatas))`.
+
+Explicit exclusions in guided templates include:
+- RequestHub request status moderation actions.
+- Draft contributor/version management operations.
+- Draft escalation flow actions.
+
+Allowlist regeneration workflow:
+1. Update canonical selector wiring or composer-safe signature policy.
+2. Run `pnpm generate:composer-allowlist` from repo root.
+3. Review diffs in `apps/web/lib/actions/allowlists/base-sepolia-v1.json` and `apps/web/lib/actions/allowlists/base-sepolia-v1.meta.json`.
+4. Commit regenerated files with related composer/test updates.
+
 Both modes produce the same DraftsManager action bundle format (`targets`, `values`, `calldatas`, `actionsHash`), so execution semantics remain unchanged once a draft is escalated and timelocked.
 
 When a draft is ready for a vote, it escalates to ShiftGovernor as a formal proposal. The system reads voting thresholds and quorum requirements from ParamController, ensuring consistent rules across all proposals. Members vote using their MembershipToken balance (earned through verified work contributions). For complex decisions with multiple options, the CountingMultiChoice module enables weighted voting across alternatives.
