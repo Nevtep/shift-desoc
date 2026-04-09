@@ -2,14 +2,20 @@ import type { Abi } from "viem";
 
 import communityRegistryArtifact from "../../abis/CommunityRegistry.json" assert { type: "json" };
 import cohortRegistryArtifact from "../../abis/CohortRegistry.json" assert { type: "json" };
+import commerceDisputesArtifact from "../../abis/CommerceDisputes.json" assert { type: "json" };
 import credentialManagerArtifact from "../../abis/CredentialManager.json" assert { type: "json" };
+import draftsManagerArtifact from "../../abis/DraftsManager.json" assert { type: "json" };
+import engagementsArtifact from "../../abis/Engagements.json" assert { type: "json" };
+import housingManagerArtifact from "../../abis/HousingManager.json" assert { type: "json" };
 import investmentCohortManagerArtifact from "../../abis/InvestmentCohortManager.json" assert { type: "json" };
 import marketplaceArtifact from "../../abis/Marketplace.json" assert { type: "json" };
+import membershipTokenArtifact from "../../abis/MembershipTokenERC20Votes.json" assert { type: "json" };
 import paramControllerArtifact from "../../abis/ParamController.json" assert { type: "json" };
 import positionManagerArtifact from "../../abis/PositionManager.json" assert { type: "json" };
 import revenueRouterArtifact from "../../abis/RevenueRouter.json" assert { type: "json" };
 import treasuryAdapterArtifact from "../../abis/TreasuryAdapter.json" assert { type: "json" };
 import valuableActionRegistryArtifact from "../../abis/ValuableActionRegistry.json" assert { type: "json" };
+import valuableActionSBTArtifact from "../../abis/ValuableActionSBT.json" assert { type: "json" };
 import verifierElectionArtifact from "../../abis/VerifierElection.json" assert { type: "json" };
 import verifierManagerArtifact from "../../abis/VerifierManager.json" assert { type: "json" };
 import verifierPowerTokenArtifact from "../../abis/VerifierPowerToken1155.json" assert { type: "json" };
@@ -38,11 +44,35 @@ const TARGET_DEFINITIONS: Record<ActionTargetId, ActionTargetDefinition> = {
     description: "Investment cohort lifecycle and cohort status governance",
     abi: cohortRegistryArtifact.abi as Abi
   },
+  commerceDisputes: {
+    id: "commerceDisputes",
+    label: "CommerceDisputes",
+    description: "Commerce dispute resolution and settlement controls",
+    abi: commerceDisputesArtifact.abi as Abi
+  },
   credentialManager: {
     id: "credentialManager",
     label: "CredentialManager",
     description: "Credential course management and credential revocation",
     abi: credentialManagerArtifact.abi as Abi
+  },
+  draftsManager: {
+    id: "draftsManager",
+    label: "DraftsManager",
+    description: "Draft lifecycle and governance proposal escalation",
+    abi: draftsManagerArtifact.abi as Abi
+  },
+  engagements: {
+    id: "engagements",
+    label: "Engagements",
+    description: "Work verification engagement outcomes and contract references",
+    abi: engagementsArtifact.abi as Abi
+  },
+  housingManager: {
+    id: "housingManager",
+    label: "HousingManager",
+    description: "Housing unit creation and booking lifecycle management",
+    abi: housingManagerArtifact.abi as Abi
   },
   investmentCohortManager: {
     id: "investmentCohortManager",
@@ -55,6 +85,12 @@ const TARGET_DEFINITIONS: Record<ActionTargetId, ActionTargetDefinition> = {
     label: "Marketplace",
     description: "Commerce marketplace configuration and routing",
     abi: marketplaceArtifact.abi as Abi
+  },
+  membershipToken: {
+    id: "membershipToken",
+    label: "MembershipTokenERC20Votes",
+    description: "Governance membership token mint and emergency burn controls",
+    abi: membershipTokenArtifact.abi as Abi
   },
   paramController: {
     id: "paramController",
@@ -85,6 +121,12 @@ const TARGET_DEFINITIONS: Record<ActionTargetId, ActionTargetDefinition> = {
     label: "ValuableActionRegistry",
     description: "Valuable action issuance and activation policy controls",
     abi: valuableActionRegistryArtifact.abi as Abi
+  },
+  valuableActionSBT: {
+    id: "valuableActionSBT",
+    label: "ValuableActionSBT",
+    description: "Valuable action reputation token issuance and lifecycle",
+    abi: valuableActionSBTArtifact.abi as Abi
   },
   verifierElection: {
     id: "verifierElection",

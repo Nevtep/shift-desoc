@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift/specs/010-wizard-permission-parity/contracts/signature-not-found.schema.json",
+  "title": "Signature Not Found Report",
+  "type": "object",
+  "required": ["version", "failures"],
+  "properties": {
+    "version": { "type": "string" },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["contractName", "targetKey", "signature", "selector", "reason"],
+        "properties": {
+          "contractName": { "type": "string", "minLength": 1 },
+          "targetKey": { "type": "string", "minLength": 1 },
+          "signature": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\(.*\\)$" },
+          "selector": { "type": "string", "pattern": "^0x[a-fA-F0-9]{8}$" },
+          "reason": {
+            "type": "string",
+            "enum": ["signature_not_found", "selector_mismatch", "artifact_missing"]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

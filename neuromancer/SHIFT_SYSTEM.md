@@ -14,6 +14,10 @@
 `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> HANDOFF_ADMIN_TO_TIMELOCK -> VERIFY_DEPLOYMENT`.
 Run completion is valid only when admin handoff and verification both succeed.
 
+**Draft Composer Authority Surface (2026-04)**: Expert and guided action availability is generated from a fail-closed permission pipeline:
+`selectorRoleAssignments -> permission-matrix.json -> timelock-surface.json -> allowlist profile`.
+Only ADMIN_ROLE rows with verified handoff are promoted to timelock surface. Guided templates remain safe-only and crucial non-representable flows stay explicitly disabled with deterministic reasons.
+
 **Contract Count**: 25 Solidity contracts (excluding libs/interfaces; includes ProjectFactory)
 
 **Target Networks**: Base (primary), Ethereum (secondary), Base Sepolia (testing)

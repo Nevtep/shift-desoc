@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Mar 25, 2026)
+# Shift DeSoc Status Review (Apr 09, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -69,6 +69,7 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-04-09: Implemented wizard permission parity pipeline for draft composer authority surface. Added fail-closed artifact generation (`permission-matrix.json`, `timelock-surface.json`, `signature-not-found.json`), deterministic allowlist regeneration from ADMIN_ROLE + handoff-verified surface, expanded expert target coverage (including commerce/engagement/housing/membership surfaces), crucial flows catalog with explicit disabled reasons, and optional runtime handoff verifier script (`scripts/verify-handoff-admin-role.ts`).
 - 2026-04-08: CommunityRegistry now supports timelock-only post-creation updates for `metadataURI` and `parentCommunityId`, with indexer/event coverage for `CommunityMetadataURIUpdated` and `CommunityParentUpdated`. Added regression tests and docs for governed parent clearing to `0` and parent validation invariants.
 - 2026-03-26: Expanded CommunityRegistry canonical module schema to store full per-community contract inventory for new deployments (`accessManager`, `membershipToken`, governance, verification, economic, and commerce modules). Propagated module schema updates across canonical deploy wiring (`scripts/hardhat/community-deploy-lib.ts`, `scripts/hardhat/benchmark-community-gas.ts`, `scripts/manage-communities.ts`), manager wizard payload/decoding (`apps/web/lib/deploy/{factory-step-executor.ts,types.ts,onchain.ts}`, `apps/web/hooks/{useCommunityModules.ts,useCommunityOverview.ts}`), and indexer module key normalization (`apps/indexer/src/discovery/{module-keys.ts,module-key-allowlists.ts}`). Scope explicitly excludes changes under `scripts/legacy/`.
 - 2026-03-26: Wizard verify-step role parity was expanded from bundled booleans to first-class checks across web deploy verification. Updated snapshot schema and evaluator wiring in `apps/web/lib/deploy/{types.ts,onchain.ts,verification.ts}` and surfaced explicit UI rows in `apps/web/components/home/deploy-verification-results.tsx` for verifier manager caller, cohort router/recorder, issuer grants by module, membership minter, and SBT manager grants. Removed legacy `communityInitialized(uint256)` fallback probe from web verify snapshot in favor of scoped no-arg signature.

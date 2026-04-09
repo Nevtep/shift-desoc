@@ -12,13 +12,19 @@ export type ActionTargetAvailability = {
 };
 
 export type CommunityModuleAddressMap = {
+  commerceDisputes?: Address;
+  draftsManager?: Address;
+  engagements?: Address;
   valuableActionRegistry?: Address;
   verifierElection?: Address;
   verifierManager?: Address;
   verifierPowerToken?: Address;
+  membershipToken?: Address;
+  valuableActionSBT?: Address;
   revenueRouter?: Address;
   treasuryAdapter?: Address;
   marketplace?: Address;
+  housingManager?: Address;
   paramController?: Address;
   cohortRegistry?: Address;
   investmentCohortManager?: Address;
@@ -27,13 +33,19 @@ export type CommunityModuleAddressMap = {
 };
 
 const MODULE_KEY_BY_TARGET: Partial<Record<AllowlistTargetId, keyof CommunityModuleAddressMap>> = {
+  commerceDisputes: "commerceDisputes",
+  draftsManager: "draftsManager",
+  engagements: "engagements",
   valuableActionRegistry: "valuableActionRegistry",
   verifierElection: "verifierElection",
   verifierManager: "verifierManager",
   verifierPowerToken: "verifierPowerToken",
+  membershipToken: "membershipToken",
+  valuableActionSBT: "valuableActionSBT",
   revenueRouter: "revenueRouter",
   treasuryAdapter: "treasuryAdapter",
   marketplace: "marketplace",
+  housingManager: "housingManager",
   paramController: "paramController",
   cohortRegistry: "cohortRegistry",
   investmentCohortManager: "investmentCohortManager",

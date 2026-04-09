@@ -1,6 +1,7 @@
 import { encodeFunctionData, parseAbiItem, type AbiFunction, type Address, type Hex } from "viem";
 
 import type { AllowlistTargetId } from "./allowlist";
+import crucialFlowsCatalogJson from "../../../../specs/010-wizard-permission-parity/contracts/crucial-flows-catalog.json" assert { type: "json" };
 
 type TemplateFieldType = "address" | "bool" | "string" | "uint16" | "uint256" | "addressArray" | "uint256Array";
 
@@ -29,6 +30,23 @@ export type GuidedTemplateAvailability = {
   enabled: boolean;
   disabledReason: string | null;
 };
+
+export type CrucialFlowCatalogEntry = {
+  layer: "coordination" | "governance" | "verification" | "economy" | "commerce_housing";
+  flowId: string;
+  targetKey: string;
+  signature: string;
+  templateId: string;
+  enabled: boolean;
+  disabledReason: string | null;
+};
+
+type CrucialFlowCatalog = {
+  version: string;
+  flows: CrucialFlowCatalogEntry[];
+};
+
+const CRUCIAL_FLOW_CATALOG = crucialFlowsCatalogJson as CrucialFlowCatalog;
 
 const GUIDED_TEMPLATES: readonly GuidedTemplateDefinition[] = [
   {
@@ -335,13 +353,47 @@ export function getGuidedTemplateAvailability(
   if (!context.allowlistedSignatures.has(template.signature)) {
     return {
       enabled: false,
-      disabledReason: "Not available until permission wiring is updated"
+      disabledReason: "Not timelock-allowlisted for this community"
     };
   }
   return {
     enabled: true,
     disabledReason: null
   };
+}
+
+export function listCrucialFlowsCatalog(): CrucialFlowCatalogEntry[] {
+  return [...CRUCIAL_FLOW_CATALOG.flows].sort((a, b) => a.flowId.localeCompare(b.flowId));
+}
+
+export function resolveCrucialFlowsCatalog(
+  getAllowlistedSignatures: (targetId: AllowlistTargetId) => string[]
+): CrucialFlowCatalogEntry[] {
+  return listCrucialFlowsCatalog().map((flow) => {
+    if (flow.templateId.startsWith("disabled.")) {
+      return {
+        ...flow,
+        enabled: false,
+        disabledReason: flow.disabledReason ?? "Not representable as safe guided draft template"
+      };
+    }
+
+    const targetId = flow.targetKey as AllowlistTargetId;
+    const allowlisted = new Set(getAllowlistedSignatures(targetId));
+    if (!allowlisted.has(flow.signature)) {
+      return {
+        ...flow,
+        enabled: false,
+        disabledReason: "Not timelock-executable by current deploy wiring"
+      };
+    }
+
+    return {
+      ...flow,
+      enabled: true,
+      disabledReason: null
+    };
+  });
 }
 
 export function encodeGuidedTemplateCalldata(template: GuidedTemplateDefinition, rawInput: Record<string, string>): {

@@ -1,0 +1,16 @@
+node_modules/
+coverage/
+coverage_summary.txt
+artifacts/
+cache/
+dist/
+out/
+.next/
+.turbo/
+.vscode/
+.idea/
+*.log
+.env
+.env.*
+**/.env
+**/.env.*

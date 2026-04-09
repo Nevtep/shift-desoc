@@ -19,6 +19,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - Committed static data files in repository (allowlist + templates definitions), no new persistent DB (008-draft-action-composer)
 - TypeScript 5.x, React 19, Next.js 16 App Router, Node >=22 + `wagmi`, `viem`, `@tanstack/react-query`, `graphql-request`, `msw`, `vitest`, `@testing-library/react` (009-governance-hub-escalation)
 - N/A (read-only indexer GraphQL + chain reads; no persistence schema changes) (009-governance-hub-escalation)
+- TypeScript (Node 22), Next.js app TypeScript, viem ABI utilities + viem, ts-node, Vitest, existing web ABI artifacts under apps/web/abis (010-wizard-permission-parity)
+- JSON and Markdown artifacts in repository (no DB changes) (010-wizard-permission-parity)
 
 - Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22 + OpenZeppelin 5.x (`AccessManaged`, `ReentrancyGuard`, `SafeERC20`), Foundry, Hardhat 2.22.x (001-security-fixes)
 
@@ -39,9 +41,9 @@ npm test && npm run lint
 Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22: Follow standard conventions
 
 ## Recent Changes
+- 010-wizard-permission-parity: Added TypeScript (Node 22), Next.js app TypeScript, viem ABI utilities + viem, ts-node, Vitest, existing web ABI artifacts under apps/web/abis
 - 009-governance-hub-escalation: Added TypeScript 5.x, React 19, Next.js 16 App Router, Node >=22 + `wagmi`, `viem`, `@tanstack/react-query`, `graphql-request`, `msw`, `vitest`, `@testing-library/react`
 - 008-draft-action-composer: Added TypeScript (Node >=22, Next.js App Router client components) + React 19, Next.js 16, `viem`, `wagmi`, existing web contract config/ABI utilities
-- 007-indexer-community-discovery: Added TypeScript (Node 22 runtime) + `@ponder/core@0.7.17`, `viem`, `pg`, `hono`
 
 
 <!-- MANUAL ADDITIONS START -->

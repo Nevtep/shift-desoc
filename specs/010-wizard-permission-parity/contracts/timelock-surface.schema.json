@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift/specs/010-wizard-permission-parity/contracts/timelock-surface.schema.json",
+  "title": "Timelock Surface",
+  "type": "object",
+  "required": ["version", "handoffVerified", "contracts"],
+  "properties": {
+    "version": { "type": "string" },
+    "handoffVerified": { "type": "boolean" },
+    "contracts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["contractName", "targetKey", "signatures", "selectors"],
+        "properties": {
+          "contractName": { "type": "string", "minLength": 1 },
+          "targetKey": { "type": "string", "minLength": 1 },
+          "signatures": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\(.*\\)$" },
+            "minItems": 1
+          },
+          "selectors": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^0x[a-fA-F0-9]{8}$" },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

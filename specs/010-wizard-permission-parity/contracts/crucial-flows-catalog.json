@@ -1,0 +1,95 @@
+{
+  "version": "1",
+  "flows": [
+    {
+      "layer": "coordination",
+      "flowId": "coordination.paramController.setGovernanceParams",
+      "targetKey": "paramController",
+      "signature": "setGovernanceParams(uint256,uint256,uint256)",
+      "templateId": "disabled.paramController.setGovernanceParams",
+      "enabled": false,
+      "disabledReason": "Not timelock-executable by current deploy wiring"
+    },
+    {
+      "layer": "coordination",
+      "flowId": "coordination.paramController.setEligibilityParams",
+      "targetKey": "paramController",
+      "signature": "setEligibilityParams(uint256,uint256,uint256)",
+      "templateId": "disabled.paramController.setEligibilityParams",
+      "enabled": false,
+      "disabledReason": "Not timelock-executable by current deploy wiring"
+    },
+    {
+      "layer": "coordination",
+      "flowId": "coordination.paramController.setRevenuePolicy",
+      "targetKey": "paramController",
+      "signature": "setRevenuePolicy(uint256,uint256,uint256)",
+      "templateId": "disabled.paramController.setRevenuePolicy",
+      "enabled": false,
+      "disabledReason": "Not timelock-executable by current deploy wiring"
+    },
+    {
+      "layer": "governance",
+      "flowId": "governance.timelock.executeQueuedProposalAction",
+      "targetKey": "timelock",
+      "signature": "execute(address,uint256,bytes,bytes32,bytes32)",
+      "templateId": "disabled.timelock.executeQueuedProposalAction",
+      "enabled": false,
+      "disabledReason": "Not representable as safe guided draft template"
+    },
+    {
+      "layer": "verification",
+      "flowId": "verification.verifierElection.setVerifierSet",
+      "targetKey": "verifierElection",
+      "signature": "setVerifierSet(address[],uint256[],string)",
+      "templateId": "ve.setVerifierSet",
+      "enabled": true,
+      "disabledReason": null
+    },
+    {
+      "layer": "verification",
+      "flowId": "verification.valuableActionRegistry.activateFromGovernance",
+      "targetKey": "valuableActionRegistry",
+      "signature": "activateFromGovernance(uint256,bytes32)",
+      "templateId": "disabled.valuableActionRegistry.activateFromGovernance",
+      "enabled": false,
+      "disabledReason": "Not representable as safe guided draft template"
+    },
+    {
+      "layer": "economy",
+      "flowId": "economy.treasuryAdapter.setCapBps",
+      "targetKey": "treasuryAdapter",
+      "signature": "setCapBps(address,uint16)",
+      "templateId": "ta.setCapBps",
+      "enabled": true,
+      "disabledReason": null
+    },
+    {
+      "layer": "economy",
+      "flowId": "economy.revenueRouter.setSupportedToken",
+      "targetKey": "revenueRouter",
+      "signature": "setSupportedToken(address,bool)",
+      "templateId": "rr.setSupportedToken",
+      "enabled": true,
+      "disabledReason": null
+    },
+    {
+      "layer": "commerce_housing",
+      "flowId": "commerce.marketplace.setCommunityActive",
+      "targetKey": "marketplace",
+      "signature": "setCommunityActive(bool)",
+      "templateId": "mp.setCommunityActive",
+      "enabled": true,
+      "disabledReason": null
+    },
+    {
+      "layer": "commerce_housing",
+      "flowId": "commerce_housing.marketplace.setCommerceDisputes",
+      "targetKey": "marketplace",
+      "signature": "setCommerceDisputes(address)",
+      "templateId": "disabled.marketplace.setCommerceDisputes",
+      "enabled": false,
+      "disabledReason": "Not representable as safe guided draft template"
+    }
+  ]
+}

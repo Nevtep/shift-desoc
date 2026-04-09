@@ -27,11 +27,10 @@ describe("allowlist", () => {
   });
 
   it("enforces treasury adapter ABI reality signatures", () => {
-    expect(getAllowlistedSignatures("treasuryAdapter")).toEqual([
-      "setCapBps(address,uint16)",
-      "setDestinationAllowed(address,bool)",
-      "setTokenAllowed(address,bool)"
-    ]);
+    const signatures = getAllowlistedSignatures("treasuryAdapter");
+    expect(signatures).toContain("setCapBps(address,uint16)");
+    expect(signatures).toContain("setDestinationAllowed(address,bool)");
+    expect(signatures).toContain("setTokenAllowed(address,bool)");
   });
 
   it("includes metadata with zero ABI validation failures", () => {

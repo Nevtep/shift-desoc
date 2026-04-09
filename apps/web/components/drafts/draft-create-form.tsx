@@ -141,10 +141,14 @@ export function DraftCreateForm({
 
     const modules = moduleAddresses as unknown as Record<string, Address> & Address[];
     return {
+      membershipToken: modules.membershipToken ?? modules[1],
+      draftsManager: modules.draftsManager ?? modules[6],
+      engagements: modules.engagementsManager ?? modules[7],
       valuableActionRegistry: modules.valuableActionRegistry ?? modules[8],
       verifierPowerToken: modules.verifierPowerToken ?? modules[9],
       verifierElection: modules.verifierElection ?? modules[10],
       verifierManager: modules.verifierManager ?? modules[11],
+      valuableActionSBT: modules.valuableActionSBT ?? modules[12],
       positionManager: modules.positionManager ?? modules[13],
       credentialManager: modules.credentialManager ?? modules[14],
       cohortRegistry: modules.cohortRegistry ?? modules[15],
@@ -152,7 +156,9 @@ export function DraftCreateForm({
       revenueRouter: modules.revenueRouter ?? modules[17],
       treasuryAdapter: modules.treasuryAdapter ?? modules[19],
       paramController: modules.paramController ?? modules[21],
-      marketplace: modules.marketplace ?? modules[23]
+      commerceDisputes: modules.commerceDisputes ?? modules[22],
+      marketplace: modules.marketplace ?? modules[23],
+      housingManager: modules.housingManager ?? modules[24]
     };
   }, [moduleAddresses]);
 

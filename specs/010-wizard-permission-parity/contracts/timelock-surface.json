@@ -1,104 +1,159 @@
 {
-  "profileId": "base-sepolia-v1",
-  "source": {
-    "generatedAt": "1970-01-01T00:00:00.000Z",
-    "generatorVersion": "2",
-    "selectionRule": "ADMIN_ROLE signatures with verified Timelock handoff",
-    "wiringFile": "apps/web/lib/deploy/factory-step-executor.ts"
-  },
-  "targets": [
+  "contracts": [
     {
       "contractName": "CohortRegistry",
+      "selectors": [
+        "0x46a2ba22",
+        "0x9cc70b8c"
+      ],
       "signatures": [
         "createCohort(uint16,uint32,bytes32,uint64,uint64,bool)",
         "setCohortActive(uint256,bool)"
       ],
-      "targetId": "cohortRegistry"
+      "targetKey": "cohortRegistry"
     },
     {
       "contractName": "CommerceDisputes",
+      "selectors": [
+        "0xcab5a035",
+        "0xd9e786ab",
+        "0xdf02935c"
+      ],
       "signatures": [
         "cancelDispute(uint256)",
         "finalizeDispute(uint256,uint8)",
         "setDisputeReceiver(address)"
       ],
-      "targetId": "commerceDisputes"
+      "targetKey": "commerceDisputes"
     },
     {
       "contractName": "CredentialManager",
+      "selectors": [
+        "0x24cdf73b",
+        "0x792450fb",
+        "0xcf51b14c"
+      ],
       "signatures": [
         "defineCourse(bytes32,address,bool)",
         "revokeCredential(uint256,bytes32,bytes)",
         "setCourseActive(bytes32,bool)"
       ],
-      "targetId": "credentialManager"
+      "targetKey": "credentialManager"
     },
     {
       "contractName": "Engagements",
+      "selectors": [
+        "0x20c5429b",
+        "0xe692c49f"
+      ],
       "signatures": [
         "revoke(uint256)",
         "updateContracts(address,address)"
       ],
-      "targetId": "engagements"
+      "targetKey": "engagements"
     },
     {
       "contractName": "HousingManager",
+      "selectors": [
+        "0x28793bff"
+      ],
       "signatures": [
         "createUnit(address,string,uint256,uint256,uint256)"
       ],
-      "targetId": "housingManager"
+      "targetKey": "housingManager"
     },
     {
       "contractName": "InvestmentCohortManager",
+      "selectors": [
+        "0x4104c3be",
+        "0x46a2ba22",
+        "0x9cc70b8c"
+      ],
       "signatures": [
         "createCohort(uint16,uint32,bytes32,uint64,uint64,bool)",
         "issueInvestment(address,uint256,uint32,bytes)",
         "setCohortActive(uint256,bool)"
       ],
-      "targetId": "investmentCohortManager"
+      "targetKey": "investmentCohortManager"
     },
     {
       "contractName": "Marketplace",
+      "selectors": [
+        "0x0562d1cd",
+        "0x8c15e6a4",
+        "0xb3b917d9",
+        "0xedcbb1aa"
+      ],
       "signatures": [
         "setCommerceDisputes(address)",
         "setCommunityActive(bool)",
         "setCommunityToken(address)",
         "setRevenueRouter(address)"
       ],
-      "targetId": "marketplace"
+      "targetKey": "marketplace"
     },
     {
       "contractName": "PositionManager",
+      "selectors": [
+        "0x06711c77",
+        "0x8e9c9bd6",
+        "0xb3b917d9",
+        "0xe7ad0d2b"
+      ],
       "signatures": [
         "approveApplication(uint256,bytes)",
         "closePosition(uint256,uint8,bytes)",
         "definePositionType(bytes32,uint32,bool)",
         "setRevenueRouter(address)"
       ],
-      "targetId": "positionManager"
+      "targetKey": "positionManager"
     },
     {
       "contractName": "RevenueRouter",
+      "selectors": [
+        "0xb3d31ea6",
+        "0xb807a2e6",
+        "0xe74abe39",
+        "0xe7986466"
+      ],
       "signatures": [
         "setCohortRegistry(address)",
         "setCommunityTreasury(address)",
         "setParamController(address)",
         "setSupportedToken(address,bool)"
       ],
-      "targetId": "revenueRouter"
+      "targetKey": "revenueRouter"
     },
     {
       "contractName": "TreasuryAdapter",
+      "selectors": [
+        "0x15f69012",
+        "0x5c1d2d1b",
+        "0xcb39331f",
+        "0xf3142095"
+      ],
       "signatures": [
         "setCapBps(address,uint16)",
         "setDestinationAllowed(address,bool)",
         "setTokenAllowed(address,bool)",
         "setVaultAdapterAllowed(address,bool)"
       ],
-      "targetId": "treasuryAdapter"
+      "targetKey": "treasuryAdapter"
     },
     {
       "contractName": "ValuableActionRegistry",
+      "selectors": [
+        "0x14f1d4f1",
+        "0x408a6802",
+        "0x6da7a0ba",
+        "0x7d0df1be",
+        "0x916b9bef",
+        "0xc6ffb6cb",
+        "0xe08d5b8a",
+        "0xe610e6dd",
+        "0xef4ec047",
+        "0xff012a43"
+      ],
       "signatures": [
         "activateFromGovernance(uint256,bytes32)",
         "addFounder(address)",
@@ -111,26 +166,39 @@
         "setValuableActionSBT(address)",
         "update(uint256,(uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64))"
       ],
-      "targetId": "valuableActionRegistry"
+      "targetKey": "valuableActionRegistry"
     },
     {
       "contractName": "VerifierElection",
+      "selectors": [
+        "0x126d612e",
+        "0xb7cecec7",
+        "0xd4a7a2f3",
+        "0xe9759d9c"
+      ],
       "signatures": [
         "adjustVerifierPower(address,uint256,string)",
         "banVerifiers(address[],string)",
         "setVerifierSet(address[],uint256[],string)",
         "unbanVerifier(address,string)"
       ],
-      "targetId": "verifierElection"
+      "targetKey": "verifierElection"
     },
     {
       "contractName": "VerifierPowerToken1155",
+      "selectors": [
+        "0x02fe5305",
+        "0x09b2c748",
+        "0xf8cd5ff1"
+      ],
       "signatures": [
         "adminTransfer(address,address,uint256,string)",
         "initializeCommunity(string)",
         "setURI(string)"
       ],
-      "targetId": "verifierPowerToken"
+      "targetKey": "verifierPowerToken"
     }
-  ]
+  ],
+  "handoffVerified": true,
+  "version": "1"
 }

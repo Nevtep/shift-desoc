@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift/specs/010-wizard-permission-parity/contracts/permission-matrix.schema.json",
+  "title": "Permission Matrix",
+  "type": "object",
+  "required": ["version", "entries"],
+  "properties": {
+    "version": { "type": "string" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "contractName",
+          "targetKey",
+          "targetVariable",
+          "signature",
+          "selector",
+          "roleName",
+          "roleValue",
+          "sourceFile",
+          "sourceLine"
+        ],
+        "properties": {
+          "contractName": { "type": "string", "minLength": 1 },
+          "targetKey": { "type": "string", "minLength": 1 },
+          "targetVariable": { "type": "string", "minLength": 1 },
+          "signature": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\(.*\\)$" },
+          "selector": { "type": "string", "pattern": "^0x[a-fA-F0-9]{8}$" },
+          "roleName": { "type": "string", "minLength": 1 },
+          "roleValue": { "type": "string", "minLength": 1 },
+          "sourceFile": { "type": "string", "minLength": 1 },
+          "sourceLine": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

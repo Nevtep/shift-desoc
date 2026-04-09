@@ -27,6 +27,11 @@ Status semantics used in this file:
 - `Partial`: meaningful implementation exists, but key sub-capabilities are missing or incomplete.
 - `Missing`: no meaningful implementation found in this layer.
 
+Latest tactical delta (2026-04-09):
+- Draft composer authority surface now uses generated permission artifacts (`specs/010-wizard-permission-parity/contracts/permission-matrix.json`, `timelock-surface.json`) and deterministic allowlist regeneration.
+- Expert target resolution now reflects module presence + allowlist parity for additional targets (engagements, commerce disputes, housing manager, membership token, valuable action SBT, drafts manager visibility).
+- Guided crucial-flow catalog now tracks enabled/disabled status with deterministic reasons for non-representable or non-timelock-executable flows.
+
 ---
 
 ## 2) Feature Matrix By Layer

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift/specs/010-wizard-permission-parity/contracts/crucial-flows-catalog.schema.json",
+  "title": "Crucial Flow Catalog",
+  "type": "object",
+  "required": ["version", "flows"],
+  "properties": {
+    "version": { "type": "string" },
+    "flows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "layer",
+          "flowId",
+          "targetKey",
+          "signature",
+          "templateId",
+          "enabled",
+          "disabledReason"
+        ],
+        "properties": {
+          "layer": {
+            "type": "string",
+            "enum": ["coordination", "governance", "verification", "economy", "commerce_housing"]
+          },
+          "flowId": { "type": "string", "minLength": 1 },
+          "targetKey": { "type": "string", "minLength": 1 },
+          "signature": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\(.*\\)$" },
+          "templateId": { "type": "string", "minLength": 1 },
+          "enabled": { "type": "boolean" },
+          "disabledReason": { "type": ["string", "null"] }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "enabled": { "const": true } } },
+            "then": { "properties": { "disabledReason": { "const": null } } }
+          },
+          {
+            "if": { "properties": { "enabled": { "const": false } } },
+            "then": { "required": ["disabledReason"], "properties": { "disabledReason": { "type": "string", "minLength": 1 } } }
+          }
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

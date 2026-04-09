@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { encodeGuidedTemplateCalldata, listGuidedTemplates } from "../../../../lib/actions/guided-templates";
+import {
+  encodeGuidedTemplateCalldata,
+  getGuidedTemplateAvailability,
+  listGuidedTemplates,
+  resolveCrucialFlowsCatalog
+} from "../../../../lib/actions/guided-templates";
 
 const FIXTURES: Record<string, Record<string, string>> = {
   "var.setValuableActionSBT": { sbtAddress: "0x0000000000000000000000000000000000001001" },
@@ -72,5 +77,42 @@ describe("guided-templates", () => {
     expect(templateIds).not.toContain("draftContributorAdd");
     expect(templateIds).not.toContain("draftSnapshotVersion");
     expect(templateIds).not.toContain("draftEscalateToProposal");
+  });
+
+  it("returns deterministic availability reasons for module and allowlist gating", () => {
+    const template = listGuidedTemplates().find((entry) => entry.id === "ta.setCapBps");
+    expect(template).toBeDefined();
+
+    const missingModule = getGuidedTemplateAvailability(template!, {
+      moduleAddress: null,
+      allowlistedSignatures: new Set(["setCapBps(address,uint16)"])
+    });
+    expect(missingModule).toEqual({
+      enabled: false,
+      disabledReason: "Module not configured for this community"
+    });
+
+    const notAllowlisted = getGuidedTemplateAvailability(template!, {
+      moduleAddress: "0x0000000000000000000000000000000000001007",
+      allowlistedSignatures: new Set()
+    });
+    expect(notAllowlisted).toEqual({
+      enabled: false,
+      disabledReason: "Not timelock-allowlisted for this community"
+    });
+  });
+
+  it("marks non-representable crucial flows as disabled", () => {
+    const resolved = resolveCrucialFlowsCatalog(() => []);
+    const executeQueued = resolved.find((flow) => flow.flowId === "governance.timelock.executeQueuedProposalAction");
+    expect(executeQueued).toEqual({
+      layer: "governance",
+      flowId: "governance.timelock.executeQueuedProposalAction",
+      targetKey: "timelock",
+      signature: "execute(address,uint256,bytes,bytes32,bytes32)",
+      templateId: "disabled.timelock.executeQueuedProposalAction",
+      enabled: false,
+      disabledReason: "Not representable as safe guided draft template"
+    });
   });
 });

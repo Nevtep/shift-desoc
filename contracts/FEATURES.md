@@ -46,6 +46,8 @@
 
 The system is designed around the concept of **communities** — each community is an independent DAO-like entity with its own governance, token economy, verifier set, treasury, and marketplace.
 
+Composer authority surface update (2026-04): manager draft action availability is generated from wizard selector-role wiring through a fail-closed permission matrix and timelock surface derivation. Expert mode is allowlist-only; guided mode is safe-only with explicit disabled reasons for non-representable or non-timelock-executable crucial flows.
+
 ---
 
 ## 2. Architecture Summary

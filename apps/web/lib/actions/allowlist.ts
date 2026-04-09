@@ -2,14 +2,20 @@ import profileJson from "./allowlists/base-sepolia-v1.json" assert { type: "json
 import profileMetaJson from "./allowlists/base-sepolia-v1.meta.json" assert { type: "json" };
 
 export type AllowlistTargetId =
+  | "commerceDisputes"
   | "valuableActionRegistry"
+  | "engagements"
   | "verifierElection"
   | "verifierManager"
   | "verifierPowerToken"
+  | "membershipToken"
+  | "valuableActionSBT"
   | "revenueRouter"
   | "treasuryAdapter"
   | "marketplace"
+  | "housingManager"
   | "paramController"
+  | "draftsManager"
   | "cohortRegistry"
   | "investmentCohortManager"
   | "positionManager"
@@ -79,6 +85,22 @@ function validateProfile(profile: TimelockAllowlistProfile): TimelockAllowlistPr
     }
     seenTargets.add(target.targetId);
     assertSortedUnique(target.signatures, target.targetId);
+  }
+
+  const targetCount = profile.targets.length;
+  const signatureCount = profile.targets.reduce((acc, target) => acc + target.signatures.length, 0);
+  if (PROFILE_META.targetCount !== targetCount) {
+    throw new Error(
+      `Allowlist metadata targetCount mismatch: expected ${targetCount}, got ${PROFILE_META.targetCount}`
+    );
+  }
+  if (PROFILE_META.signatureCount !== signatureCount) {
+    throw new Error(
+      `Allowlist metadata signatureCount mismatch: expected ${signatureCount}, got ${PROFILE_META.signatureCount}`
+    );
+  }
+  if (PROFILE_META.abiValidationFailures.length > 0) {
+    throw new Error(`Allowlist metadata reports ABI validation failures`);
   }
 
   return profile;

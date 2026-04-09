@@ -2702,9 +2702,9 @@ async function executeConfigureAccessPermissions(
         "setCommunityNarrowing(bool)",
         "setCommunityIssuanceModule(address,bool)",
         "addFounder(address)",
-        "proposeValuableAction((uint32,uint32,uint32,uint8,bytes32,uint32,uint8,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64),bytes32)",
+        "proposeValuableAction((uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64),bytes32)",
         "activateFromGovernance(uint256,bytes32)",
-        "update(uint256,(uint32,uint32,uint32,uint8,bytes32,uint32,uint8,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64))",
+        "update(uint256,(uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64))",
         "deactivate(uint256)"
       ]
     },
