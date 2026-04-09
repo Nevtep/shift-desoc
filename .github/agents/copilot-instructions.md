@@ -15,6 +15,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - N/A (UI and route composition only; no new persistence) (006-coordination-hub-cta-fix)
 - TypeScript (Node 22 runtime) + `@ponder/core@0.7.17`, `viem`, `pg`, `hono` (007-indexer-community-discovery)
 - PostgreSQL (Ponder onchain schema tables) (007-indexer-community-discovery)
+- TypeScript (Node >=22, Next.js App Router client components) + React 19, Next.js 16, `viem`, `wagmi`, existing web contract config/ABI utilities (008-draft-action-composer)
+- Committed static data files in repository (allowlist + templates definitions), no new persistent DB (008-draft-action-composer)
 
 - Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22 + OpenZeppelin 5.x (`AccessManaged`, `ReentrancyGuard`, `SafeERC20`), Foundry, Hardhat 2.22.x (001-security-fixes)
 
@@ -35,9 +37,9 @@ npm test && npm run lint
 Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22: Follow standard conventions
 
 ## Recent Changes
+- 008-draft-action-composer: Added TypeScript (Node >=22, Next.js App Router client components) + React 19, Next.js 16, `viem`, `wagmi`, existing web contract config/ABI utilities
 - 007-indexer-community-discovery: Added TypeScript (Node 22 runtime) + `@ponder/core@0.7.17`, `viem`, `pg`, `hono`
 - 006-coordination-hub-cta-fix: Added TypeScript (Next.js 16 App Router, React 19) + Next.js App Router, graphql-request, TanStack Query, wagmi/viem, Vitest, Testing Library, MSW
-- 005-community-overview-dashboard: Added TypeScript (Next.js App Router, React 19), Node 22 + Next.js 16, React, wagmi/viem, TanStack Query, graphql-reques
 
 
 <!-- MANUAL ADDITIONS START -->
