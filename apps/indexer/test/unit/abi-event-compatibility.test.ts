@@ -10,7 +10,12 @@ const readAbi = (name: string) => {
 
 test("abi-event-compatibility: ensures handler-referenced events exist in configured ABIs", () => {
     const checks: Record<string, string[]> = {
-      CommunityRegistry: ["CommunityRegistered", "ModuleAddressUpdated"],
+      CommunityRegistry: [
+        "CommunityRegistered",
+        "CommunityMetadataURIUpdated",
+        "CommunityParentUpdated",
+        "ModuleAddressUpdated",
+      ],
       RequestHub: ["RequestCreated", "CommentPosted", "RequestStatusChanged", "CommentModerated"],
       DraftsManager: [
         "DraftCreated",

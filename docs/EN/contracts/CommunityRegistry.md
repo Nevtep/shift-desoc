@@ -150,6 +150,34 @@ function registerCommunity(
 - Enables parent-child relationships for community federations
 - Emits `CommunityRegistered` event for indexing
 
+### Post-Creation Metadata And Parent Updates
+
+```solidity
+function updateCommunityMetadataURI(uint256 communityId, string calldata newMetadataURI) external
+function updateParentCommunity(uint256 communityId, uint256 newParentCommunityId) external
+```
+
+**Purpose**: Allow governed communities to update public metadata and federation hierarchy after creation.
+
+**Authority model**:
+
+- Restricted to the configured community `timelock`
+- No direct admin shortcut once governance is wired
+- Parent may be cleared back to `0` for root communities
+
+**Validation logic**:
+
+- Timelock must be configured for the community
+- Caller must equal the community timelock
+- Parent cannot be self
+- Parent must exist if non-zero
+- Parent must be active if non-zero
+
+**Indexed events**:
+
+- `CommunityMetadataURIUpdated`
+- `CommunityParentUpdated`
+
 ### One-Tx Bootstrap Registration (Mar 2026)
 
 ```solidity

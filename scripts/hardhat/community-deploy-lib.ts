@@ -85,9 +85,58 @@ export type TxOverrides = {
 };
 
 let deploymentSignerPromise: Promise<any> | null = null;
+let lastRpcOperationAt = 0;
 
 function gwei(value: string): bigint {
   return ethers.parseUnits(value, "gwei");
+}
+
+type TxResponseLike = {
+  hash: string;
+  wait: () => Promise<{ blockNumber?: number }>;
+};
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function rpcDelayMs(): number {
+  const raw = process.env.RPC_OPERATION_DELAY_MS;
+  if (raw !== undefined) {
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }
+  return networkName() === "base_sepolia" ? 1000 : 0;
+}
+
+async function paceRpc(label: string): Promise<void> {
+  const delayMs = rpcDelayMs();
+  if (delayMs <= 0) return;
+
+  const now = Date.now();
+  const waitMs = Math.max(0, lastRpcOperationAt + delayMs - now);
+  if (waitMs > 0) {
+    console.log(`[rpc:pace] ${label} waiting ${waitMs}ms`);
+    await sleep(waitMs);
+  }
+  lastRpcOperationAt = Date.now();
+}
+
+async function readWithProgress<T>(label: string, action: () => Promise<T>): Promise<T> {
+  await paceRpc(label);
+  console.log(`[rpc:read] ${label}`);
+  const result = await action();
+  console.log(`[rpc:read:done] ${label}`);
+  return result;
+}
+
+async function sendTxWithProgress(label: string, send: () => Promise<TxResponseLike>): Promise<void> {
+  await paceRpc(label);
+  console.log(`[tx:start] ${label}`);
+  const tx = await send();
+  console.log(`[tx:sent] ${label} hash=${tx.hash}`);
+  const receipt = await tx.wait();
+  console.log(`[tx:done] ${label} block=${receipt?.blockNumber ?? "unknown"}`);
 }
 
 const BASE_SEPOLIA_MAX_FEE_CAP_GWEI = "0.1";
@@ -313,27 +362,48 @@ function requireAddress(value: string | undefined, name: string): string {
 async function deploy<T>(factoryName: string, ...args: any[]): Promise<T & { getAddress(): Promise<string> }> {
   const signer = await getDeploymentSigner();
   const txOverrides = getTxOverrides();
+  await paceRpc(`deploy ${factoryName}`);
+  console.log(`[deploy:start] ${factoryName}`);
   const factory = await ethers.getContractFactory(factoryName);
   const contract = await factory.connect(signer).deploy(...args, txOverrides);
+  const deploymentTx = contract.deploymentTransaction();
+  if (deploymentTx?.hash) {
+    console.log(`[deploy:sent] ${factoryName} hash=${deploymentTx.hash}`);
+  }
   await contract.waitForDeployment();
+  console.log(`[deploy:done] ${factoryName} address=${await contract.getAddress()}`);
   return contract as any;
 }
 
 async function deployTimelockController(...args: any[]): Promise<any> {
   const signer = await getDeploymentSigner();
   const txOverrides = getTxOverrides();
+  await paceRpc("deploy ShiftTimelockController");
+  console.log("[deploy:start] ShiftTimelockController");
   const factory = await ethers.getContractFactory("ShiftTimelockController");
   const timelock = await factory.connect(signer).deploy(...args, txOverrides);
+  const deploymentTx = timelock.deploymentTransaction();
+  if (deploymentTx?.hash) {
+    console.log(`[deploy:sent] ShiftTimelockController hash=${deploymentTx.hash}`);
+  }
   await timelock.waitForDeployment();
+  console.log(`[deploy:done] ShiftTimelockController address=${await timelock.getAddress()}`);
   return timelock;
 }
 
 async function deployAccessManager(admin: string): Promise<any> {
   const signer = await getDeploymentSigner();
   const txOverrides = getTxOverrides();
+  await paceRpc("deploy ShiftAccessManager");
+  console.log("[deploy:start] ShiftAccessManager");
   const factory = await ethers.getContractFactory("ShiftAccessManager");
   const accessManager = await factory.connect(signer).deploy(admin, txOverrides);
+  const deploymentTx = accessManager.deploymentTransaction();
+  if (deploymentTx?.hash) {
+    console.log(`[deploy:sent] ShiftAccessManager hash=${deploymentTx.hash}`);
+  }
   await accessManager.waitForDeployment();
+  console.log(`[deploy:done] ShiftAccessManager address=${await accessManager.getAddress()}`);
   return accessManager;
 }
 
@@ -352,14 +422,14 @@ async function isUsableSharedInfra(addresses: Partial<SharedInfra>): Promise<boo
   }
 
   try {
-    const paramControllerCode = await ethers.provider.getCode(addresses.paramController);
-    const communityRegistryCode = await ethers.provider.getCode(addresses.communityRegistry);
-    const bootstrapCoordinatorCode = await ethers.provider.getCode(addresses.bootstrapCoordinator);
-    const governanceLayerFactoryCode = await ethers.provider.getCode(addresses.governanceLayerFactory);
-    const verificationLayerFactoryCode = await ethers.provider.getCode(addresses.verificationLayerFactory);
-    const economicLayerFactoryCode = await ethers.provider.getCode(addresses.economicLayerFactory);
-    const commerceLayerFactoryCode = await ethers.provider.getCode(addresses.commerceLayerFactory);
-    const coordinationLayerFactoryCode = await ethers.provider.getCode(addresses.coordinationLayerFactory);
+    const paramControllerCode = await readWithProgress(`getCode ${addresses.paramController}`, () => ethers.provider.getCode(addresses.paramController));
+    const communityRegistryCode = await readWithProgress(`getCode ${addresses.communityRegistry}`, () => ethers.provider.getCode(addresses.communityRegistry));
+    const bootstrapCoordinatorCode = await readWithProgress(`getCode ${addresses.bootstrapCoordinator}`, () => ethers.provider.getCode(addresses.bootstrapCoordinator));
+    const governanceLayerFactoryCode = await readWithProgress(`getCode ${addresses.governanceLayerFactory}`, () => ethers.provider.getCode(addresses.governanceLayerFactory));
+    const verificationLayerFactoryCode = await readWithProgress(`getCode ${addresses.verificationLayerFactory}`, () => ethers.provider.getCode(addresses.verificationLayerFactory));
+    const economicLayerFactoryCode = await readWithProgress(`getCode ${addresses.economicLayerFactory}`, () => ethers.provider.getCode(addresses.economicLayerFactory));
+    const commerceLayerFactoryCode = await readWithProgress(`getCode ${addresses.commerceLayerFactory}`, () => ethers.provider.getCode(addresses.commerceLayerFactory));
+    const coordinationLayerFactoryCode = await readWithProgress(`getCode ${addresses.coordinationLayerFactory}`, () => ethers.provider.getCode(addresses.coordinationLayerFactory));
 
     if (
       paramControllerCode === "0x" ||
@@ -378,8 +448,8 @@ async function isUsableSharedInfra(addresses: Partial<SharedInfra>): Promise<boo
     const communityRegistry = await ethers.getContractAt("CommunityRegistry", addresses.communityRegistry);
 
     // Probe read-only calls to ensure ABI/runtime compatibility, not just non-empty bytecode.
-    const wiredRegistry = await paramController.communityRegistry();
-    await communityRegistry.nextCommunityId();
+    const wiredRegistry = await readWithProgress("ParamController.communityRegistry()", () => paramController.communityRegistry());
+    await readWithProgress("CommunityRegistry.nextCommunityId()", () => communityRegistry.nextCommunityId());
     if (wiredRegistry.toLowerCase() !== addresses.communityRegistry.toLowerCase()) {
       return false;
     }
@@ -405,7 +475,9 @@ export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
     coordinationLayerFactory: existing?.addresses?.coordinationLayerFactory,
   };
 
+  console.log(`[shared] checking reusable shared infra for network=${net}`);
   if (!forceRedeploySharedInfra && await isUsableSharedInfra(existingShared)) {
+    console.log("[shared] reusing existing shared infra from deployment file");
     return {
       paramController: existingShared.paramController!,
       communityRegistry: existingShared.communityRegistry!,
@@ -417,6 +489,8 @@ export async function deploySharedInfraIfMissing(): Promise<SharedInfra> {
       coordinationLayerFactory: existingShared.coordinationLayerFactory!,
     };
   }
+
+  console.log(forceRedeploySharedInfra ? "[shared] force redeploy enabled" : "[shared] deploying shared infra");
 
   if (forceRedeploySharedInfra) {
     console.warn("⚠️ SHIFT_FORCE_REDEPLOY_SHARED_INFRA=1 set. Redeploying shared infra and overwriting deployment JSON addresses.");

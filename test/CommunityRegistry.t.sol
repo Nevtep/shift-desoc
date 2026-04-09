@@ -46,6 +46,18 @@ contract CommunityRegistryTest is Test {
         uint256 indexed communityId,
         bool active
     );
+
+    event CommunityMetadataURIUpdated(
+        uint256 indexed communityId,
+        string oldMetadataURI,
+        string newMetadataURI
+    );
+
+    event CommunityParentUpdated(
+        uint256 indexed communityId,
+        uint256 indexed oldParentCommunityId,
+        uint256 indexed newParentCommunityId
+    );
     
     event CommunityAllianceFormed(
         uint256 indexed communityId1,
@@ -251,20 +263,147 @@ contract CommunityRegistryTest is Test {
             "ipfs://parent-metadata",
             0
         );
-        
+
         vm.prank(user1);
         registry.setCommunityStatus(parentId, false);
-        
+
         // Try to create child with inactive parent
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Parent community not active"));
-        
+
         vm.prank(user2);
-        registry.registerCommunity(
-            "Child Community",
-            "Child description",
-            "ipfs://child-metadata",
-            parentId
-        );
+        registry.registerCommunity("Child Community", "Child description", "ipfs://child-metadata", parentId);
+    }
+
+    function testUpdateCommunityMetadataURISucceedsForTimelock() public {
+        vm.prank(user1);
+        uint256 communityId = registry.registerCommunity("Test Community", "A test community", "ipfs://test", 0);
+
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), address(0xBEEF));
+
+        vm.expectEmit(true, true, true, true);
+        emit CommunityMetadataURIUpdated(communityId, "ipfs://test", "ipfs://updated");
+
+        vm.prank(address(0xBEEF));
+        registry.updateCommunityMetadataURI(communityId, "ipfs://updated");
+
+        CommunityRegistry.Community memory community = registry.getCommunity(communityId);
+        assertEq(community.metadataURI, "ipfs://updated");
+    }
+
+    function testUpdateCommunityMetadataURIUnauthorized() public {
+        vm.prank(user1);
+        uint256 communityId = registry.registerCommunity("Test Community", "A test community", "ipfs://test", 0);
+
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), address(0xBEEF));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user1));
+        vm.prank(user1);
+        registry.updateCommunityMetadataURI(communityId, "ipfs://updated");
+    }
+
+    function testUpdateCommunityMetadataURIMissingTimelock() public {
+        vm.prank(user1);
+        uint256 communityId = registry.registerCommunity("Test Community", "A test community", "ipfs://test", 0);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Community timelock not set"));
+        vm.prank(user1);
+        registry.updateCommunityMetadataURI(communityId, "ipfs://updated");
+    }
+
+    function testUpdateParentCommunitySucceedsForTimelock() public {
+        vm.prank(user1);
+        uint256 parentId = registry.registerCommunity("Parent", "Parent", "ipfs://parent", 0);
+
+        vm.prank(user2);
+        uint256 childId = registry.registerCommunity("Child", "Child", "ipfs://child", 0);
+
+        vm.prank(user2);
+        registry.setModuleAddress(childId, keccak256("timelock"), address(0xBEEF));
+
+        vm.expectEmit(true, true, true, true);
+        emit CommunityParentUpdated(childId, 0, parentId);
+
+        vm.prank(address(0xBEEF));
+        registry.updateParentCommunity(childId, parentId);
+
+        CommunityRegistry.Community memory child = registry.getCommunity(childId);
+        assertEq(child.parentCommunityId, parentId);
+    }
+
+    function testUpdateParentCommunityCanClearToRoot() public {
+        vm.prank(user1);
+        uint256 parentId = registry.registerCommunity("Parent", "Parent", "ipfs://parent", 0);
+
+        vm.prank(user2);
+        uint256 childId = registry.registerCommunity("Child", "Child", "ipfs://child", parentId);
+
+        vm.prank(user2);
+        registry.setModuleAddress(childId, keccak256("timelock"), address(0xBEEF));
+
+        vm.prank(address(0xBEEF));
+        registry.updateParentCommunity(childId, 0);
+
+        CommunityRegistry.Community memory child = registry.getCommunity(childId);
+        assertEq(child.parentCommunityId, 0);
+    }
+
+    function testUpdateParentCommunityRejectsInactiveParent() public {
+        vm.prank(user1);
+        uint256 parentId = registry.registerCommunity("Parent", "Parent", "ipfs://parent", 0);
+
+        vm.prank(user2);
+        uint256 childId = registry.registerCommunity("Child", "Child", "ipfs://child", 0);
+
+        vm.prank(user1);
+        registry.setCommunityStatus(parentId, false);
+
+        vm.prank(user2);
+        registry.setModuleAddress(childId, keccak256("timelock"), address(0xBEEF));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Parent community not active"));
+        vm.prank(address(0xBEEF));
+        registry.updateParentCommunity(childId, parentId);
+    }
+
+    function testUpdateParentCommunityRejectsUnknownParent() public {
+        vm.prank(user1);
+        uint256 childId = registry.registerCommunity("Child", "Child", "ipfs://child", 0);
+
+        vm.prank(user1);
+        registry.setModuleAddress(childId, keccak256("timelock"), address(0xBEEF));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Parent community does not exist"));
+        vm.prank(address(0xBEEF));
+        registry.updateParentCommunity(childId, 999);
+    }
+
+    function testUpdateParentCommunityRejectsSelfParent() public {
+        vm.prank(user1);
+        uint256 communityId = registry.registerCommunity("Self", "Self", "ipfs://self", 0);
+
+        vm.prank(user1);
+        registry.setModuleAddress(communityId, keccak256("timelock"), address(0xBEEF));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Community cannot be its own parent"));
+        vm.prank(address(0xBEEF));
+        registry.updateParentCommunity(communityId, communityId);
+    }
+
+    function testUpdateParentCommunityUnauthorized() public {
+        vm.prank(user1);
+        uint256 parentId = registry.registerCommunity("Parent", "Parent", "ipfs://parent", 0);
+
+        vm.prank(user2);
+        uint256 childId = registry.registerCommunity("Child", "Child", "ipfs://child", 0);
+
+        vm.prank(user2);
+        registry.setModuleAddress(childId, keccak256("timelock"), address(0xBEEF));
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, user2));
+        vm.prank(user2);
+        registry.updateParentCommunity(childId, parentId);
     }
     
     function testRegisterMultipleCommunities() public {

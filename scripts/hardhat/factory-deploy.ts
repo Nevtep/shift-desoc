@@ -25,6 +25,56 @@ type FactoryInfra = {
   coordinationLayerFactory: string;
 };
 
+type TxResponseLike = {
+  hash: string;
+  wait: () => Promise<{ blockNumber?: number }>;
+};
+
+let lastRpcOperationAt = 0;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function rpcDelayMs(): number {
+  const raw = process.env.RPC_OPERATION_DELAY_MS;
+  if (raw !== undefined) {
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }
+  return network.name === "base_sepolia" ? 1000 : 0;
+}
+
+async function paceRpc(label: string): Promise<void> {
+  const delayMs = rpcDelayMs();
+  if (delayMs <= 0) return;
+
+  const now = Date.now();
+  const waitMs = Math.max(0, lastRpcOperationAt + delayMs - now);
+  if (waitMs > 0) {
+    console.log(`[rpc:pace] ${label} waiting ${waitMs}ms`);
+    await sleep(waitMs);
+  }
+  lastRpcOperationAt = Date.now();
+}
+
+async function readWithProgress<T>(label: string, action: () => Promise<T>): Promise<T> {
+  await paceRpc(label);
+  console.log(`[rpc:read] ${label}`);
+  const result = await action();
+  console.log(`[rpc:read:done] ${label}`);
+  return result;
+}
+
+async function sendTxWithProgress(label: string, send: () => Promise<TxResponseLike>): Promise<void> {
+  await paceRpc(label);
+  console.log(`[tx:start] ${label}`);
+  const tx = await send();
+  console.log(`[tx:sent] ${label} hash=${tx.hash}`);
+  const receipt = await tx.wait();
+  console.log(`[tx:done] ${label} block=${receipt?.blockNumber ?? "unknown"}`);
+}
+
 async function sumGasUsedBetween(startBlock: number, endBlock: number): Promise<bigint> {
   let total = 0n;
   for (let blockNumber = startBlock + 1; blockNumber <= endBlock; blockNumber++) {
@@ -59,9 +109,16 @@ async function deploy<T>(
   overrides: TxOverrides,
   ...args: unknown[]
 ): Promise<T & { getAddress(): Promise<string> }> {
+  await paceRpc(`deploy ${factoryName}`);
+  console.log(`[deploy:start] ${factoryName}`);
   const factory = await ethers.getContractFactory(factoryName);
   const contract = await factory.deploy(...args, overrides);
+  const deploymentTx = contract.deploymentTransaction();
+  if (deploymentTx?.hash) {
+    console.log(`[deploy:sent] ${factoryName} hash=${deploymentTx.hash}`);
+  }
   await contract.waitForDeployment();
+  console.log(`[deploy:done] ${factoryName} address=${await contract.getAddress()}`);
   return contract as unknown as T & { getAddress(): Promise<string> };
 }
 
@@ -116,7 +173,7 @@ function getTxOverrides(): TxOverrides {
 }
 
 async function clampTxOverrides(overrides: TxOverrides): Promise<TxOverrides> {
-  const latest = await ethers.provider.getBlock("latest");
+  const latest = await readWithProgress("provider.getBlock(latest)", () => ethers.provider.getBlock("latest"));
   const baseFee = latest?.baseFeePerGas ?? 0n;
   const priority = overrides.maxPriorityFeePerGas ?? gwei("0.1");
   const minMaxFee = baseFee + priority;
@@ -129,13 +186,14 @@ async function clampTxOverrides(overrides: TxOverrides): Promise<TxOverrides> {
 }
 
 async function getCreationCode(contractName: string): Promise<string> {
+  console.log(`[artifact] loading creation code for ${contractName}`);
   const factory = await ethers.getContractFactory(contractName);
   return factory.bytecode;
 }
 
 async function isDeployedContract(address: string | undefined): Promise<boolean> {
   if (!address || address === ethers.ZeroAddress) return false;
-  const code = await ethers.provider.getCode(address);
+  const code = await readWithProgress(`getCode ${address}`, () => ethers.provider.getCode(address));
   return code !== "0x";
 }
 
@@ -187,7 +245,8 @@ async function ensureFactoryInfra(deployerAddress: string, txOverrides: TxOverri
 }
 
 async function main() {
-  const startBlock = await ethers.provider.getBlockNumber();
+  console.log(`[deploy] starting factory community stack deploy on network=${network.name}`);
+  const startBlock = await readWithProgress("provider.getBlockNumber() before factory deploy", () => ethers.provider.getBlockNumber());
   const txOverrides = await clampTxOverrides(getTxOverrides());
   const [deployer] = await ethers.getSigners();
   const base = defaultCommunityDeployConfig(deployer.address);
@@ -226,7 +285,8 @@ async function main() {
   const shared = await deploySharedInfraIfMissing();
   const communityRegistry = await ethers.getContractAt("CommunityRegistry", shared.communityRegistry);
 
-  const nextCommunityId = Number(await communityRegistry.nextCommunityId());
+  const nextCommunityId = Number(await readWithProgress("CommunityRegistry.nextCommunityId() before factory deploy", () => communityRegistry.nextCommunityId()));
+  console.log(`[deploy] next community id=${nextCommunityId}`);
 
   const accessManager = await deploy<any>("ShiftAccessManager", txOverrides, deployer.address);
   const accessManagerAddress = await accessManager.getAddress();
@@ -245,8 +305,8 @@ async function main() {
     await getCreationCode("CountingMultiChoice"),
   ];
 
-  await (
-    await governanceFactory.deployLayer(
+  await sendTxWithProgress("GovernanceLayerFactory.deployLayer", () =>
+    governanceFactory.deployLayer(
       nextCommunityId,
       config.communityName,
       accessManagerAddress,
@@ -258,8 +318,8 @@ async function main() {
       governanceCreationCodes[3],
       txOverrides,
     )
-  ).wait();
-  const governance = await governanceFactory.lastDeploymentByCaller(deployer.address);
+  );
+  const governance = await readWithProgress("GovernanceLayerFactory.lastDeploymentByCaller", () => governanceFactory.lastDeploymentByCaller(deployer.address));
 
   const verificationCreationCodes = [
     await getCreationCode("VerifierPowerToken1155"),
@@ -272,8 +332,8 @@ async function main() {
     await getCreationCode("CredentialManager"),
   ];
 
-  await (
-    await verificationFactory.deployLayer(
+  await sendTxWithProgress("VerificationLayerFactory.deployLayer", () =>
+    verificationFactory.deployLayer(
       nextCommunityId,
       accessManagerAddress,
       shared.communityRegistry,
@@ -291,8 +351,8 @@ async function main() {
       verificationCreationCodes[7],
       txOverrides,
     )
-  ).wait();
-  const verification = await verificationFactory.lastDeploymentByCaller(deployer.address);
+  );
+  const verification = await readWithProgress("VerificationLayerFactory.lastDeploymentByCaller", () => verificationFactory.lastDeploymentByCaller(deployer.address));
 
   const economicCreationCodes = [
     await getCreationCode("CohortRegistry"),
@@ -302,8 +362,8 @@ async function main() {
     await getCreationCode("TreasuryAdapter"),
   ];
 
-  await (
-    await economicFactory.deployLayer(
+  await sendTxWithProgress("EconomicLayerFactory.deployLayer", () =>
+    economicFactory.deployLayer(
       nextCommunityId,
       config.communityName,
       accessManagerAddress,
@@ -320,8 +380,8 @@ async function main() {
       economicCreationCodes[4],
       txOverrides,
     )
-  ).wait();
-  const economic = await economicFactory.lastDeploymentByCaller(deployer.address);
+  );
+  const economic = await readWithProgress("EconomicLayerFactory.lastDeploymentByCaller", () => economicFactory.lastDeploymentByCaller(deployer.address));
 
   const commerceCreationCodes = [
     await getCreationCode("CommerceDisputes"),
@@ -330,8 +390,8 @@ async function main() {
     await getCreationCode("ProjectFactory"),
   ];
 
-  await (
-    await commerceFactory.deployLayer(
+  await sendTxWithProgress("CommerceLayerFactory.deployLayer", () =>
+    commerceFactory.deployLayer(
       nextCommunityId,
       accessManagerAddress,
       config.treasuryStableToken,
@@ -342,16 +402,16 @@ async function main() {
       commerceCreationCodes[3],
       txOverrides,
     )
-  ).wait();
-  const commerce = await commerceFactory.lastDeploymentByCaller(deployer.address);
+  );
+  const commerce = await readWithProgress("CommerceLayerFactory.lastDeploymentByCaller", () => commerceFactory.lastDeploymentByCaller(deployer.address));
 
   const coordinationCreationCodes = [
     await getCreationCode("RequestHub"),
     await getCreationCode("DraftsManager"),
   ];
 
-  await (
-    await coordinationFactory.deployLayer(
+  await sendTxWithProgress("CoordinationLayerFactory.deployLayer", () =>
+    coordinationFactory.deployLayer(
       nextCommunityId,
       shared.communityRegistry,
       verification.valuableActionRegistry,
@@ -361,8 +421,8 @@ async function main() {
       coordinationCreationCodes[1],
       txOverrides,
     )
-  ).wait();
-  const coordination = await coordinationFactory.lastDeploymentByCaller(deployer.address);
+  );
+  const coordination = await readWithProgress("CoordinationLayerFactory.lastDeploymentByCaller", () => coordinationFactory.lastDeploymentByCaller(deployer.address));
 
   const moduleAddresses: CommunityModuleAddresses = {
     governor: governance.governor,
@@ -418,7 +478,7 @@ async function main() {
     projectFactory: commerce.projectFactory,
   };
 
-  const currentBlock = await ethers.provider.getBlockNumber();
+  const currentBlock = await readWithProgress("provider.getBlockNumber() after factory deploy", () => ethers.provider.getBlockNumber());
   const deploymentAddresses = {
     ...addresses,
     ...factoryInfra,

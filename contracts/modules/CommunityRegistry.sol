@@ -186,6 +186,20 @@ contract CommunityRegistry {
         uint256 indexed communityId,
         bool active
     );
+
+    /// @notice Emitted when community metadata URI changes after creation
+    event CommunityMetadataURIUpdated(
+        uint256 indexed communityId,
+        string oldMetadataURI,
+        string newMetadataURI
+    );
+
+    /// @notice Emitted when community parent changes after creation
+    event CommunityParentUpdated(
+        uint256 indexed communityId,
+        uint256 indexed oldParentCommunityId,
+        uint256 indexed newParentCommunityId
+    );
     
     /// @notice Emitted when communities form an alliance
     event CommunityAllianceFormed(
@@ -271,12 +285,7 @@ contract CommunityRegistry {
             revert Errors.InvalidInput("Community name cannot be empty");
         }
         
-        // Validate parent community if specified
-        if (parentCommunityId != 0) {
-            if (!communities[parentCommunityId].active) {
-                revert Errors.InvalidInput("Parent community not active");
-            }
-        }
+        _validateParentCommunity(0, parentCommunityId);
         
         communityId = nextCommunityId++;
         
@@ -311,6 +320,33 @@ contract CommunityRegistry {
         _requireCommunityAdmin(communityId);
 
         paramController.initializeDefaultParameters(communityId, msg.sender);
+    }
+
+    /// @notice Update the metadata URI for an existing community
+    /// @dev Restricted to the community timelock once governance is wired
+    function updateCommunityMetadataURI(uint256 communityId, string calldata newMetadataURI) external {
+        _requireValidCommunity(communityId);
+        _requireCommunityTimelock(communityId);
+
+        Community storage community = communities[communityId];
+        string memory oldMetadataURI = community.metadataURI;
+        community.metadataURI = newMetadataURI;
+
+        emit CommunityMetadataURIUpdated(communityId, oldMetadataURI, newMetadataURI);
+    }
+
+    /// @notice Update the parent community for an existing community
+    /// @dev Restricted to the community timelock once governance is wired
+    function updateParentCommunity(uint256 communityId, uint256 newParentCommunityId) external {
+        _requireValidCommunity(communityId);
+        _requireCommunityTimelock(communityId);
+        _validateParentCommunity(communityId, newParentCommunityId);
+
+        Community storage community = communities[communityId];
+        uint256 oldParentCommunityId = community.parentCommunityId;
+        community.parentCommunityId = newParentCommunityId;
+
+        emit CommunityParentUpdated(communityId, oldParentCommunityId, newParentCommunityId);
     }
     
 
@@ -813,6 +849,34 @@ contract CommunityRegistry {
     function _requireValidCommunity(uint256 communityId) internal view {
         if (communityId == 0 || communityId >= nextCommunityId) {
             revert Errors.InvalidInput("Community does not exist");
+        }
+    }
+
+    function _requireCommunityTimelock(uint256 communityId) internal view {
+        address timelock = communities[communityId].timelock;
+        if (timelock == address(0)) {
+            revert Errors.InvalidInput("Community timelock not set");
+        }
+        if (msg.sender != timelock) {
+            revert Errors.NotAuthorized(msg.sender);
+        }
+    }
+
+    function _validateParentCommunity(uint256 communityId, uint256 parentCommunityId) internal view {
+        if (parentCommunityId == 0) {
+            return;
+        }
+
+        if (parentCommunityId == communityId) {
+            revert Errors.InvalidInput("Community cannot be its own parent");
+        }
+
+        if (parentCommunityId >= nextCommunityId) {
+            revert Errors.InvalidInput("Parent community does not exist");
+        }
+
+        if (!communities[parentCommunityId].active) {
+            revert Errors.InvalidInput("Parent community not active");
         }
     }
     

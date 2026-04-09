@@ -51,6 +51,7 @@ type communities {
   chainId: Int!
   name: String!
   metadataUri: String
+  parentCommunityId: Int!
   createdAt: String!
 }
 
@@ -99,6 +100,14 @@ input communitiesFilter {
   metadataUri_ends_with: String
   metadataUri_not_starts_with: String
   metadataUri_not_ends_with: String
+  parentCommunityId: Int
+  parentCommunityId_not: Int
+  parentCommunityId_in: [Int]
+  parentCommunityId_not_in: [Int]
+  parentCommunityId_gt: Int
+  parentCommunityId_lt: Int
+  parentCommunityId_gte: Int
+  parentCommunityId_lte: Int
   createdAt: String
   createdAt_not: String
   createdAt_in: [String]

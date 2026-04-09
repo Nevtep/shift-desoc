@@ -348,6 +348,7 @@ ponder.on("CommunityRegistry:CommunityRegistered", async ({ event, context }) =>
     chainId: context.network.chainId,
     name: event.args.name,
     metadataUri: null,
+    parentCommunityId: Number(event.args.parentCommunityId),
     createdAt,
   };
 
@@ -362,6 +363,22 @@ ponder.on("CommunityRegistry:CommunityRegistered", async ({ event, context }) =>
   await context.db
     .update(communities, { id: communityId })
     .set(payload);
+});
+
+ponder.on("CommunityRegistry:CommunityMetadataURIUpdated", async ({ event, context }) => {
+  const communityId = Number(event.args.communityId);
+
+  await context.db
+    .update(communities, { id: communityId })
+    .set({ metadataUri: event.args.newMetadataURI });
+});
+
+ponder.on("CommunityRegistry:CommunityParentUpdated", async ({ event, context }) => {
+  const communityId = Number(event.args.communityId);
+
+  await context.db
+    .update(communities, { id: communityId })
+    .set({ parentCommunityId: Number(event.args.newParentCommunityId) });
 });
 
 ponder.on("CommunityRegistry:ModuleAddressUpdated", async ({ event, context }) => {

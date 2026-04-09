@@ -8,6 +8,7 @@ export const communities = schema.table("communities", (t) => ({
   chainId: t.integer().notNull(),
   name: t.text().notNull(),
   metadataUri: t.text(),
+  parentCommunityId: t.integer().notNull(),
   createdAt: t.timestamp({ withTimezone: true }).notNull(),
 }));
 
