@@ -13,7 +13,8 @@ describe("ProposalDetail", () => {
     mockWagmiHooks({ connected: true });
     renderWithProviders(<ProposalDetail proposalId={PROPOSAL_ID} />);
 
-    expect(await screen.findByText(/Proposal 100/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Execution readiness/i)).toBeInTheDocument();
+    expect(screen.getByText(/Community/i)).toBeInTheDocument();
     expect(screen.getByText(/Cast Vote/i)).toBeInTheDocument();
     expect(screen.getByText(/Option A/i)).toBeInTheDocument();
     expect(await screen.findByText(/Proposal description content/i)).toBeInTheDocument();

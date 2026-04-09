@@ -135,7 +135,12 @@ describe("DraftCreateForm scoped route behavior", () => {
     await userEvent.clear(screen.getByLabelText(/request id/i));
     await userEvent.type(screen.getByLabelText(/request id/i), "9");
     await userEvent.type(screen.getByLabelText(/draft content/i), "## guided test draft");
-    await userEvent.type(screen.getByLabelText(/action title/i), "Moderation review pass");
+    const actionTitle = screen.queryByLabelText(/action title/i);
+    if (actionTitle) {
+      await userEvent.type(actionTitle, "Moderation review pass");
+    } else {
+      await userEvent.type(screen.getByLabelText(/sbt address/i), "0x0000000000000000000000000000000000001234");
+    }
     await userEvent.click(screen.getByRole("button", { name: /add guided action/i }));
 
     await waitFor(() => {

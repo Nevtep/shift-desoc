@@ -74,7 +74,7 @@ export function buildMockedHooks() {
     },
     writeContract: {
       writeContract: () => undefined,
-      writeContractAsync: () => Promise.resolve({}),
+      writeContractAsync: () => Promise.resolve("0x1234" as `0x${string}`),
       data: undefined,
       error: null,
       failureReason: null,

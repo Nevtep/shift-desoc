@@ -75,16 +75,28 @@ export const handlers = [
     return HttpResponse.json({
       data: {
         proposals: {
-          nodes: [fixtures.proposal]
+          nodes: [fixtures.proposals[0]]
         }
       }
     });
   }),
-  graphql.query("Proposals", () => {
+  graphql.query("Proposals", ({ variables }) => {
+    const input = (variables as { communityId?: number; state?: string[] } | undefined) ?? {};
+    const communityId = typeof input.communityId === "number" ? input.communityId : undefined;
+    const stateFilter = Array.isArray(input.state) ? input.state : undefined;
+    const nodes = fixtures.proposals.filter((proposal) => {
+      if (communityId !== undefined && proposal.communityId !== communityId) {
+        return false;
+      }
+      if (stateFilter && stateFilter.length && !stateFilter.includes(proposal.state)) {
+        return false;
+      }
+      return true;
+    });
     return HttpResponse.json({
       data: {
         proposals: {
-          nodes: [fixtures.proposal],
+          nodes,
           pageInfo: { endCursor: null, hasNextPage: false }
         }
       }
@@ -92,7 +104,7 @@ export const handlers = [
   }),
   graphql.query("Proposal", ({ variables }) => {
     const id = String((variables as { id?: string } | undefined)?.id ?? "");
-    const match = id === fixtures.proposal.id ? fixtures.proposal : null;
+    const match = fixtures.proposals.find((proposal) => proposal.id === id) ?? null;
     return HttpResponse.json({ data: { proposal: match } });
   }),
   graphql.query("Engagements", () => {
@@ -113,12 +125,18 @@ export const handlers = [
   // Draft detail via REST API base
   http.get(`${API_BASE}/drafts/:draftId`, ({ params }) => {
     const draftId = String(params.draftId);
-    if (draftId !== fixtures.draft.id) {
+    const draft = draftId === fixtures.draft.id
+      ? fixtures.draft
+      : draftId === fixtures.draftMissingActions.id
+      ? fixtures.draftMissingActions
+      : null;
+
+    if (!draft) {
       return HttpResponse.json({ draft: null });
     }
     return HttpResponse.json({
       draft: {
-        ...fixtures.draft,
+        ...draft,
         versions: fixtures.draftVersions,
         reviews: fixtures.draftReviews
       }
@@ -151,7 +169,7 @@ export const handlers = [
       });
     }
 
-    if (cid === fixtures.proposal.descriptionCid) {
+    if (cid === fixtures.proposals[0].descriptionCid) {
       return HttpResponse.json({
         cid,
         type: "proposalDescription",

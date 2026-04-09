@@ -1,0 +1,71 @@
+# GraphQL Contract (Read-Only)
+# Consumer: apps/web governance community-scoped pages
+# Authority: indexer projection of on-chain events
+
+query CommunityProposals($communityId: Int!, $limit: Int = 20, $after: String) {
+  proposals: proposalss(
+    where: { communityId: $communityId }
+    orderBy: "createdAt"
+    orderDirection: "desc"
+    after: $after
+    limit: $limit
+  ) {
+    nodes: items {
+      id
+      communityId
+      proposer
+      state
+      createdAt
+      queuedAt
+      executedAt
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}
+
+query CommunityProposalDetail($id: String!) {
+  proposal: proposals(id: $id) {
+    id
+    communityId
+    proposer
+    descriptionCid
+    descriptionHash
+    targets
+    values
+    calldatas
+    state
+    createdAt
+    queuedAt
+    executedAt
+    multiChoiceOptions
+    votes {
+      voter
+      weight
+      optionIndex
+      castAt
+    }
+  }
+}
+
+# Optional read-model enrichment for community overview previews
+query CommunityOverviewProposals($communityId: Int!, $limit: Int = 3) {
+  proposals: proposalss(
+    where: { communityId: $communityId }
+    orderBy: "createdAt"
+    orderDirection: "desc"
+    limit: $limit
+  ) {
+    nodes: items {
+      id
+      communityId
+      proposer
+      state
+      createdAt
+      queuedAt
+      executedAt
+    }
+  }
+}

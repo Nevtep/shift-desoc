@@ -29,7 +29,7 @@ describe("community routing allowlist", () => {
     }
   });
 
-  it("renders proposals and view-parameters actions as disabled non-links", () => {
+  it("renders proposals view-all as enabled link while create and parameters remain disabled", () => {
     render(
       createElement(
         Fragment,
@@ -40,7 +40,7 @@ describe("community routing allowlist", () => {
             state: "empty",
             items: [],
             canRetry: false,
-            viewAll: { href: "/communities/9/governance/proposals", enabled: false, comingSoon: true },
+            viewAll: { href: "/communities/9/governance/proposals", enabled: true, comingSoon: false },
             create: { href: "/communities/9/governance/proposals/new", enabled: false, comingSoon: true }
           }
         }),
@@ -69,11 +69,13 @@ describe("community routing allowlist", () => {
       )
     );
 
-    expect(screen.getByRole("button", { name: /view all.*coming soon/i })).toBeDisabled();
+    expect(screen.getByRole("link", { name: /view all/i })).toHaveAttribute(
+      "href",
+      "/communities/9/governance/proposals"
+    );
     expect(screen.getByRole("button", { name: /create new.*coming soon/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /view parameters.*coming soon/i })).toBeDisabled();
 
-    expect(screen.queryByRole("link", { name: /view all/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /create new/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /view parameters/i })).toBeNull();
   });

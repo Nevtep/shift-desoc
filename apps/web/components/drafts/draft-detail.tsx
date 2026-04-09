@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useAccount, useChainId, useWriteContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
 import { useRouter } from "next/navigation";
+import { decodeEventLog, type Hex } from "viem";
 
 import { useApiQuery } from "../../hooks/useApiQuery";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
@@ -28,6 +29,10 @@ type DraftReviewNode = {
 type DraftDetailResponse = {
   draft: (DraftNode & {
     communityId?: number;
+    targets?: string[];
+    values?: string[];
+    calldatas?: string[];
+    actionsHash?: string | null;
     versions?: DraftVersionNode[];
     reviews?: DraftReviewNode[];
   }) | null;
@@ -152,7 +157,10 @@ export function DraftDetail({
               <div className="flex items-center gap-2">
                 <dt className="font-medium text-foreground">Proposal</dt>
                 <dd>
-                  <Link className="underline" href={`/governance/proposals/${draft.escalatedProposalId}`}>
+                  <Link
+                    className="underline"
+                    href={`/communities/${draftCommunityId ?? expectedCommunityId ?? 0}/governance/proposals/${draft.escalatedProposalId}`}
+                  >
                     {draft.escalatedProposalId}
                   </Link>
                 </dd>
@@ -166,7 +174,14 @@ export function DraftDetail({
         <DraftEscalateForm
           draftId={draftId}
           communityId={draft.communityId ? Number(draft.communityId) : undefined}
+          expectedCommunityId={expectedCommunityId}
           status={draft.status}
+          hasActionBundle={
+            Boolean(draft.actionsHash) &&
+            Array.isArray(draft.targets) && draft.targets.length > 0 &&
+            Array.isArray(draft.values) && draft.values.length > 0 &&
+            Array.isArray(draft.calldatas) && draft.calldatas.length > 0
+          }
           hasProposal={Boolean(draft.escalatedProposalId)}
         />
       </section>
@@ -230,24 +245,29 @@ export function DraftDetail({
 function DraftEscalateForm({
   draftId,
   communityId,
+  expectedCommunityId,
   status,
+  hasActionBundle,
   hasProposal
 }: {
   draftId: string;
   communityId?: number;
+  expectedCommunityId?: number;
   status: string;
+  hasActionBundle: boolean;
   hasProposal: boolean;
 }) {
   const router = useRouter();
   const chainId = useChainId();
   const { status: accountStatus, address } = useAccount();
+  const publicClient = usePublicClientCompat();
   const { writeContractAsync, isPending, error } = useWriteContract();
   const { modules } = useCommunityModules({ communityId, chainId, enabled: Boolean(communityId) });
   const draftsManagerAddress = modules?.draftsManager;
 
   const [descriptionCid, setDescriptionCid] = useState("");
   const [descriptionMarkdown, setDescriptionMarkdown] = useState("");
-  const [isMultiChoice, setIsMultiChoice] = useState(false);
+  const [isMultiChoice, setIsMultiChoice] = useState(true);
   const [numOptions, setNumOptions] = useState(2);
   const [isUploading, setIsUploading] = useState(false);
   const [formMessage, setFormMessage] = useState<string | null>(null);
@@ -267,6 +287,18 @@ function DraftEscalateForm({
     }
     if (!communityId || !draftsManagerAddress) {
       setFormError("DraftsManager module is not registered for this community.");
+      return;
+    }
+    if (typeof expectedCommunityId === "number" && expectedCommunityId > 0 && expectedCommunityId !== communityId) {
+      setFormError("Draft community does not match the active route community.");
+      return;
+    }
+    if (!hasActionBundle) {
+      setFormError("Draft action bundle is incomplete. Ensure targets, values, calldatas, and actionsHash are present.");
+      return;
+    }
+    if (isMultiChoice && numOptions < 2) {
+      setFormError("Multi-choice proposals require at least 2 options.");
       return;
     }
 
@@ -293,15 +325,24 @@ function DraftEscalateForm({
         cidToUse = json.cid;
       }
 
-      await writeContractAsync({
+      const txHash = await writeContractAsync({
         address: draftsManagerAddress,
         abi: COMMUNITY_MODULE_ABIS.draftsManager,
         functionName: "escalateToProposal",
         args: [BigInt(draftId), isMultiChoice, Number(numOptions), cidToUse]
       });
 
-      setFormMessage("Escalation sent. Proposal will appear after the indexer updates.");
-      router.refresh();
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      const parsedProposalId = parseEscalatedProposalId(receipt.logs);
+      const proposalsBase = `/communities/${communityId}/governance/proposals`;
+
+      if (parsedProposalId) {
+        setFormMessage(`Escalation confirmed. Proposal ${parsedProposalId} created.`);
+        router.push(`${proposalsBase}/${parsedProposalId}`);
+      } else {
+        setFormMessage("Escalation confirmed. Proposal indexing may lag for a short period.");
+        router.push(`${proposalsBase}?indexLag=1`);
+      }
     } catch (err) {
       console.error(err);
       setFormError(formatDraftTxError(err));
@@ -368,13 +409,14 @@ function DraftEscalateForm({
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          disabled={disabled}
+          disabled={disabled || !hasActionBundle}
           className="btn-primary"
         >
           {isPending || isUploading ? "Submitting..." : "Escalate"}
         </button>
         {!isConnected ? <span className="text-xs text-destructive">Connect a wallet to escalate.</span> : null}
         {hasProposal ? <span className="text-xs text-muted-foreground">Proposal already escalated.</span> : null}
+        {!hasActionBundle ? <span className="text-xs text-destructive">Action bundle required before escalation.</span> : null}
         {error ? <span className="text-xs text-destructive">{error.message ?? "Transaction failed"}</span> : null}
         {formMessage ? <span className="text-xs text-emerald-600">{formMessage}</span> : null}
         {formError ? <span className="text-xs text-destructive">{formError}</span> : null}
@@ -468,6 +510,50 @@ function formatDraftTxError(err: unknown) {
     return "Review period not met yet.";
   }
   return message.replace(/execution reverted: ?/i, "");
+}
+
+function parseEscalatedProposalId(logs: Array<{ data?: Hex; topics?: Hex[] }>): string | null {
+  for (const log of logs as Array<{ data?: Hex; topics?: Hex[]; proposalId?: bigint | string | number }>) {
+    if (typeof log.proposalId === "bigint") {
+      return log.proposalId.toString();
+    }
+    if (typeof log.proposalId === "number" && Number.isFinite(log.proposalId)) {
+      return String(log.proposalId);
+    }
+    if (typeof log.proposalId === "string" && log.proposalId.length > 0) {
+      return log.proposalId;
+    }
+
+    if (!log.data || !log.topics) continue;
+
+    try {
+      const decoded = decodeEventLog({
+        abi: COMMUNITY_MODULE_ABIS.draftsManager,
+        data: log.data,
+        topics: log.topics,
+        strict: false
+      });
+
+      if (decoded.eventName !== "ProposalEscalated") continue;
+
+      const candidate = (decoded.args as { proposalId?: bigint }).proposalId;
+      if (typeof candidate === "bigint") {
+        return candidate.toString();
+      }
+    } catch {
+      // Ignore non-matching logs and continue scanning.
+    }
+  }
+
+  return null;
+}
+
+function usePublicClientCompat() {
+  const publicClient = usePublicClient();
+  if (!publicClient) {
+    throw new Error("Public client unavailable");
+  }
+  return publicClient;
 }
 
 function isIpfsDocumentResponse(value: unknown): value is {

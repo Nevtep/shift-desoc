@@ -37,18 +37,19 @@ function derivePanelState(args: {
   health: "synced" | "lagging" | "error" | "unknown";
   viewAllHref: string;
   createHref: string;
-  ctasEnabled: boolean;
+  viewAllEnabled: boolean;
+  createEnabled: boolean;
 }): ActivityPanelState {
   const viewAll = {
     href: args.viewAllHref,
-    enabled: args.ctasEnabled,
-    comingSoon: !args.ctasEnabled
+    enabled: args.viewAllEnabled,
+    comingSoon: !args.viewAllEnabled
   };
 
   const create = {
     href: args.createHref,
-    enabled: args.ctasEnabled,
-    comingSoon: !args.ctasEnabled
+    enabled: args.createEnabled,
+    comingSoon: !args.createEnabled
   };
 
   if (args.loading) {
@@ -174,7 +175,8 @@ export function useCommunityOverviewActivity(communityId: number, healthOverride
         health: healthState,
         viewAllHref: routes.previews.requests.viewAll,
         createHref: routes.previews.requests.create,
-        ctasEnabled: true
+        viewAllEnabled: true,
+        createEnabled: true
       }),
       drafts: derivePanelState({
         domain: "drafts",
@@ -184,7 +186,8 @@ export function useCommunityOverviewActivity(communityId: number, healthOverride
         health: healthState,
         viewAllHref: routes.previews.drafts.viewAll,
         createHref: routes.previews.drafts.create,
-        ctasEnabled: true
+        viewAllEnabled: true,
+        createEnabled: true
       }),
       proposals: derivePanelState({
         domain: "proposals",
@@ -194,7 +197,8 @@ export function useCommunityOverviewActivity(communityId: number, healthOverride
         health: healthState,
         viewAllHref: routes.previews.proposals.viewAll,
         createHref: routes.previews.proposals.create,
-        ctasEnabled: false
+        viewAllEnabled: true,
+        createEnabled: false
       })
     };
   }, [draftItems, drafts.isError, drafts.isLoading, healthState, proposalItems, proposals.isError, proposals.isLoading, requestItems, requests.isError, requests.isLoading, routes.previews.drafts.create, routes.previews.drafts.viewAll, routes.previews.proposals.create, routes.previews.proposals.viewAll, routes.previews.requests.create, routes.previews.requests.viewAll]);

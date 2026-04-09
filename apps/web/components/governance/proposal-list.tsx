@@ -10,13 +10,15 @@ import {
   type ProposalNode,
   type ProposalsQueryResult
 } from "../../lib/graphql/queries";
+import { proposalStatusBadgeLabel } from "../../lib/governance/proposal-status";
 import { useToast } from "../ui/toaster";
 
 export type ProposalListProps = {
   communityId?: string | number;
+  detailHrefBasePath?: string;
 };
 
-export function ProposalList({ communityId }: ProposalListProps) {
+export function ProposalList({ communityId, detailHrefBasePath }: ProposalListProps) {
   const communityIdNumber = typeof communityId === "string" ? Number(communityId) : communityId;
   const variables = Number.isFinite(communityIdNumber) ? { communityId: Number(communityIdNumber) } : undefined;
 
@@ -38,7 +40,14 @@ export function ProposalList({ communityId }: ProposalListProps) {
   );
 
   useEffect(() => {
-    const nextNodes = data?.proposals.nodes ?? [];
+    const nextNodes = (data?.proposals.nodes ?? []).filter((node) => {
+      if (!Number.isFinite(communityIdNumber)) {
+        return true;
+      }
+
+      return Number(node.communityId) === Number(communityIdNumber);
+    });
+
     if (!nextNodes.length) return;
     setProposals((prev) => {
       const seen = new Set(prev.map((p) => p.id));
@@ -78,7 +87,15 @@ export function ProposalList({ communityId }: ProposalListProps) {
     <div className="space-y-3">
       <ul className="space-y-3">
         {proposals.map((proposal) => (
-          <ProposalListItem key={proposal.id} proposal={proposal} />
+          <ProposalListItem
+            key={proposal.id}
+            proposal={proposal}
+            detailHref={
+              detailHrefBasePath
+                ? `${detailHrefBasePath}/${proposal.id}`
+                : `/governance/proposals/${proposal.id}`
+            }
+          />
         ))}
       </ul>
       <div className="flex items-center gap-3">
@@ -100,7 +117,9 @@ export function ProposalList({ communityId }: ProposalListProps) {
   );
 }
 
-function ProposalListItem({ proposal }: { proposal: ProposalNode }) {
+function ProposalListItem({ proposal, detailHref }: { proposal: ProposalNode; detailHref: string }) {
+  const statusLabel = proposalStatusBadgeLabel(proposal.state);
+
   return (
     <li className="card">
       <div className="flex flex-col gap-2">
@@ -110,9 +129,9 @@ function ProposalListItem({ proposal }: { proposal: ProposalNode }) {
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium">Proposal {proposal.id}</span>
-          <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{proposal.state}</span>
+          <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{statusLabel}</span>
         </div>
-        <Link className="text-sm underline" href={`/governance/proposals/${proposal.id}`}>
+        <Link className="text-sm underline" href={detailHref}>
           View details
         </Link>
       </div>
