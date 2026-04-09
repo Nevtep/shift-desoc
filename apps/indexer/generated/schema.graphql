@@ -313,6 +313,10 @@ type drafts {
   communityId: Int!
   requestId: Int!
   status: String!
+  targets: JSON!
+  values: JSON!
+  calldatas: JSON!
+  actionsHash: String!
   latestVersionCid: String
   escalatedProposalId: String
   createdAt: String!
@@ -372,6 +376,16 @@ input draftsFilter {
   status_ends_with: String
   status_not_starts_with: String
   status_not_ends_with: String
+  actionsHash: String
+  actionsHash_not: String
+  actionsHash_in: [String]
+  actionsHash_not_in: [String]
+  actionsHash_contains: String
+  actionsHash_not_contains: String
+  actionsHash_starts_with: String
+  actionsHash_ends_with: String
+  actionsHash_not_starts_with: String
+  actionsHash_not_ends_with: String
   latestVersionCid: String
   latestVersionCid_not: String
   latestVersionCid_in: [String]

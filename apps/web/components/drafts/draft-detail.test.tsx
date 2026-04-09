@@ -15,7 +15,7 @@ describe("DraftDetail", () => {
 
     const content = await screen.findAllByText(/Draft content/i);
     expect(content.length).toBeGreaterThan(0);
-    expect(screen.getByText(/Draft 10/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Draft 10$/i)).toBeInTheDocument();
     expect(screen.queryByText(/No markdown content available/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/No reviews submitted yet/i)).not.toBeInTheDocument();
   });

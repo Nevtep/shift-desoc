@@ -472,6 +472,7 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
   const now = toDate(event.block.timestamp);
   const draftId = Number(event.args.draftId);
   const draftKey = buildDraftId(resolved.communityId, draftId);
+  const actionBundle = await readDraftActionBundleOrFallback({ context, event, draftId });
 
   await context.db
     .insert(drafts)
@@ -481,6 +482,10 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
       communityId: resolved.communityId,
       requestId: Number(event.args.requestId),
       status: draftStatuses[0],
+      targets: actionBundle.targets,
+      values: actionBundle.values,
+      calldatas: actionBundle.calldatas,
+      actionsHash: actionBundle.actionsHash,
       latestVersionCid: event.args.versionCID,
       escalatedProposalId: null,
       createdAt: now,
@@ -490,6 +495,10 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
       communityId: resolved.communityId,
       requestId: Number(event.args.requestId),
       status: draftStatuses[0],
+      targets: actionBundle.targets,
+      values: actionBundle.values,
+      calldatas: actionBundle.calldatas,
+      actionsHash: actionBundle.actionsHash,
       latestVersionCid: event.args.versionCID,
       updatedAt: now,
     });
@@ -507,6 +516,95 @@ ponder.on("DraftsManager:DraftCreated", async ({ event, context }) => {
     })
     .onConflictDoNothing();
 });
+
+async function readDraftActionBundleOrFallback({
+  context,
+  event,
+  draftId,
+}: {
+  context: any;
+  event: any;
+  draftId: number;
+}) {
+  const fallbackHash = String(event.args.actionsHash ?? "0x");
+
+  try {
+    const onchainDraft = await context.client.readContract({
+      abi: event.abi,
+      address: event.log.address,
+      functionName: "getDraft",
+      args: [BigInt(draftId)],
+    });
+
+    const tuple = onchainDraft as {
+      actions?: {
+        targets?: string[];
+        values?: bigint[];
+        calldatas?: string[];
+        actionsHash?: string;
+      };
+      [index: number]: unknown;
+    };
+
+    const actionsTuple = (tuple.actions ?? tuple[4] ?? {}) as {
+      targets?: unknown;
+      values?: unknown;
+      calldatas?: unknown;
+      actionsHash?: unknown;
+      [index: number]: unknown;
+    };
+
+    const targets = Array.isArray(actionsTuple.targets)
+      ? actionsTuple.targets.map((value) => String(value))
+      : Array.isArray(actionsTuple[0])
+      ? (actionsTuple[0] as unknown[]).map((value) => String(value))
+      : [];
+
+    const valuesRaw = Array.isArray(actionsTuple.values)
+      ? actionsTuple.values
+      : Array.isArray(actionsTuple[1])
+      ? (actionsTuple[1] as unknown[])
+      : [];
+
+    const values = valuesRaw.map((value) => {
+      if (typeof value === "bigint") return value.toString();
+      if (typeof value === "number") return Math.trunc(value).toString();
+      return String(value);
+    });
+
+    const calldatas = Array.isArray(actionsTuple.calldatas)
+      ? actionsTuple.calldatas.map((value) => String(value))
+      : Array.isArray(actionsTuple[2])
+      ? (actionsTuple[2] as unknown[]).map((value) => String(value))
+      : [];
+
+    const actionsHashCandidate =
+      typeof actionsTuple.actionsHash === "string"
+        ? actionsTuple.actionsHash
+        : typeof actionsTuple[3] === "string"
+        ? String(actionsTuple[3])
+        : fallbackHash;
+
+    return {
+      targets,
+      values,
+      calldatas,
+      actionsHash: actionsHashCandidate,
+    };
+  } catch (error) {
+    console.warn("[indexer] failed to enrich draft action bundle from chain, using fallback", {
+      draftId,
+      error,
+    });
+
+    return {
+      targets: [],
+      values: [],
+      calldatas: [],
+      actionsHash: fallbackHash,
+    };
+  }
+}
 
 ponder.on("DraftsManager:VersionSnapshot", async ({ event, context }) => {
   const resolved = await resolveOrAlert(context, event, "DraftsManager");
