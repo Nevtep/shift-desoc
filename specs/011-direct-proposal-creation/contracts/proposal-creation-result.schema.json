@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift/specs/011/proposal-creation-result.schema.json",
+  "title": "ProposalCreationResult",
+  "type": "object",
+  "required": [
+    "success",
+    "txHash",
+    "recoverySource",
+    "communityId",
+    "governorAddress",
+    "confirmedAt"
+  ],
+  "properties": {
+    "success": {
+      "type": "boolean"
+    },
+    "txHash": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{64}$"
+    },
+    "proposalId": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]+$"
+    },
+    "recoverySource": {
+      "type": "string",
+      "enum": ["event_log", "deterministic_read", "unresolved"]
+    },
+    "communityId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "governorAddress": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{40}$"
+    },
+    "confirmedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

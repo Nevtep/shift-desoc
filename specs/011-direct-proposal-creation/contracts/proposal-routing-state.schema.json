@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift/specs/011/proposal-routing-state.schema.json",
+  "title": "ProposalRoutingState",
+  "type": "object",
+  "required": [
+    "destination",
+    "href",
+    "txHash",
+    "indexLagHint",
+    "userMessage"
+  ],
+  "properties": {
+    "destination": {
+      "type": "string",
+      "enum": ["proposal_detail", "proposal_list_fallback"]
+    },
+    "href": {
+      "type": "string",
+      "pattern": "^/communities/[0-9]+/governance/proposals(/.*)?$"
+    },
+    "proposalId": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]+$"
+    },
+    "txHash": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{64}$"
+    },
+    "indexLagHint": {
+      "type": "boolean"
+    },
+    "userMessage": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "destination": { "const": "proposal_detail" }
+        }
+      },
+      "then": {
+        "required": ["proposalId"],
+        "properties": {
+          "proposalId": { "type": "string", "pattern": "^[0-9]+$" }
+        }
+      }
+    }
+  ]
+}

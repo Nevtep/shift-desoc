@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift/specs/011/direct-proposal-intent.schema.json",
+  "title": "DirectProposalIntent",
+  "type": "object",
+  "required": [
+    "communityId",
+    "governorAddress",
+    "mode",
+    "targets",
+    "values",
+    "calldatas",
+    "description",
+    "createdAt"
+  ],
+  "properties": {
+    "communityId": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "governorAddress": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{40}$"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["binary", "multi_choice"]
+    },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^0x[a-fA-F0-9]{40}$"
+      }
+    },
+    "values": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9]+$"
+      }
+    },
+    "calldatas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^0x([a-fA-F0-9]{2})*$"
+      }
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "numOptions": {
+      "type": ["integer", "null"],
+      "minimum": 2
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": { "const": "multi_choice" }
+        }
+      },
+      "then": {
+        "required": ["numOptions"]
+      }
+    }
+  ]
+}
