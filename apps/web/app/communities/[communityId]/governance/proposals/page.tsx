@@ -22,7 +22,12 @@ export default async function CommunityProposalsPage({ params }: PageProps) {
       <header className="space-y-2">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">Governance Proposals</h1>
-          <span className="rounded bg-muted px-2 py-1 text-xs uppercase tracking-wide">Community #{safeCommunityId}</span>
+          <div className="flex items-center gap-2">
+            <span className="rounded bg-muted px-2 py-1 text-xs uppercase tracking-wide">Community #{safeCommunityId}</span>
+            <Link className="btn-primary" href={`/communities/${safeCommunityId}/governance/proposals/new`}>
+              Create proposal
+            </Link>
+          </div>
         </div>
         <div>
           <Link className="text-sm underline" href={`/communities/${safeCommunityId}/governance`}>

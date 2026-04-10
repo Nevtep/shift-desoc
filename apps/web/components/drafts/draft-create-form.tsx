@@ -46,7 +46,8 @@ import {
   type ActionTargetId
 } from "../../lib/actions/registry";
 
-type PreparedAction = {
+export type PreparedAction = {
+  targetId?: ActionTargetId;
   target: Address;
   value: bigint;
   calldata: Hex;
@@ -425,7 +426,7 @@ export function DraftCreateForm({
   );
 }
 
-function GuidedActionBuilder({
+export function GuidedActionBuilder({
   targetAvailability,
   allowlistedSignatureMap,
   resolveTargetAddress,
@@ -483,6 +484,7 @@ function GuidedActionBuilder({
     try {
       const encoded = encodeGuidedTemplateCalldata(selectedTemplate, form.inputValues);
       onAddAction({
+        targetId: selectedTemplate.targetId,
         target,
         value: 0n,
         calldata: encoded.calldata,
@@ -563,7 +565,7 @@ function GuidedActionBuilder({
   );
 }
 
-function ExpertActionBuilder({
+export function ExpertActionBuilder({
   targetAvailability,
   allowlistedSignatureMap,
   resolveTargetAddress,
@@ -766,6 +768,7 @@ function ExpertActionBuilder({
       });
 
       const prepared: PreparedAction = {
+        targetId: form.targetId,
         target: resolved,
         value,
         calldata,
@@ -885,7 +888,7 @@ function ExpertActionBuilder({
   );
 }
 
-function ActionsTable({
+export function ActionsTable({
   actions,
   onRemove,
   onMove

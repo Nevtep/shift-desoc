@@ -101,10 +101,10 @@ As a governance user, I receive clear, actionable outcomes for rejected signatur
 - **FR-001**: Manager MUST provide a direct proposal creation path in community-scoped Governance UI that uses the existing composer action bundle output.
 - **FR-002**: Direct proposal creation MUST submit through ShiftGovernor proposal creation flow and MUST NOT depend on DraftsManager.escalateToProposal.
 - **FR-003**: Submission payload MUST include exactly the composer-generated targets, values, calldatas, and description/metadata fields required by existing governance flow.
-- **FR-004**: Direct proposal creation MUST enforce existing allowlist/composer constraints; only currently permitted actions may be submitted.
-- **FR-005**: System MUST NOT widen allowed targets/functions heuristically at submit time.
+- **FR-004**: Direct proposal creation MUST enforce existing allowlist/composer constraints at pre-submit time; only currently permitted actions may be submitted.
+- **FR-005**: System MUST NOT mutate or widen the composer-produced payload (targets, values, calldatas, description) heuristically at submit time.
 - **FR-006**: Community scoping and governor resolution MUST be exact; submission MUST be blocked when community/governor context is mismatched.
-- **FR-007**: After successful submit confirmation, system MUST recover proposalId from transaction result path used by current governance infrastructure.
+- **FR-007**: After successful submit confirmation, system MUST recover proposalId using this ordered strategy: (1) decode governor creation events from receipt logs, (2) deterministic read fallback (`getProposalId`/`hashProposal`) from the submitted payload, (3) unresolved fallback route to community proposals list with txHash context.
 - **FR-008**: When proposal detail is immediately resolvable, system MUST navigate to community proposal detail.
 - **FR-009**: When proposal detail is not immediately resolvable, system MUST navigate to community proposals list with resilient success context and non-error fallback messaging.
 - **FR-010**: Wallet rejection MUST produce non-destructive failure handling with editable composer state preserved.
@@ -121,7 +121,7 @@ As a governance user, I receive clear, actionable outcomes for rejected signatur
 - **MR-003**: Proposal read/write state in Manager and indexer MUST map to canonical on-chain proposal state without introducing shadow authority.
 - **MR-004**: Role/authority model MUST remain Governor -> Timelock controlled execution path; direct proposal creation MUST not bypass governance authority boundaries.
 - **MR-005**: Community-governor resolution and scoping logic in Manager MUST reflect actual deployed module wiring and community registry data.
-- **MR-006**: Test impact MUST include unit/integration coverage for direct submit, proposalId recovery, fallback routing, and failure conditions.
+- **MR-006**: Test impact MUST include unit and integration coverage for direct submit, proposalId recovery, fallback routing, and failure conditions.
 
 ### Compatibility And Migration Requirements *(mandatory when applicable)*
 

@@ -15,7 +15,7 @@ Add a direct proposal creation path in community governance that submits compose
 **Testing**: Vitest + Testing Library + MSW unit tests in `apps/web/tests/unit/**`  
 **Target Platform**: Web Manager app (`apps/web`) with Base Sepolia-oriented staging network defaults  
 **Project Type**: Monorepo web feature (contracts/indexer primarily compatibility-validated)  
-**Performance Goals**: UI submit flow remains interactive and deterministic; post-submit routing resolves within existing UX tolerances (single tx confirmation cycle)  
+**Performance Goals**: Submit flow enters pending state in <=1s after user confirmation in unit/integration tests; post-submit routing decision (detail vs list fallback) resolves in <=2s after receipt parsing in mocked test conditions.
 **Constraints**: No contract source edits unless hard blocker; strict allowlist/no heuristic widening; exact community-governor context; preserve draft escalation behavior; indexer-first with safe chain fallback  
 **Scale/Scope**: Community-scoped governance submit flow plus related routes/components/tests/docs in `apps/web`
 
@@ -89,7 +89,7 @@ Ordered strategy after tx confirmation:
 ### G) Community Overview Activation
 
 - Enable proposals create CTA in overview activity model once route exists.
-- Keep exact route contract (`/communities/[id]/governance/proposals/new`) from existing routing allowlist tests.
+- Keep exact route contract (`/communities/[communityId]/governance/proposals/new`) from existing routing allowlist tests.
 
 ### H) Touched Files (Planned)
 
@@ -120,7 +120,7 @@ specs/011-direct-proposal-creation/
 │   ├── direct-proposal-intent.schema.json
 │   ├── proposal-creation-result.schema.json
 │   └── proposal-routing-state.schema.json
-└── tasks.md  # generated later by /speckit.tasks
+└── tasks.md  # generated via /speckit.tasks
 ```
 
 ### Source Code (repository root)
@@ -180,7 +180,7 @@ Planned work packages:
 3. Implement governor submit helper + proposalId recovery chain.
 4. Implement routing fallback and success/error messaging model.
 5. Enable community overview proposals create CTA.
-6. Add/refresh unit tests for success, lag fallback, reject, revert, mismatch, and duplicate submit lock.
+6. Add/refresh unit and integration tests for success, lag fallback, reject, revert, mismatch (including chain/provider mismatch), and duplicate submit lock.
 7. Run regression tests for draft escalation unchanged behavior.
 8. Update docs/status files conditionally per DT-001/DT-003.
 

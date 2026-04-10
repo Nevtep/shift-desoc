@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ActivityPanel } from "../../../components/communities/overview/activity-panel";
 
 describe("community overview proposals CTA", () => {
-  it("renders View all as enabled link and Create new as disabled button", () => {
+  it("renders View all and Create new as enabled links", () => {
     render(
       <ActivityPanel
         panel={{
@@ -13,7 +13,7 @@ describe("community overview proposals CTA", () => {
           items: [],
           canRetry: false,
           viewAll: { href: "/communities/9/governance/proposals", enabled: true, comingSoon: false },
-          create: { href: "/communities/9/governance/proposals/new", enabled: false, comingSoon: true }
+          create: { href: "/communities/9/governance/proposals/new", enabled: true, comingSoon: false }
         }}
       />
     );
@@ -22,6 +22,9 @@ describe("community overview proposals CTA", () => {
       "href",
       "/communities/9/governance/proposals"
     );
-    expect(screen.getByRole("button", { name: /create new.*coming soon/i })).toBeDisabled();
+    expect(screen.getByRole("link", { name: /create new/i })).toHaveAttribute(
+      "href",
+      "/communities/9/governance/proposals/new"
+    );
   });
 });

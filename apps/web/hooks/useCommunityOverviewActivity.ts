@@ -198,7 +198,7 @@ export function useCommunityOverviewActivity(communityId: number, healthOverride
         viewAllHref: routes.previews.proposals.viewAll,
         createHref: routes.previews.proposals.create,
         viewAllEnabled: true,
-        createEnabled: false
+        createEnabled: true
       })
     };
   }, [draftItems, drafts.isError, drafts.isLoading, healthState, proposalItems, proposals.isError, proposals.isLoading, requestItems, requests.isError, requests.isLoading, routes.previews.drafts.create, routes.previews.drafts.viewAll, routes.previews.proposals.create, routes.previews.proposals.viewAll, routes.previews.requests.create, routes.previews.requests.viewAll]);
