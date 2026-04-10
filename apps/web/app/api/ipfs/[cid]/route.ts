@@ -169,6 +169,36 @@ function normalizeDocument(raw: unknown): unknown {
     };
   }
 
+  if (maybe.type === "governanceProposal") {
+    const bodyMarkdown =
+      typeof maybe.bodyMarkdown === "string" && maybe.bodyMarkdown.length
+        ? maybe.bodyMarkdown
+        : (typeof maybe.body === "string" ? maybe.body : "");
+
+    const mode = maybe.mode === "multi_choice" ? "multi_choice" : "binary";
+    const numOptions =
+      typeof maybe.numOptions === "number" && Number.isFinite(maybe.numOptions)
+        ? Math.floor(maybe.numOptions)
+        : null;
+
+    return {
+      version: typeof maybe.version === "string" && maybe.version.length ? maybe.version : "1",
+      type: "governanceProposal",
+      title: typeof maybe.title === "string" ? maybe.title : "Untitled proposal",
+      summary: typeof maybe.summary === "string" ? maybe.summary : undefined,
+      bodyMarkdown,
+      mode,
+      numOptions,
+      communityId:
+        typeof maybe.communityId === "number" && Number.isFinite(maybe.communityId)
+          ? Math.floor(maybe.communityId)
+          : undefined,
+      actions: Array.isArray(maybe.actions) ? maybe.actions : [],
+      createdAt: coerceIsoDate(maybe.createdAt),
+      createdBy: maybe.createdBy
+    };
+  }
+
   return raw;
 }
 

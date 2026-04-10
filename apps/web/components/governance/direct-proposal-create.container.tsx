@@ -57,7 +57,10 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
   const [composerMode, setComposerMode] = useState<"guided" | "expert">("guided");
   const [proposalMode, setProposalMode] = useState<"binary" | "multi_choice">("binary");
   const [numOptions, setNumOptions] = useState(2);
+  const [title, setTitle] = useState("");
+  const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
+  const [isUploadingMetadata, setIsUploadingMetadata] = useState(false);
   const [actions, setActions] = useState<PreparedAction[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -112,6 +115,42 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
     });
   }
 
+  async function uploadProposalMetadata() {
+    const payload = {
+      type: "governanceProposal",
+      version: "1",
+      title: title.trim(),
+      summary: summary.trim(),
+      bodyMarkdown: description.trim(),
+      mode: proposalMode,
+      numOptions: proposalMode === "multi_choice" ? numOptions : null,
+      communityId,
+      createdAt: new Date().toISOString(),
+      actions: actions.map((action) => ({
+        target: action.target,
+        value: action.value.toString(),
+        calldata: action.calldata,
+        functionSignature: action.functionSignature,
+        targetId: action.targetId,
+        targetLabel: action.targetLabel,
+        argsPreview: action.argsPreview
+      }))
+    };
+
+    const response = await fetch("/api/ipfs/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payload })
+    });
+
+    const json = (await response.json()) as { cid?: string; error?: string };
+    if (!response.ok || !json.cid) {
+      throw new Error(json.error ?? "Failed to upload proposal metadata to IPFS");
+    }
+
+    return json.cid;
+  }
+
   async function handleSubmit() {
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -126,8 +165,18 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
       return;
     }
 
+    if (!title.trim()) {
+      setErrorMessage("Proposal title is required.");
+      return;
+    }
+
+    if (!summary.trim()) {
+      setErrorMessage("Proposal summary is required.");
+      return;
+    }
+
     if (!description.trim()) {
-      setErrorMessage("Proposal description is required.");
+      setErrorMessage("Proposal details are required.");
       return;
     }
 
@@ -136,7 +185,7 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
       return;
     }
 
-    const intent = {
+    const rawIntent = {
       communityId,
       governorAddress: modules.governor,
       mode: proposalMode,
@@ -149,7 +198,7 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
     } as const;
 
     const allowlistGuard = validateComposerAllowlist({
-      intent,
+      intent: rawIntent,
       chainId,
       moduleAddressMap,
       allowlistedSignaturesByTarget
@@ -167,6 +216,16 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
 
     try {
       setIsSubmitting(true);
+      setIsUploadingMetadata(true);
+      setStatusMessage("Uploading proposal metadata to IPFS...");
+
+      const proposalCid = await uploadProposalMetadata();
+      const intent = {
+        ...rawIntent,
+        description: proposalCid
+      };
+
+      setIsUploadingMetadata(false);
       setStatusMessage("Preparing wallet confirmation...");
 
       const result = await submitDirectProposal({
@@ -184,9 +243,13 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
       setStatusMessage(result.routing.userMessage);
       setSuccessMessage(
         result.creation.proposalId !== null
-          ? `Proposal created: ${result.creation.proposalId.toString()}`
-          : `Transaction confirmed: ${result.creation.txHash}`
+          ? `Proposal created: ${result.creation.proposalId.toString()} (CID: ${proposalCid})`
+          : `Transaction confirmed: ${result.creation.txHash} (CID: ${proposalCid})`
       );
+
+      setTitle("");
+      setSummary("");
+      setDescription("");
 
       router.push(result.routing.href as never);
     } catch (error) {
@@ -194,6 +257,7 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
       setErrorMessage(mapped.message);
       setStatusMessage(null);
     } finally {
+      setIsUploadingMetadata(false);
       setIsSubmitting(false);
     }
   }
@@ -221,15 +285,19 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
       composerMode={composerMode}
       proposalMode={proposalMode}
       numOptions={numOptions}
+      title={title}
+      summary={summary}
       description={description}
       actions={actions}
-      isSubmitting={isSubmitting}
+      isSubmitting={isSubmitting || isUploadingMetadata}
       errorMessage={errorMessage}
       successMessage={successMessage}
       statusMessage={statusMessage}
       onComposerModeChange={setComposerMode}
       onProposalModeChange={setProposalMode}
       onNumOptionsChange={setNumOptions}
+      onTitleChange={setTitle}
+      onSummaryChange={setSummary}
       onDescriptionChange={setDescription}
       onSubmit={() => void handleSubmit()}
       onRemoveAction={handleRemoveAction}

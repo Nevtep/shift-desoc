@@ -605,13 +605,46 @@ export function ExpertActionBuilder({
     setForm({ value: "0", paramValues: {}, tupleArrayCounts: {} });
   }
 
-  function parseScalar(type: string, raw: string): unknown {
+  function parseScalar(type: string, raw: string, fieldKey?: string): unknown {
     const trimmed = raw.trim();
     if (type.startsWith("uint")) return BigInt(trimmed || "0");
     if (type === "bool") return trimmed.toLowerCase() === "true";
     if (type === "address") return trimmed as Address;
     if (type.startsWith("bytes")) {
-      return (trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`) as Hex;
+      const fieldLabel = fieldKey ?? "bytes field";
+      const normalized = (trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`) as Hex;
+      const fixedBytesMatch = /^bytes([1-9]|[12][0-9]|3[0-2])$/.exec(type);
+
+      if (type === "bytes") {
+        if (!trimmed) return "0x" as Hex;
+        if (!/^0x[0-9a-fA-F]*$/.test(normalized)) {
+          throw new Error(`Invalid hex value for ${fieldLabel}`);
+        }
+        if ((normalized.length - 2) % 2 !== 0) {
+          throw new Error(`Hex value for ${fieldLabel} must contain full bytes`);
+        }
+        return normalized;
+      }
+
+      if (fixedBytesMatch) {
+        const expectedBytes = Number(fixedBytesMatch[1]);
+        if (!trimmed) {
+          throw new Error(`Missing value for ${fieldLabel} (${type})`);
+        }
+        if (!/^0x[0-9a-fA-F]*$/.test(normalized)) {
+          throw new Error(`Invalid hex value for ${fieldLabel} (${type})`);
+        }
+        if ((normalized.length - 2) % 2 !== 0) {
+          throw new Error(`Hex value for ${fieldLabel} (${type}) must contain full bytes`);
+        }
+        const actualBytes = (normalized.length - 2) / 2;
+        if (actualBytes !== expectedBytes) {
+          throw new Error(`Size of ${fieldLabel} (${type}) must be exactly ${expectedBytes} bytes`);
+        }
+        return normalized;
+      }
+
+      return normalized;
     }
     return trimmed;
   }
@@ -651,10 +684,10 @@ export function ExpertActionBuilder({
       const base = param.type.slice(0, -2);
       const raw = getParamValue(baseKey);
       if (!raw.trim()) return [];
-      return raw.split(",").map((item) => parseScalar(base, item));
+      return raw.split(",").map((item) => parseScalar(base, item, baseKey));
     }
     const raw = getParamValue(baseKey);
-    return parseScalar(param.type, raw);
+    return parseScalar(param.type, raw, baseKey);
   }
 
   function describeArgs(inputs: AbiFunction["inputs"], paramValues: Record<string, string>) {

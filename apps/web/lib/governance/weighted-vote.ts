@@ -1,4 +1,6 @@
 export const TOTAL_BPS = 10_000;
+const BPS_SCALE = 10_000n;
+const WEIGHT_SCALE_1E18 = 1_000_000_000_000_000_000n;
 
 export function sumBps(weights: number[]): number {
   return weights.reduce((acc, value) => acc + value, 0);
@@ -28,5 +30,5 @@ export function percentToBps(value: string): number {
 }
 
 export function toContractWeightsBps(weights: number[]): bigint[] {
-  return weights.map((weight) => BigInt(weight));
+  return weights.map((weight) => (BigInt(weight) * WEIGHT_SCALE_1E18) / BPS_SCALE);
 }

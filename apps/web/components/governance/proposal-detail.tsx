@@ -1,13 +1,13 @@
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
 
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { useIndexerHealth } from "../../hooks/useIndexerHealth";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
+import { formatDistanceToNowSafe } from "../../lib/date";
 import {
   type ProposalQueryResult,
   ProposalQuery
@@ -34,16 +34,33 @@ export type ProposalDetailProps = {
 };
 
 export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDetailProps) {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<ProposalQueryResult, { id: string }>(
-    ["proposal", proposalId],
+  const normalizedProposalId = useMemo(() => normalizeRouteParam(proposalId), [proposalId]);
+  const proposalNumericId = useMemo(() => extractOnchainProposalId(normalizedProposalId), [normalizedProposalId]);
+
+  const { data, isLoading, isError, error, refetch } = useGraphQLQuery<
+    ProposalQueryResult,
+    { id: string; proposalNumericId: string }
+  >(
+    ["proposal", normalizedProposalId, proposalNumericId],
     ProposalQuery,
-    { id: proposalId }
+    { id: normalizedProposalId, proposalNumericId }
   );
+  const queryErrorLoggedRef = useRef(false);
+  const missingProposalLoggedRef = useRef(false);
 
   const proposal = data?.proposal ?? null;
   const cid = proposal?.descriptionCid ?? undefined;
   const { data: ipfsData, isLoading: isIpfsLoading, isError: isIpfsError } = useIpfsDocument(cid, Boolean(cid));
   const ipfsDoc = useMemo(() => (isIpfsDocumentResponse(ipfsData) ? ipfsData : null), [ipfsData]);
+  const votes = useMemo(
+    () => data?.proposalVotes?.nodes ?? proposal?.votes ?? [],
+    [data?.proposalVotes?.nodes, proposal?.votes]
+  );
+  const onchainProposalId = useMemo(() => {
+    if (!proposal) return null;
+    return parseOnchainProposalId(proposal.proposalId ?? proposal.id);
+  }, [proposal]);
+  const actionPayload = useMemo(() => buildActionPayload(proposal, ipfsDoc?.data), [ipfsDoc?.data, proposal]);
 
   const statusLabel = proposalStatusBadgeLabel(proposal?.state);
   const mismatch =
@@ -58,6 +75,31 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
     : null;
 
   const fallbackListHref = `/communities/${proposal?.communityId ?? expectedCommunityId ?? 0}/governance/proposals`;
+
+  useEffect(() => {
+    queryErrorLoggedRef.current = false;
+    missingProposalLoggedRef.current = false;
+  }, [proposalId]);
+
+  useEffect(() => {
+    if (!isError || queryErrorLoggedRef.current) return;
+    console.error("[ProposalDetail] Failed to load proposal query", {
+      proposalId: normalizedProposalId,
+      expectedCommunityId,
+      error
+    });
+    queryErrorLoggedRef.current = true;
+  }, [error, expectedCommunityId, isError, normalizedProposalId]);
+
+  useEffect(() => {
+    if (isLoading || isError || proposal || missingProposalLoggedRef.current) return;
+    console.error("[ProposalDetail] Proposal payload is null", {
+      proposalId: normalizedProposalId,
+      expectedCommunityId,
+      data
+    });
+    missingProposalLoggedRef.current = true;
+  }, [data, expectedCommunityId, isError, isLoading, normalizedProposalId, proposal]);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading proposal...</p>;
@@ -96,7 +138,7 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
             <MetadataItem label="State" value={statusLabel} />
             <MetadataItem
               label="Created"
-              value={formatDistanceToNow(new Date(proposal.createdAt), { addSuffix: true })}
+              value={formatDistanceToNowSafe(proposal.createdAt)}
             />
           </dl>
         </div>
@@ -108,11 +150,14 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
 
       <section className="space-y-3">
         <VoteForm
-          proposalId={proposal.id}
+          onchainProposalId={onchainProposalId}
           communityId={Number(proposal.communityId)}
           multiChoiceOptions={proposal.multiChoiceOptions ?? []}
           proposalState={statusLabel}
           listHref={fallbackListHref}
+          onVoteConfirmed={() => {
+            void refetch();
+          }}
         />
       </section>
 
@@ -130,8 +175,40 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
       </section>
 
       <section className="space-y-3">
+        <h2 className="text-lg font-medium">Action Payload</h2>
+        {actionPayload.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="py-2">#</th>
+                  <th>Target</th>
+                  <th>Value</th>
+                  <th>Function</th>
+                  <th>Calldata</th>
+                </tr>
+              </thead>
+              <tbody>
+                {actionPayload.map((action, index) => (
+                  <tr key={`${action.target}-${index}`} className="border-t border-border align-top">
+                    <td className="py-2 text-muted-foreground">{index + 1}</td>
+                    <td className="py-2 font-mono text-xs text-foreground">{action.target}</td>
+                    <td className="py-2 text-muted-foreground">{action.value}</td>
+                    <td className="py-2 text-muted-foreground">{action.functionSignature ?? "N/A"}</td>
+                    <td className="py-2 font-mono text-xs text-muted-foreground break-all">{action.calldata}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No on-chain actions found for this proposal.</p>
+        )}
+      </section>
+
+      <section className="space-y-3">
         <h2 className="text-lg font-medium">Votes</h2>
-        {(proposal.votes ?? []).length ? (
+        {votes.length ? (
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -142,12 +219,12 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
               </tr>
             </thead>
             <tbody>
-              {(proposal.votes ?? []).map((vote, index) => (
+              {votes.map((vote, index) => (
                 <tr key={`${vote.voter}-${index}`} className="border-t border-border">
                   <td className="py-2 align-top font-medium">{vote.voter}</td>
                   <td className="py-2 align-top text-muted-foreground">{vote.weight}</td>
                   <td className="py-2 align-top text-muted-foreground">{formatVoteOption(vote.optionIndex)}</td>
-                  <td className="py-2 align-top text-muted-foreground">{formatDistanceToNow(new Date(vote.castAt), { addSuffix: true })}</td>
+                  <td className="py-2 align-top text-muted-foreground">{formatDistanceToNowSafe(vote.castAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -166,6 +243,10 @@ function ReadinessPanel({ proposal }: { proposal: NonNullable<ProposalQueryResul
   const { modules } = useCommunityModules({ communityId: Number(proposal.communityId), chainId, enabled: true });
   const health = useIndexerHealth(new Date().toISOString());
   const governorAddress = modules?.governor;
+  const onchainProposalId = useMemo(
+    () => parseOnchainProposalId(proposal.proposalId ?? proposal.id),
+    [proposal.id, proposal.proposalId]
+  );
 
   const [readiness, setReadiness] = useState<ProposalReadiness>(() =>
     deriveReadinessFromIndexer({
@@ -189,7 +270,7 @@ function ReadinessPanel({ proposal }: { proposal: NonNullable<ProposalQueryResul
       indexerHealth: health.state
     });
 
-    if (staleReason === "none" || !publicClient || !governorAddress) {
+    if (staleReason === "none" || !publicClient || !governorAddress || onchainProposalId === null) {
       setReadiness(indexerReadiness);
       return;
     }
@@ -204,19 +285,19 @@ function ReadinessPanel({ proposal }: { proposal: NonNullable<ProposalQueryResul
           address: governorAddress,
           abi: COMMUNITY_MODULE_ABIS.governor,
           functionName: "state",
-          args: [BigInt(proposal.id)]
+          args: [onchainProposalId]
         } as any),
         fallbackClient.readContract({
           address: governorAddress,
           abi: COMMUNITY_MODULE_ABIS.governor,
           functionName: "proposalEta",
-          args: [BigInt(proposal.id)]
+          args: [onchainProposalId]
         } as any),
         fallbackClient.readContract({
           address: governorAddress,
           abi: COMMUNITY_MODULE_ABIS.governor,
           functionName: "proposalNeedsQueuing",
-          args: [BigInt(proposal.id)]
+          args: [onchainProposalId]
         } as any)
       ]);
 
@@ -248,7 +329,17 @@ function ReadinessPanel({ proposal }: { proposal: NonNullable<ProposalQueryResul
     return () => {
       cancelled = true;
     };
-  }, [governorAddress, health.state, proposal.executedAt, proposal.id, proposal.queuedAt, proposal.state, publicClient]);
+  }, [
+    governorAddress,
+    health.state,
+    onchainProposalId,
+    proposal.executedAt,
+    proposal.id,
+    proposal.proposalId,
+    proposal.queuedAt,
+    proposal.state,
+    publicClient
+  ]);
 
   return (
     <div className="card text-sm">
@@ -270,24 +361,33 @@ function ReadinessPanel({ proposal }: { proposal: NonNullable<ProposalQueryResul
 }
 
 function VoteForm({
-  proposalId,
+  onchainProposalId,
   communityId,
   multiChoiceOptions,
   proposalState,
-  listHref
+  listHref,
+  onVoteConfirmed
 }: {
-  proposalId: string;
+  onchainProposalId: bigint | null;
   communityId: number;
   multiChoiceOptions: string[];
   proposalState: string;
   listHref: string;
+  onVoteConfirmed: () => void;
 }) {
   const chainId = useChainId();
-  const { status } = useAccount();
+  const { status, address } = useAccount();
+  const publicClient = usePublicClient();
   const { writeContractAsync, isPending, error } = useWriteContract();
   const { modules } = useCommunityModules({ communityId, chainId, enabled: true });
   const [reason, setReason] = useState("");
   const [uiMessage, setUiMessage] = useState<string | null>(null);
+  const [isMultiChoiceEnabled, setIsMultiChoiceEnabled] = useState<boolean | null>(
+    multiChoiceOptions.length ? true : null
+  );
+  const [isProposalActiveOnChain, setIsProposalActiveOnChain] = useState<boolean | null>(
+    proposalState.toLowerCase() === "active"
+  );
   const [weightsBps, setWeightsBps] = useState<number[]>(() => {
     const optionsCount = Math.max(multiChoiceOptions.length, 2);
     return Array.from({ length: optionsCount }, (_, idx) => (idx === 0 ? TOTAL_BPS : 0));
@@ -302,9 +402,71 @@ function VoteForm({
     setWeightsBps(Array.from({ length: Math.max(options.length, 2) }, (_, idx) => (idx === 0 ? TOTAL_BPS : 0)));
   }, [options.length]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!publicClient || !modules?.governor || onchainProposalId === null) {
+      setIsMultiChoiceEnabled(multiChoiceOptions.length ? true : null);
+      return;
+    }
+
+    (async () => {
+      try {
+        const raw = await publicClient.readContract({
+          address: modules.governor,
+          abi: COMMUNITY_MODULE_ABIS.governor,
+          functionName: "isMultiChoice",
+          args: [onchainProposalId]
+        } as any);
+
+        if (cancelled) return;
+        setIsMultiChoiceEnabled(raw === true || raw === 1n);
+      } catch {
+        if (cancelled) return;
+        setIsMultiChoiceEnabled(multiChoiceOptions.length ? true : null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [modules?.governor, multiChoiceOptions.length, onchainProposalId, publicClient]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!publicClient || !modules?.governor || onchainProposalId === null) {
+      setIsProposalActiveOnChain(proposalState.toLowerCase() === "active");
+      return;
+    }
+
+    (async () => {
+      try {
+        const state = await publicClient.readContract({
+          address: modules.governor,
+          abi: COMMUNITY_MODULE_ABIS.governor,
+          functionName: "state",
+          args: [onchainProposalId]
+        } as any);
+
+        if (cancelled) return;
+        setIsProposalActiveOnChain(state === 1n || state === 1);
+      } catch {
+        if (cancelled) return;
+        setIsProposalActiveOnChain(proposalState.toLowerCase() === "active");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [modules?.governor, onchainProposalId, proposalState, publicClient]);
+
   const isConnected = status === "connected";
   const totalBps = sumBps(weightsBps);
   const exactTotal = isExactTotalBps(weightsBps);
+  const voteMode = isMultiChoiceEnabled ?? (multiChoiceOptions.length > 0);
+  const canVoteNow = isProposalActiveOnChain ?? (proposalState.toLowerCase() === "active");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -320,16 +482,66 @@ function VoteForm({
       return;
     }
 
-    try {
-      setUiMessage("Vote pending wallet confirmation...");
-      const txHash = await writeContractAsync({
-        address: modules.governor,
-        abi: COMMUNITY_MODULE_ABIS.governor,
-        functionName: "castVoteMultiChoice",
-        args: [BigInt(proposalId), toContractWeightsBps(weightsBps), reason]
-      });
+    if (onchainProposalId === null) {
+      setUiMessage("Invalid proposal ID format.");
+      return;
+    }
 
-      setUiMessage(`Vote submitted: ${txHash}`);
+    try {
+      let txHash: `0x${string}`;
+
+      if (voteMode) {
+        const contractWeights = toContractWeightsBps(weightsBps);
+        const gas = await resolveVoteGasLimit({
+          publicClient,
+          account: address,
+          governor: modules.governor,
+          functionName: "castVoteMultiChoice",
+          args: [onchainProposalId, contractWeights, reason]
+        });
+
+        setUiMessage("Vote pending wallet confirmation...");
+        txHash = await writeContractAsync({
+          address: modules.governor,
+          abi: COMMUNITY_MODULE_ABIS.governor,
+          functionName: "castVoteMultiChoice",
+          args: [onchainProposalId, contractWeights, reason],
+          ...(gas ? { gas } : {})
+        });
+      } else {
+        const support = deriveBinarySupport(weightsBps);
+        const gas = await resolveVoteGasLimit({
+          publicClient,
+          account: address,
+          governor: modules.governor,
+          functionName: "castVoteWithReason",
+          args: [onchainProposalId, support, reason]
+        });
+
+        setUiMessage("Vote pending wallet confirmation...");
+        txHash = await writeContractAsync({
+          address: modules.governor,
+          abi: COMMUNITY_MODULE_ABIS.governor,
+          functionName: "castVoteWithReason",
+          args: [onchainProposalId, support, reason],
+          ...(gas ? { gas } : {})
+        });
+      }
+
+      setUiMessage(`Vote submitted: ${txHash}. Waiting for confirmation...`);
+
+      if (!publicClient) {
+        setUiMessage(`Vote submitted: ${txHash}. Unable to confirm receipt in this session.`);
+        return;
+      }
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status === "success") {
+        onVoteConfirmed();
+        setUiMessage(`Vote confirmed: ${txHash}. Refresh in a moment if indexer sync is still catching up.`);
+      } else {
+        setUiMessage(`Vote failed on-chain (reverted): ${txHash}`);
+      }
       setReason("");
     } catch (err) {
       setUiMessage(formatVoteError(err));
@@ -384,11 +596,12 @@ function VoteForm({
       </label>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={!isConnected || isPending || !exactTotal} className="btn-primary">
+        <button type="submit" disabled={!isConnected || isPending || !exactTotal || !canVoteNow} className="btn-primary">
           {isPending ? "Submitting..." : "Submit vote"}
         </button>
         {!isConnected ? <span className="text-xs text-destructive">Connect a wallet to vote.</span> : null}
         {!exactTotal ? <span className="text-xs text-destructive">Total must be exactly 10,000 bps.</span> : null}
+        {!canVoteNow ? <span className="text-xs text-destructive">Voting is not open yet. Proposal must be Active on-chain.</span> : null}
         {error ? <span className="text-xs text-destructive">{error.message ?? "Transaction failed"}</span> : null}
         {uiMessage ? <span className="text-xs text-muted-foreground">{uiMessage}</span> : null}
         <a className="text-xs underline" href={listHref}>
@@ -397,6 +610,48 @@ function VoteForm({
       </div>
     </form>
   );
+}
+
+const VOTE_GAS_FALLBACK = 900_000n;
+const VOTE_GAS_CAP = 3_000_000n;
+
+async function resolveVoteGasLimit({
+  publicClient,
+  account,
+  governor,
+  functionName,
+  args
+}: {
+  publicClient: ReturnType<typeof usePublicClient>;
+  account?: `0x${string}`;
+  governor: `0x${string}`;
+  functionName: "castVoteMultiChoice" | "castVoteWithReason";
+  args: readonly unknown[];
+}) {
+  if (!publicClient || !account) {
+    return undefined;
+  }
+
+  try {
+    const estimate = await publicClient.estimateContractGas({
+      account,
+      address: governor,
+      abi: COMMUNITY_MODULE_ABIS.governor,
+      functionName,
+      args
+    } as any);
+
+    const padded = (estimate * 12n) / 10n;
+    return padded > VOTE_GAS_CAP ? VOTE_GAS_CAP : padded;
+  } catch {
+    return VOTE_GAS_FALLBACK;
+  }
+}
+
+function deriveBinarySupport(weightsBps: number[]) {
+  const forVotes = weightsBps[0] ?? 0;
+  const againstVotes = weightsBps[1] ?? 0;
+  return againstVotes > forVotes ? 0 : 1;
 }
 
 function MetadataItem({ label, value }: { label: string; value?: string | null }) {
@@ -425,6 +680,14 @@ function formatVoteOption(optionIndex?: number | null) {
 function formatVoteError(err: unknown) {
   const message = err instanceof Error ? err.message : String(err);
   const lower = message.toLowerCase();
+
+  if (lower.includes("governoralreadycastvote") || lower.includes("already cast vote")) {
+    return "Your wallet already voted on this proposal.";
+  }
+
+  if (lower.includes("governorunexpectedproposalstate") || lower.includes("unexpected proposal state")) {
+    return "Voting is not open yet. Proposal is not Active on-chain.";
+  }
 
   if (lower.includes("user rejected") || lower.includes("rejected")) {
     return "Signature rejected.";
@@ -455,4 +718,72 @@ function isIpfsDocumentResponse(value: unknown): value is {
     retrievedAt?: unknown;
   };
   return Boolean(candidate.cid && "html" in candidate && "data" in candidate && candidate.type && candidate.version && candidate.retrievedAt);
+}
+
+function normalizeRouteParam(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function extractOnchainProposalId(value: string) {
+  return value.includes(":") ? (value.split(":").pop() ?? value) : value;
+}
+
+function parseOnchainProposalId(value: string) {
+  try {
+    return BigInt(extractOnchainProposalId(normalizeRouteParam(value)));
+  } catch {
+    return null;
+  }
+}
+
+type ActionPayloadRow = {
+  target: string;
+  value: string;
+  calldata: string;
+  functionSignature?: string;
+};
+
+function buildActionPayload(
+  proposal: ProposalQueryResult["proposal"],
+  ipfsData: unknown
+): ActionPayloadRow[] {
+  if (!proposal) return [];
+
+  const targets = proposal.targets ?? [];
+  const values = proposal.values ?? [];
+  const calldatas = proposal.calldatas ?? [];
+
+  const actionsFromIpfs = extractGovernanceActions(ipfsData);
+
+  return targets.map((target, index) => {
+    const ipfsAction = actionsFromIpfs[index];
+    return {
+      target,
+      value: values[index] ?? "0",
+      calldata: calldatas[index] ?? "0x",
+      functionSignature:
+        typeof ipfsAction?.functionSignature === "string"
+          ? ipfsAction.functionSignature
+          : undefined
+    };
+  });
+}
+
+function extractGovernanceActions(value: unknown): Array<{ functionSignature?: string }> {
+  if (!value || typeof value !== "object") return [];
+  const candidate = value as { type?: unknown; actions?: unknown };
+  if (candidate.type !== "governanceProposal") return [];
+  if (!Array.isArray(candidate.actions)) return [];
+  return candidate.actions
+    .filter((item): item is { functionSignature?: unknown } => Boolean(item && typeof item === "object"))
+    .map((item) => ({
+      functionSignature:
+        typeof item.functionSignature === "string" && item.functionSignature.length
+          ? item.functionSignature
+          : undefined
+    }));
 }

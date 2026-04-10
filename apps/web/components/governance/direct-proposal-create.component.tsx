@@ -10,6 +10,8 @@ type DirectProposalCreateComponentProps = {
   composerMode: ComposerMode;
   proposalMode: ProposalMode;
   numOptions: number;
+  title: string;
+  summary: string;
   description: string;
   actions: PreparedAction[];
   isSubmitting: boolean;
@@ -19,6 +21,8 @@ type DirectProposalCreateComponentProps = {
   onComposerModeChange: (mode: ComposerMode) => void;
   onProposalModeChange: (mode: ProposalMode) => void;
   onNumOptionsChange: (value: number) => void;
+  onTitleChange: (value: string) => void;
+  onSummaryChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onSubmit: () => void;
   onRemoveAction: (index: number) => void;
@@ -88,12 +92,34 @@ export function DirectProposalCreateComponent(props: DirectProposalCreateCompone
         ) : null}
 
         <label className="flex flex-col gap-1 text-sm sm:col-span-2">
-          <span className="text-muted-foreground">Proposal description</span>
+          <span className="text-muted-foreground">Proposal title</span>
+          <input
+            className="rounded border border-border bg-background px-3 py-2"
+            value={props.title}
+            onChange={(event) => props.onTitleChange(event.target.value)}
+            placeholder="Reduce review period latency"
+            disabled={props.isSubmitting}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="text-muted-foreground">Proposal summary</span>
+          <input
+            className="rounded border border-border bg-background px-3 py-2"
+            value={props.summary}
+            onChange={(event) => props.onSummaryChange(event.target.value)}
+            placeholder="Set review periods to minimum to accelerate moderation workflows."
+            disabled={props.isSubmitting}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="text-muted-foreground">Proposal details (Markdown)</span>
           <textarea
             className="min-h-[120px] rounded border border-border bg-background px-3 py-2"
             value={props.description}
             onChange={(event) => props.onDescriptionChange(event.target.value)}
-            placeholder="Use CID or markdown summary for deterministic proposal hash."
+            placeholder="Describe rationale, scope, risks, and expected outcomes."
             disabled={props.isSubmitting}
           />
         </label>

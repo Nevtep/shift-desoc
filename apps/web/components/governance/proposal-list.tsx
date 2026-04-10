@@ -1,10 +1,10 @@
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
+import { formatDistanceToNowSafe } from "../../lib/date";
 import {
   ProposalsQuery,
   type ProposalNode,
@@ -125,7 +125,7 @@ function ProposalListItem({ proposal, detailHref }: { proposal: ProposalNode; de
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span>Community {proposal.communityId}</span>
-          <span>Created {formatDistanceToNow(new Date(proposal.createdAt), { addSuffix: true })}</span>
+          <span>Created {formatDistanceToNowSafe(proposal.createdAt)}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium">Proposal {proposal.id}</span>

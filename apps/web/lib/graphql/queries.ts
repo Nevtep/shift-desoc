@@ -225,9 +225,10 @@ export type CommentsByRequestResult = {
 };
 
 export const ProposalQuery = /* GraphQL */ `
-  query Proposal($id: String!) {
+  query Proposal($id: String!, $proposalNumericId: String!) {
     proposal: proposals(id: $id) {
       id
+      proposalId
       communityId
       proposer
       descriptionCid
@@ -240,7 +241,14 @@ export const ProposalQuery = /* GraphQL */ `
       queuedAt
       executedAt
       multiChoiceOptions
-      votes {
+    }
+    proposalVotes: proposalVotess(
+      where: { proposalId: $proposalNumericId }
+      orderBy: "castAt"
+      orderDirection: "desc"
+      limit: 200
+    ) {
+      nodes: items {
         voter
         weight
         optionIndex
@@ -253,6 +261,7 @@ export const ProposalQuery = /* GraphQL */ `
 export type ProposalQueryResult = {
   proposal: {
     id: string;
+    proposalId?: string | null;
     communityId: number;
     proposer: string;
     descriptionCid?: string | null;
@@ -272,6 +281,14 @@ export type ProposalQueryResult = {
       castAt: string;
     }[];
   } | null;
+  proposalVotes?: {
+    nodes: {
+      voter: string;
+      weight: string;
+      optionIndex?: number | null;
+      castAt: string;
+    }[];
+  };
 };
 
 export const ProposalsQuery = /* GraphQL */ `

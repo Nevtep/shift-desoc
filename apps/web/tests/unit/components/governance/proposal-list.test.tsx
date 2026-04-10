@@ -63,4 +63,40 @@ describe("ProposalList", () => {
       });
     }
   });
+
+  it("renders a safe fallback when createdAt is invalid", async () => {
+    server.use(
+      graphql.query("Proposals", () => {
+        return HttpResponse.json({
+          data: {
+            proposals: {
+              nodes: [
+                {
+                  id: "900",
+                  communityId: 1,
+                  proposer: fixtures.community.id,
+                  state: "Active",
+                  createdAt: "not-a-date",
+                  queuedAt: null,
+                  executedAt: null
+                }
+              ],
+              pageInfo: { endCursor: null, hasNextPage: false }
+            }
+          }
+        });
+      })
+    );
+
+    renderWithProviders(
+      <ProposalList
+        communityId={1}
+        detailHrefBasePath="/communities/1/governance/proposals"
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Created Unknown/i)).toBeInTheDocument();
+    });
+  });
 });

@@ -11,6 +11,8 @@ describe("direct proposal composer reuse", () => {
         composerMode="guided"
         proposalMode="binary"
         numOptions={2}
+        title="Test proposal"
+        summary="Test summary"
         description="ipfs://desc"
         actions={[]}
         isSubmitting={false}
@@ -20,6 +22,8 @@ describe("direct proposal composer reuse", () => {
         onComposerModeChange={() => undefined}
         onProposalModeChange={() => undefined}
         onNumOptionsChange={() => undefined}
+        onTitleChange={() => undefined}
+        onSummaryChange={() => undefined}
         onDescriptionChange={() => undefined}
         onSubmit={() => undefined}
         onRemoveAction={() => undefined}

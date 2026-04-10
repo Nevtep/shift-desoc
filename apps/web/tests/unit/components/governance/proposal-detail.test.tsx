@@ -62,9 +62,18 @@ describe("ProposalDetail", () => {
     expect(screen.getByText(/exactly 10,000 bps/i)).toBeInTheDocument();
   });
 
-  it("shows pending then submitted state on vote success", async () => {
+  it("renders on-chain action payload details", async () => {
+    renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
+
+    expect(await screen.findByRole("heading", { name: /action payload/i })).toBeInTheDocument();
+    expect(screen.getByText("0x0000000000000000000000000000000000000000")).toBeInTheDocument();
+    expect(screen.getByText("0x")).toBeInTheDocument();
+  });
+
+  it("shows pending then confirmed state on vote success", async () => {
+    const writeContractAsync = vi.fn().mockResolvedValue("0xfeed");
     vi.spyOn(wagmi, "useWriteContract").mockReturnValue({
-      writeContractAsync: vi.fn().mockResolvedValue("0xfeed"),
+      writeContractAsync,
       isPending: false,
       error: null
     } as any);
@@ -73,7 +82,65 @@ describe("ProposalDetail", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: /submit vote/i }));
 
-    expect(await screen.findByText(/Vote submitted: 0xfeed/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Vote confirmed: 0xfeed/i)).toBeInTheDocument();
+    expect(writeContractAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "castVoteMultiChoice",
+        args: [100n, [1_000_000_000_000_000_000n, 0n, 0n], ""]
+      })
+    );
+  });
+
+  it("uses binary castVoteWithReason when on-chain multi-choice is disabled", async () => {
+    const writeContractAsync = vi.fn().mockResolvedValue("0xfeed");
+    vi.spyOn(wagmi, "useWriteContract").mockReturnValue({
+      writeContractAsync,
+      isPending: false,
+      error: null
+    } as any);
+
+    vi.spyOn(wagmi, "usePublicClient").mockReturnValue({
+      readContract: vi.fn().mockImplementation(({ functionName }: { functionName: string }) => {
+        if (functionName === "isMultiChoice") {
+          return Promise.resolve(false);
+        }
+        return Promise.resolve(1n);
+      }),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] }),
+      estimateContractGas: vi.fn().mockResolvedValue(300000n)
+    } as any);
+
+    renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: /submit vote/i }));
+
+    expect(writeContractAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: "castVoteWithReason",
+        args: [100n, 1, ""]
+      })
+    );
+  });
+
+  it("disables submit when proposal is not active on-chain", async () => {
+    vi.spyOn(wagmi, "usePublicClient").mockReturnValue({
+      readContract: vi.fn().mockImplementation(({ functionName }: { functionName: string }) => {
+        if (functionName === "state") {
+          return Promise.resolve(0n);
+        }
+        if (functionName === "isMultiChoice") {
+          return Promise.resolve(true);
+        }
+        return Promise.resolve(1n);
+      }),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] }),
+      estimateContractGas: vi.fn().mockResolvedValue(300000n)
+    } as any);
+
+    renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
+
+    expect(await screen.findByText(/Voting is not open yet\. Proposal must be Active on-chain\./i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /submit vote/i })).toBeDisabled();
   });
 
   it("surfaces rejected signature and wrong-network failures", async () => {
@@ -119,5 +186,61 @@ describe("ProposalDetail", () => {
     renderWithProviders(<ProposalDetail proposalId="101" expectedCommunityId={1} />);
 
     expect(await screen.findByText(/Fallback reason: missing-readiness-fields/i)).toBeInTheDocument();
+  });
+
+  it("renders safe fallbacks for invalid proposal and vote timestamps", async () => {
+    server.use(
+      graphql.query("Proposal", ({ variables }) => {
+        if ((variables as { id?: string }).id !== "100") {
+          return HttpResponse.json({ data: { proposal: fixtures.proposals[0] } });
+        }
+
+        return HttpResponse.json({
+          data: {
+            proposal: {
+              ...fixtures.proposals[0],
+              createdAt: "invalid-created-at",
+              votes: [
+                {
+                  ...fixtures.proposals[0].votes[0],
+                  castAt: "invalid-cast-at"
+                }
+              ]
+            }
+          }
+        });
+      })
+    );
+
+    renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Unknown").length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it("logs query failures when proposal cannot be loaded", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    server.use(
+      graphql.query("Proposal", () => {
+        return HttpResponse.json(
+          {
+            errors: [{ message: "Indexer unavailable" }]
+          },
+          { status: 500 }
+        );
+      })
+    );
+
+    renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
+
+    expect(await screen.findByText(/Failed to load proposal/i)).toBeInTheDocument();
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[ProposalDetail] Failed to load proposal query",
+      expect.objectContaining({ proposalId: "100" })
+    );
+
+    errorSpy.mockRestore();
   });
 });

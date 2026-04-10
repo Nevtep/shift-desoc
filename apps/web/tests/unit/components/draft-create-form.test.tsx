@@ -22,7 +22,8 @@ describe("DraftCreateForm", () => {
           data: {
             draftsManager: "0x0000000000000000000000000000000000000200",
             valuableActionRegistry: "0x0000000000000000000000000000000000000201",
-            verifierManager: "0x0000000000000000000000000000000000000202"
+            verifierManager: "0x0000000000000000000000000000000000000202",
+            positionManager: "0x0000000000000000000000000000000000000203"
           },
           isLoading: false,
           isError: false
@@ -89,6 +90,25 @@ describe("DraftCreateForm", () => {
 
     expect(screen.getAllByText(/Module not configured for this community/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/No timelock-allowlisted functions available/i).length).toBeGreaterThan(0);
+  });
+
+  it("blocks adding expert action when bytes32 input is empty", async () => {
+    mockWagmiHooks({ connected: true });
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
+
+    renderWithProviders(<DraftCreateForm mode="expert" />);
+
+    await userEvent.selectOptions(screen.getByLabelText(/Target contract/i), "positionManager");
+    await userEvent.selectOptions(screen.getByLabelText(/Action signature/i), "definePositionType(bytes32,uint32,bool)");
+    await userEvent.type(screen.getByLabelText(/points \(uint32\)/i), "10");
+    await userEvent.type(screen.getByLabelText(/active \(bool\)/i), "true");
+
+    await userEvent.click(screen.getByRole("button", { name: /Add action/i }));
+
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/Missing value.*bytes32/i));
+    expect(screen.getByText(/Actions queued \(0\)/i)).toBeInTheDocument();
+
+    alertSpy.mockRestore();
   });
 
   it("keeps queue visible for empty and non-empty states", async () => {

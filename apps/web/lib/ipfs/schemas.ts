@@ -8,10 +8,31 @@ export const AttachmentSchema = z.object({
 });
 
 export const BaseDocumentSchema = z.object({
-  type: z.enum(["request", "draftVersion", "claimEvidence", "comment"]),
+  type: z.enum(["request", "draftVersion", "claimEvidence", "comment", "governanceProposal"]),
   version: z.string().min(1),
   createdAt: z.string().optional(),
   createdBy: z.string().optional()
+});
+
+const GovernanceProposalActionSchema = z.object({
+  target: z.string(),
+  value: z.string(),
+  calldata: z.string(),
+  functionSignature: z.string().optional(),
+  targetId: z.string().optional(),
+  targetLabel: z.string().optional(),
+  argsPreview: z.array(z.string()).optional()
+});
+
+export const GovernanceProposalDocumentSchema = BaseDocumentSchema.extend({
+  type: z.literal("governanceProposal"),
+  title: z.string().min(1),
+  summary: z.string().optional(),
+  bodyMarkdown: z.string().min(1),
+  mode: z.enum(["binary", "multi_choice"]),
+  numOptions: z.number().int().nullable().optional(),
+  communityId: z.number().int().optional(),
+  actions: z.array(GovernanceProposalActionSchema).default([])
 });
 
 export const RequestDocumentSchema = BaseDocumentSchema.extend({
@@ -68,7 +89,8 @@ export const DocumentSchema = z.discriminatedUnion("type", [
   RequestDocumentSchema,
   DraftVersionDocumentSchema,
   ClaimEvidenceDocumentSchema,
-  CommentDocumentSchema
+  CommentDocumentSchema,
+  GovernanceProposalDocumentSchema
 ]);
 
 export type Attachment = z.infer<typeof AttachmentSchema>;
@@ -76,4 +98,5 @@ export type RequestDocument = z.infer<typeof RequestDocumentSchema>;
 export type DraftVersionDocument = z.infer<typeof DraftVersionDocumentSchema>;
 export type ClaimEvidenceDocument = z.infer<typeof ClaimEvidenceDocumentSchema>;
 export type CommentDocument = z.infer<typeof CommentDocumentSchema>;
+export type GovernanceProposalDocument = z.infer<typeof GovernanceProposalDocumentSchema>;
 export type Document = z.infer<typeof DocumentSchema>;

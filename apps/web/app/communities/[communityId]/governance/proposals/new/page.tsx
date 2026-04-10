@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { DirectProposalCreateContainer } from "../../../../../../../components/governance/direct-proposal-create.container";
+import { DirectProposalCreateContainer } from "../../../../../../components/governance/direct-proposal-create.container";
 
 export const metadata = {
   title: "Create Governance Proposal | Shift"
