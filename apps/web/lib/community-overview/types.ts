@@ -1,5 +1,9 @@
 export type IndexerHealthState = "synced" | "lagging" | "error" | "unknown";
 
+export type ValuableActionReadinessStatus = "healthy" | "lagging" | "unavailable";
+
+export type ValuableActionAuthorityMode = "direct_write" | "governance_required" | "blocked";
+
 export type OverviewActionState = {
   href: string;
   enabled: boolean;
@@ -15,6 +19,7 @@ export type OverviewHeaderState = {
   health: IndexerHealthState;
   lastCheckedAt: string;
   actions: {
+    valuableActions: OverviewActionState;
     viewParameters: OverviewActionState;
     editParameters: OverviewActionState;
   };

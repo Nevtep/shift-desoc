@@ -29,6 +29,14 @@ The Manager route `/communities/[communityId]` is the canonical community-scoped
 - **Authority-safe UX**: privileged actions (such as `Edit parameters`) are gated and default disabled when authority signals are uncertain.
 - **Capability signaling**: all six section tabs remain visible; unavailable sections are disabled and marked `Coming soon`.
 
+## Manager App: Valuable Action Admin (Feature 012)
+
+- Canonical route surface: `/community/[id]/valuable-actions` for catalog, detail, admin controls, and readiness paneling.
+- Projection-first read model: indexer exposes community-scoped Valuable Action lifecycle projection from existing `ValuableActionRegistry` events (`Created`, `Updated`, `Activated`, `Deactivated`) with no ABI/event changes.
+- Authority honesty: admin operations are fail-closed and always resolved as one of `direct_write`, `governance_required`, or `blocked`.
+- Boundary safety: all route payloads and operation payloads are validated against active `communityId`; cross-community action IDs are hard-blocked.
+- Readiness transparency: projection health is surfaced as `healthy | lagging | unavailable`, and admin mutations are gated when readiness is unavailable.
+
 ## 🎯 Stage & Roadmap
 
 - **Current stage (staging/test)**: Active on Base Sepolia; Base mainnet is the launch target. All privileged operations remain timelock-gated; ParamController is the policy source; no staking for verifiers; TreasuryAdapter guardrails stay intact.

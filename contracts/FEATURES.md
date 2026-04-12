@@ -167,6 +167,9 @@ Composer authority surface update (2026-04): manager draft action availability i
 | **Community Narrowing** | Per-community allowlists restrict which modules can issue SBTs. |
 | **Founder Bootstrap** | Founder whitelist for initial community setup before governance is fully operational. |
 | **Manager Canonical Route** | Work-verification UX uses canonical `/engagements` routes, with temporary `/claims` compatibility wrappers during migration. |
+| **Manager Valuable Action Admin (Feature 012)** | Community-scoped catalog/detail/admin route with fail-closed authority modes: `direct_write`, `governance_required`, `blocked`. |
+| **Projection Readiness Transparency** | Indexer/web readiness surfaced as `healthy`, `lagging`, `unavailable`; admin operations are gated when projection is unavailable. |
+| **No-ABI Lifecycle Projection** | Lifecycle projection for Valuable Actions uses existing `ValuableActionCreated/Updated/Activated/Deactivated` events only. |
 
 #### Use Cases
 

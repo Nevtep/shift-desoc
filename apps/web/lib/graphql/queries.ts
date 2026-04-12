@@ -521,3 +521,137 @@ export type EngagementQueryResult = {
     }[];
   } | null;
 };
+
+export const ValuableActionCatalogQuery = /* GraphQL */ `
+  query ValuableActionCatalog($communityId: Int!, $limit: Int = 100, $after: String) {
+    valuableActions: valuable_actionss(
+      where: { communityId: $communityId }
+      orderBy: "actionId"
+      orderDirection: "asc"
+      limit: $limit
+      after: $after
+    ) {
+      nodes: items {
+        id
+        communityId
+        actionId
+        titleTemplate
+        evidenceSpecCid
+        metadataSchemaId
+        isActive
+        createdAtBlock
+        updatedAtBlock
+        activatedAtBlock
+        deactivatedAtBlock
+        lastEventTxHash
+        lastEventName
+        createdAt
+        updatedAt
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+`;
+
+export const ValuableActionDetailQuery = /* GraphQL */ `
+  query ValuableActionDetail($id: String!) {
+    valuableAction: valuable_actions(id: $id) {
+      id
+      communityId
+      actionId
+      titleTemplate
+      evidenceSpecCid
+      metadataSchemaId
+      isActive
+      createdAtBlock
+      updatedAtBlock
+      activatedAtBlock
+      deactivatedAtBlock
+      lastEventTxHash
+      lastEventName
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export type ValuableActionNode = {
+  id: string;
+  communityId: number;
+  actionId: number;
+  titleTemplate?: string | null;
+  evidenceSpecCid?: string | null;
+  metadataSchemaId?: string | null;
+  isActive: boolean;
+  createdAtBlock: string;
+  updatedAtBlock: string;
+  activatedAtBlock?: string | null;
+  deactivatedAtBlock?: string | null;
+  lastEventTxHash: string;
+  lastEventName: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ValuableActionCatalogResult = {
+  valuableActions: {
+    nodes: ValuableActionNode[];
+    pageInfo: {
+      endCursor?: string | null;
+      hasNextPage: boolean;
+    };
+  };
+};
+
+export type ValuableActionDetailResult = {
+  valuableAction: ValuableActionNode | null;
+};
+
+export type ValuableActionDto = {
+  id: string;
+  communityId: number;
+  actionId: number;
+  title: string;
+  evidenceSpecCid: string | null;
+  metadataSchemaId: string | null;
+  isActive: boolean;
+  lifecycle: {
+    createdAtBlock: string;
+    updatedAtBlock: string;
+    activatedAtBlock: string | null;
+    deactivatedAtBlock: string | null;
+    lastEventTxHash: string;
+    lastEventName: string;
+  };
+  timestamps: {
+    createdAt: string;
+    updatedAt: string;
+  };
+};
+
+export function mapValuableActionNodeToDto(node: ValuableActionNode): ValuableActionDto {
+  return {
+    id: node.id,
+    communityId: Number(node.communityId),
+    actionId: Number(node.actionId),
+    title: node.titleTemplate?.trim() || `Action #${node.actionId}`,
+    evidenceSpecCid: node.evidenceSpecCid ?? null,
+    metadataSchemaId: node.metadataSchemaId ?? null,
+    isActive: Boolean(node.isActive),
+    lifecycle: {
+      createdAtBlock: String(node.createdAtBlock),
+      updatedAtBlock: String(node.updatedAtBlock),
+      activatedAtBlock: node.activatedAtBlock ? String(node.activatedAtBlock) : null,
+      deactivatedAtBlock: node.deactivatedAtBlock ? String(node.deactivatedAtBlock) : null,
+      lastEventTxHash: node.lastEventTxHash,
+      lastEventName: node.lastEventName,
+    },
+    timestamps: {
+      createdAt: node.createdAt,
+      updatedAt: node.updatedAt,
+    },
+  };
+}

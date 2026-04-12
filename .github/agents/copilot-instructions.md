@@ -23,6 +23,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - JSON and Markdown artifacts in repository (no DB changes) (010-wizard-permission-parity)
 - TypeScript (Node 22), React 19 + Next.js 16 app layer + wagmi, viem (`encodeFunctionData`, `decodeEventLog`), existing community module hooks, GraphQL query hooks, existing action composer libs (011-direct-proposal-creation)
 - N/A (on-chain writes + GraphQL/indexer reads; no new persistent storage) (011-direct-proposal-creation)
+- TypeScript (apps/web, apps/indexer), Solidity ^0.8.24 (reference-only unless hard blocker), Node 22 + Next.js 16, React 19, Ponder 0.7.17, GraphQL, viem/wagmi, OpenZeppelin 5.x (012-valuable-action-admin-ux)
+- On-chain state + Ponder projected Postgres/GraphQL read model (012-valuable-action-admin-ux)
 
 - Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22 + OpenZeppelin 5.x (`AccessManaged`, `ReentrancyGuard`, `SafeERC20`), Foundry, Hardhat 2.22.x (001-security-fixes)
 
@@ -43,9 +45,9 @@ npm test && npm run lint
 Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22: Follow standard conventions
 
 ## Recent Changes
+- 012-valuable-action-admin-ux: Added TypeScript (apps/web, apps/indexer), Solidity ^0.8.24 (reference-only unless hard blocker), Node 22 + Next.js 16, React 19, Ponder 0.7.17, GraphQL, viem/wagmi, OpenZeppelin 5.x
 - 011-direct-proposal-creation: Added TypeScript (Node 22), React 19 + Next.js 16 app layer + wagmi, viem (`encodeFunctionData`, `decodeEventLog`), existing community module hooks, GraphQL query hooks, existing action composer libs
 - 010-wizard-permission-parity: Added TypeScript (Node 22), Next.js app TypeScript, viem ABI utilities + viem, ts-node, Vitest, existing web ABI artifacts under apps/web/abis
-- 009-governance-hub-escalation: Added TypeScript 5.x, React 19, Next.js 16 App Router, Node >=22 + `wagmi`, `viem`, `@tanstack/react-query`, `graphql-request`, `msw`, `vitest`, `@testing-library/react`
 
 
 <!-- MANUAL ADDITIONS START -->

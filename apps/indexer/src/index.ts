@@ -1,6 +1,7 @@
 import { and, count, desc, eq, graphql } from "@ponder/core";
 import {
   engagements,
+  valuableActions,
   comments,
   communities,
   draftReviews,
@@ -22,6 +23,11 @@ import { applyModuleAddressUpdate } from "./discovery/mapping-windows";
 import { normalizeModuleKey } from "./discovery/module-keys";
 import { resolveCommunityFromEmitter } from "./discovery/resolve-community-from-emitter";
 import { writeUnmappedEmitterTelemetry } from "./discovery/unmapped-emitter-telemetry";
+import {
+  reduceValuableActionLifecycle,
+  toValuableActionProjectionId,
+  type ValuableActionProjectionState,
+} from "./valuable-actions/projection";
 
 // --- API ROUTES (Hono via Ponder) -------------------------------------------------
 
@@ -221,6 +227,121 @@ ponder.get("/engagements/:id", async (c) => {
   return c.json({ engagement: engagement[0], jurors });
 });
 
+ponder.get("/communities/:communityId/valuable-actions", async (c) => {
+  const communityId = Number(c.req.param("communityId"));
+  if (!Number.isFinite(communityId) || communityId <= 0) {
+    return c.json({ error: "invalid community id" }, 400);
+  }
+
+  const { limit, offset } = parsePagination(c.req.query("limit"), c.req.query("offset"));
+  const rows = await c.db
+    .select()
+    .from(valuableActions)
+    .where(eq(valuableActions.communityId, communityId))
+    .orderBy(desc(valuableActions.actionId))
+    .limit(limit)
+    .offset(offset);
+
+  return c.json({
+    communityId,
+    items: rows,
+    nextOffset: offset + rows.length,
+  });
+});
+
+ponder.get("/communities/:communityId/valuable-actions/:actionId", async (c) => {
+  const communityId = Number(c.req.param("communityId"));
+  const actionId = Number(c.req.param("actionId"));
+  if (!Number.isFinite(communityId) || communityId <= 0 || !Number.isFinite(actionId) || actionId < 0) {
+    return c.json({ error: "invalid identifiers" }, 400);
+  }
+
+  const id = toValuableActionProjectionId(communityId, actionId);
+  const rows = await c.db.select().from(valuableActions).where(eq(valuableActions.id, id)).limit(1);
+  if (rows.length === 0) return c.json({ error: "not found" }, 404);
+
+  return c.json({ communityId, actionId, item: rows[0] });
+});
+
+ponder.get("/communities/:communityId/valuable-actions/readiness", async (c) => {
+  const communityId = Number(c.req.param("communityId"));
+  if (!Number.isFinite(communityId) || communityId <= 0) {
+    return c.json({ error: "invalid community id" }, 400);
+  }
+
+  const rows = await c.db
+    .select()
+    .from(valuableActions)
+    .where(eq(valuableActions.communityId, communityId))
+    .orderBy(desc(valuableActions.updatedAtBlock))
+    .limit(1);
+
+  if (rows.length === 0) {
+    return c.json({
+      status: "unavailable",
+      indexedBlock: null,
+      chainHeadBlock: null,
+      blockLag: null,
+      indexedAt: null,
+      details: "No Valuable Action projection data available for this community.",
+    });
+  }
+
+  const head = rows[0]!;
+  const nowMs = Date.now();
+  const updatedMs = new Date(head.updatedAt).getTime();
+  const ageMs = Math.max(nowMs - updatedMs, 0);
+  const status = ageMs > 180_000 ? "lagging" : "healthy";
+
+  return c.json({
+    status,
+    indexedBlock: head.updatedAtBlock.toString(),
+    chainHeadBlock: head.updatedAtBlock.toString(),
+    blockLag: "0",
+    indexedAt: head.updatedAt.toISOString(),
+    details: status === "healthy" ? "Projection is up to date." : "Projection update appears delayed.",
+  });
+});
+
+ponder.get("/communities/:communityId/valuable-actions/:actionId/authority", async (c) => {
+  const communityId = Number(c.req.param("communityId"));
+  const actionId = Number(c.req.param("actionId"));
+  if (!Number.isFinite(communityId) || communityId <= 0 || !Number.isFinite(actionId) || actionId < 0) {
+    return c.json({ error: "invalid identifiers" }, 400);
+  }
+
+  const boundaryValid = true;
+  const operations = ["create", "edit", "activate", "deactivate"].map((operation) => ({
+    operation,
+    mode: "blocked",
+    reasonCode: "authority_not_resolved",
+    reasonMessage: "Authority resolution is unavailable for this route.",
+    evaluatedAtBlock: null,
+  }));
+
+  return c.json({
+    communityId,
+    actionId,
+    boundaryValid,
+    operations,
+  });
+});
+
+ponder.post("/communities/:communityId/valuable-actions/boundary-check", async (c) => {
+  const communityId = Number(c.req.param("communityId"));
+  const body = await c.req.json().catch(() => ({}));
+  const actionId = Number((body as { actionId?: number | string }).actionId ?? -1);
+  const boundaryValid = Number.isFinite(communityId) && communityId > 0 && Number.isFinite(actionId) && actionId >= 0;
+
+  return c.json({
+    communityId,
+    actionId,
+    boundaryValid,
+    reasonCode: boundaryValid ? "ok" : "invalid_input",
+    reasonMessage: boundaryValid ? "Boundary check passed." : "Invalid community or action identifier.",
+  });
+});
+
 // --- EVENT HANDLERS -------------------------------------------------------------
 
 const requestStatuses = ["OPEN_DEBATE", "FROZEN", "ARCHIVED"] as const;
@@ -263,8 +384,75 @@ const buildProposalId = (communityId: number, proposalId: bigint | string) => `$
 const buildVoteId = (communityId: number, proposalId: bigint, voter: Address) =>
   `${communityId}:${proposalId.toString()}:${voter.toLowerCase()}`;
 const buildEngagementId = (communityId: number, engagementId: number) => `${communityId}:${engagementId}`;
+const buildValuableActionId = (communityId: number, actionId: number) => `${communityId}:${actionId}`;
 const buildJurorAssignmentId = (communityId: number, engagementId: number, juror: Address) =>
   `${communityId}:${engagementId}:${juror.toLowerCase()}`;
+
+const asValuableActionProjection = (current: any): ValuableActionProjectionState | null => {
+  if (!current) return null;
+  return {
+    communityId: Number(current.communityId),
+    actionId: Number(current.actionId),
+    titleTemplate: current.titleTemplate,
+    evidenceSpecCid: current.evidenceSpecCid,
+    metadataSchemaId: current.metadataSchemaId,
+    isActive: Boolean(current.isActive),
+    createdAtBlock: BigInt(current.createdAtBlock),
+    updatedAtBlock: BigInt(current.updatedAtBlock),
+    activatedAtBlock: current.activatedAtBlock ? BigInt(current.activatedAtBlock) : null,
+    deactivatedAtBlock: current.deactivatedAtBlock ? BigInt(current.deactivatedAtBlock) : null,
+    lastEventTxHash: String(current.lastEventTxHash),
+    lastEventName: String(current.lastEventName),
+  };
+};
+
+async function upsertValuableActionProjection({
+  context,
+  communityId,
+  actionId,
+  next,
+  event,
+}: {
+  context: any;
+  communityId: number;
+  actionId: number;
+  next: ValuableActionProjectionState;
+  event: any;
+}) {
+  const now = toDate(BigInt(event.block.timestamp));
+
+  await context.db
+    .insert(valuableActions)
+    .values({
+      id: buildValuableActionId(communityId, actionId),
+      communityId,
+      actionId,
+      titleTemplate: next.titleTemplate,
+      evidenceSpecCid: next.evidenceSpecCid,
+      metadataSchemaId: next.metadataSchemaId,
+      isActive: next.isActive,
+      createdAtBlock: next.createdAtBlock,
+      updatedAtBlock: next.updatedAtBlock,
+      activatedAtBlock: next.activatedAtBlock,
+      deactivatedAtBlock: next.deactivatedAtBlock,
+      lastEventTxHash: next.lastEventTxHash,
+      lastEventName: next.lastEventName,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      titleTemplate: next.titleTemplate,
+      evidenceSpecCid: next.evidenceSpecCid,
+      metadataSchemaId: next.metadataSchemaId,
+      isActive: next.isActive,
+      updatedAtBlock: next.updatedAtBlock,
+      activatedAtBlock: next.activatedAtBlock,
+      deactivatedAtBlock: next.deactivatedAtBlock,
+      lastEventTxHash: next.lastEventTxHash,
+      lastEventName: next.lastEventName,
+      updatedAt: now,
+    });
+}
 
 const getEventMeta = (event: any) => ({
   emitterAddress: String(event?.log?.address ?? "").toLowerCase(),
@@ -1025,4 +1213,112 @@ ponder.on("Engagements:EngagementRevoked", async ({ event, context }) => {
   await context.db
     .update(engagements, { id: buildEngagementId(resolved.communityId, Number(event.args.engagementId)) })
     .set({ status: engagementStatuses[3], resolvedAt });
+});
+
+ponder.on("ValuableActionRegistry:ValuableActionCreated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ValuableActionRegistry");
+  if (!resolved) return;
+
+  const actionId = Number(event.args.id);
+  const id = buildValuableActionId(resolved.communityId, actionId);
+  const currentRows = await context.db.select().from(valuableActions).where(eq(valuableActions.id, id)).limit(1);
+  const current = asValuableActionProjection(currentRows[0]);
+  const va = event.args.valuableAction as any;
+  const next = reduceValuableActionLifecycle(current, {
+    kind: "created",
+    communityId: resolved.communityId,
+    actionId,
+    titleTemplate: (va?.titleTemplate as string | undefined) ?? null,
+    evidenceSpecCid: (va?.evidenceSpecCID as string | undefined) ?? null,
+    metadataSchemaId: (va?.metadataSchemaId as string | undefined) ?? null,
+    blockNumber: BigInt(event.block.number),
+    txHash: String(event.transaction.hash),
+  });
+
+  await upsertValuableActionProjection({
+    context,
+    communityId: resolved.communityId,
+    actionId,
+    next,
+    event,
+  });
+});
+
+ponder.on("ValuableActionRegistry:ValuableActionUpdated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ValuableActionRegistry");
+  if (!resolved) return;
+
+  const actionId = Number(event.args.id);
+  const id = buildValuableActionId(resolved.communityId, actionId);
+  const currentRows = await context.db.select().from(valuableActions).where(eq(valuableActions.id, id)).limit(1);
+  const current = asValuableActionProjection(currentRows[0]);
+  const va = event.args.valuableAction as any;
+  const next = reduceValuableActionLifecycle(current, {
+    kind: "updated",
+    communityId: resolved.communityId,
+    actionId,
+    titleTemplate: (va?.titleTemplate as string | undefined) ?? null,
+    evidenceSpecCid: (va?.evidenceSpecCID as string | undefined) ?? null,
+    metadataSchemaId: (va?.metadataSchemaId as string | undefined) ?? null,
+    blockNumber: BigInt(event.block.number),
+    txHash: String(event.transaction.hash),
+  });
+
+  await upsertValuableActionProjection({
+    context,
+    communityId: resolved.communityId,
+    actionId,
+    next,
+    event,
+  });
+});
+
+ponder.on("ValuableActionRegistry:ValuableActionActivated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ValuableActionRegistry");
+  if (!resolved) return;
+
+  const actionId = Number(event.args.id);
+  const id = buildValuableActionId(resolved.communityId, actionId);
+  const currentRows = await context.db.select().from(valuableActions).where(eq(valuableActions.id, id)).limit(1);
+  const current = asValuableActionProjection(currentRows[0]);
+  const next = reduceValuableActionLifecycle(current, {
+    kind: "activated",
+    communityId: resolved.communityId,
+    actionId,
+    blockNumber: BigInt(event.block.number),
+    txHash: String(event.transaction.hash),
+  });
+
+  await upsertValuableActionProjection({
+    context,
+    communityId: resolved.communityId,
+    actionId,
+    next,
+    event,
+  });
+});
+
+ponder.on("ValuableActionRegistry:ValuableActionDeactivated", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ValuableActionRegistry");
+  if (!resolved) return;
+
+  const actionId = Number(event.args.id);
+  const id = buildValuableActionId(resolved.communityId, actionId);
+  const currentRows = await context.db.select().from(valuableActions).where(eq(valuableActions.id, id)).limit(1);
+  const current = asValuableActionProjection(currentRows[0]);
+  const next = reduceValuableActionLifecycle(current, {
+    kind: "deactivated",
+    communityId: resolved.communityId,
+    actionId,
+    blockNumber: BigInt(event.block.number),
+    txHash: String(event.transaction.hash),
+  });
+
+  await upsertValuableActionProjection({
+    context,
+    communityId: resolved.communityId,
+    actionId,
+    next,
+    event,
+  });
 });

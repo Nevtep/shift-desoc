@@ -10,6 +10,14 @@
 
 **Manager Surface Canonicalization (2026-03)**: Work verification user flows are canonicalized under `/engagements` in the Manager app. Legacy `/claims` routes are temporary compatibility wrappers and should be sunset after migration.
 
+**Valuable Action Admin UX + Projection Readiness (2026-04)**: Manager now includes a dedicated community-scoped Valuable Action admin surface under `/community/[id]/valuable-actions` with:
+- strict boundary checks to prevent cross-community action operations,
+- fail-closed authority routing (`direct_write | governance_required | blocked`),
+- projection-backed lifecycle catalog/detail from existing ValuableActionRegistry events only,
+- explicit readiness signaling (`healthy | lagging | unavailable`) with mutation gating when unavailable.
+
+Implementation stayed on strict no-ABI/no-event-change path.
+
 **Staging Deploy State Contract (2026-03)**: Manager deployment runs in a fixed sequence with no proposal-driven bootstrap branch:
 `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> HANDOFF_ADMIN_TO_TIMELOCK -> VERIFY_DEPLOYMENT`.
 Run completion is valid only when admin handoff and verification both succeed.

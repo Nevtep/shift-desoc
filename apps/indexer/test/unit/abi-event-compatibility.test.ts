@@ -30,6 +30,12 @@ test("abi-event-compatibility: ensures handler-referenced events exist in config
       CountingMultiChoice: ["MultiChoiceEnabled", "ProposalCanceled", "VoteCastMulti"],
       Engagements: ["EngagementSubmitted", "JurorsAssigned", "EngagementVerified", "EngagementResolved", "EngagementRevoked"],
       VerifierManager: ["JurorsSelected"],
+      ValuableActionRegistry: [
+        "ValuableActionCreated",
+        "ValuableActionUpdated",
+        "ValuableActionActivated",
+        "ValuableActionDeactivated",
+      ],
     };
 
     for (const [contract, events] of Object.entries(checks)) {

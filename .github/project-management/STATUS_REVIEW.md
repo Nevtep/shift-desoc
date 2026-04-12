@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Apr 10, 2026)
+# Shift DeSoc Status Review (Apr 12, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -69,6 +69,8 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-04-12: Improved Valuable Action admin UX in `apps/web` to remove manual `evidenceSpecCID` entry. The form now captures a structured Evidence Spec (summary, required evidence, verifier checklist, references), uploads it automatically through `/api/ipfs/upload`, and uses the returned CID for create/edit proposal payloads. Updated preview and docs flow narrative accordingly (`docs/EN/Flows.md`).
+- 2026-04-10: Completed feature `012-valuable-action-admin-ux` on a strict no-ABI path. Added community-scoped ValuableAction catalog/detail/admin UX (`/community/[id]/valuable-actions`), deterministic indexer lifecycle projection from existing ValuableActionRegistry events, fail-closed authority modes (`direct_write|governance_required|blocked`), explicit readiness signaling (`healthy|lagging|unavailable`), and targeted web/indexer regression + replay tests.
 - 2026-04-10: Fixed governance multi-choice vote submission in `apps/web` to match on-chain precision and improve RPC compatibility. `proposal-detail` now converts UI allocations from bps (10,000 = 100%) to 1e18-scaled weights expected by `ShiftGovernor.castVoteMultiChoice`/`CountingMultiChoice.castVoteMulti`, and adds gas-estimation fallback (with padding/cap) when RPC nodes fail estimation (including max transaction gas-limit estimation failures). Added regression assertion in proposal detail unit tests to verify 100% allocation submits `[1e18, ...]` contract weights.
 - 2026-04-10: Fixed direct governor proposal description handling in `apps/web` to prevent invalid IPFS fetches from plain-text descriptions. `direct-proposal-create` now captures named metadata fields (`title`, `summary`, markdown `details`), uploads structured proposal metadata via existing `/api/ipfs/upload` (Pinata-backed), and submits the resulting CID as the on-chain proposal description. Updated direct proposal create UI props/tests to include the new metadata fields and preserve existing composer behavior.
 - 2026-04-09: Implemented wizard permission parity pipeline for draft composer authority surface. Added fail-closed artifact generation (`permission-matrix.json`, `timelock-surface.json`, `signature-not-found.json`), deterministic allowlist regeneration from ADMIN_ROLE + handoff-verified surface, expanded expert target coverage (including commerce/engagement/housing/membership surfaces), crucial flows catalog with explicit disabled reasons, and optional runtime handoff verifier script (`scripts/verify-handoff-admin-role.ts`).

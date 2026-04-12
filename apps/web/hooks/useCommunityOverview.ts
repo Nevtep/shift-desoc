@@ -94,6 +94,11 @@ export function buildOverviewHeaderState(args: {
     health: args.health,
     lastCheckedAt: new Date().toISOString(),
     actions: {
+      valuableActions: {
+        href: routes.actions.valuableActions,
+        enabled: true,
+        comingSoon: false
+      },
       viewParameters: {
         href: routes.actions.viewParameters,
         enabled: false,

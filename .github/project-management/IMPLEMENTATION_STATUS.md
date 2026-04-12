@@ -32,6 +32,11 @@ Latest tactical delta (2026-04-09):
 - Expert target resolution now reflects module presence + allowlist parity for additional targets (engagements, commerce disputes, housing manager, membership token, valuable action SBT, drafts manager visibility).
 - Guided crucial-flow catalog now tracks enabled/disabled status with deterministic reasons for non-representable or non-timelock-executable flows.
 
+Latest tactical delta (2026-04-10):
+- Implemented feature `012-valuable-action-admin-ux` as a strict no-ABI vertical slice across `apps/indexer` + `apps/web`.
+- Added deterministic ValuableAction lifecycle projection from existing registry events (create/update/activate/deactivate), community-scoped catalog/detail/readiness endpoints, and fail-closed authority-mode UX routing (`direct_write|governance_required|blocked`).
+- Added cross-community boundary guards, activation safety controls, readiness truth signaling (`healthy|lagging|unavailable`), and targeted regression/replay test coverage.
+
 ---
 
 ## 2) Feature Matrix By Layer

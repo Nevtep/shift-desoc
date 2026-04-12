@@ -110,6 +110,24 @@ export const engagements = schema.table("engagements", (t) => ({
   resolvedAt: t.timestamp({ withTimezone: true }),
 }));
 
+export const valuableActions = schema.table("valuable_actions", (t) => ({
+  id: t.text().primaryKey(),
+  communityId: t.integer().notNull(),
+  actionId: t.integer().notNull(),
+  titleTemplate: t.text(),
+  evidenceSpecCid: t.text(),
+  metadataSchemaId: t.text(),
+  isActive: t.boolean().notNull(),
+  createdAtBlock: t.bigint().notNull(),
+  updatedAtBlock: t.bigint().notNull(),
+  activatedAtBlock: t.bigint(),
+  deactivatedAtBlock: t.bigint(),
+  lastEventTxHash: t.text().notNull(),
+  lastEventName: t.text().notNull(),
+  createdAt: t.timestamp({ withTimezone: true }).notNull(),
+  updatedAt: t.timestamp({ withTimezone: true }).notNull(),
+}));
+
 export const jurorAssignments = schema.table("juror_assignments", (t) => ({
   id: t.text().primaryKey(),
   communityId: t.integer().notNull(),
@@ -166,6 +184,7 @@ export const schemaTables = {
   proposals,
   proposalVotes,
   engagements,
+  valuableActions,
   jurorAssignments,
   emitterMappingWindows,
   emitterMappingActive,

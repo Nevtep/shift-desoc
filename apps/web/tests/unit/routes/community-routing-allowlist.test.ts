@@ -53,6 +53,11 @@ describe("community routing allowlist", () => {
             health: "synced",
             lastCheckedAt: new Date().toISOString(),
             actions: {
+              valuableActions: {
+                href: "/community/9/valuable-actions",
+                enabled: true,
+                comingSoon: false
+              },
               viewParameters: {
                 href: "/communities/9/parameters",
                 enabled: false,
@@ -78,6 +83,10 @@ describe("community routing allowlist", () => {
       "/communities/9/governance/proposals/new"
     );
     expect(screen.getByRole("button", { name: /view parameters.*coming soon/i })).toBeDisabled();
+    expect(screen.getByRole("link", { name: /valuable actions/i })).toHaveAttribute(
+      "href",
+      "/community/9/valuable-actions"
+    );
 
     expect(screen.queryByRole("link", { name: /view parameters/i })).toBeNull();
   });

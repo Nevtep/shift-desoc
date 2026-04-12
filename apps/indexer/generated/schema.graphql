@@ -35,6 +35,8 @@ type Query {
   proposalVotess(where: proposalVotesFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): proposalVotesPage!
   engagements(id: String!): engagements
   engagementss(where: engagementsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementsPage!
+  valuableActions(id: String!): valuableActions
+  valuableActionss(where: valuableActionsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): valuableActionsPage!
   jurorAssignments(id: String!): jurorAssignments
   jurorAssignmentss(where: jurorAssignmentsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): jurorAssignmentsPage!
   emitterMappingWindows(id: String!): emitterMappingWindows
@@ -916,6 +918,167 @@ input engagementsFilter {
   resolvedAt_ends_with: String
   resolvedAt_not_starts_with: String
   resolvedAt_not_ends_with: String
+}
+
+type valuableActions {
+  id: String!
+  communityId: Int!
+  actionId: Int!
+  titleTemplate: String
+  evidenceSpecCid: String
+  metadataSchemaId: String
+  isActive: Boolean!
+  createdAtBlock: BigInt!
+  updatedAtBlock: BigInt!
+  activatedAtBlock: BigInt
+  deactivatedAtBlock: BigInt
+  lastEventTxHash: String!
+  lastEventName: String!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type valuableActionsPage {
+  items: [valuableActions!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input valuableActionsFilter {
+  AND: [valuableActionsFilter]
+  OR: [valuableActionsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  actionId: Int
+  actionId_not: Int
+  actionId_in: [Int]
+  actionId_not_in: [Int]
+  actionId_gt: Int
+  actionId_lt: Int
+  actionId_gte: Int
+  actionId_lte: Int
+  titleTemplate: String
+  titleTemplate_not: String
+  titleTemplate_in: [String]
+  titleTemplate_not_in: [String]
+  titleTemplate_contains: String
+  titleTemplate_not_contains: String
+  titleTemplate_starts_with: String
+  titleTemplate_ends_with: String
+  titleTemplate_not_starts_with: String
+  titleTemplate_not_ends_with: String
+  evidenceSpecCid: String
+  evidenceSpecCid_not: String
+  evidenceSpecCid_in: [String]
+  evidenceSpecCid_not_in: [String]
+  evidenceSpecCid_contains: String
+  evidenceSpecCid_not_contains: String
+  evidenceSpecCid_starts_with: String
+  evidenceSpecCid_ends_with: String
+  evidenceSpecCid_not_starts_with: String
+  evidenceSpecCid_not_ends_with: String
+  metadataSchemaId: String
+  metadataSchemaId_not: String
+  metadataSchemaId_in: [String]
+  metadataSchemaId_not_in: [String]
+  metadataSchemaId_contains: String
+  metadataSchemaId_not_contains: String
+  metadataSchemaId_starts_with: String
+  metadataSchemaId_ends_with: String
+  metadataSchemaId_not_starts_with: String
+  metadataSchemaId_not_ends_with: String
+  isActive: Boolean
+  isActive_not: Boolean
+  isActive_in: [Boolean]
+  isActive_not_in: [Boolean]
+  createdAtBlock: BigInt
+  createdAtBlock_not: BigInt
+  createdAtBlock_in: [BigInt]
+  createdAtBlock_not_in: [BigInt]
+  createdAtBlock_gt: BigInt
+  createdAtBlock_lt: BigInt
+  createdAtBlock_gte: BigInt
+  createdAtBlock_lte: BigInt
+  updatedAtBlock: BigInt
+  updatedAtBlock_not: BigInt
+  updatedAtBlock_in: [BigInt]
+  updatedAtBlock_not_in: [BigInt]
+  updatedAtBlock_gt: BigInt
+  updatedAtBlock_lt: BigInt
+  updatedAtBlock_gte: BigInt
+  updatedAtBlock_lte: BigInt
+  activatedAtBlock: BigInt
+  activatedAtBlock_not: BigInt
+  activatedAtBlock_in: [BigInt]
+  activatedAtBlock_not_in: [BigInt]
+  activatedAtBlock_gt: BigInt
+  activatedAtBlock_lt: BigInt
+  activatedAtBlock_gte: BigInt
+  activatedAtBlock_lte: BigInt
+  deactivatedAtBlock: BigInt
+  deactivatedAtBlock_not: BigInt
+  deactivatedAtBlock_in: [BigInt]
+  deactivatedAtBlock_not_in: [BigInt]
+  deactivatedAtBlock_gt: BigInt
+  deactivatedAtBlock_lt: BigInt
+  deactivatedAtBlock_gte: BigInt
+  deactivatedAtBlock_lte: BigInt
+  lastEventTxHash: String
+  lastEventTxHash_not: String
+  lastEventTxHash_in: [String]
+  lastEventTxHash_not_in: [String]
+  lastEventTxHash_contains: String
+  lastEventTxHash_not_contains: String
+  lastEventTxHash_starts_with: String
+  lastEventTxHash_ends_with: String
+  lastEventTxHash_not_starts_with: String
+  lastEventTxHash_not_ends_with: String
+  lastEventName: String
+  lastEventName_not: String
+  lastEventName_in: [String]
+  lastEventName_not_in: [String]
+  lastEventName_contains: String
+  lastEventName_not_contains: String
+  lastEventName_starts_with: String
+  lastEventName_ends_with: String
+  lastEventName_not_starts_with: String
+  lastEventName_not_ends_with: String
+  createdAt: String
+  createdAt_not: String
+  createdAt_in: [String]
+  createdAt_not_in: [String]
+  createdAt_contains: String
+  createdAt_not_contains: String
+  createdAt_starts_with: String
+  createdAt_ends_with: String
+  createdAt_not_starts_with: String
+  createdAt_not_ends_with: String
+  updatedAt: String
+  updatedAt_not: String
+  updatedAt_in: [String]
+  updatedAt_not_in: [String]
+  updatedAt_contains: String
+  updatedAt_not_contains: String
+  updatedAt_starts_with: String
+  updatedAt_ends_with: String
+  updatedAt_not_starts_with: String
+  updatedAt_not_ends_with: String
 }
 
 type jurorAssignments {

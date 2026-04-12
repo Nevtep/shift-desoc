@@ -10,12 +10,17 @@ export function communityBasePath(communityId: number | string): string {
   return `/communities/${communityId}`;
 }
 
+export function communityValuableActionsPath(communityId: number | string): string {
+  return `/community/${communityId}/valuable-actions`;
+}
+
 export function buildOverviewRoutes(communityId: number | string) {
   const base = communityBasePath(communityId);
   return {
     actions: {
       viewParameters: `${base}/parameters`,
-      editParameters: `${base}/parameters/edit`
+      editParameters: `${base}/parameters/edit`,
+      valuableActions: communityValuableActionsPath(communityId)
     },
     previews: {
       requests: {

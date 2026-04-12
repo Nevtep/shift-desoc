@@ -1,0 +1,113 @@
+# ValuableAction Admin GraphQL Contract (additive)
+
+scalar DateTime
+
+enum ReadinessStatus {
+  HEALTHY
+  LAGGING
+  UNAVAILABLE
+}
+
+enum AuthorityMode {
+  DIRECT_WRITE
+  GOVERNANCE_REQUIRED
+  BLOCKED
+}
+
+enum ValuableActionOperation {
+  CREATE
+  EDIT
+  ACTIVATE
+  DEACTIVATE
+}
+
+type ValuableAction {
+  communityId: String!
+  actionId: String!
+  title: String!
+  metadataCid: String
+  ruleSummary: String
+  isActive: Boolean!
+  createdAtBlock: String!
+  updatedAtBlock: String!
+  lastEventTxHash: String!
+}
+
+type ActionAuthority {
+  communityId: String!
+  operation: ValuableActionOperation!
+  mode: AuthorityMode!
+  reasonCode: String
+  reasonMessage: String
+  evaluatedAtBlock: String
+}
+
+type ProjectionReadiness {
+  status: ReadinessStatus!
+  indexedBlock: String
+  chainHeadBlock: String
+  blockLag: String
+  indexedAt: DateTime
+  details: String
+}
+
+type ValuableActionCatalogPayload {
+  communityId: String!
+  readiness: ProjectionReadiness!
+  actions: [ValuableAction!]!
+}
+
+type ValuableActionDetailPayload {
+  communityId: String!
+  readiness: ProjectionReadiness!
+  action: ValuableAction
+  authority: [ActionAuthority!]!
+  boundaryValid: Boolean!
+}
+
+input CreateValuableActionInput {
+  communityId: String!
+  title: String!
+  metadataCid: String
+  ruleSummary: String
+}
+
+input UpdateValuableActionInput {
+  communityId: String!
+  actionId: String!
+  title: String
+  metadataCid: String
+  ruleSummary: String
+}
+
+input ToggleValuableActionInput {
+  communityId: String!
+  actionId: String!
+  active: Boolean!
+}
+
+type GovernanceDraftResult {
+  draftId: String
+  proposalId: String
+  status: String!
+  message: String!
+}
+
+type DirectWriteResult {
+  txHash: String!
+  status: String!
+  message: String!
+}
+
+union ValuableActionMutationResult = GovernanceDraftResult | DirectWriteResult
+
+type Query {
+  valuableActionCatalog(communityId: String!): ValuableActionCatalogPayload!
+  valuableActionDetail(communityId: String!, actionId: String!): ValuableActionDetailPayload!
+}
+
+type Mutation {
+  createValuableAction(input: CreateValuableActionInput!): ValuableActionMutationResult!
+  updateValuableAction(input: UpdateValuableActionInput!): ValuableActionMutationResult!
+  toggleValuableAction(input: ToggleValuableActionInput!): ValuableActionMutationResult!
+}

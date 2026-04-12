@@ -15,6 +15,8 @@ describe("community overview authority actions", () => {
     expect(header.actions.viewParameters.comingSoon).toBe(true);
     expect(header.actions.editParameters.enabled).toBe(false);
     expect(header.actions.editParameters.comingSoon).toBe(true);
+    expect(header.actions.valuableActions.enabled).toBe(true);
+    expect(header.actions.valuableActions.comingSoon).toBe(false);
   });
 
   it("enables edit parameters when authorized", () => {

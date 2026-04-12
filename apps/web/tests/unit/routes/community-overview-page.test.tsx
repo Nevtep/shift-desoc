@@ -6,6 +6,7 @@ describe("community overview route scope", () => {
   it("builds community-scoped routes without query-param leakage", () => {
     const routes = buildOverviewRoutes(7);
     const all = [
+      routes.actions.valuableActions,
       routes.actions.viewParameters,
       routes.actions.editParameters,
       routes.previews.requests.viewAll,
@@ -22,7 +23,13 @@ describe("community overview route scope", () => {
       routes.tabs.commerce
     ];
 
+    expect(routes.actions.valuableActions).toBe("/community/7/valuable-actions");
+    expect(routes.actions.valuableActions.includes("?communityId=")).toBe(false);
+
     for (const href of all) {
+      if (href === routes.actions.valuableActions) {
+        continue;
+      }
       expect(href.startsWith("/communities/7")).toBe(true);
       expect(href.includes("?communityId=")).toBe(false);
     }

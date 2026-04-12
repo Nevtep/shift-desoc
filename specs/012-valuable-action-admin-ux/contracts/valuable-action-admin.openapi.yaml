@@ -1,0 +1,159 @@
+openapi: 3.0.3
+info:
+  title: ValuableAction Admin Support API
+  version: 0.1.0
+  description: |
+    Additive support endpoints for Manager ValuableAction admin UX.
+    These endpoints expose readiness and authority introspection and do not create shadow authority.
+servers:
+  - url: /api
+paths:
+  /communities/{communityId}/valuable-actions/readiness:
+    get:
+      summary: Get projection readiness for ValuableAction catalog
+      operationId: getValuableActionReadiness
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Readiness state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectionReadiness'
+  /communities/{communityId}/valuable-actions/{actionId}/authority:
+    get:
+      summary: Get authority modes for action operations
+      operationId: getValuableActionAuthorityModes
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: actionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operation authority modes
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - communityId
+                  - actionId
+                  - operations
+                  - boundaryValid
+                properties:
+                  communityId:
+                    type: string
+                  actionId:
+                    type: string
+                  boundaryValid:
+                    type: boolean
+                  operations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActionAuthority'
+        '403':
+          description: Caller or route not authorized for requested community scope
+  /communities/{communityId}/valuable-actions/boundary-check:
+    post:
+      summary: Validate community/action route boundary before mutation
+      operationId: validateValuableActionBoundary
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - actionId
+              properties:
+                actionId:
+                  type: string
+      responses:
+        '200':
+          description: Boundary validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - communityId
+                  - actionId
+                  - boundaryValid
+                properties:
+                  communityId:
+                    type: string
+                  actionId:
+                    type: string
+                  boundaryValid:
+                    type: boolean
+                  reasonCode:
+                    type: string
+                  reasonMessage:
+                    type: string
+components:
+  schemas:
+    ProjectionReadiness:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - lagging
+            - unavailable
+        indexedBlock:
+          type: string
+        chainHeadBlock:
+          type: string
+        blockLag:
+          type: string
+        indexedAt:
+          type: string
+          format: date-time
+        details:
+          type: string
+    ActionAuthority:
+      type: object
+      required:
+        - operation
+        - mode
+      properties:
+        operation:
+          type: string
+          enum:
+            - create
+            - edit
+            - activate
+            - deactivate
+        mode:
+          type: string
+          enum:
+            - direct_write
+            - governance_required
+            - blocked
+        reasonCode:
+          type: string
+        reasonMessage:
+          type: string
+        evaluatedAtBlock:
+          type: string

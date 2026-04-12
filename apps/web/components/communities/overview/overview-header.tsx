@@ -24,6 +24,13 @@ export function OverviewHeader({ header }: { header: OverviewHeaderState }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {header.actions.valuableActions.enabled ? (
+          <Link className="btn-outline" href={header.actions.valuableActions.href}>Valuable actions</Link>
+        ) : (
+          <button className="btn-outline" disabled>
+            Valuable actions{header.actions.valuableActions.comingSoon ? " (Coming soon)" : ""}
+          </button>
+        )}
         {header.actions.viewParameters.enabled ? (
           <Link className="btn-outline" href={header.actions.viewParameters.href}>View parameters</Link>
         ) : (
