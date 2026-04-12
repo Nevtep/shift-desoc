@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useMemo, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useReadContract, useWriteContract } from "wagmi";
 import { useRouter } from "next/navigation";
-import { decodeEventLog, type Address, type Hash, type Hex } from "viem";
+import { decodeEventLog, type AbiFunction, type Address, type Hash, type Hex } from "viem";
 
 import { useApiQuery } from "../../hooks/useApiQuery";
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
@@ -226,13 +227,13 @@ export function DraftDetail({
               <dd>
                 <Link
                   className="underline"
-                  href={
+                  href={(
                     useCommunityScopedRequestLinks && Number.isFinite(draftCommunityId)
                       ? `/communities/${draftCommunityId}/coordination/requests/${effectiveRequestId}`
-                      : requestHrefBuilder && Number.isFinite(draftCommunityId)
+                      : requestHrefBuilder && typeof draftCommunityId === "number" && Number.isFinite(draftCommunityId)
                       ? requestHrefBuilder(effectiveRequestId, draftCommunityId)
                       : `/requests/${effectiveRequestId}`
-                  }
+                  ) as Route}
                 >
                   {effectiveRequestId}
                 </Link>
@@ -248,7 +249,7 @@ export function DraftDetail({
                 <dd>
                   <Link
                     className="underline"
-                    href={`/communities/${draftCommunityId ?? expectedCommunityId ?? 0}/governance/proposals/${draft.escalatedProposalId}`}
+                    href={`/communities/${draftCommunityId ?? expectedCommunityId ?? 0}/governance/proposals/${draft.escalatedProposalId}` as Route}
                   >
                     {draft.escalatedProposalId}
                   </Link>
@@ -454,10 +455,10 @@ function DraftEscalateForm({
 
       if (parsedProposalId) {
         setFormMessage(`Escalation confirmed. Proposal ${parsedProposalId} created.`);
-        router.push(`${proposalsBase}/${parsedProposalId}`);
+        router.push(`${proposalsBase}/${parsedProposalId}` as never);
       } else {
         setFormMessage("Escalation confirmed. Proposal indexing may lag for a short period.");
-        router.push(`${proposalsBase}?indexLag=1`);
+        router.push(`${proposalsBase}?indexLag=1` as never);
       }
     } catch (err) {
       console.error(err);
@@ -545,7 +546,7 @@ function DraftEscalateForm({
 function DraftActionBundleSection({
   actionBundle
 }: {
-  actionBundle: ReturnType<typeof extractDraftActionBundle>;
+  actionBundle: ReturnType<typeof mergeActionBundles>;
 }) {
   const entries = actionBundle.targets.map((target, index) => ({
     target,
@@ -595,7 +596,7 @@ function DraftRevisionComposer({
   communityId?: number;
   requestId: number;
   status: string;
-  actionBundle: ReturnType<typeof extractDraftActionBundle>;
+  actionBundle: ReturnType<typeof mergeActionBundles>;
 }) {
   const router = useRouter();
   const chainId = useChainId();
@@ -1306,9 +1307,9 @@ function toFiniteNumber(value: unknown) {
 
 function getCreateDraftInputCount() {
   const fn = COMMUNITY_MODULE_ABIS.draftsManager.find(
-    (item) => item.type === "function" && item.name === "createDraft"
+    (item): item is AbiFunction => item.type === "function" && item.name === "createDraft"
   );
-  if (!fn || !Array.isArray(fn.inputs)) {
+  if (!fn) {
     throw new Error("DraftsManager ABI missing createDraft");
   }
   return fn.inputs.length;
@@ -1427,13 +1428,15 @@ function parseEscalatedProposalId(logs: Array<{ data?: Hex; topics?: Hex[] }>): 
       return log.proposalId;
     }
 
-    if (!log.data || !log.topics) continue;
+    if (!log.data || !log.topics || log.topics.length === 0) continue;
+
+    const topics = [log.topics[0], ...log.topics.slice(1)] as [Hex, ...Hex[]];
 
     try {
       const decoded = decodeEventLog({
         abi: COMMUNITY_MODULE_ABIS.draftsManager,
         data: log.data,
-        topics: log.topics,
+        topics,
         strict: false
       });
 

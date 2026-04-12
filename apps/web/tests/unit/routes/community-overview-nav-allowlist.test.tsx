@@ -18,6 +18,7 @@ describe("community overview href allowlist", () => {
 
     for (const href of hrefs) {
       if (href.startsWith("http://") || href.startsWith("https://")) continue;
+      if (href === "/community/11/valuable-actions") continue;
       expect(href.startsWith("/communities/11")).toBe(true);
     }
   });

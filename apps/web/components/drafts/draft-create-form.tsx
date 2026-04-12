@@ -300,7 +300,7 @@ export function DraftCreateForm({
       setVersionCid("");
       setActions([]);
       if (successRedirectHref) {
-        router.push(successRedirectHref);
+        router.push(successRedirectHref as never);
       } else {
         router.refresh();
       }
@@ -326,13 +326,13 @@ export function DraftCreateForm({
               guidedHref ? (
                 <>
                   {" "}
-                  <Link href={guidedHref} className="underline">Switch to guided</Link>
+                  <Link href={guidedHref as never} className="underline">Switch to guided</Link>
                 </>
               ) : null
             ) : expertHref ? (
               <>
                 {" "}
-                <Link href={expertHref} className="underline">Open expert mode</Link>
+                <Link href={expertHref as never} className="underline">Open expert mode</Link>
               </>
             ) : null}
           </p>

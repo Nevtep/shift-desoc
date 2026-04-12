@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 
 import type { OverviewHeaderState } from "../../../lib/community-overview/types";
 
@@ -25,21 +26,21 @@ export function OverviewHeader({ header }: { header: OverviewHeaderState }) {
 
       <div className="flex flex-wrap gap-2">
         {header.actions.valuableActions.enabled ? (
-          <Link className="btn-outline" href={header.actions.valuableActions.href}>Valuable actions</Link>
+          <Link className="btn-outline" href={header.actions.valuableActions.href as Route}>Valuable actions</Link>
         ) : (
           <button className="btn-outline" disabled>
             Valuable actions{header.actions.valuableActions.comingSoon ? " (Coming soon)" : ""}
           </button>
         )}
         {header.actions.viewParameters.enabled ? (
-          <Link className="btn-outline" href={header.actions.viewParameters.href}>View parameters</Link>
+          <Link className="btn-outline" href={header.actions.viewParameters.href as Route}>View parameters</Link>
         ) : (
           <button className="btn-outline" disabled>
             View parameters{header.actions.viewParameters.comingSoon ? " (Coming soon)" : ""}
           </button>
         )}
         {header.actions.editParameters.enabled ? (
-          <Link className="btn-secondary" href={header.actions.editParameters.href}>Edit parameters</Link>
+          <Link className="btn-secondary" href={header.actions.editParameters.href as Route}>Edit parameters</Link>
         ) : (
           <button className="btn-secondary" disabled>
             Edit parameters{header.actions.editParameters.comingSoon ? " (Coming soon)" : ""}

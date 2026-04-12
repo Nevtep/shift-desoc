@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 
 import type { SectionTabState } from "../../../lib/community-overview/types";
 
@@ -9,7 +10,7 @@ export function SectionTabs({ tabs }: { tabs: SectionTabState[] }) {
         {tabs.map((tab) => (
           <li key={tab.key}>
             {tab.enabled ? (
-              <Link className="btn-ghost" href={tab.href}>{tab.label}</Link>
+              <Link className="btn-ghost" href={tab.href as Route}>{tab.label}</Link>
             ) : (
               <button className="btn-ghost" disabled>
                 {tab.label}

@@ -176,7 +176,7 @@ export function RequestCreateForm({
       setRequestType("governance");
       push("Request created. May take a moment to appear if the indexer is lagging.", "success");
       if (successRedirectHref) {
-        router.push(successRedirectHref);
+        router.push(successRedirectHref as never);
       } else {
         router.refresh();
       }

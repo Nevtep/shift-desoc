@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useEffect, useMemo, useState } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
@@ -131,7 +132,7 @@ function ProposalListItem({ proposal, detailHref }: { proposal: ProposalNode; de
           <span className="font-medium">Proposal {proposal.id}</span>
           <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{statusLabel}</span>
         </div>
-        <Link className="text-sm underline" href={detailHref}>
+        <Link className="text-sm underline" href={detailHref as Route}>
           View details
         </Link>
       </div>

@@ -80,9 +80,10 @@ async function inferCommunityIdsFromChain(params: {
   if (logs.length === 0) return [];
 
   // Newest first, deduplicated.
+  const recoveredLogs = logs as Array<{ args?: { communityId?: bigint } }>;
   const ids: number[] = [];
-  for (let i = logs.length - 1; i >= 0; i -= 1) {
-    const communityId = logs[i]?.args?.communityId;
+  for (let i = recoveredLogs.length - 1; i >= 0; i -= 1) {
+    const communityId = recoveredLogs[i]?.args?.communityId;
     if (typeof communityId !== "bigint") continue;
     const numericId = Number(communityId);
     if (!ids.includes(numericId)) ids.push(numericId);
@@ -257,7 +258,7 @@ export function useDeployResume(
                   publicClient.raw,
                   chainId,
                   candidateCommunityId,
-                  session?.deploymentAddresses
+                  undefined
                 )
               : null;
 

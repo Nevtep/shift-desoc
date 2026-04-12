@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
+import type { Route } from "next";
 import { useMemo } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
@@ -137,12 +138,12 @@ function DraftListItem({
           <span className="font-medium">Draft {draft.nativeId ?? draft.id}</span>
           <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{draft.status}</span>
           {draft.escalatedProposalId ? (
-            <Link className="text-xs underline" href={`/governance/proposals/${draft.escalatedProposalId}`}>
+            <Link className="text-xs underline" href={`/governance/proposals/${draft.escalatedProposalId}` as Route}>
               Proposal {draft.escalatedProposalId}
             </Link>
           ) : null}
         </div>
-        <Link className="text-sm underline" href={resolvedDetailHref}>
+        <Link className="text-sm underline" href={resolvedDetailHref as Route}>
           View details
         </Link>
       </div>
