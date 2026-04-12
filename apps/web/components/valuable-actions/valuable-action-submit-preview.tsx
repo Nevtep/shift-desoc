@@ -24,6 +24,11 @@ export function ValuableActionSubmitPreview({ payload }: Props) {
       <p className="text-xs text-muted-foreground">Verifier policy: {payload.verifierPolicy}</p>
       <p className="text-xs text-muted-foreground">Panel: {payload.jurorsMin} of {payload.panelSize}</p>
       <p className="text-xs text-muted-foreground">Verify window: {payload.verifyWindow}s</p>
+      <p className="text-xs text-muted-foreground">Cooldown: {payload.cooldownPeriod}s</p>
+      <p className="text-xs text-muted-foreground">Membership reward: {payload.membershipTokenReward}</p>
+      <p className="text-xs text-muted-foreground">Community reward: {payload.communityTokenReward}</p>
+      <p className="text-xs text-muted-foreground">Revocable: {payload.revocable ? "yes" : "no"}</p>
+      <p className="text-xs text-muted-foreground">Proposal threshold: {payload.proposalThreshold || "0"}</p>
     </section>
   );
 }

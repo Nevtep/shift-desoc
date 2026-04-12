@@ -274,14 +274,17 @@ export function ValuableActionForm({ initialValue, onSubmit }: Props) {
         <label className="block text-sm">
           <span className="mb-1 block">Panel Size (N) *</span>
           <input type="number" min={1} className="input" value={panelSize} onChange={(e) => setPanelSize(Number(e.target.value || 0))} />
+          <span className="mt-1 block text-xs text-muted-foreground">Cuantos verificadores participan.</span>
         </label>
         <label className="block text-sm">
           <span className="mb-1 block">Minimum Approvals (M) *</span>
           <input type="number" min={1} className="input" value={jurorsMin} onChange={(e) => setJurorsMin(Number(e.target.value || 0))} />
+          <span className="mt-1 block text-xs text-muted-foreground">Cuantos verificadores tienen que votar afirmativo.</span>
         </label>
         <label className="block text-sm">
           <span className="mb-1 block">Verify Window (seconds) *</span>
           <input type="number" min={1} className="input" value={verifyWindow} onChange={(e) => setVerifyWindow(Number(e.target.value || 0))} />
+          <span className="mt-1 block text-xs text-muted-foreground">Tiempo maximo para emitir veredicto.</span>
         </label>
       </div>
 

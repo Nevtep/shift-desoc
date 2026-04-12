@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { type Address } from "viem";
+import { encodeFunctionData, keccak256, stringToHex, type Address } from "viem";
 import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
 
 import {
@@ -12,13 +12,17 @@ import {
   type PreparedAction
 } from "../drafts/draft-create-form";
 import { useCommunityModules, COMMUNITY_MODULE_ABIS } from "../../hooks/useCommunityModules";
+import {
+  buildValuableActionContractPayload,
+  type ValuableActionMutationPayload,
+} from "../../hooks/useValuableActionAdminMutations";
 import { getAllowlistedSignatureSet } from "../../lib/actions/allowlist";
 import {
   buildTargetAvailability,
   type CommunityModuleAddressMap,
   resolveTargetAddress
 } from "../../lib/actions/target-resolution";
-import { listActionTargetIds, type ActionTargetId } from "../../lib/actions/registry";
+import { getTargetDefinition, listActionTargetIds, type ActionTargetId } from "../../lib/actions/registry";
 import { validateComposerAllowlist } from "../../lib/governance/direct-proposal-guards";
 import { classifySubmitError, submitDirectProposal } from "../../lib/governance/direct-proposal-submit";
 import { DirectProposalCreateComponent } from "./direct-proposal-create.component";
@@ -46,7 +50,19 @@ function toModuleAddressMap(modules: ReturnType<typeof useCommunityModules>["mod
   };
 }
 
-export function DirectProposalCreateContainer({ communityId }: { communityId: number }) {
+type ValuableActionTemplateContext = {
+  operation: "create" | "activate" | "deactivate";
+  actionId?: number;
+  nextActive?: boolean;
+};
+
+export function DirectProposalCreateContainer({
+  communityId,
+  valuableActionTemplate,
+}: {
+  communityId: number;
+  valuableActionTemplate?: ValuableActionTemplateContext;
+}) {
   const router = useRouter();
   const chainId = useChainId();
   const { status: accountStatus } = useAccount();
@@ -67,6 +83,7 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const submitLock = useRef({ current: false });
+  const valuableActionTemplateApplied = useRef(false);
 
   const expectedChainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "84532");
   const targetIds = useMemo(() => listActionTargetIds(), []);
@@ -91,6 +108,188 @@ export function DirectProposalCreateContainer({ communityId }: { communityId: nu
       return acc;
     }, {});
   }, [targetIds]);
+
+  useEffect(() => {
+    if (!valuableActionTemplate) return;
+    if (valuableActionTemplateApplied.current) return;
+
+    const targetAddress = resolveActionTarget("valuableActionRegistry");
+    if (!targetAddress) return;
+
+    if (valuableActionTemplate.operation === "deactivate") {
+      if (!Number.isFinite(valuableActionTemplate.actionId) || (valuableActionTemplate.actionId as number) <= 0) {
+        setErrorMessage("Valuable Action template requires a valid actionId for deactivation.");
+        valuableActionTemplateApplied.current = true;
+        return;
+      }
+
+      const actionId = BigInt(valuableActionTemplate.actionId as number);
+      const calldata = encodeFunctionData({
+        abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+        functionName: "deactivate",
+        args: [actionId],
+      });
+
+      const preparedAction: PreparedAction = {
+        targetId: "valuableActionRegistry",
+        target: targetAddress,
+        value: 0n,
+        calldata,
+        targetLabel: getTargetDefinition("valuableActionRegistry").label,
+        functionSignature: "deactivate(uint256)",
+        argsPreview: [`valuableActionId: ${actionId.toString()}`],
+      };
+
+      setActions((prev) => {
+        if (prev.some((item) => item.functionSignature.startsWith("deactivate("))) return prev;
+        return [...prev, preparedAction];
+      });
+      setSummary(`Deactivate Valuable Action #${actionId.toString()}`);
+      setDescription("Template valuable_action preloaded for deactivation.");
+      setStatusMessage("Valuable Action deactivation action preloaded.");
+      valuableActionTemplateApplied.current = true;
+      return;
+    }
+
+    if (valuableActionTemplate.operation === "activate") {
+      if (!Number.isFinite(valuableActionTemplate.actionId) || (valuableActionTemplate.actionId as number) <= 0) {
+        setErrorMessage("Valuable Action template requires a valid actionId for activation.");
+        valuableActionTemplateApplied.current = true;
+        return;
+      }
+
+      const actionId = BigInt(valuableActionTemplate.actionId as number);
+      let cancelled = false;
+
+      const run = async () => {
+        if (!publicClient) {
+          setErrorMessage("Public client unavailable for Valuable Action activation template.");
+          valuableActionTemplateApplied.current = true;
+          return;
+        }
+
+        try {
+          const proposalRef = await publicClient.readContract({
+            address: targetAddress,
+            abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+            functionName: "pendingValuableActions",
+            args: [actionId],
+          });
+
+          if (cancelled) return;
+
+          if (!proposalRef || proposalRef === "0x0000000000000000000000000000000000000000000000000000000000000000") {
+            setErrorMessage(
+              `No pending proposalRef found for Valuable Action #${actionId.toString()}. Activate requires pending governance reference.`
+            );
+            valuableActionTemplateApplied.current = true;
+            return;
+          }
+
+          const calldata = encodeFunctionData({
+            abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+            functionName: "activateFromGovernance",
+            args: [actionId, proposalRef],
+          });
+
+          const preparedAction: PreparedAction = {
+            targetId: "valuableActionRegistry",
+            target: targetAddress,
+            value: 0n,
+            calldata,
+            targetLabel: getTargetDefinition("valuableActionRegistry").label,
+            functionSignature: "activateFromGovernance(uint256,bytes32)",
+            argsPreview: [
+              `valuableActionId: ${actionId.toString()}`,
+              `proposalRef: ${proposalRef}`,
+            ],
+          };
+
+          setActions((prev) => {
+            if (prev.some((item) => item.functionSignature.startsWith("activateFromGovernance("))) return prev;
+            return [...prev, preparedAction];
+          });
+          setSummary(`Activate Valuable Action #${actionId.toString()}`);
+          setDescription("Template valuable_action preloaded for activation.");
+          setStatusMessage("Valuable Action activation action preloaded.");
+        } catch {
+          if (!cancelled) {
+            setErrorMessage("Unable to preload Valuable Action activation payload.");
+          }
+        } finally {
+          if (!cancelled) {
+            valuableActionTemplateApplied.current = true;
+          }
+        }
+      };
+
+      void run();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (typeof window === "undefined") return;
+    const raw = window.sessionStorage.getItem(`va-proposal-draft:${communityId}`);
+    if (!raw) {
+      setStatusMessage("Valuable Action template selected. Complete the action payload in admin before routing here.");
+      valuableActionTemplateApplied.current = true;
+      return;
+    }
+
+    try {
+      const payload = JSON.parse(raw) as ValuableActionMutationPayload;
+      const contractPayload = buildValuableActionContractPayload(payload);
+      const proposalRef = keccak256(
+        stringToHex(`${communityId}:${payload.title ?? "valuable-action"}:${payload.metadataCid ?? ""}`)
+      );
+
+      const calldata = encodeFunctionData({
+        abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+        functionName: "proposeValuableAction",
+        args: [contractPayload, proposalRef],
+      });
+
+      const preparedAction: PreparedAction = {
+        targetId: "valuableActionRegistry",
+        target: targetAddress,
+        value: 0n,
+        calldata,
+        targetLabel: getTargetDefinition("valuableActionRegistry").label,
+        functionSignature:
+          "proposeValuableAction((uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64),bytes32)",
+        argsPreview: [
+          `title: ${payload.title ?? ""}`,
+          `category: ${payload.category ?? "ENGAGEMENT_ONE_SHOT"}`,
+          `policy: ${payload.verifierPolicy ?? "JURY"}`,
+          `jurorsMin: ${contractPayload.jurorsMin}`,
+          `panelSize: ${contractPayload.panelSize}`,
+          `verifyWindow: ${contractPayload.verifyWindow}`,
+          `cooldownPeriod: ${contractPayload.cooldownPeriod}`,
+          `evidenceSpecCID: ${contractPayload.evidenceSpecCID}`,
+        ],
+      };
+
+      setActions((prev) => {
+        if (prev.some((item) => item.functionSignature.startsWith("proposeValuableAction("))) return prev;
+        return [...prev, preparedAction];
+      });
+
+      if (payload.title?.trim()) {
+        setTitle(payload.title.trim());
+      }
+      setSummary(`Create Valuable Action: ${payload.title ?? "Untitled"}`);
+      setDescription(
+        `Template valuable_action preloaded from admin payload.\n\nEvidence CID: ${payload.metadataCid ?? ""}\nRule Summary: ${payload.ruleSummary ?? ""}`
+      );
+      setStatusMessage("Valuable Action proposal action preloaded with complete payload.");
+    } catch {
+      setErrorMessage("Unable to parse Valuable Action payload from session storage.");
+    } finally {
+      valuableActionTemplateApplied.current = true;
+    }
+  }, [communityId, publicClient, valuableActionTemplate]);
 
   function resolveActionTarget(targetId: ActionTargetId): Address | null {
     try {

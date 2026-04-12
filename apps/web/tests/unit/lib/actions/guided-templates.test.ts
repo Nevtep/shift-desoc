@@ -14,6 +14,15 @@ const FIXTURES: Record<string, Record<string, string>> = {
     enabled: "true"
   },
   "var.addFounder": { founderAddress: "0x0000000000000000000000000000000000001003" },
+  "var.activateFromGovernance": {
+    valuableActionId: "11",
+    proposalRef: "0x1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "var.proposeValuableAction": {
+    paramsJson:
+      '{"membershipTokenReward":0,"communityTokenReward":100,"investorSBTReward":0,"category":1,"rules":"0x0000000000000000000000000000000000000000000000000000000000000000","verifyWindow":604800,"verifierPolicy":1,"metadataCIDHash":"0x2222222222222222222222222222222222222222222222222222222222222222","jurorsMin":2,"panelSize":3,"quorumBps":6000,"minVotingPowerToVote":0,"minVotingPowerToPropose":0,"slashAmount":0,"cooldownPeriod":86400,"revocable":true,"evidenceTypes":1,"proposalThreshold":0,"proposer":"0x0000000000000000000000000000000000001015","evidenceSpecCID":"ipfs://shift/valuable-action-spec","titleTemplate":"Ship feature","automationRules":["0x3333333333333333333333333333333333333333333333333333333333333333"],"activationDelay":0,"deprecationWarning":0}',
+    proposalRef: "0x4444444444444444444444444444444444444444444444444444444444444444"
+  },
   "vpt.initializeCommunity": { metadataURI: "ipfs://shift/vpt/community" },
   "vpt.setURI": { uri: "ipfs://shift/vpt/{id}.json" },
   "rr.setCommunityTreasury": { treasury: "0x0000000000000000000000000000000000001004" },
@@ -114,5 +123,9 @@ describe("guided-templates", () => {
       enabled: false,
       disabledReason: "Not representable as safe guided draft template"
     });
+
+    const vaActivate = resolved.find((flow) => flow.flowId === "verification.valuableActionRegistry.activateFromGovernance");
+    expect(vaActivate?.enabled).toBe(false);
+    expect(vaActivate?.disabledReason).toBe("Not timelock-executable by current deploy wiring");
   });
 });

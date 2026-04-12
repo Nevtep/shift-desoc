@@ -56,5 +56,7 @@ describe("valuable action form preview", () => {
 
     expect(screen.getByText(/Review PRs/i)).toBeInTheDocument();
     expect(screen.getByText(/cid:\/\/abc/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cooldown: 600s/i)).toBeInTheDocument();
+    expect(screen.getByText(/Panel: 3 of 5/i)).toBeInTheDocument();
   });
 });

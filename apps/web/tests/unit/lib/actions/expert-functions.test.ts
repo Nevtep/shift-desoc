@@ -17,4 +17,15 @@ describe("expert-functions", () => {
     const functions = getAllowlistedFunctionsForTarget(getTargetAbi("verifierManager"), []);
     expect(functions).toEqual([]);
   });
+
+  it("includes valuable action propose and activate signatures", () => {
+    const signatures = getAllowlistedSignatures("valuableActionRegistry");
+    const functions = getAllowlistedFunctionsForTarget(getTargetAbi("valuableActionRegistry"), signatures);
+    const resolved = functions.map((entry) => entry.signature);
+
+    expect(resolved).toContain("activateFromGovernance(uint256,bytes32)");
+    expect(resolved).toContain(
+      "proposeValuableAction((uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64),bytes32)"
+    );
+  });
 });

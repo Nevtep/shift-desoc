@@ -51,9 +51,9 @@
       "flowId": "verification.valuableActionRegistry.activateFromGovernance",
       "targetKey": "valuableActionRegistry",
       "signature": "activateFromGovernance(uint256,bytes32)",
-      "templateId": "disabled.valuableActionRegistry.activateFromGovernance",
-      "enabled": false,
-      "disabledReason": "Not representable as safe guided draft template"
+      "templateId": "var.activateFromGovernance",
+      "enabled": true,
+      "disabledReason": null
     },
     {
       "layer": "economy",

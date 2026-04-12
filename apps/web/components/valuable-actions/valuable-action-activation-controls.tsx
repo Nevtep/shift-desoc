@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function ValuableActionActivationControls({ communityId, actionId, isActive, mode, onToggle }: Props) {
-  const disabled = mode === "blocked";
+  const disabled = mode !== "direct_write";
   const label = isActive ? "Deactivate" : "Activate";
 
   return (
@@ -22,6 +22,11 @@ export function ValuableActionActivationControls({ communityId, actionId, isActi
       <p className="text-xs text-muted-foreground">
         Activation controls whether this action can be used for new engagement submissions.
       </p>
+      {mode !== "direct_write" ? (
+        <p className="text-xs text-muted-foreground">
+          Activation changes require a governance proposal.
+        </p>
+      ) : null}
       <div className="flex items-center gap-2">
       <button type="button" className="btn-outline" disabled={disabled} onClick={onToggle}>
         {label}

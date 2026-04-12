@@ -3,7 +3,15 @@ import { encodeFunctionData, parseAbiItem, type AbiFunction, type Address, type 
 import type { AllowlistTargetId } from "./allowlist";
 import crucialFlowsCatalogJson from "../../../../specs/010-wizard-permission-parity/contracts/crucial-flows-catalog.json" assert { type: "json" };
 
-type TemplateFieldType = "address" | "bool" | "string" | "uint16" | "uint256" | "addressArray" | "uint256Array";
+type TemplateFieldType =
+  | "address"
+  | "bool"
+  | "string"
+  | "bytes32"
+  | "uint16"
+  | "uint256"
+  | "addressArray"
+  | "uint256Array";
 
 export type GuidedTemplateField = {
   key: string;
@@ -78,6 +86,39 @@ const GUIDED_TEMPLATES: readonly GuidedTemplateDefinition[] = [
     description: "Grant founder privileges to an address.",
     effectCopy: "Adds a founder to the founder allowlist.",
     fields: [{ key: "founderAddress", label: "Founder address", type: "address", required: true }]
+  },
+  {
+    id: "var.activateFromGovernance",
+    targetId: "valuableActionRegistry",
+    signature: "activateFromGovernance(uint256,bytes32)",
+    label: "Activate Valuable Action",
+    description: "Activate a pending Valuable Action using its ID and governance proposal reference.",
+    effectCopy: "Marks the pending Valuable Action as active and executable.",
+    fields: [
+      { key: "valuableActionId", label: "Valuable Action ID", type: "uint256", required: true, min: 1 },
+      { key: "proposalRef", label: "Proposal reference (bytes32)", type: "bytes32", required: true }
+    ]
+  },
+  {
+    id: "var.proposeValuableAction",
+    targetId: "valuableActionRegistry",
+    signature:
+      "proposeValuableAction((uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64),bytes32)",
+    label: "Propose Valuable Action",
+    description: "Submit a full Valuable Action payload and proposal reference to governance.",
+    effectCopy: "Creates a pending Valuable Action that can later be activated from governance.",
+    fields: [
+      {
+        key: "paramsJson",
+        label: "Valuable Action params JSON",
+        type: "string",
+        required: true,
+        maxLength: 12000,
+        placeholder:
+          '{"membershipTokenReward":0,"communityTokenReward":0,"investorSBTReward":0,"category":1,"rules":"0x...","verifyWindow":604800,"verifierPolicy":1,"metadataCIDHash":"0x...","jurorsMin":2,"panelSize":3,"quorumBps":6000,"minVotingPowerToVote":0,"minVotingPowerToPropose":0,"slashAmount":0,"cooldownPeriod":0,"revocable":true,"evidenceTypes":0,"proposalThreshold":0,"proposer":"0x...","evidenceSpecCID":"ipfs://...","titleTemplate":"Action Title","automationRules":[],"activationDelay":0,"deprecationWarning":0}'
+      },
+      { key: "proposalRef", label: "Proposal reference (bytes32)", type: "bytes32", required: true }
+    ]
   },
   {
     id: "vpt.initializeCommunity",
@@ -239,6 +280,14 @@ function parseAddress(raw: string): Address {
   return value as Address;
 }
 
+function parseBytes32(raw: string): `0x${string}` {
+  const value = raw.trim();
+  if (!/^0x[a-fA-F0-9]{64}$/.test(value)) {
+    throw new Error("Value must be a valid 0x-prefixed 32-byte hex string");
+  }
+  return value as `0x${string}`;
+}
+
 function parseUint(raw: string): bigint {
   const value = raw.trim();
   if (!/^\d+$/.test(value)) {
@@ -272,6 +321,7 @@ function parseFieldValue(field: GuidedTemplateField, rawValue: string): Address 
     if (field.type === "bool") return false;
     if (field.type === "addressArray") return [];
     if (field.type === "uint256Array") return [];
+    if (field.type === "bytes32") return "0x0000000000000000000000000000000000000000000000000000000000000000";
     if (field.type === "uint16" || field.type === "uint256") return 0n;
     return "";
   }
@@ -287,6 +337,8 @@ function parseFieldValue(field: GuidedTemplateField, rawValue: string): Address 
       return parseBool(rawValue);
     case "string":
       return rawValue.trim();
+    case "bytes32":
+      return parseBytes32(rawValue);
     case "uint16": {
       const parsed = parseUint(rawValue);
       if (parsed > 65535n) {
@@ -330,6 +382,180 @@ function previewValue(value: Address | boolean | string | bigint | Address[] | b
   if (typeof value === "bigint") return value.toString();
   if (Array.isArray(value)) return value.map((item) => (typeof item === "bigint" ? item.toString() : String(item))).join(",");
   return String(value);
+}
+
+function asObject(raw: string): Record<string, unknown> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("Valuable Action params JSON must be valid JSON");
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Valuable Action params JSON must be a JSON object");
+  }
+
+  return parsed as Record<string, unknown>;
+}
+
+function asUintField(value: unknown, label: string, bits: 8 | 32 | 64): bigint {
+  if (typeof value !== "number" && typeof value !== "string" && typeof value !== "bigint") {
+    throw new Error(`${label} must be an unsigned integer`);
+  }
+
+  if (typeof value === "number" && (!Number.isFinite(value) || !Number.isInteger(value))) {
+    throw new Error(`${label} must be an unsigned integer`);
+  }
+
+  const parsed =
+    typeof value === "bigint"
+      ? value
+      : typeof value === "number"
+        ? BigInt(Math.trunc(value))
+        : parseUint(value);
+
+  if (parsed < 0n) {
+    throw new Error(`${label} must be an unsigned integer`);
+  }
+
+  const maxValue = (1n << BigInt(bits)) - 1n;
+  if (parsed > maxValue) {
+    throw new Error(`${label} exceeds uint${bits}`);
+  }
+
+  return parsed;
+}
+
+function asUint256Field(value: unknown, label: string): bigint {
+  if (typeof value !== "number" && typeof value !== "string" && typeof value !== "bigint") {
+    throw new Error(`${label} must be an unsigned integer`);
+  }
+  if (typeof value === "number" && (!Number.isFinite(value) || !Number.isInteger(value))) {
+    throw new Error(`${label} must be an unsigned integer`);
+  }
+  const parsed =
+    typeof value === "bigint"
+      ? value
+      : typeof value === "number"
+        ? BigInt(Math.trunc(value))
+        : parseUint(value);
+  if (parsed < 0n) {
+    throw new Error(`${label} must be an unsigned integer`);
+  }
+  return parsed;
+}
+
+function asBoolField(value: unknown, label: string): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return parseBool(value);
+  throw new Error(`${label} must be a boolean`);
+}
+
+function asStringField(value: unknown, label: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${label} must be a string`);
+  }
+  return value;
+}
+
+function asBytes32ArrayField(value: unknown, label: string): `0x${string}`[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be a bytes32 array`);
+  }
+  return value.map((item, index) => {
+    if (typeof item !== "string") {
+      throw new Error(`${label}[${index}] must be a bytes32 string`);
+    }
+    return parseBytes32(item);
+  });
+}
+
+function parseValuableActionParamsJson(raw: string): {
+  membershipTokenReward: bigint;
+  communityTokenReward: bigint;
+  investorSBTReward: bigint;
+  category: bigint;
+  rules: `0x${string}`;
+  verifyWindow: bigint;
+  verifierPolicy: bigint;
+  metadataCIDHash: `0x${string}`;
+  jurorsMin: bigint;
+  panelSize: bigint;
+  quorumBps: bigint;
+  minVotingPowerToVote: bigint;
+  minVotingPowerToPropose: bigint;
+  slashAmount: bigint;
+  cooldownPeriod: bigint;
+  revocable: boolean;
+  evidenceTypes: bigint;
+  proposalThreshold: bigint;
+  proposer: Address;
+  evidenceSpecCID: string;
+  titleTemplate: string;
+  automationRules: `0x${string}`[];
+  activationDelay: bigint;
+  deprecationWarning: bigint;
+  tupleArgs: readonly unknown[];
+} {
+  const parsed = asObject(raw);
+
+  const params = {
+    membershipTokenReward: asUintField(parsed.membershipTokenReward, "membershipTokenReward", 32),
+    communityTokenReward: asUintField(parsed.communityTokenReward, "communityTokenReward", 32),
+    investorSBTReward: asUintField(parsed.investorSBTReward, "investorSBTReward", 32),
+    category: asUintField(parsed.category, "category", 8),
+    rules: parseBytes32(asStringField(parsed.rules, "rules")),
+    verifyWindow: asUintField(parsed.verifyWindow, "verifyWindow", 32),
+    verifierPolicy: asUintField(parsed.verifierPolicy, "verifierPolicy", 8),
+    metadataCIDHash: parseBytes32(asStringField(parsed.metadataCIDHash, "metadataCIDHash")),
+    jurorsMin: asUintField(parsed.jurorsMin, "jurorsMin", 32),
+    panelSize: asUintField(parsed.panelSize, "panelSize", 32),
+    quorumBps: asUintField(parsed.quorumBps, "quorumBps", 32),
+    minVotingPowerToVote: asUintField(parsed.minVotingPowerToVote, "minVotingPowerToVote", 32),
+    minVotingPowerToPropose: asUintField(parsed.minVotingPowerToPropose, "minVotingPowerToPropose", 32),
+    slashAmount: asUintField(parsed.slashAmount, "slashAmount", 32),
+    cooldownPeriod: asUintField(parsed.cooldownPeriod, "cooldownPeriod", 32),
+    revocable: asBoolField(parsed.revocable, "revocable"),
+    evidenceTypes: asUintField(parsed.evidenceTypes, "evidenceTypes", 32),
+    proposalThreshold: asUint256Field(parsed.proposalThreshold, "proposalThreshold"),
+    proposer: parseAddress(asStringField(parsed.proposer, "proposer")),
+    evidenceSpecCID: asStringField(parsed.evidenceSpecCID, "evidenceSpecCID"),
+    titleTemplate: asStringField(parsed.titleTemplate, "titleTemplate"),
+    automationRules: asBytes32ArrayField(parsed.automationRules, "automationRules"),
+    activationDelay: asUintField(parsed.activationDelay, "activationDelay", 64),
+    deprecationWarning: asUintField(parsed.deprecationWarning, "deprecationWarning", 64)
+  };
+
+  return {
+    ...params,
+    tupleArgs: [
+      params.membershipTokenReward,
+      params.communityTokenReward,
+      params.investorSBTReward,
+      params.category,
+      params.rules,
+      params.verifyWindow,
+      params.verifierPolicy,
+      params.metadataCIDHash,
+      params.jurorsMin,
+      params.panelSize,
+      params.quorumBps,
+      params.minVotingPowerToVote,
+      params.minVotingPowerToPropose,
+      params.slashAmount,
+      params.cooldownPeriod,
+      params.revocable,
+      params.evidenceTypes,
+      params.proposalThreshold,
+      params.proposer,
+      params.evidenceSpecCID,
+      params.titleTemplate,
+      params.automationRules,
+      params.activationDelay,
+      params.deprecationWarning
+    ]
+  };
 }
 
 export function listGuidedTemplates(): GuidedTemplateDefinition[] {
@@ -400,6 +626,45 @@ export function encodeGuidedTemplateCalldata(template: GuidedTemplateDefinition,
   calldata: Hex;
   argsPreview: string[];
 } {
+  if (template.id === "var.activateFromGovernance") {
+    const actionId = parseUint(rawInput.valuableActionId ?? "");
+    const proposalRef = parseBytes32(rawInput.proposalRef ?? "");
+    const functionFragment = parseAbiItem(`function ${template.signature}`) as AbiFunction;
+    const calldata = encodeFunctionData({
+      abi: [functionFragment],
+      functionName: functionFragment.name,
+      args: [actionId, proposalRef]
+    });
+
+    return {
+      calldata,
+      argsPreview: [`valuableActionId: ${actionId.toString()}`, `proposalRef: ${proposalRef}`]
+    };
+  }
+
+  if (template.id === "var.proposeValuableAction") {
+    const params = parseValuableActionParamsJson(rawInput.paramsJson ?? "");
+    const proposalRef = parseBytes32(rawInput.proposalRef ?? "");
+    const functionFragment = parseAbiItem(`function ${template.signature}`) as AbiFunction;
+    const calldata = encodeFunctionData({
+      abi: [functionFragment],
+      functionName: functionFragment.name,
+      args: [params.tupleArgs, proposalRef]
+    });
+
+    return {
+      calldata,
+      argsPreview: [
+        `titleTemplate: ${params.titleTemplate}`,
+        `category: ${params.category.toString()}`,
+        `verifierPolicy: ${params.verifierPolicy.toString()}`,
+        `jurorsMin: ${params.jurorsMin.toString()}`,
+        `panelSize: ${params.panelSize.toString()}`,
+        `proposalRef: ${proposalRef}`
+      ]
+    };
+  }
+
   const parsedArgs = template.fields.map((field) => parseFieldValue(field, rawInput[field.key] ?? ""));
 
   if (template.id === "ve.setVerifierSet") {
