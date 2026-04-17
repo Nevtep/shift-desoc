@@ -12,10 +12,11 @@ const STABLE_TOKENS_BY_CHAIN: Record<number, { label: string; address: string }[
 };
 
 const CONFIG_STEPS = [
-  { key: "name", title: "Community name", description: "Give your community a name" },
-  { key: "description", title: "Description", description: "Describe your community's purpose" },
-  { key: "currency", title: "Currency", description: "Choose the stable currency for payments and treasury" },
-  { key: "ready", title: "Ready to deploy", description: "Verify your wallet has enough ETH for gas fees" }
+  { key: "name", title: "Community name", description: "Give your community a clear name" },
+  { key: "description", title: "Description", description: "Describe your community purpose and scope" },
+  { key: "currency", title: "Currency", description: "Choose the stable currency for treasury and payments" },
+  { key: "ready", title: "Preflight checks", description: "Validate wallet, network, and ETH for gas" },
+  { key: "review", title: "Review and confirm", description: "Review final details before deploying" }
 ] as const;
 
 function weiToEth(wei: bigint): string {
@@ -91,6 +92,7 @@ export function DeployConfigSteps({
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === CONFIG_STEPS.length - 1;
   const isPreflightStep = currentStep.key === "ready";
+  const isReviewStep = currentStep.key === "review";
   const walletAddr = connectedAddress ?? preflight?.connectedAddress;
   const likelyMock = isLikelyMockAddress(walletAddr);
 
@@ -111,6 +113,7 @@ export function DeployConfigSteps({
     if (stepIndex === 0) return value.communityName.trim().length > 0;
     if (stepIndex === 1) return value.communityDescription.trim().length > 0;
     if (stepIndex === 2) return value.treasuryStableToken.trim().length > 0;
+    if (stepIndex === 3) return true;
     return false;
   })();
   const preflightPassed = !preflight || preflight.blockingReasons.length === 0;
@@ -120,6 +123,10 @@ export function DeployConfigSteps({
     validationErrors.length === 0 &&
     value.treasuryStableToken.trim().length > 0 &&
     (preflightPassed || (designMode && blockedByInsufficientFunds));
+  const estimatedTxCount = preflight?.funding.estimatedTxCount ?? 11;
+  const selectedTokenLabel =
+    tokenOptions.find((opt) => opt.address.toLowerCase() === value.treasuryStableToken.toLowerCase())?.label ??
+    "Unknown token";
 
   function handleNext() {
     if (isLastStep && canCreate && onCreateCommunity) {
@@ -192,7 +199,7 @@ export function DeployConfigSteps({
               className="min-h-24 w-full rounded-xl border border-border bg-background px-4 py-3 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20"
               value={value.communityDescription}
               onChange={(e) => updateField(value, onChange, "communityDescription", e.target.value)}
-              placeholder="Short purpose and operating model for this community"
+              placeholder="Purpose and operating model of the community"
               autoFocus
               aria-label="Community description"
             />
@@ -203,7 +210,7 @@ export function DeployConfigSteps({
           <div className="space-y-2">
             <span className="text-sm font-medium">Community currency</span>
             <p className="text-xs text-muted-foreground">
-              Your community will use this currency for payments and treasury.
+              This currency will be used for payments and treasury operations.
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {tokenOptions.map((opt) => (
@@ -217,7 +224,7 @@ export function DeployConfigSteps({
                       : "hover:border-primary/30"
                   }`}
                 >
-                  <span>{opt.label}</span>
+                    <span>{opt.label}</span>
                   {value.treasuryStableToken === opt.address ? (
                     <span className="text-sm font-medium text-primary">Selected</span>
                   ) : null}
@@ -253,7 +260,7 @@ export function DeployConfigSteps({
               </div>
               {likelyMock && walletAddr ? (
                 <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  ⚠️ Test/mock address detected: {walletAddr}. Data may not be from a real wallet.
+                  Test/mock address detected: {walletAddr}. Data may not reflect a real wallet.
                 </p>
               ) : null}
               {walletAddr && !likelyMock ? (
@@ -299,20 +306,20 @@ export function DeployConfigSteps({
                         {blockedByInsufficientFunds && onDesignModeChange ? (
                           <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
                             <p className="mb-2 text-xs text-amber-800">
-                              Sin saldo para gas? Activa el modo diseño para ver el flujo completo sin ejecutar transacciones.
+                              No gas funds available? Enable design mode to preview the full flow without running transactions.
                             </p>
                             <button
                               type="button"
                               onClick={() => onDesignModeChange(!designMode)}
                               className="cursor-pointer rounded-lg bg-amber-200 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-300"
                             >
-                              {designMode ? "Desactivar modo diseño" : "Continuar en modo diseño"}
+                              {designMode ? "Disable design mode" : "Continue in design mode"}
                             </button>
                           </div>
                         ) : null}
                       </>
                     ) : (
-                      <p className="text-sm font-medium text-primary">All checks passed. You can deploy.</p>
+                      <p className="text-sm font-medium text-primary">All checks passed. You can continue to final review.</p>
                     )}
                   </>
                 ) : (
@@ -322,10 +329,43 @@ export function DeployConfigSteps({
             )}
           </div>
         )}
+
+        {isReviewStep ? (
+          <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+            <p className="text-sm text-muted-foreground">
+              Review this information before sending on-chain transactions.
+            </p>
+            <dl className="grid gap-3 text-sm">
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Community</dt>
+                <dd className="font-medium text-foreground">{value.communityName}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Description</dt>
+                <dd className="text-foreground">{value.communityDescription}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Stable currency</dt>
+                <dd className="text-foreground">
+                  <span className="font-medium">{selectedTokenLabel}</span>
+                  <span className="block font-mono text-xs text-muted-foreground">{value.treasuryStableToken}</span>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Network</dt>
+                <dd className="text-foreground">{CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}</dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Estimated transactions</dt>
+                <dd className="text-foreground">{estimatedTxCount} approx.</dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
       </div>
 
       {validationErrors.length > 0 && currentStep.key === "currency" ? (
-        <p className="text-sm text-destructive">Please select a currency.</p>
+        <p className="text-sm text-destructive">Select a currency to continue.</p>
       ) : null}
 
       <div className="flex items-center justify-between gap-4">
@@ -359,8 +399,8 @@ export function DeployConfigSteps({
         >
           {isLastStep
             ? designMode
-              ? "Simular deploy (modo diseño)"
-              : "Create community"
+              ? `Simulate deploy (${estimatedTxCount} tx approx.)`
+              : `Deploy community (${estimatedTxCount} tx approx.)`
             : "Next"}
           {!isLastStep ? <ChevronRight className="ml-1 h-4 w-4" /> : null}
         </button>

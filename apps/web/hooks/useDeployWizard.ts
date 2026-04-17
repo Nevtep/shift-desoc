@@ -65,6 +65,62 @@ export type UseDeployWizardOptions = {
 const DEFAULT_SUPPORTED_CHAIN_IDS = [84532];
 const DEPLOY_LOG_PREFIX = "[DeployWizard]";
 
+function buildUserFacingStepError(rawMessage: string, runningStep: StepKey): { message: string; nextActionHint: string } {
+  const txHashMatch = rawMessage.match(/\(0x[a-fA-F0-9]{64}\)/);
+  const txHint = txHashMatch ? ` Tx: ${txHashMatch[0].slice(1, -1)}.` : "";
+
+  if (/Transaction reverted for setVerifierParams/i.test(rawMessage)) {
+    return {
+      message:
+        `Could not configure verifier parameters during community setup.${txHint} ` +
+        "This usually means some module wiring or permissions are not fully ready yet.",
+      nextActionHint: "Click Resume to retry from this step. If it fails again, use Start over to run a clean deploy."
+    };
+  }
+
+  if (/Transaction reverted for setRevenuePolicy/i.test(rawMessage)) {
+    return {
+      message:
+        `Could not set the initial revenue policy.${txHint} ` +
+        "This can happen when registry/module state is out of sync.",
+      nextActionHint: "Click Resume first. If the error persists, use Start over to rebuild configuration from scratch."
+    };
+  }
+
+  if (/Transaction reverted for bootstrapAccessAndRuntime/i.test(rawMessage)) {
+    return {
+      message:
+        `Could not complete access/runtime bootstrap.${txHint} ` +
+        "Role wiring or one of the required module addresses may be invalid.",
+      nextActionHint: "Click Resume after confirming your wallet/network are correct. If it repeats, use Start over."
+    };
+  }
+
+  if (/AccessManagedUnauthorized|Unauthorized call/i.test(rawMessage)) {
+    return {
+      message:
+        "The connected wallet does not currently have permission to execute this step.",
+      nextActionHint: "Reconnect the intended deployer wallet and click Resume."
+    };
+  }
+
+  if (/timed out|timeout/i.test(rawMessage)) {
+    return {
+      message:
+        "Transaction took too long to confirm. It may still be pending on-chain.",
+      nextActionHint: "Wait for confirmation, then click Resume to continue."
+    };
+  }
+
+  return {
+    message: rawMessage || "Unknown deployment error.",
+    nextActionHint:
+      runningStep === "CONFIGURE_ACCESS_PERMISSIONS"
+        ? "Click Resume to retry this setup step. If it keeps failing, use Start over."
+        : "Fix the issue and click Resume to continue."
+  };
+}
+
 function isSessionCompatibleWithCurrentWizard(session: DeploymentWizardSession): boolean {
   if (!Array.isArray(session.steps) || session.steps.length !== WIZARD_STEP_ORDER.length) {
     return false;
@@ -411,6 +467,11 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
           status: nextStatus === "failed" ? "failed" : active.status,
           updatedAt: new Date().toISOString()
         };
+        if (designMode) {
+          setSession(active);
+          saveSession(active);
+          await new Promise((r) => setTimeout(r, 900));
+        }
 
         if (nextStatus === "failed") {
           log("Stopping deploy: step failed", {
@@ -427,10 +488,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         });
       } catch (err) {
         const rawMessage = err instanceof Error ? err.message : "Unknown deployment error";
-        const message =
-          /timed out|timeout/i.test(rawMessage)
-            ? "Transaction took too long to confirm. The transaction may still be pending on-chain. Use Resume to continue once it confirms."
-            : rawMessage;
+        const friendlyError = buildUserFacingStepError(rawMessage, runningStep);
         console.log(`${DEPLOY_LOG_PREFIX} Step execution threw`, {
           step: runningStep,
           message: rawMessage,
@@ -440,13 +498,13 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
           ...active,
           status: "failed",
           steps: transitionStep(active.steps, runningStep, "failed", {
-            failureReason: message,
-            nextActionHint: "Fix the issue and use Resume deploy."
+            failureReason: friendlyError.message,
+            nextActionHint: friendlyError.nextActionHint
           }),
-          lastError: { code: "STEP_FAILURE", message, stepKey: runningStep },
+          lastError: { code: "STEP_FAILURE", message: friendlyError.message, stepKey: runningStep },
           updatedAt: new Date().toISOString()
         };
-        setError(message);
+        setError(friendlyError.message);
         setSession(active);
         saveSession(active);
         return;

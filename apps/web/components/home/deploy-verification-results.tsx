@@ -5,23 +5,23 @@ import { Check, Loader2, X } from "lucide-react";
 import type { VerificationCheckResult } from "../../lib/deploy/types";
 
 const FRIENDLY_LABELS: Record<string, string> = {
-  MODULE_WIRING_VALUABLE_ACTION_REGISTRY: "Registry de módulos",
-  VPT_COMMUNITY_INITIALIZED: "Token de verificación",
-  ROLE_RR_POSITION_MANAGER: "Rol de gestor de posiciones",
-  ROLE_VERIFIER_MANAGER_CALLER_ENGAGEMENTS: "Rol de jurados en engagements",
-  ROLE_RR_DISTRIBUTOR: "Distribuidor de ingresos",
-  ROLE_COMMERCE_DISPUTES_CALLER: "Rol de disputas en marketplace",
-  ROLE_COHORT_REVENUE_ROUTER: "Rol de revenue router en cohortes",
-  ROLE_HOUSING_MARKETPLACE_CALLER: "Rol de housing en marketplace",
-  ROLE_COHORT_INVESTMENT_RECORDER: "Rol de registro de inversion en cohortes",
-  ROLE_VA_ISSUER_REQUEST_HUB: "Rol issuer en RequestHub",
-  ROLE_VA_ISSUER_POSITION_MANAGER: "Rol issuer en PositionManager",
-  ROLE_VA_ISSUER_INVESTMENT_COHORT_MANAGER: "Rol issuer en InvestmentCohortManager",
-  ROLE_VA_ISSUER_CREDENTIAL_MANAGER: "Rol issuer en CredentialManager",
-  ROLE_MEMBERSHIP_MINTER_ENGAGEMENTS: "Rol minter de membresia en Engagements",
-  ROLE_VA_SBT_MANAGER_REGISTRY: "Rol manager SBT en ValuableActionRegistry",
-  MARKETPLACE_COMMUNITY_ACTIVE: "Marketplace activo",
-  REVENUE_ROUTER_TREASURY_SET: "Tesorería configurada"
+  MODULE_WIRING_VALUABLE_ACTION_REGISTRY: "Module registry wiring",
+  VPT_COMMUNITY_INITIALIZED: "Verification token initialized",
+  ROLE_RR_POSITION_MANAGER: "Position manager role",
+  ROLE_VERIFIER_MANAGER_CALLER_ENGAGEMENTS: "Verifier manager caller role (Engagements)",
+  ROLE_RR_DISTRIBUTOR: "Revenue distributor role",
+  ROLE_COMMERCE_DISPUTES_CALLER: "Commerce disputes caller role",
+  ROLE_COHORT_REVENUE_ROUTER: "Cohort revenue router role",
+  ROLE_HOUSING_MARKETPLACE_CALLER: "Housing marketplace caller role",
+  ROLE_COHORT_INVESTMENT_RECORDER: "Cohort investment recorder role",
+  ROLE_VA_ISSUER_REQUEST_HUB: "Issuer role (RequestHub)",
+  ROLE_VA_ISSUER_POSITION_MANAGER: "Issuer role (PositionManager)",
+  ROLE_VA_ISSUER_INVESTMENT_COHORT_MANAGER: "Issuer role (InvestmentCohortManager)",
+  ROLE_VA_ISSUER_CREDENTIAL_MANAGER: "Issuer role (CredentialManager)",
+  ROLE_MEMBERSHIP_MINTER_ENGAGEMENTS: "Membership minter role (Engagements)",
+  ROLE_VA_SBT_MANAGER_REGISTRY: "SBT manager role (ValuableActionRegistry)",
+  MARKETPLACE_COMMUNITY_ACTIVE: "Marketplace active",
+  REVENUE_ROUTER_TREASURY_SET: "Treasury configured"
 };
 
 const VERIFY_CHECK_KEYS = [
@@ -47,6 +47,8 @@ const VERIFY_CHECK_KEYS = [
 type Props = {
   results: VerificationCheckResult[];
   isVerifying?: boolean;
+  revealBaseDelayMs?: number;
+  revealStepDelayMs?: number;
 };
 
 type DisplayVerificationItem = {
@@ -89,7 +91,7 @@ function CheckRow({
           {showLoading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
-              <span className="text-xs text-muted-foreground">Verificando…</span>
+              <span className="text-xs text-muted-foreground">Checking...</span>
             </>
           ) : showResult ? (
             passed ? (
@@ -113,7 +115,12 @@ function CheckRow({
   );
 }
 
-export function DeployVerificationResults({ results, isVerifying }: Props) {
+export function DeployVerificationResults({
+  results,
+  isVerifying,
+  revealBaseDelayMs = 600,
+  revealStepDelayMs = 320
+}: Props) {
   const hasResults = results.length > 0;
   const showSection = hasResults || isVerifying;
 
@@ -128,7 +135,7 @@ export function DeployVerificationResults({ results, isVerifying }: Props) {
       }))
     : VERIFY_CHECK_KEYS.map((key) => ({
         key,
-        label: FRIENDLY_LABELS[key] ?? key.replace(/_/g, " ")
+        label: FRIENDLY_LABELS[key] ?? "Verification check"
       }));
 
   return (
@@ -141,7 +148,7 @@ export function DeployVerificationResults({ results, isVerifying }: Props) {
             passed={item.passed}
             failureReason={item.failureReason}
             isLoading={isVerifying || !hasResults}
-            delayMs={600 + i * 320}
+            delayMs={revealBaseDelayMs + i * revealStepDelayMs}
           />
         ))}
       </ul>

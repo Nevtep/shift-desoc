@@ -10,30 +10,46 @@ type Props = {
 };
 
 const SHORT_LABELS: Record<string, string> = {
-  PRECHECKS: "Preflight",
-  DEPLOY_STACK: "Deploy Layers",
-  CONFIGURE_ACCESS_PERMISSIONS: "Wire Registry",
-  HANDOFF_ADMIN_TO_TIMELOCK: "Handoff",
-  VERIFY_DEPLOYMENT: "Verify"
+  PRECHECKS: "Preflight checks",
+  DEPLOY_STACK: "Contract deployment",
+  CONFIGURE_ACCESS_PERMISSIONS: "Registry and permissions",
+  HANDOFF_ADMIN_TO_TIMELOCK: "Admin handoff",
+  VERIFY_DEPLOYMENT: "Final verification"
 };
 
 const TX_LABELS: Record<string, string> = {
   DEPLOY_STACK: "Layer deployment",
-  CONFIGURE_ACCESS_PERMISSIONS: "Permission and registry wiring",
+  CONFIGURE_ACCESS_PERMISSIONS: "Registry and permissions",
   HANDOFF_ADMIN_TO_TIMELOCK: "Admin handoff"
 };
 
 const ACCESS_WIRING_LABELS = [
-  "Bootstrap community registry",
-  "Apply access-role wiring",
-  "Run post-wiring setup"
+  "Registering your community",
+  "Applying permissions and runtime setup",
+  "Finalizing setup checks"
 ];
 
 const HANDOFF_LABELS = [
-  "Grant timelock admin role",
-  "Revoke deployer admin role",
-  "Revoke bootstrap coordinator admin role"
+  "Granting admin to timelock",
+  "Removing deployer admin access",
+  "Removing bootstrap admin access"
 ];
+
+const STEP_ACTIONS: Record<string, string[]> = {
+  PRECHECKS: ["Checking wallet, network, infrastructure, and funds"],
+  DEPLOY_STACK: [
+    "Deploying AccessManager and core modules",
+    "Saving addresses for the next steps"
+  ],
+  CONFIGURE_ACCESS_PERMISSIONS: [
+    "Registering community modules",
+    "Configuring permissions and runtime"
+  ],
+  HANDOFF_ADMIN_TO_TIMELOCK: [
+    "Transferring governance control to timelock"
+  ],
+  VERIFY_DEPLOYMENT: ["Running final validation checks"]
+};
 
 function TxItem({
   index,
@@ -80,7 +96,7 @@ function TxItem({
       </span>
       <span className={done ? "font-medium text-primary" : inProgress ? "font-medium text-foreground" : "text-muted-foreground"}>
         {baseLabel} {index + 1} of {total}
-        {done ? " — confirmed" : inProgress ? " — confirming…" : " — pending"}
+        {done ? " - confirmed" : inProgress ? " - confirming..." : " - pending"}
       </span>
     </div>
   );
@@ -118,6 +134,15 @@ export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
             <p className="text-xs text-muted-foreground/90">
               {currentStep.purpose ?? STEP_META[currentStep.key].purpose}
             </p>
+            {(STEP_ACTIONS[currentStep.key] ?? []).length > 0 ? (
+              <div className="space-y-1 pt-1">
+                {(STEP_ACTIONS[currentStep.key] ?? []).map((action) => (
+                  <p key={action} className="text-[11px] text-muted-foreground">
+                    {action}
+                  </p>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {Array.from({ length: currentStepTxSlots }, (_, i) => (

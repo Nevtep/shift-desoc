@@ -11,6 +11,7 @@ import {
   validateDeploymentConfig,
   type CommunityDeploymentConfig
 } from "../../lib/deploy/config";
+import { firstIncompleteStep } from "../../lib/deploy/wizard-machine";
 import { useDeployResume } from "../../hooks/useDeployResume";
 import { useDeployWizard, type UseDeployWizardOptions } from "../../hooks/useDeployWizard";
 import { useMyDeployedCommunities } from "../../hooks/useMyDeployedCommunities";
@@ -25,6 +26,13 @@ type Props = {
 };
 
 const FORM_DRAFT_STORAGE_KEY = "shift.manager.deploy.formDraft.v1";
+const RESUME_STEP_LABELS: Record<string, string> = {
+  PRECHECKS: "Preflight checks",
+  DEPLOY_STACK: "Contract deployment",
+  CONFIGURE_ACCESS_PERMISSIONS: "Registry and permissions",
+  HANDOFF_ADMIN_TO_TIMELOCK: "Admin handoff to timelock",
+  VERIFY_DEPLOYMENT: "Final verification"
+};
 
 function getTxExplorerUrl(chainId: number, txHash: `0x${string}`): string {
   const base =
@@ -99,6 +107,8 @@ export function DeployWizard({ options }: Props) {
   const resumeRequestIdRef = useRef(0);
 
   const isCompleted = session?.status === "completed";
+  const hasVerificationSuccess =
+    session?.steps?.some((step) => step.key === "VERIFY_DEPLOYMENT" && step.status === "succeeded") ?? false;
   const isDeploying =
     session != null &&
     (session.status === "in-progress" || session.status === "preflight-blocked" || session.status === "failed");
@@ -108,7 +118,7 @@ export function DeployWizard({ options }: Props) {
     !isLoadingMyCommunities &&
     !isDeploying &&
     !isCompleted &&
-    ((hasCommunities && !wizardExpanded) || wizardClosed);
+    (!wizardExpanded || wizardClosed);
   const showLoadingCheck =
     status === "connected" &&
     isLoadingMyCommunities &&
@@ -141,6 +151,13 @@ export function DeployWizard({ options }: Props) {
     (session?.communityId ?? resumeCandidate?.communityId) && session?.status !== "completed"
   );
   const showResume = hasResumableSession;
+  const resumeFromStepKey = session?.steps?.length
+    ? firstIncompleteStep(session.steps)
+    : resumeCandidate?.steps?.length
+      ? firstIncompleteStep(resumeCandidate.steps)
+      : null;
+  const resumeFromStepLabel = resumeFromStepKey ? RESUME_STEP_LABELS[resumeFromStepKey] ?? resumeFromStepKey : null;
+  const failedStep = session?.steps?.find((step) => step.status === "failed");
 
   async function handleResume() {
     console.log("[DeployWizard] Resume button clicked", {
@@ -221,25 +238,7 @@ export function DeployWizard({ options }: Props) {
   }
 
   if (!showFullScreen) {
-    const communityId = session?.communityId;
-    return (
-      <section className="space-y-6">
-        <p className="text-sm font-medium text-primary">Your community is ready!</p>
-        <div className="flex flex-wrap justify-end gap-3">
-          <Link href="/" className="btn-ghost cursor-pointer">
-            Go to home
-          </Link>
-          {typeof communityId === "number" ? (
-            <Link
-              href={`/communities/${communityId}`}
-              className="btn-primary cursor-pointer"
-            >
-              Go to my community
-            </Link>
-          ) : null}
-        </div>
-      </section>
-    );
+    return null;
   }
 
   if (status !== "connected") {
@@ -259,8 +258,8 @@ export function DeployWizard({ options }: Props) {
       <section className="space-y-6">
         <p className="text-sm text-muted-foreground">
           {hasCommunities
-            ? "You already have communities. Create another or browse below."
-            : "Create a community or browse below."}
+            ? "You already have communities. Create another one or browse existing communities."
+            : "You do not have communities yet. Create your first community or browse existing ones."}
         </p>
         <button
           type="button"
@@ -311,7 +310,7 @@ export function DeployWizard({ options }: Props) {
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {session?.status === "failed"
-                    ? "An error occurred. Fix the issue and use Resume to continue."
+                    ? "An error occurred. Fix it and use Resume to continue."
                     : (session?.steps ?? []).some(
                         (s) => s.key === "VERIFY_DEPLOYMENT" && (s.status === "running" || s.status === "succeeded")
                       )
@@ -331,6 +330,9 @@ export function DeployWizard({ options }: Props) {
                   </div>
                 ) : null}
                 {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                {failedStep?.nextActionHint ? (
+                  <p className="text-xs text-muted-foreground">{failedStep.nextActionHint}</p>
+                ) : null}
                 {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
               </div>
 
@@ -342,6 +344,8 @@ export function DeployWizard({ options }: Props) {
                       (s) => s.key === "VERIFY_DEPLOYMENT" && s.status === "running"
                     ) && verificationResults.length === 0
                   }
+                  revealBaseDelayMs={designMode ? 1200 : 600}
+                  revealStepDelayMs={designMode ? 500 : 320}
                 />
                 <DeployStepList
                   steps={session?.steps ?? []}
@@ -374,30 +378,36 @@ export function DeployWizard({ options }: Props) {
             <div className="mt-8 flex w-full flex-col items-center gap-8">
               <div className="space-y-4 text-center">
                 <h2 className="text-2xl font-semibold">Verification</h2>
-                <p className="text-sm text-muted-foreground">All checks passed.</p>
+                <p className="text-sm text-muted-foreground">All checks passed successfully.</p>
               </div>
-              <DeployVerificationResults results={verificationResults} />
-              <div className="space-y-4 text-center">
-                <p className="text-lg font-medium text-primary">Your community is ready!</p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setCompletedDismissed(true)}
-                    className="btn-ghost cursor-pointer"
-                  >
-                    Done
-                  </button>
-                  {typeof session?.communityId === "number" ? (
+              <DeployVerificationResults
+                results={verificationResults}
+                revealBaseDelayMs={designMode ? 1200 : 600}
+                revealStepDelayMs={designMode ? 500 : 320}
+              />
+              {hasVerificationSuccess ? (
+                <div className="card w-full max-w-xl space-y-4 text-center">
+                  <p className="text-lg font-medium text-primary">Your community is ready.</p>
+                  <div className="flex flex-wrap justify-center gap-3">
                     <button
                       type="button"
-                      onClick={() => router.push(`/communities/${session.communityId}`)}
-                      className="btn-primary cursor-pointer"
+                      onClick={() => setCompletedDismissed(true)}
+                      className="flex cursor-pointer items-center justify-center rounded-xl border border-border bg-background px-5 py-3 text-base font-medium text-foreground transition-colors duration-200 hover:border-primary/40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Go to my community
+                      Done
                     </button>
-                  ) : null}
+                    {typeof session?.communityId === "number" ? (
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/communities/${session.communityId}`)}
+                        className="btn-primary cursor-pointer"
+                      >
+                        Go to my community
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
+              ) : null}
               <DeployStepList steps={session?.steps ?? []} />
             </div>
           ) : (
@@ -405,7 +415,7 @@ export function DeployWizard({ options }: Props) {
               <div className="space-y-4">
                 <h2 className="text-2xl font-semibold">Create your community</h2>
                 <p className="text-sm text-muted-foreground">
-                  Configure your community and follow the guided steps. You will be asked to confirm some actions from your wallet.
+                  Configure your community and follow the guided flow. You will confirm actions from your wallet.
                 </p>
                 {showResume ? (
                   <div className="flex flex-wrap gap-3">
@@ -417,6 +427,11 @@ export function DeployWizard({ options }: Props) {
                     >
                       {isResuming ? "Resuming..." : "Resume"}
                     </button>
+                    {resumeFromStepLabel ? (
+                      <p className="self-center text-xs text-muted-foreground">
+                        Resumes from: <span className="font-medium text-foreground">{resumeFromStepLabel}</span>
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -442,7 +457,11 @@ export function DeployWizard({ options }: Props) {
             </>
           )}
           {!isDeploying && !isCompleted && verificationResults.length > 0 ? (
-            <DeployVerificationResults results={verificationResults} />
+            <DeployVerificationResults
+              results={verificationResults}
+              revealBaseDelayMs={designMode ? 1200 : 600}
+              revealStepDelayMs={designMode ? 500 : 320}
+            />
           ) : null}
       </div>
     </div>
