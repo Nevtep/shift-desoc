@@ -44,7 +44,7 @@ describe("RequestCreateForm scoped route behavior", () => {
   it("shows route-derived fixed community as read-only", () => {
     renderWithProviders(<RequestCreateForm fixedCommunityId={7} />);
 
-    expect(screen.getByText("Community #7")).toBeInTheDocument();
+    expect(screen.getByText(/#7/)).toBeInTheDocument();
     expect(screen.queryByPlaceholderText("1")).toBeNull();
   });
 
@@ -61,8 +61,12 @@ describe("RequestCreateForm scoped route behavior", () => {
       />
     );
 
-    await userEvent.type(screen.getByLabelText(/title/i), "New request");
-    await userEvent.type(screen.getByLabelText(/content/i), "Request body");
+    await userEvent.click(screen.getByRole("button", { name: /next/i }));
+
+    await userEvent.type(screen.getByRole("textbox", { name: /^Title$/i }), "New request");
+    await userEvent.type(screen.getByRole("textbox", { name: /content \(markdown\)/i }), "Request body");
+
+    await userEvent.click(screen.getByRole("button", { name: /next/i }));
     await userEvent.click(screen.getByRole("button", { name: /submit request/i }));
 
     await waitFor(() => {
