@@ -1,20 +1,28 @@
-export const metadata = {
-  title: "Profile | Shift"
-};
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
-export default function ProfilePage() {
+import { ProfileOverview } from "../../components/profile/profile-overview";
+import { getCanonicalAllowlistMeta } from "../../lib/actions/allowlist";
+import { getI18n, LOCALE_COOKIE_KEY, sanitizeLocale } from "../../lib/i18n";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies();
+  const locale = sanitizeLocale(cookieStore.get(LOCALE_COOKIE_KEY)?.value);
+  const t = getI18n(locale).profilePage;
+  return {
+    title: t.metaTitle,
+    description: t.metaDescription
+  };
+}
+
+export default async function ProfilePage() {
+  const allowlistMeta = getCanonicalAllowlistMeta();
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-6 py-10">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">Your Profile</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Governance power, engagement history, and marketplace activity will populate here after wallet
-          connection and GraphQL hooks are wired.
-        </p>
-      </header>
-      <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-        Connect your wallet to see personalized stats (coming soon).
-      </div>
-    </main>
+    <ProfileOverview
+      allowlistProfileId={allowlistMeta.profileId}
+      allowlistGeneratedAt={allowlistMeta.generatedAt}
+      allowlistTargetCount={allowlistMeta.targetCount}
+      allowlistSignatureCount={allowlistMeta.signatureCount}
+    />
   );
 }
