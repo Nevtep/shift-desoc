@@ -234,6 +234,51 @@ const dictionaries = {
       reviewBody: "Cuerpo",
       reviewExecution: "Accion valiosa"
     },
+    draftsPage: {
+      metaTitle: "Borradores | Shift DeSoc",
+      metaDescription:
+        "Explora borradores indexados, filtra por comunidad y evoluciona colaboración hacia propuestas de gobernanza.",
+      badge: "Composición colaborativa",
+      title: "Borradores en Shift",
+      subtitle:
+        "Los borradores consolidan solicitudes en acciones ejecutables antes de escalar a gobernanza. Usa el compositor y sigue estado indexado en un mismo espacio.",
+      ctaCreate: "Crear borrador",
+      closeModal: "Cerrar creador de borradores",
+      card1Title: "De solicitud a acciones",
+      card1Body: "Convierte contexto de solicitud en acciones on-chain ordenadas con flujo guiado o experto.",
+      card2Title: "Etapa colaborativa",
+      card2Body: "Los borradores capturan iteraciones y revisión antes de escalar formalmente.",
+      card3Title: "Listo para escalar",
+      card3Body: "Cuando el borrador está listo, escálalo al flujo de propuestas de gobernanza.",
+      filterLabel: "Filtrar por comunidad",
+      filterPlaceholder: "ID de comunidad",
+      filterApply: "Aplicar",
+      filterClear: "Quitar filtro",
+      filterHint: "Usa communityId para alinear este feed con tu espacio de coordinación.",
+      listHeading: "Borradores indexados",
+      listSubAll: "Borradores recientes en todas las comunidades visibles para el indexer.",
+      listSubFiltered: "Borradores para la comunidad {id}.",
+      infoTitle: "Sobre esta vista",
+      infoIntro:
+        "Esta página sigue borradores indexados, su evolución y su preparación para escalamiento a gobernanza. Complementa solicitudes y ejecución de propuestas.",
+      infoMoreSummary: "Indexer, cadena y consideraciones",
+      infoLi1: "Estado y orden del borrador son vistas indexadas de referencias on-chain.",
+      infoLi2: "Puede haber retraso entre crear/actualizar y su visibilidad en el listado.",
+      infoLi3: "Si hay propuesta escalada, valida el enlace en la vista de gobernanza.",
+      infoLi4: "Para decisiones críticas, verifica actionsHash y targets en explorador."
+    },
+    draftList: {
+      loading: "Cargando borradores...",
+      loadFailed: "No se pudieron cargar los borradores.",
+      retry: "Reintentar",
+      empty: "Todavía no hay borradores indexados.",
+      request: "Solicitud",
+      updated: "Actualizado",
+      unknown: "desconocido",
+      draft: "Borrador",
+      proposal: "Propuesta",
+      viewDetails: "Ver detalle"
+    },
     deployConfig: {
       stepNameTitle: "Nombre de la comunidad",
       stepNameDesc: "Asigna un nombre a tu comunidad",
@@ -646,6 +691,51 @@ const dictionaries = {
       reviewTags: "Tags",
       reviewBody: "Body",
       reviewExecution: "Valuable Action"
+    },
+    draftsPage: {
+      metaTitle: "Drafts | Shift DeSoc",
+      metaDescription:
+        "Explore indexed drafts, filter by community, and move collaborative composition into governance proposals.",
+      badge: "Collaborative drafting",
+      title: "Drafts on Shift",
+      subtitle:
+        "Drafts consolidate requests into executable actions before escalation to governance. Use the composer and monitor indexed status in one place.",
+      ctaCreate: "Create draft",
+      closeModal: "Close draft composer",
+      card1Title: "From request to actions",
+      card1Body: "Convert request context into ordered on-chain actions with guided or expert composition.",
+      card2Title: "Collaboration stage",
+      card2Body: "Drafts capture iterations and review before formal proposal escalation.",
+      card3Title: "Escalation ready",
+      card3Body: "When ready, escalate a finalized draft to governance proposal flow.",
+      filterLabel: "Filter by community",
+      filterPlaceholder: "Community ID",
+      filterApply: "Apply",
+      filterClear: "Clear filter",
+      filterHint: "Use communityId to align this feed with your coordination workspace.",
+      listHeading: "Indexed drafts",
+      listSubAll: "Recent drafts across communities visible to the indexer.",
+      listSubFiltered: "Drafts for community {id}.",
+      infoTitle: "About this view",
+      infoIntro:
+        "This page tracks indexed drafts, their evolution, and readiness for governance escalation. It complements request discovery and proposal execution flows.",
+      infoMoreSummary: "Indexer, chain, and caveats",
+      infoLi1: "Draft state and ordering are indexed views of underlying on-chain references.",
+      infoLi2: "Indexer lag may delay visibility right after create or update transactions.",
+      infoLi3: "Escalated proposal links should be validated against governance detail pages.",
+      infoLi4: "For critical decisions, verify actions hash and targets in chain explorer tools."
+    },
+    draftList: {
+      loading: "Loading drafts...",
+      loadFailed: "Failed to load drafts.",
+      retry: "Retry",
+      empty: "No drafts indexed yet.",
+      request: "Request",
+      updated: "Updated",
+      unknown: "unknown",
+      draft: "Draft",
+      proposal: "Proposal",
+      viewDetails: "View details"
     },
     deployConfig: {
       stepNameTitle: "Community name",
