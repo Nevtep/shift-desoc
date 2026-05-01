@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
+import { Check, Copy } from "lucide-react";
 
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
@@ -151,7 +152,7 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
             </summary>
             <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
               <MetadataItem label={t.communityLabel} value={String(proposal.communityId)} />
-              <MetadataItem label={t.proposerLabel} value={proposal.proposer} />
+              <MetadataItem label={t.proposerLabel} value={proposal.proposer} copyable />
               <MetadataItem label={t.stateLabel} value={statusLabel} />
               <MetadataItem label={t.createdLabel} value={formatDistanceToNowSafe(proposal.createdAt)} />
             </dl>
@@ -217,10 +218,14 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
                   {actionPayload.map((action, index) => (
                     <tr key={`${action.target}-${index}`} className="border-t border-border align-top">
                       <td className="py-2 text-muted-foreground">{index + 1}</td>
-                      <td className="py-2 font-mono text-xs text-foreground">{action.target}</td>
+                      <td className="py-2 font-mono text-xs text-foreground">
+                        <CopyableCode value={action.target} />
+                      </td>
                       <td className="py-2 text-muted-foreground">{action.value}</td>
                       <td className="py-2 text-muted-foreground">{action.functionSignature ?? "N/A"}</td>
-                      <td className="py-2 font-mono text-xs text-muted-foreground break-all">{action.calldata}</td>
+                      <td className="py-2 font-mono text-xs text-muted-foreground">
+                        <CopyableCode value={action.calldata} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -250,7 +255,9 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
               <tbody>
                 {votes.map((vote, index) => (
                   <tr key={`${vote.voter}-${index}`} className="border-t border-border">
-                    <td className="py-2 align-top font-medium">{vote.voter}</td>
+                    <td className="py-2 align-top font-medium">
+                      <CopyableCode value={vote.voter} />
+                    </td>
                     <td className="py-2 align-top text-muted-foreground">{vote.weight}</td>
                     <td className="py-2 align-top text-muted-foreground">{formatVoteOption(vote.optionIndex)}</td>
                     <td className="py-2 align-top text-muted-foreground">{formatDistanceToNowSafe(vote.castAt)}</td>
@@ -723,7 +730,7 @@ function deriveBinarySupport(weightsBps: number[]) {
   return againstVotes > forVotes ? 0 : 1;
 }
 
-function MetadataItem({ label, value }: { label: string; value?: string | null }) {
+function MetadataItem({ label, value, copyable = false }: { label: string; value?: string | null; copyable?: boolean }) {
   if (!value) {
     return null;
   }
@@ -731,8 +738,40 @@ function MetadataItem({ label, value }: { label: string; value?: string | null }
   return (
     <div className="flex items-center gap-2">
       <dt className="font-medium text-foreground">{label}</dt>
-      <dd>{value}</dd>
+      <dd>{copyable ? <CopyableCode value={value} /> : value}</dd>
     </div>
+  );
+}
+
+function CopyableCode({ value }: { value: string }) {
+  const t = getI18n().governance;
+  const [copied, setCopied] = useState(false);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5">
+      <span className="max-w-[14rem] truncate font-mono" title={value}>
+        {value}
+      </span>
+      <button
+        type="button"
+        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-border bg-background/70 text-muted-foreground hover:text-foreground"
+        aria-label={copied ? t.codeCopied : t.copyCode}
+        title={copied ? t.codeCopied : t.copyCode}
+        onClick={onCopy}
+      >
+        {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+      </button>
+    </span>
   );
 }
 
