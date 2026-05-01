@@ -134,28 +134,22 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
       ) : null}
 
       <section className="space-y-3">
-        <div className="card space-y-4">
-          <h2 className="text-lg font-medium">{t.atAGlance}</h2>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-foreground">{statusLabel}</span>
-            <span className="text-muted-foreground">
-              <span className="font-medium text-foreground">{t.communityLabel}</span> #{proposal.communityId}
+        <div className="card-tight space-y-3 border-primary/15">
+          <div className="flex flex-wrap items-center gap-3 pt-0.5">
+            <span className="rounded-full bg-muted px-3 py-1 text-xs font-bold uppercase tracking-wide text-foreground ring-1 ring-border">
+              {statusLabel}
             </span>
-            <span className="text-muted-foreground">
-              <span className="font-medium text-foreground">{t.createdLabel}</span> {formatDistanceToNowSafe(proposal.createdAt)}
-            </span>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">#{proposal.communityId}</span>
+              <span className="mx-2 text-border">·</span>
+              {formatDistanceToNowSafe(proposal.createdAt)}
+            </p>
           </div>
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{t.proposerLabel}</span>{" "}
-            <span className="font-mono text-xs" title={proposal.proposer}>
-              {truncateMiddle(proposal.proposer)}
-            </span>
-          </div>
-          <details className="rounded-xl border border-border bg-background/70 p-4">
-            <summary className="cursor-pointer text-sm font-semibold text-foreground transition-colors hover:text-primary">
-              {t.metadataTechnical}
+          <details className="rounded-xl border border-border bg-background/60 p-3">
+            <summary className="cursor-pointer text-sm font-semibold text-primary transition-colors hover:text-primaryDark">
+              {t.participantInfoSummary}
             </summary>
-            <dl className="mt-4 grid gap-2 text-sm text-muted-foreground">
+            <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
               <MetadataItem label={t.communityLabel} value={String(proposal.communityId)} />
               <MetadataItem label={t.proposerLabel} value={proposal.proposer} />
               <MetadataItem label={t.stateLabel} value={statusLabel} />
@@ -166,10 +160,23 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
       </section>
 
       <section className="space-y-3">
-        <ReadinessPanel proposal={proposal} />
+        <h2 className="text-xl font-semibold text-primary">{t.description}</h2>
+        {isIpfsLoading ? (
+          <p className="text-sm text-muted-foreground">{t.descriptionLoading}</p>
+        ) : isIpfsError ? (
+          <p className="text-sm text-destructive">{t.descriptionError}</p>
+        ) : ipfsDoc?.html?.body ? (
+          <article
+            className="card-tight prose prose-sm max-w-none dark:prose-invert"
+            dangerouslySetInnerHTML={{ __html: ipfsDoc.html.body }}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">{t.descriptionEmpty}</p>
+        )}
       </section>
 
       <section className="space-y-3">
+        <h2 className="text-xl font-semibold text-primary">{t.castVoteTitle}</h2>
         <VoteForm
           onchainProposalId={onchainProposalId}
           communityId={Number(proposal.communityId)}
@@ -183,81 +190,75 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">{t.description}</h2>
-        {isIpfsLoading ? (
-          <p className="text-sm text-muted-foreground">{t.descriptionLoading}</p>
-        ) : isIpfsError ? (
-          <p className="text-sm text-destructive">{t.descriptionError}</p>
-        ) : ipfsDoc?.html?.body ? (
-          <article className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: ipfsDoc.html.body }} />
-        ) : (
-          <p className="text-sm text-muted-foreground">{t.descriptionEmpty}</p>
-        )}
+        <ReadinessPanel proposal={proposal} />
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">{t.onChainActionsTitle}</h2>
         {actionPayload.length ? (
-          <>
-            <p className="text-sm text-muted-foreground">{t.onChainActionsBlurb.replace("{count}", String(actionPayload.length))}</p>
-            <details className="rounded-xl border border-border bg-background/70 p-4">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground transition-colors hover:text-primary">
-                {t.onChainActionsTable}
-              </summary>
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="text-xs uppercase tracking-wide text-muted-foreground">
-                    <tr>
-                      <th className="py-2">#</th>
-                      <th>Target</th>
-                      <th>Value</th>
-                      <th>Function</th>
-                      <th>Calldata</th>
+          <details className="card-tight rounded-2xl border border-primary/15 p-4 open:bg-background/80">
+            <summary className="cursor-pointer text-xl font-semibold text-primary transition-colors hover:text-primaryDark">
+              {t.onChainActionsSummaryLine.replace("{count}", String(actionPayload.length))}
+            </summary>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t.onChainActionsBlurb.replace("{count}", String(actionPayload.length))}
+            </p>
+            <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-background/50">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="py-2">#</th>
+                    <th>Target</th>
+                    <th>Value</th>
+                    <th>Function</th>
+                    <th>Calldata</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {actionPayload.map((action, index) => (
+                    <tr key={`${action.target}-${index}`} className="border-t border-border align-top">
+                      <td className="py-2 text-muted-foreground">{index + 1}</td>
+                      <td className="py-2 font-mono text-xs text-foreground">{action.target}</td>
+                      <td className="py-2 text-muted-foreground">{action.value}</td>
+                      <td className="py-2 text-muted-foreground">{action.functionSignature ?? "N/A"}</td>
+                      <td className="py-2 font-mono text-xs text-muted-foreground break-all">{action.calldata}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {actionPayload.map((action, index) => (
-                      <tr key={`${action.target}-${index}`} className="border-t border-border align-top">
-                        <td className="py-2 text-muted-foreground">{index + 1}</td>
-                        <td className="py-2 font-mono text-xs text-foreground">{action.target}</td>
-                        <td className="py-2 text-muted-foreground">{action.value}</td>
-                        <td className="py-2 text-muted-foreground">{action.functionSignature ?? "N/A"}</td>
-                        <td className="py-2 font-mono text-xs text-muted-foreground break-all">{action.calldata}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
-          </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
         ) : (
           <p className="text-sm text-muted-foreground">{t.onChainActionsEmpty}</p>
         )}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">{t.votesTitle}</h2>
         {votes.length ? (
-          <table className="w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="py-2">Voter</th>
-                <th>Weight</th>
-                <th>Option</th>
-                <th>Cast</th>
-              </tr>
-            </thead>
-            <tbody>
-              {votes.map((vote, index) => (
-                <tr key={`${vote.voter}-${index}`} className="border-t border-border">
-                  <td className="py-2 align-top font-medium">{vote.voter}</td>
-                  <td className="py-2 align-top text-muted-foreground">{vote.weight}</td>
-                  <td className="py-2 align-top text-muted-foreground">{formatVoteOption(vote.optionIndex)}</td>
-                  <td className="py-2 align-top text-muted-foreground">{formatDistanceToNowSafe(vote.castAt)}</td>
+          <details className="card-tight rounded-2xl border border-primary/15 p-4">
+            <summary className="cursor-pointer text-xl font-semibold text-primary transition-colors hover:text-primaryDark">
+              {t.votesWithCount.replace("{count}", String(votes.length))}
+            </summary>
+            <table className="mt-4 w-full text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="py-2">Voter</th>
+                  <th>Weight</th>
+                  <th>Option</th>
+                  <th>Cast</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {votes.map((vote, index) => (
+                  <tr key={`${vote.voter}-${index}`} className="border-t border-border">
+                    <td className="py-2 align-top font-medium">{vote.voter}</td>
+                    <td className="py-2 align-top text-muted-foreground">{vote.weight}</td>
+                    <td className="py-2 align-top text-muted-foreground">{formatVoteOption(vote.optionIndex)}</td>
+                    <td className="py-2 align-top text-muted-foreground">{formatDistanceToNowSafe(vote.castAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
         ) : (
           <p className="text-sm text-muted-foreground">{t.votesEmpty}</p>
         )}
@@ -378,7 +379,7 @@ function ReadinessPanel({ proposal }: { proposal: NonNullable<ProposalQueryResul
         <p className="mt-2 text-muted-foreground">{readinessHumanLine(readiness, t)}</p>
       </div>
       <details className="rounded-xl border border-border bg-background/70 p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-foreground transition-colors hover:text-primary">
+        <summary className="cursor-pointer text-sm font-semibold text-primary transition-colors hover:text-primaryDark">
           {t.readinessTechnical}
         </summary>
         <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -416,11 +417,6 @@ function readinessHumanLine(
   if (readiness.executableNow) return t.readinessHumanExecutable;
   if (readiness.queued) return t.readinessHumanQueued;
   return t.readinessHumanPending;
-}
-
-function truncateMiddle(value: string, left = 6, right = 4): string {
-  if (!value || !value.startsWith("0x") || value.length <= left + right + 2) return value;
-  return `${value.slice(0, left)}…${value.slice(-right)}`;
 }
 
 function VoteForm({
@@ -613,13 +609,9 @@ function VoteForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="card">
-      <div className="flex items-center justify-between gap-3">
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold">{t.castVoteTitle}</h3>
-          <p className="text-sm text-muted-foreground">{t.castVoteHint}</p>
-        </div>
-        <span className="text-xs text-muted-foreground">{t.castVoteState.replace("{state}", proposalState)}</span>
+    <form onSubmit={handleSubmit} className="card-tight border-primary/10">
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">{t.castVoteHint}</p>
       </div>
 
       <div className="mt-4 space-y-3">
@@ -647,13 +639,14 @@ function VoteForm({
         ))}
       </div>
 
-      <div className="mt-3 space-y-1">
+      <div className="mt-3">
         <p className="text-xs text-muted-foreground">{t.totalPercent.replace("{percent}", bpsToPercentLabel(totalBps))}</p>
-        <details className="rounded-lg border border-border bg-background/50 px-3 py-2 text-xs text-muted-foreground">
-          <summary className="cursor-pointer font-medium text-foreground">{t.voteBpsPrecision}</summary>
-          <p className="mt-2">
-            {totalBps} bps — {t.voteBpsExplanation}
-          </p>
+        <details className="mt-2 rounded-lg border border-border bg-background/50 px-3 py-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">{t.voteTechnicalDetails}</summary>
+          <div className="mt-2 space-y-2">
+            <p>{t.castVoteState.replace("{state}", proposalState)}</p>
+            <p className="text-[11px] text-muted-foreground">Total: {totalBps} bps</p>
+          </div>
         </details>
       </div>
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
+import { GovernanceTechnicalFooter } from "../../../components/layout/governance-technical-footer";
 import { ProposalList } from "../../../components/governance/proposal-list";
 import { getI18n, LOCALE_COOKIE_KEY, sanitizeLocale } from "../../../lib/i18n";
 
@@ -29,17 +30,17 @@ export default async function ProposalsPage({ searchParams }: PageProps) {
   const communityId = Array.isArray(communityIdParam) ? communityIdParam[0] : communityIdParam;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">{t.listTitle}</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">{t.listSubtitle}</p>
+    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10 sm:py-12">
+      <header className="space-y-4">
+        <p className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
+          {t.governanceSpaceBadge}
+        </p>
+        <div className="space-y-2 sm:space-y-3">
+          <h1 className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{t.listTitle}</h1>
+          <p className="max-w-3xl text-muted-foreground">{t.listSubtitle}</p>
+        </div>
       </header>
-      <details className="card rounded-xl border border-border bg-background/70 p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-foreground transition-colors hover:text-primary">
-          {t.topBarIndexerDetails}
-        </summary>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{t.topBarIndexerHelp}</p>
-      </details>
+
       <section className="space-y-4">
         <CommunityFilter
           currentCommunityId={communityId ?? undefined}
@@ -52,6 +53,8 @@ export default async function ProposalsPage({ searchParams }: PageProps) {
         />
         <ProposalList communityId={communityId ?? undefined} />
       </section>
+
+      <GovernanceTechnicalFooter />
     </main>
   );
 }
@@ -64,14 +67,14 @@ function CommunityFilter({
   labels: { filterLabel: string; placeholder: string; apply: string; clear: string };
 }) {
   return (
-    <div className="card flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+    <div className="card-tight flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
       <span>{labels.filterLabel}:</span>
       <form className="flex flex-wrap items-center gap-2" action="/governance/proposals" method="get">
         <input
           name="communityId"
           defaultValue={currentCommunityId}
           placeholder={labels.placeholder}
-          className="rounded border border-border bg-background px-2 py-1 text-sm"
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
         />
         <button className="btn-primary-sm" type="submit">
           {labels.apply}

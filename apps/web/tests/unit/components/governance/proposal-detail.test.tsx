@@ -53,7 +53,7 @@ describe("ProposalDetail", () => {
       expect(screen.getByText(/Total: 100.00%/i)).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByText(/Precision in basis points/i));
+    await userEvent.click(screen.getByText(/Technical vote details/i));
     expect(screen.getByText(/10000/)).toBeInTheDocument();
 
     const firstInput = screen.getByLabelText(/Allocation Option A/i);
@@ -61,7 +61,7 @@ describe("ProposalDetail", () => {
     await userEvent.type(firstInput, "50");
 
     expect(screen.getByText(/Total: 50.00%/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByText(/Precision in basis points/i));
+    await userEvent.click(screen.getByText(/Technical vote details/i));
     expect(screen.getByText(/5000/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /submit vote/i })).toBeDisabled();
     expect(screen.getAllByText(/exactly 100.00%/i).length).toBeGreaterThanOrEqual(1);
@@ -71,8 +71,8 @@ describe("ProposalDetail", () => {
   it("renders on-chain action payload details", async () => {
     renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
 
-    expect(await screen.findByRole("heading", { name: /on-chain actions/i })).toBeInTheDocument();
-    await userEvent.click(screen.getByText(/Technical table/i));
+    expect(await screen.findByText(/Effects this proposal may execute on-chain/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByText(/Effects this proposal may execute on-chain/i));
     expect(screen.getByText("0x0000000000000000000000000000000000000000")).toBeInTheDocument();
     expect(screen.getByText("0x")).toBeInTheDocument();
   });

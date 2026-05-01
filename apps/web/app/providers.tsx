@@ -16,6 +16,7 @@ import {
 import type { Config as WagmiConfigType } from "wagmi";
 import { WagmiProvider } from "wagmi";
 import { createShiftConfig, getEnv } from "@shift/shared";
+import { installDevEmptyObjectConsoleFilter } from "../lib/dev-quiet-walletconnect";
 import { ToastProvider } from "../components/ui/toaster";
 
 const GraphQLClientContext = createContext<GraphQLClient | null>(null);
@@ -65,6 +66,10 @@ export function ShiftProviders({
 
   // Defer Wagmi/WalletConnect setup until after mount to avoid setState warnings during hydration.
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    return installDevEmptyObjectConsoleFilter();
+  }, []);
 
   if (!mounted) {
     return null;
