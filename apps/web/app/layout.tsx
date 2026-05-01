@@ -61,19 +61,22 @@ export default async function RootLayout({
           <div className="relative flex min-h-screen flex-col">
             <SiteBackground />
             <header className="border-b border-border bg-background/80 backdrop-blur">
-              <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4 text-sm">
+              <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 text-sm">
                 <Link
                   href="/"
-                  className="flex items-center gap-3 font-semibold transition-opacity hover:opacity-90"
+                  className="flex shrink-0 items-center font-semibold transition-opacity hover:opacity-90"
                   aria-label={t.homeAria}
                 >
                   <img
                     src="/imagotipo-h.svg"
                     alt="Shift DeSoc"
-                    className="h-[83px] w-auto"
+                    width={1882}
+                    height={941}
+                    decoding="async"
+                    className="h-11 w-auto max-h-[5.125rem] object-contain object-left sm:h-12 md:h-14 lg:h-[4.75rem] xl:h-[5.125rem]"
                   />
                 </Link>
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-3 sm:gap-4">
                   <nav className="flex flex-wrap items-center gap-4 font-bold text-primary">
                     <Link
                       className="cursor-pointer transition-colors hover:text-primaryDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

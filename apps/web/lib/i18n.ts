@@ -81,9 +81,18 @@ const dictionaries = {
       card3Title: "Siguiente paso",
       card3Body: "Desde cada comunidad accedes al panel con modulos de gobernanza y coordinacion.",
       infoTitle: "Sobre esta vista",
-      infoDetail: "Detalle tecnico",
-      infoDetailBody:
-        "Los identificadores y la red vienen del indexer GraphQL. La fuente de verdad para reglas y parametros sigue siendo el contrato en cadena."
+      infoIntro:
+        "Este directorio muestra comunidades que el indexer de Shift ya registro. El orden es por fecha de alta en el indice (mas recientes primero). Al abrir una entrada accedes al panel operativo: vision general, gobernanza, coordinacion y el resto de modulos habilitados para esa comunidad.",
+      infoMoreSummary: "Indexer, cadena y limitaciones",
+      infoLi1:
+        "id y chainId identifican la comunidad en el grafo GraphQL del indexer y enlazan con la vista detalle.",
+      infoLi2: "Nombre y metadataUri reflejan lo publicado en el despligue o actualizaciones de metadatos indexadas.",
+      infoLi3:
+        "createdAt en esta lista es la marca temporal del indice; puede diferir ligeramente del bloque exacto del deploy.",
+      infoLi4:
+        "Si falta una comunidad que acabas de crear, puede haber rezago de indexacion o la URL del indexer no apunta al entorno correcto (.env).",
+      infoLi5:
+        "Reglas de gobernanza, parametros on-chain y saldos deben verificarse en la ficha de la comunidad o en el explorador de bloques, no solo en este listado."
     },
     wizard: {
       ready: "Tu comunidad esta lista.",
@@ -132,7 +141,10 @@ const dictionaries = {
       empty: "Todavia no hay comunidades indexadas.",
       myCommunities: "Mis comunidades",
       allCommunities: "Todas las comunidades",
-      indexedCommunities: "Comunidades indexadas"
+      indexedCommunities: "Comunidades indexadas",
+      indexedSince: "Indexado",
+      metadata: "Metadatos",
+      communityId: "Comunidad"
     },
     deployConfig: {
       stepNameTitle: "Nombre de la comunidad",
@@ -260,9 +272,16 @@ const dictionaries = {
       card3Title: "Next step",
       card3Body: "From each community you reach the hub with governance and coordination modules.",
       infoTitle: "About this view",
-      infoDetail: "Technical detail",
-      infoDetailBody:
-        "Network and IDs come from the GraphQL indexer. On-chain contracts remain the source of truth for rules and parameters."
+      infoIntro:
+        "This directory lists communities the Shift indexer has recorded. Sorting follows indexed creation time (newest first). Opening an entry takes you to the operational hub: overview, governance, coordination, and other modules enabled for that community.",
+      infoMoreSummary: "Indexer, chain, and caveats",
+      infoLi1: "id and chainId identify the community in the indexer GraphQL graph and link to the detail view.",
+      infoLi2: "name and metadataUri reflect what was published at deployment or in indexed metadata updates.",
+      infoLi3: "createdAt here is the indexer timestamp; it may differ slightly from the exact deployment block.",
+      infoLi4:
+        "If a community you just created is missing, indexing may be lagging or the indexer URL in .env may not match your environment.",
+      infoLi5:
+        "Governance rules, on-chain parameters, and balances should be verified on the community page or block explorer, not from this listing alone."
     },
     wizard: {
       ready: "Your community is ready!",
@@ -311,7 +330,10 @@ const dictionaries = {
       empty: "No communities indexed yet.",
       myCommunities: "My communities",
       allCommunities: "All communities",
-      indexedCommunities: "Indexed communities"
+      indexedCommunities: "Indexed communities",
+      indexedSince: "Indexed",
+      metadata: "Metadata",
+      communityId: "Community"
     },
     deployConfig: {
       stepNameTitle: "Community name",
