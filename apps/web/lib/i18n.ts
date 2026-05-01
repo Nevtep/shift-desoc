@@ -393,6 +393,81 @@ const dictionaries = {
       infoLi3: "Cuando falte una ruta funcional, usa este hub como punto de entrada consistente.",
       infoLi4: "Mantén validación cruzada con detalle on-chain cuando la operación sea crítica."
     },
+    offersPage: {
+      metaTitle: "Ofertas | Shift DeSoc",
+      metaDescription:
+        "Navega las ofertas del marketplace y mantén contexto de publicación, estado e integración comunitaria.",
+      badge: "Mercado de ofertas",
+      title: "Ofertas en Shift",
+      subtitle:
+        "Esta sección reúne la capa de ofertas del marketplace. El feed final depende del avance de indexación de eventos.",
+      card1Title: "Catálogo comunitario",
+      card1Body: "Ofertas publicadas por comunidades y participantes bajo reglas modulares.",
+      card2Title: "Trazabilidad económica",
+      card2Body: "Cada oferta puede enlazar distribución, cohortes y tesorería según el módulo activo.",
+      card3Title: "Estado de integración",
+      card3Body: "La grilla final se habilita conforme maduran eventos y consultas del indexer.",
+      ctaCreate: "Crear oferta (próximamente)",
+      ctaBack: "Volver a marketplace",
+      infoTitle: "Sobre esta vista",
+      infoIntro:
+        "Ofertas funciona como punto de lectura para actividad de marketplace. Si no hay datos, puede deberse a indexación o despliegue de módulos.",
+      infoMoreSummary: "Alcance y validación",
+      infoLi1: "El contenido definitivo depende de eventos del módulo marketplace.",
+      infoLi2: "Puede haber desfase entre transacción y visibilidad en esta pantalla.",
+      infoLi3: "Usa esta vista como entrada estable al flujo de ofertas.",
+      infoLi4: "Verifica operaciones críticas en explorador y contratos."
+    },
+    housingPage: {
+      metaTitle: "Housing | Shift DeSoc",
+      metaDescription:
+        "Explora el hub de housing para reservas, disponibilidad y coordinación residencial dentro de Shift.",
+      badge: "Coordinación residencial",
+      title: "Housing en Shift",
+      subtitle:
+        "Housing consolida disponibilidad, reservas y reglas operativas para experiencias de convivencia comunitaria.",
+      card1Title: "Disponibilidad",
+      card1Body: "Visualiza el estado general de espacios habilitados por comunidad.",
+      card2Title: "Reservas",
+      card2Body: "Accede al histórico y estado operativo de reservas en módulos activos.",
+      card3Title: "Integración modular",
+      card3Body: "El detalle crece con la evolución de marketplace e indexación de housing.",
+      ctaReservations: "Ver reservas",
+      ctaBack: "Volver a marketplace",
+      infoTitle: "Sobre esta vista",
+      infoIntro:
+        "Housing actúa como hub operativo. Algunos paneles pueden estar en estado preliminar hasta completar integración.",
+      infoMoreSummary: "Cobertura y límites",
+      infoLi1: "Las reservas visibles dependen de indexación y permisos de cada comunidad.",
+      infoLi2: "Puede existir retraso breve entre escritura on-chain y lectura aquí.",
+      infoLi3: "Usa este hub para mantener una navegación consistente.",
+      infoLi4: "Confirma datos críticos con fuentes on-chain."
+    },
+    housingReservationsPage: {
+      metaTitle: "Reservas Housing | Shift DeSoc",
+      metaDescription:
+        "Consulta el estado de reservas de housing y su disponibilidad dentro del flujo de marketplace en Shift.",
+      badge: "Reservas activas",
+      title: "Reservas de Housing",
+      subtitle:
+        "Aquí se concentra el seguimiento de reservas, ocupación y estado operativo de espacios.",
+      card1Title: "Estado de reserva",
+      card1Body: "Monitorea reservas activas, confirmadas o cerradas cuando el indexer esté sincronizado.",
+      card2Title: "Disponibilidad",
+      card2Body: "Cruza ocupación y capacidad para decisiones de coordinación residencial.",
+      card3Title: "Operación continua",
+      card3Body: "Esta vista se vuelve más rica conforme avanza la integración de eventos.",
+      ctaBackHousing: "Volver a housing",
+      ctaBackMarketplace: "Volver a marketplace",
+      infoTitle: "Sobre esta vista",
+      infoIntro:
+        "Reservas depende de la capa de housing del marketplace. Si ves poca data, puede ser una etapa temprana de indexación.",
+      infoMoreSummary: "Sincronización y trazabilidad",
+      infoLi1: "La información final proviene de eventos y estados on-chain de housing.",
+      infoLi2: "Puede haber rezago temporal entre ejecución y aparición en listado.",
+      infoLi3: "Esta pantalla prioriza lectura operativa y navegación estable.",
+      infoLi4: "Para auditoría, valida también en explorador de bloques."
+    },
     deployConfig: {
       stepNameTitle: "Nombre de la comunidad",
       stepNameDesc: "Asigna un nombre a tu comunidad",
@@ -976,6 +1051,81 @@ const dictionaries = {
       infoLi2: "Final data quality depends on indexer sync and community enablement.",
       infoLi3: "When a route is still limited, use this hub as a stable entrypoint.",
       infoLi4: "Keep cross-checking on-chain details for critical operations."
+    },
+    offersPage: {
+      metaTitle: "Offers | Shift DeSoc",
+      metaDescription:
+        "Browse marketplace offers while preserving context around publication, status, and community integration.",
+      badge: "Offers marketplace",
+      title: "Offers on Shift",
+      subtitle:
+        "This section contains the marketplace offers layer. Final feed quality depends on ongoing event indexing.",
+      card1Title: "Community catalog",
+      card1Body: "Offers published by communities and participants under modular rules.",
+      card2Title: "Economic traceability",
+      card2Body: "Each offer can connect distributions, cohorts, and treasury routing.",
+      card3Title: "Integration status",
+      card3Body: "The final grid unlocks progressively as indexer coverage matures.",
+      ctaCreate: "Create offer (coming soon)",
+      ctaBack: "Back to marketplace",
+      infoTitle: "About this view",
+      infoIntro:
+        "Offers acts as a marketplace read hub. Missing data can come from indexing lag or module rollout state.",
+      infoMoreSummary: "Scope and validation",
+      infoLi1: "Final content depends on events emitted by marketplace modules.",
+      infoLi2: "There can be lag between transaction confirmation and visibility here.",
+      infoLi3: "Use this view as a stable entrypoint to the offers flow.",
+      infoLi4: "Validate critical operations against explorer and contracts."
+    },
+    housingPage: {
+      metaTitle: "Housing | Shift DeSoc",
+      metaDescription:
+        "Explore the housing hub for reservations, availability, and residential coordination in Shift.",
+      badge: "Residential coordination",
+      title: "Housing on Shift",
+      subtitle:
+        "Housing consolidates availability, reservations, and operational rules for community living experiences.",
+      card1Title: "Availability",
+      card1Body: "See high-level status of spaces enabled by each community.",
+      card2Title: "Reservations",
+      card2Body: "Open reservation history and operational state in active modules.",
+      card3Title: "Modular integration",
+      card3Body: "Detail expands as marketplace and housing indexing mature.",
+      ctaReservations: "View reservations",
+      ctaBack: "Back to marketplace",
+      infoTitle: "About this view",
+      infoIntro:
+        "Housing works as an operational hub. Some panels may stay preliminary until integration is complete.",
+      infoMoreSummary: "Coverage and limits",
+      infoLi1: "Visible reservations depend on indexer sync and community enablement.",
+      infoLi2: "Slight lag may occur between on-chain writes and updates here.",
+      infoLi3: "Use this hub for consistent module navigation.",
+      infoLi4: "Verify critical data against on-chain sources."
+    },
+    housingReservationsPage: {
+      metaTitle: "Housing Reservations | Shift DeSoc",
+      metaDescription:
+        "Track housing reservation status and availability within the Shift marketplace flow.",
+      badge: "Active reservations",
+      title: "Housing Reservations",
+      subtitle:
+        "This view focuses on reservation tracking, occupancy, and operational state of housing spaces.",
+      card1Title: "Reservation status",
+      card1Body: "Monitor active, confirmed, and closed reservations when indexer data is available.",
+      card2Title: "Availability",
+      card2Body: "Combine occupancy and capacity signals for residential coordination.",
+      card3Title: "Continuous operations",
+      card3Body: "This view grows richer as housing event integration advances.",
+      ctaBackHousing: "Back to housing",
+      ctaBackMarketplace: "Back to marketplace",
+      infoTitle: "About this view",
+      infoIntro:
+        "Reservations depend on the housing marketplace layer. Sparse data can indicate early indexing stage.",
+      infoMoreSummary: "Sync and traceability",
+      infoLi1: "Final values come from housing on-chain events and states.",
+      infoLi2: "Short lag may happen between execution and feed visibility.",
+      infoLi3: "This page prioritizes operational readability and stable navigation.",
+      infoLi4: "For audits, validate in block explorer as well."
     },
     deployConfig: {
       stepNameTitle: "Community name",

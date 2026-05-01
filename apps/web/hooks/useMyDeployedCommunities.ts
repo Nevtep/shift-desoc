@@ -15,8 +15,9 @@ const COMMUNITY_REGISTERED_EVENT = parseAbiItem(
   "event CommunityRegistered(uint256 indexed communityId, string name, address indexed creator, uint256 parentCommunityId)"
 );
 
-const LOOKBACK_BLOCKS = 500_000n;
-const CHUNK_SIZE_BLOCKS = 20_000n;
+const LOOKBACK_BLOCKS = 200_000n;
+const CHUNK_SIZE_BLOCKS = 10_000n;
+const MIN_CHUNK_SIZE_BLOCKS = 250n;
 const DISCOVERY_CACHE_TTL_MS = 45_000;
 
 function isPayloadTooLargeError(error: unknown): boolean {
@@ -34,25 +35,35 @@ async function getLogsChunkedByCreator(
   const address = getContractAddress("communityRegistry", chainId);
   const logs: Array<{ args?: { communityId?: bigint } }> = [];
 
-  let cursor = fromBlock;
-  while (cursor <= toBlock) {
-    const end = cursor + CHUNK_SIZE_BLOCKS - 1n > toBlock ? toBlock : cursor + CHUNK_SIZE_BLOCKS - 1n;
+  async function fetchRangeAdaptive(start: bigint, end: bigint): Promise<void> {
     try {
       const chunkLogs = await publicClient.getLogs({
         address,
         event: COMMUNITY_REGISTERED_EVENT,
         args: { creator: deployerAddress },
-        fromBlock: cursor,
+        fromBlock: start,
         toBlock: end
       }, 30_000);
       logs.push(...(chunkLogs as Array<{ args?: { communityId?: bigint } }>));
+      return;
     } catch (error) {
-      if (isPayloadTooLargeError(error)) {
-        // Some public RPC endpoints reject wide event scans; skip chain lookup and fall back to session cache.
+      if (!isPayloadTooLargeError(error)) {
+        throw error;
+      }
+      const span = end - start + 1n;
+      if (span <= MIN_CHUNK_SIZE_BLOCKS) {
         throw new Error("RPC_413_PAYLOAD_TOO_LARGE");
       }
-      throw error;
+      const mid = start + span / 2n;
+      await fetchRangeAdaptive(start, mid - 1n);
+      await fetchRangeAdaptive(mid, end);
     }
+  }
+
+  let cursor = fromBlock;
+  while (cursor <= toBlock) {
+    const end = cursor + CHUNK_SIZE_BLOCKS - 1n > toBlock ? toBlock : cursor + CHUNK_SIZE_BLOCKS - 1n;
+    await fetchRangeAdaptive(cursor, end);
 
     cursor = end + 1n;
   }

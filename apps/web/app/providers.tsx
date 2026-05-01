@@ -21,6 +21,7 @@ import { ToastProvider } from "../components/ui/toaster";
 
 const GraphQLClientContext = createContext<GraphQLClient | null>(null);
 const ApiBaseUrlContext = createContext<string | null>(null);
+const wagmiConfigSingleton: WagmiConfigType = createShiftConfig({ env: getEnv() });
 
 export function useGraphQLClient() {
   const client = useContext(GraphQLClientContext);
@@ -62,7 +63,6 @@ export function ShiftProviders({
   );
 
   const graphClient = useMemo(() => new GraphQLClient(graphqlUrl), [graphqlUrl]);
-  const wagmiConfig: WagmiConfigType = useMemo(() => createShiftConfig({ env: getEnv() }), []);
 
   // Defer Wagmi/WalletConnect setup until after mount to avoid setState warnings during hydration.
   useEffect(() => setMounted(true), []);
@@ -76,7 +76,7 @@ export function ShiftProviders({
   }
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={wagmiConfigSingleton}>
       <QueryClientProvider client={queryClient}>
         <GraphQLClientContext.Provider value={graphClient}>
           <ApiBaseUrlContext.Provider value={apiBaseUrl}>

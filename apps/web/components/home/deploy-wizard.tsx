@@ -16,6 +16,7 @@ import { useDeployResume } from "../../hooks/useDeployResume";
 import { useDeployWizard, type UseDeployWizardOptions } from "../../hooks/useDeployWizard";
 import { useMyDeployedCommunities } from "../../hooks/useMyDeployedCommunities";
 import { WalletConnect } from "../wallet/wallet-connect";
+import { deployDebugLog } from "../../lib/deploy/debug-log";
 import { DeployConfigSteps } from "./deploy-config-steps";
 import { DeployStepList } from "./deploy-step-list";
 import { DeployVerificationResults } from "./deploy-verification-results";
@@ -116,7 +117,7 @@ export function DeployWizard({ options }: Props) {
     !isLoadingMyCommunities &&
     !isDeploying &&
     !isCompleted &&
-    ((hasCommunities && !wizardExpanded) || wizardClosed);
+    (!wizardExpanded || wizardClosed);
   const showLoadingCheck =
     status === "connected" &&
     isLoadingMyCommunities &&
@@ -151,7 +152,7 @@ export function DeployWizard({ options }: Props) {
   const showResume = hasResumableSession;
 
   async function handleResume() {
-    console.log("[DeployWizard] Resume button clicked", {
+    deployDebugLog("[DeployWizard]", "Resume button clicked", {
       currentSessionId: session?.sessionId,
       currentCommunityId: session?.communityId,
       resumeCandidateCommunityId: resumeCandidate?.communityId,
@@ -164,12 +165,12 @@ export function DeployWizard({ options }: Props) {
       const resumed = await resume({ communityId: session?.communityId ?? resumeCandidate?.communityId });
       if (requestId !== resumeRequestIdRef.current) return;
       if (!resumed) {
-        console.log("[DeployWizard] Resume returned no session");
+        deployDebugLog("[DeployWizard]", "Resume returned no session");
         return;
       }
 
       setSession(resumed);
-      console.log("[DeployWizard] Resume session loaded", {
+      deployDebugLog("[DeployWizard]", "Resume session loaded", {
         resumedSessionId: resumed.sessionId,
         resumedCommunityId: resumed.communityId,
         resumedStatus: resumed.status,
@@ -185,20 +186,20 @@ export function DeployWizard({ options }: Props) {
       // Resume should continue execution from the first incomplete step.
       const validation = validateDeploymentConfig(resumeConfig);
       if (resumed.status !== "completed" && validation.isValid) {
-        console.log("[DeployWizard] Starting run() from resumed session", {
+        deployDebugLog("[DeployWizard]", "Starting run() from resumed session", {
           resumedSessionId: resumed.sessionId,
           resumedCommunityId: resumed.communityId
         });
         await run(resumeConfig, resumed);
         if (requestId !== resumeRequestIdRef.current) return;
       } else {
-        console.log("[DeployWizard] Resume did not start run()", {
+        deployDebugLog("[DeployWizard]", "Resume did not start run()", {
           reason: resumed.status === "completed" ? "session-already-completed" : "invalid-config",
           validationErrors: validation.errors
         });
       }
     } catch (error) {
-      console.log("[DeployWizard] Resume handler failed", {
+      deployDebugLog("[DeployWizard]", "Resume handler failed", {
         error
       });
     } finally {

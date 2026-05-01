@@ -29,6 +29,7 @@ import {
   findResumeCandidate,
   saveSession
 } from "../lib/deploy/session-store";
+import { deployDebugLog } from "../lib/deploy/debug-log";
 import { useCachedPublicClient } from "./useCachedPublicClient";
 import type {
   DeploymentWizardSession,
@@ -73,11 +74,7 @@ function isSessionCompatibleWithCurrentWizard(session: DeploymentWizardSession):
 }
 
 function log(message: string, meta?: unknown): void {
-  if (meta === undefined) {
-    console.log(`${DEPLOY_LOG_PREFIX} ${message}`);
-    return;
-  }
-  console.log(`${DEPLOY_LOG_PREFIX} ${message}`, meta);
+  deployDebugLog(DEPLOY_LOG_PREFIX, message, meta);
 }
 
 export function useDeployWizard(options: UseDeployWizardOptions = {}) {
@@ -431,7 +428,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
           /timed out|timeout/i.test(rawMessage)
             ? "Transaction took too long to confirm. The transaction may still be pending on-chain. Use Resume to continue once it confirms."
             : rawMessage;
-        console.log(`${DEPLOY_LOG_PREFIX} Step execution threw`, {
+        deployDebugLog(DEPLOY_LOG_PREFIX, "Step execution threw", {
           step: runningStep,
           message: rawMessage,
           error: err

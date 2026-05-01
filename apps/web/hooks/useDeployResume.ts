@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { parseAbiItem } from "viem";
 import { getContractAddress } from "../lib/contracts";
+import { deployDebugLog } from "../lib/deploy/debug-log";
 import { findResumeCandidate, listSessions, saveSession } from "../lib/deploy/session-store";
 import type { DeploymentWizardSession, VerificationSnapshot } from "../lib/deploy/types";
 import type { CommunityDeploymentConfig } from "../lib/deploy/config";
@@ -40,11 +41,7 @@ const COMMUNITY_REGISTERED_EVENT = parseAbiItem(
 const RESUME_LOG_PREFIX = "[DeployResume]";
 
 function log(message: string, meta?: unknown): void {
-  if (meta === undefined) {
-    console.log(`${RESUME_LOG_PREFIX} ${message}`);
-    return;
-  }
-  console.log(`${RESUME_LOG_PREFIX} ${message}`, meta);
+  deployDebugLog(RESUME_LOG_PREFIX, message, meta);
 }
 
 const GET_COMMUNITY_ITEM = parseAbiItem(
