@@ -14,8 +14,9 @@ describe("ProposalDetail", () => {
     renderWithProviders(<ProposalDetail proposalId={PROPOSAL_ID} />);
 
     expect(await screen.findByText(/Execution readiness/i)).toBeInTheDocument();
-    expect(screen.getByText(/Community/i)).toBeInTheDocument();
-    expect(screen.getByText(/Cast Vote/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /At a glance/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/^Community$/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Cast vote/i)).toBeInTheDocument();
     expect(screen.getByText(/Option A/i)).toBeInTheDocument();
     expect(await screen.findByText(/Proposal description content/i)).toBeInTheDocument();
   });

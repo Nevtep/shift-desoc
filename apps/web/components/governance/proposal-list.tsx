@@ -12,6 +12,7 @@ import {
   type ProposalsQueryResult
 } from "../../lib/graphql/queries";
 import { proposalStatusBadgeLabel } from "../../lib/governance/proposal-status";
+import { getI18n } from "../../lib/i18n";
 import { useToast } from "../ui/toaster";
 
 export type ProposalListProps = {
@@ -20,6 +21,7 @@ export type ProposalListProps = {
 };
 
 export function ProposalList({ communityId, detailHrefBasePath }: ProposalListProps) {
+  const t = getI18n().governance;
   const communityIdNumber = typeof communityId === "string" ? Number(communityId) : communityId;
   const variables = Number.isFinite(communityIdNumber) ? { communityId: Number(communityIdNumber) } : undefined;
 
@@ -65,24 +67,24 @@ export function ProposalList({ communityId, detailHrefBasePath }: ProposalListPr
 
   useEffect(() => {
     if (isError) {
-      push("Failed to load proposals. Please retry.", "error");
+      push(t.proposalListFailed, "error");
     }
-  }, [isError, push]);
+  }, [isError, push, t.proposalListFailed]);
 
   const hasNextPage = data?.proposals.pageInfo.hasNextPage ?? false;
   const endCursor = data?.proposals.pageInfo.endCursor ?? undefined;
 
-  if (isLoading) return <StatusMessage message="Loading proposals…" />;
+  if (isLoading) return <StatusMessage message={t.proposalListLoading} />;
   if (isError)
     return (
       <div className="space-y-2">
-        <StatusMessage message="Failed to load proposals." tone="error" />
+        <StatusMessage message={t.proposalListFailed} tone="error" />
         <button className="text-xs underline" onClick={() => void refetch()}>
-          Retry
+          {t.retry}
         </button>
       </div>
     );
-  if (!proposals.length) return <StatusMessage message="No proposals indexed yet." />;
+  if (!proposals.length) return <StatusMessage message={t.proposalListEmpty} />;
 
   return (
     <div className="space-y-3">
@@ -108,32 +110,39 @@ export function ProposalList({ communityId, detailHrefBasePath }: ProposalListPr
               if (endCursor) setAfter(endCursor);
             }}
           >
-            {isLoading ? "Loading…" : "Load more"}
+            {isLoading ? t.proposalListLoadingMore : t.proposalListLoadMore}
           </button>
         ) : (
-          <span className="text-sm text-muted-foreground">No more proposals.</span>
+          <span className="text-sm text-muted-foreground">{t.proposalListNoMore}</span>
         )}
       </div>
     </div>
   );
 }
 
-function ProposalListItem({ proposal, detailHref }: { proposal: ProposalNode; detailHref: string }) {
+function ProposalListItem({
+  proposal,
+  detailHref
+}: {
+  proposal: ProposalNode;
+  detailHref: string;
+}) {
+  const t = getI18n().governance;
   const statusLabel = proposalStatusBadgeLabel(proposal.state);
 
   return (
     <li className="card">
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          <span>Community {proposal.communityId}</span>
-          <span>Created {formatDistanceToNowSafe(proposal.createdAt)}</span>
+          <span>{t.proposalListCommunity.replace("{id}", String(proposal.communityId))}</span>
+          <span>{t.proposalListCreated.replace("{time}", formatDistanceToNowSafe(proposal.createdAt))}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium">Proposal {proposal.id}</span>
+          <span className="font-medium">{t.proposalListId.replace("{id}", proposal.id)}</span>
           <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{statusLabel}</span>
         </div>
         <Link className="text-sm underline" href={detailHref as Route}>
-          View details
+          {t.proposalListView}
         </Link>
       </div>
     </li>

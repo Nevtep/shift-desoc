@@ -1,10 +1,19 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { cookies } from "next/headers";
 
 import { GovernanceTopBar } from "../../../../components/communities/governance-top-bar";
+import { getI18n, LOCALE_COOKIE_KEY, sanitizeLocale } from "../../../../lib/i18n";
 
-export const metadata = {
-  title: "Community Governance Hub | Shift"
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies();
+  const locale = sanitizeLocale(cookieStore.get(LOCALE_COOKIE_KEY)?.value);
+  const t = getI18n(locale).governance;
+  return {
+    title: t.metaCommunityGovernanceTitle,
+    description: t.metaHubDescription
+  };
+}
 
 type PageProps = {
   params: Promise<{
@@ -13,6 +22,10 @@ type PageProps = {
 };
 
 export default async function CommunityGovernanceHubPage({ params }: PageProps) {
+  const cookieStore = await cookies();
+  const locale = sanitizeLocale(cookieStore.get(LOCALE_COOKIE_KEY)?.value);
+  const t = getI18n(locale).governance;
+
   const { communityId } = await params;
   const numericCommunityId = Number(communityId);
   const safeCommunityId = Number.isFinite(numericCommunityId) && numericCommunityId > 0 ? numericCommunityId : 0;
@@ -24,15 +37,15 @@ export default async function CommunityGovernanceHubPage({ params }: PageProps) 
       <section className="grid gap-4 md:grid-cols-1">
         <article className="card flex min-h-[180px] flex-col justify-between">
           <div className="space-y-2">
-            <h2 className="text-xl font-semibold">Proposals</h2>
-            <p className="text-sm text-muted-foreground">Review lifecycle status, cast weighted votes, and track readiness.</p>
+            <h2 className="text-xl font-semibold">{t.hubSectionProposalsTitle}</h2>
+            <p className="text-sm text-muted-foreground">{t.hubSectionProposalsBody}</p>
           </div>
           <div className="mt-4 flex items-center gap-3">
             <Link className="btn-primary" href={`/communities/${safeCommunityId}/governance/proposals`}>
-              View all proposals
+              {t.viewAllProposals}
             </Link>
             <Link className="text-sm underline" href={`/communities/${safeCommunityId}`}>
-              Back to overview
+              {t.backToOverview}
             </Link>
           </div>
         </article>

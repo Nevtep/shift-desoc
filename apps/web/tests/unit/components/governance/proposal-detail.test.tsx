@@ -50,22 +50,29 @@ describe("ProposalDetail", () => {
     renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Total: 100.00% \(10000 bps\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/Total: 100.00%/i)).toBeInTheDocument();
     });
+
+    await userEvent.click(screen.getByText(/Precision in basis points/i));
+    expect(screen.getByText(/10000/)).toBeInTheDocument();
 
     const firstInput = screen.getByLabelText(/Allocation Option A/i);
     await userEvent.clear(firstInput);
     await userEvent.type(firstInput, "50");
 
-    expect(screen.getByText(/Total: 50.00% \(5000 bps\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Total: 50.00%/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByText(/Precision in basis points/i));
+    expect(screen.getByText(/5000/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /submit vote/i })).toBeDisabled();
-    expect(screen.getByText(/exactly 10,000 bps/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/exactly 100.00%/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/10,000 basis points/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders on-chain action payload details", async () => {
     renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
 
-    expect(await screen.findByRole("heading", { name: /action payload/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /on-chain actions/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByText(/Technical table/i));
     expect(screen.getByText("0x0000000000000000000000000000000000000000")).toBeInTheDocument();
     expect(screen.getByText("0x")).toBeInTheDocument();
   });
@@ -139,7 +146,7 @@ describe("ProposalDetail", () => {
 
     renderWithProviders(<ProposalDetail proposalId="100" expectedCommunityId={1} />);
 
-    expect(await screen.findByText(/Voting is not open yet\. Proposal must be Active on-chain\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Voting is not open yet/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /submit vote/i })).toBeDisabled();
   });
 
@@ -185,7 +192,11 @@ describe("ProposalDetail", () => {
 
     renderWithProviders(<ProposalDetail proposalId="101" expectedCommunityId={1} />);
 
-    expect(await screen.findByText(/Fallback reason: missing-readiness-fields/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText(/Technical diagnostics/i).length).toBeGreaterThanOrEqual(1);
+    });
+    await userEvent.click(screen.getAllByText(/Technical diagnostics/i)[0]);
+    expect(screen.getByText(/Fallback reason: missing-readiness-fields/i)).toBeInTheDocument();
   });
 
   it("renders safe fallbacks for invalid proposal and vote timestamps", async () => {

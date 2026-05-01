@@ -8,7 +8,8 @@ export default defineConfig({
     globals: true,
     css: false,
     env: {
-      NODE_ENV: "test"
+      NODE_ENV: "test",
+      NEXT_PUBLIC_APP_LOCALE: "en"
     }
   },
   esbuild: {

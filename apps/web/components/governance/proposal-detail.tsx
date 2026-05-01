@@ -27,6 +27,7 @@ import {
   toContractWeightsBps,
   TOTAL_BPS
 } from "../../lib/governance/weighted-vote";
+import { getI18n } from "../../lib/i18n";
 
 export type ProposalDetailProps = {
   proposalId: string;
@@ -34,6 +35,7 @@ export type ProposalDetailProps = {
 };
 
 export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDetailProps) {
+  const t = getI18n().governance;
   const normalizedProposalId = useMemo(() => normalizeRouteParam(proposalId), [proposalId]);
   const proposalNumericId = useMemo(() => extractOnchainProposalId(normalizedProposalId), [normalizedProposalId]);
 
@@ -102,15 +104,15 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
   }, [data, expectedCommunityId, isError, isLoading, normalizedProposalId, proposal]);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading proposal...</p>;
+    return <p className="text-sm text-muted-foreground">{t.loadingProposal}</p>;
   }
 
   if (isError || !proposal) {
     return (
       <div className="space-y-2">
-        <p className="text-sm text-destructive">Failed to load proposal.</p>
+        <p className="text-sm text-destructive">{t.loadProposalError}</p>
         <button className="text-xs underline" onClick={() => void refetch()}>
-          Retry
+          {t.retry}
         </button>
       </div>
     );
@@ -120,27 +122,46 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
     <div className="space-y-8">
       {mismatch ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          This proposal belongs to Community #{proposal.communityId}, not Community #{expectedCommunityId}. {" "}
+          {t.proposalMismatch
+            .replace("{actual}", String(proposal.communityId))
+            .replace("{expected}", String(expectedCommunityId))}{" "}
           {correctedHref ? (
             <a className="underline" href={correctedHref}>
-              Open the correct route
+              {t.openCorrectRoute}
             </a>
           ) : null}
         </div>
       ) : null}
 
       <section className="space-y-3">
-        <div className="card">
-          <h2 className="text-lg font-medium">Metadata</h2>
-          <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
-            <MetadataItem label="Community" value={String(proposal.communityId)} />
-            <MetadataItem label="Proposer" value={proposal.proposer} />
-            <MetadataItem label="State" value={statusLabel} />
-            <MetadataItem
-              label="Created"
-              value={formatDistanceToNowSafe(proposal.createdAt)}
-            />
-          </dl>
+        <div className="card space-y-4">
+          <h2 className="text-lg font-medium">{t.atAGlance}</h2>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-foreground">{statusLabel}</span>
+            <span className="text-muted-foreground">
+              <span className="font-medium text-foreground">{t.communityLabel}</span> #{proposal.communityId}
+            </span>
+            <span className="text-muted-foreground">
+              <span className="font-medium text-foreground">{t.createdLabel}</span> {formatDistanceToNowSafe(proposal.createdAt)}
+            </span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{t.proposerLabel}</span>{" "}
+            <span className="font-mono text-xs" title={proposal.proposer}>
+              {truncateMiddle(proposal.proposer)}
+            </span>
+          </div>
+          <details className="rounded-xl border border-border bg-background/70 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-foreground transition-colors hover:text-primary">
+              {t.metadataTechnical}
+            </summary>
+            <dl className="mt-4 grid gap-2 text-sm text-muted-foreground">
+              <MetadataItem label={t.communityLabel} value={String(proposal.communityId)} />
+              <MetadataItem label={t.proposerLabel} value={proposal.proposer} />
+              <MetadataItem label={t.stateLabel} value={statusLabel} />
+              <MetadataItem label={t.createdLabel} value={formatDistanceToNowSafe(proposal.createdAt)} />
+            </dl>
+          </details>
         </div>
       </section>
 
@@ -162,52 +183,60 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Description</h2>
+        <h2 className="text-lg font-medium">{t.description}</h2>
         {isIpfsLoading ? (
-          <p className="text-sm text-muted-foreground">Loading description...</p>
+          <p className="text-sm text-muted-foreground">{t.descriptionLoading}</p>
         ) : isIpfsError ? (
-          <p className="text-sm text-destructive">Failed to load IPFS description.</p>
+          <p className="text-sm text-destructive">{t.descriptionError}</p>
         ) : ipfsDoc?.html?.body ? (
           <article className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: ipfsDoc.html.body }} />
         ) : (
-          <p className="text-sm text-muted-foreground">No description available.</p>
+          <p className="text-sm text-muted-foreground">{t.descriptionEmpty}</p>
         )}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Action Payload</h2>
+        <h2 className="text-lg font-medium">{t.onChainActionsTitle}</h2>
         {actionPayload.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="py-2">#</th>
-                  <th>Target</th>
-                  <th>Value</th>
-                  <th>Function</th>
-                  <th>Calldata</th>
-                </tr>
-              </thead>
-              <tbody>
-                {actionPayload.map((action, index) => (
-                  <tr key={`${action.target}-${index}`} className="border-t border-border align-top">
-                    <td className="py-2 text-muted-foreground">{index + 1}</td>
-                    <td className="py-2 font-mono text-xs text-foreground">{action.target}</td>
-                    <td className="py-2 text-muted-foreground">{action.value}</td>
-                    <td className="py-2 text-muted-foreground">{action.functionSignature ?? "N/A"}</td>
-                    <td className="py-2 font-mono text-xs text-muted-foreground break-all">{action.calldata}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <p className="text-sm text-muted-foreground">{t.onChainActionsBlurb.replace("{count}", String(actionPayload.length))}</p>
+            <details className="rounded-xl border border-border bg-background/70 p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-foreground transition-colors hover:text-primary">
+                {t.onChainActionsTable}
+              </summary>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="py-2">#</th>
+                      <th>Target</th>
+                      <th>Value</th>
+                      <th>Function</th>
+                      <th>Calldata</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {actionPayload.map((action, index) => (
+                      <tr key={`${action.target}-${index}`} className="border-t border-border align-top">
+                        <td className="py-2 text-muted-foreground">{index + 1}</td>
+                        <td className="py-2 font-mono text-xs text-foreground">{action.target}</td>
+                        <td className="py-2 text-muted-foreground">{action.value}</td>
+                        <td className="py-2 text-muted-foreground">{action.functionSignature ?? "N/A"}</td>
+                        <td className="py-2 font-mono text-xs text-muted-foreground break-all">{action.calldata}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </>
         ) : (
-          <p className="text-sm text-muted-foreground">No on-chain actions found for this proposal.</p>
+          <p className="text-sm text-muted-foreground">{t.onChainActionsEmpty}</p>
         )}
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">Votes</h2>
+        <h2 className="text-lg font-medium">{t.votesTitle}</h2>
         {votes.length ? (
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -230,7 +259,7 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-muted-foreground">No votes recorded yet.</p>
+          <p className="text-sm text-muted-foreground">{t.votesEmpty}</p>
         )}
       </section>
     </div>
@@ -238,6 +267,7 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
 }
 
 function ReadinessPanel({ proposal }: { proposal: NonNullable<ProposalQueryResult["proposal"]> }) {
+  const t = getI18n().governance;
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { modules } = useCommunityModules({ communityId: Number(proposal.communityId), chainId, enabled: true });
@@ -342,22 +372,55 @@ function ReadinessPanel({ proposal }: { proposal: NonNullable<ProposalQueryResul
   ]);
 
   return (
-    <div className="card text-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="font-medium">Execution readiness</span>
-        <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{readiness.source}</span>
-        {readiness.staleReason !== "none" ? (
-          <span className="text-xs text-amber-700">Fallback reason: {readiness.staleReason}</span>
-        ) : null}
+    <div className="card text-sm space-y-3">
+      <div>
+        <span className="font-medium">{t.executionReadiness}</span>
+        <p className="mt-2 text-muted-foreground">{readinessHumanLine(readiness, t)}</p>
       </div>
-      <ul className="mt-3 space-y-1 text-muted-foreground">
-        <li>Queued: {readiness.queued ? "Yes" : "No"}</li>
-        <li>Executable now: {readiness.executableNow ? "Yes" : "No"}</li>
-        <li>Executed: {readiness.executed ? "Yes" : "No"}</li>
-        <li>ETA: {readiness.eta === null ? "N/A" : readiness.eta.toString()}</li>
-      </ul>
+      <details className="rounded-xl border border-border bg-background/70 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-foreground transition-colors hover:text-primary">
+          {t.readinessTechnical}
+        </summary>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <span className="rounded bg-muted px-2 py-0.5 text-xs uppercase tracking-wide">{readiness.source}</span>
+          {readiness.staleReason !== "none" ? (
+            <span className="text-xs text-amber-700">
+              {t.readinessFallback}: {readiness.staleReason}
+            </span>
+          ) : null}
+        </div>
+        <ul className="mt-3 space-y-1 text-muted-foreground">
+          <li>
+            {t.readinessQueued}: {readiness.queued ? t.readinessYes : t.readinessNo}
+          </li>
+          <li>
+            {t.readinessExecutable}: {readiness.executableNow ? t.readinessYes : t.readinessNo}
+          </li>
+          <li>
+            {t.readinessExecuted}: {readiness.executed ? t.readinessYes : t.readinessNo}
+          </li>
+          <li>
+            {t.readinessEta}: {readiness.eta === null ? "N/A" : readiness.eta.toString()}
+          </li>
+        </ul>
+      </details>
     </div>
   );
+}
+
+function readinessHumanLine(
+  readiness: ProposalReadiness,
+  t: ReturnType<typeof getI18n>["governance"]
+): string {
+  if (readiness.executed) return t.readinessHumanExecuted;
+  if (readiness.executableNow) return t.readinessHumanExecutable;
+  if (readiness.queued) return t.readinessHumanQueued;
+  return t.readinessHumanPending;
+}
+
+function truncateMiddle(value: string, left = 6, right = 4): string {
+  if (!value || !value.startsWith("0x") || value.length <= left + right + 2) return value;
+  return `${value.slice(0, left)}…${value.slice(-right)}`;
 }
 
 function VoteForm({
@@ -375,6 +438,7 @@ function VoteForm({
   listHref: string;
   onVoteConfirmed: () => void;
 }) {
+  const t = getI18n().governance;
   const chainId = useChainId();
   const { status, address } = useAccount();
   const publicClient = usePublicClient();
@@ -473,17 +537,17 @@ function VoteForm({
     setUiMessage(null);
 
     if (!modules?.governor) {
-      setUiMessage("Governor module is not registered for this community.");
+      setUiMessage(t.governorNotRegistered);
       return;
     }
 
     if (!exactTotal) {
-      setUiMessage("Allocations must sum to exactly 100.00% (10,000 bps).");
+      setUiMessage(`${t.totalMustExactPercent} ${t.totalMustBpsDetail}`);
       return;
     }
 
     if (onchainProposalId === null) {
-      setUiMessage("Invalid proposal ID format.");
+      setUiMessage(t.invalidProposalId);
       return;
     }
 
@@ -500,7 +564,7 @@ function VoteForm({
           args: [onchainProposalId, contractWeights, reason]
         });
 
-        setUiMessage("Vote pending wallet confirmation...");
+        setUiMessage(t.votePendingWallet);
         txHash = await writeContractAsync({
           address: modules.governor,
           abi: COMMUNITY_MODULE_ABIS.governor,
@@ -518,7 +582,7 @@ function VoteForm({
           args: [onchainProposalId, support, reason]
         });
 
-        setUiMessage("Vote pending wallet confirmation...");
+        setUiMessage(t.votePendingWallet);
         txHash = await writeContractAsync({
           address: modules.governor,
           abi: COMMUNITY_MODULE_ABIS.governor,
@@ -528,23 +592,23 @@ function VoteForm({
         });
       }
 
-      setUiMessage(`Vote submitted: ${txHash}. Waiting for confirmation...`);
+      setUiMessage(t.voteWaitingConfirm.replace("{hash}", txHash));
 
       if (!publicClient) {
-        setUiMessage(`Vote submitted: ${txHash}. Unable to confirm receipt in this session.`);
+        setUiMessage(t.voteSubmittedNoConfirm.replace("{hash}", txHash));
         return;
       }
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
       if (receipt.status === "success") {
         onVoteConfirmed();
-        setUiMessage(`Vote confirmed: ${txHash}. Refresh in a moment if indexer sync is still catching up.`);
+        setUiMessage(t.voteConfirmed.replace("{hash}", txHash));
       } else {
-        setUiMessage(`Vote failed on-chain (reverted): ${txHash}`);
+        setUiMessage(t.voteReverted.replace("{hash}", txHash));
       }
       setReason("");
     } catch (err) {
-      setUiMessage(formatVoteError(err));
+      setUiMessage(formatVoteError(err, t));
     }
   }
 
@@ -552,10 +616,10 @@ function VoteForm({
     <form onSubmit={handleSubmit} className="card">
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-1">
-          <h3 className="text-base font-semibold">Cast Vote</h3>
-          <p className="text-sm text-muted-foreground">Weighted allocations must sum to exactly 100.00%.</p>
+          <h3 className="text-base font-semibold">{t.castVoteTitle}</h3>
+          <p className="text-sm text-muted-foreground">{t.castVoteHint}</p>
         </div>
-        <span className="text-xs text-muted-foreground">State: {proposalState}</span>
+        <span className="text-xs text-muted-foreground">{t.castVoteState.replace("{state}", proposalState)}</span>
       </div>
 
       <div className="mt-4 space-y-3">
@@ -583,29 +647,41 @@ function VoteForm({
         ))}
       </div>
 
-      <div className="mt-3 text-xs text-muted-foreground">Total: {bpsToPercentLabel(totalBps)} ({totalBps} bps)</div>
+      <div className="mt-3 space-y-1">
+        <p className="text-xs text-muted-foreground">{t.totalPercent.replace("{percent}", bpsToPercentLabel(totalBps))}</p>
+        <details className="rounded-lg border border-border bg-background/50 px-3 py-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer font-medium text-foreground">{t.voteBpsPrecision}</summary>
+          <p className="mt-2">
+            {totalBps} bps — {t.voteBpsExplanation}
+          </p>
+        </details>
+      </div>
 
       <label className="mt-4 flex flex-col gap-1 text-sm">
-        <span className="text-muted-foreground">Reason (optional)</span>
+        <span className="text-muted-foreground">{t.reasonLabel}</span>
         <textarea
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           className="min-h-[80px] rounded border border-border bg-background px-3 py-2"
-          placeholder="Why are you voting this way?"
+          placeholder={t.reasonPlaceholder}
         />
       </label>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button type="submit" disabled={!isConnected || isPending || !exactTotal || !canVoteNow} className="btn-primary">
-          {isPending ? "Submitting..." : "Submit vote"}
+          {isPending ? t.submitting : t.submitVote}
         </button>
-        {!isConnected ? <span className="text-xs text-destructive">Connect a wallet to vote.</span> : null}
-        {!exactTotal ? <span className="text-xs text-destructive">Total must be exactly 10,000 bps.</span> : null}
-        {!canVoteNow ? <span className="text-xs text-destructive">Voting is not open yet. Proposal must be Active on-chain.</span> : null}
+        {!isConnected ? <span className="text-xs text-destructive">{t.connectWallet}</span> : null}
+        {!exactTotal ? (
+          <span className="text-xs text-destructive">
+            {t.totalMustExactPercent} {t.totalMustBpsDetail}
+          </span>
+        ) : null}
+        {!canVoteNow ? <span className="text-xs text-destructive">{t.votingNotOpen}</span> : null}
         {error ? <span className="text-xs text-destructive">{error.message ?? "Transaction failed"}</span> : null}
         {uiMessage ? <span className="text-xs text-muted-foreground">{uiMessage}</span> : null}
         <a className="text-xs underline" href={listHref}>
-          Back to proposals
+          {t.backToProposals}
         </a>
       </div>
     </form>
@@ -677,24 +753,24 @@ function formatVoteOption(optionIndex?: number | null) {
   return `Option ${optionIndex}`;
 }
 
-function formatVoteError(err: unknown) {
+function formatVoteError(err: unknown, t: ReturnType<typeof getI18n>["governance"]) {
   const message = err instanceof Error ? err.message : String(err);
   const lower = message.toLowerCase();
 
   if (lower.includes("governoralreadycastvote") || lower.includes("already cast vote")) {
-    return "Your wallet already voted on this proposal.";
+    return t.voteAlreadyCast;
   }
 
   if (lower.includes("governorunexpectedproposalstate") || lower.includes("unexpected proposal state")) {
-    return "Voting is not open yet. Proposal is not Active on-chain.";
+    return t.voteUnexpectedState;
   }
 
   if (lower.includes("user rejected") || lower.includes("rejected")) {
-    return "Signature rejected.";
+    return t.signatureRejected;
   }
 
   if (lower.includes("chain") || lower.includes("network")) {
-    return "Wrong network selected for this community.";
+    return t.wrongNetwork;
   }
 
   return message.replace(/execution reverted: ?/i, "");
