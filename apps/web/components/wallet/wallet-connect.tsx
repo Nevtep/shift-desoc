@@ -15,6 +15,18 @@ import { base, baseSepolia } from "wagmi/chains";
 
 const preferredChainIds = new Set<number>([base.id, baseSepolia.id]);
 
+function getConnectErrorMessage(error: unknown): string | null {
+  if (!error || typeof error !== "object" || !("message" in error)) return null;
+  const message = String((error as { message: string }).message ?? "");
+  if (!message) return null;
+  const normalized = message.toLowerCase();
+  if (normalized.includes("request reset") || normalized.includes("user rejected")) {
+    // Treat modal close / user-cancel as non-fatal.
+    return null;
+  }
+  return message;
+}
+
 function formatAddress(address?: string | null) {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -90,6 +102,7 @@ export function WalletConnect({ showAddress }: WalletConnectProps = {}) {
   const isConnected = accountStatus === "connected";
 
   const { connectors, connect, error: connectError, isPending } = useConnect();
+  const connectErrorMessage = getConnectErrorMessage(connectError);
   const { disconnect } = useDisconnect();
   const chains = useChains();
   const chainId = useChainId();
@@ -163,9 +176,9 @@ export function WalletConnect({ showAddress }: WalletConnectProps = {}) {
                 {connector.name}
               </button>
             ))}
-            {connectError ? (
+            {connectErrorMessage ? (
               <p className="px-4 py-2 text-xs text-destructive">
-                {"message" in connectError ? connectError.message : "Connection failed"}
+                {connectErrorMessage}
               </p>
             ) : null}
           </div>

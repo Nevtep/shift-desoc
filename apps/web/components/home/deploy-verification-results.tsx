@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
 import type { VerificationCheckResult } from "../../lib/deploy/types";
+import { getI18n } from "../../lib/i18n";
 
 const FRIENDLY_LABELS: Record<string, string> = {
   MODULE_WIRING_VALUABLE_ACTION_REGISTRY: "Registry de módulos",
@@ -69,6 +70,7 @@ function CheckRow({
   isLoading: boolean;
   delayMs: number;
 }) {
+  const t = getI18n().verification;
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
@@ -89,18 +91,18 @@ function CheckRow({
           {showLoading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
-              <span className="text-xs text-muted-foreground">Verificando…</span>
+              <span className="text-xs text-muted-foreground">{t.checking}</span>
             </>
           ) : showResult ? (
             passed ? (
               <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
                 <Check className="h-4 w-4" aria-hidden />
-                Pass
+                {t.pass}
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-sm font-medium text-destructive">
                 <X className="h-4 w-4" aria-hidden />
-                Fail
+                {t.fail}
               </span>
             )
           ) : null}

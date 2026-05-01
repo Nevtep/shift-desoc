@@ -3,14 +3,15 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useRef, useEffect, useState } from "react";
-
-const items: { href: Route; label: string }[] = [
-  { href: "/requests", label: "Requests" },
-  { href: "/drafts", label: "Drafts" },
-  { href: "/governance/proposals", label: "Proposals" }
-];
+import { getI18n } from "../../lib/i18n";
 
 export function NavGovernanceDropdown() {
+  const t = getI18n().layout;
+  const items: { href: Route; label: string }[] = [
+    { href: "/requests", label: t.navRequests },
+    { href: "/drafts", label: t.navDrafts },
+    { href: "/governance/proposals", label: t.navProposals }
+  ];
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -32,9 +33,9 @@ export function NavGovernanceDropdown() {
         className="flex cursor-pointer items-center gap-1 font-bold text-primary transition-colors hover:text-primaryDark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-expanded={isOpen}
         aria-haspopup="true"
-        aria-label="Governance menu"
+        aria-label={t.governanceMenuAria}
       >
-        Governance
+        {t.navGovernance}
         <svg
           className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
           fill="none"

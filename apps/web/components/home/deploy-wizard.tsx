@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAccount, useChainId } from "wagmi";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -19,6 +20,7 @@ import { DeployConfigSteps } from "./deploy-config-steps";
 import { DeployStepList } from "./deploy-step-list";
 import { DeployVerificationResults } from "./deploy-verification-results";
 import { OnboardingConnectStep } from "./onboarding-connect-step";
+import { getI18n } from "../../lib/i18n";
 
 type Props = {
   options?: UseDeployWizardOptions;
@@ -66,6 +68,7 @@ function saveDraft(config: CommunityDeploymentConfig, address?: `0x${string}`, c
 }
 
 export function DeployWizard({ options }: Props) {
+  const t = getI18n().wizard;
   const router = useRouter();
   const searchParams = useSearchParams();
   const designModeFromUrl = searchParams.get("designMode") === "1";
@@ -96,7 +99,12 @@ export function DeployWizard({ options }: Props) {
   const [completedDismissed, setCompletedDismissed] = useState(false);
   const [wizardExpanded, setWizardExpanded] = useState(false);
   const [wizardClosed, setWizardClosed] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const resumeRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const isCompleted = session?.status === "completed";
   const isDeploying =
@@ -224,17 +232,17 @@ export function DeployWizard({ options }: Props) {
     const communityId = session?.communityId;
     return (
       <section className="space-y-6">
-        <p className="text-sm font-medium text-primary">Your community is ready!</p>
+        <p className="text-sm font-medium text-primary">{t.ready}</p>
         <div className="flex flex-wrap justify-end gap-3">
           <Link href="/" className="btn-ghost cursor-pointer">
-            Go to home
+            {t.goHome}
           </Link>
           {typeof communityId === "number" ? (
             <Link
               href={`/communities/${communityId}`}
               className="btn-primary cursor-pointer"
             >
-              Go to my community
+              {t.goCommunity}
             </Link>
           ) : null}
         </div>
@@ -243,25 +251,41 @@ export function DeployWizard({ options }: Props) {
   }
 
   if (status !== "connected") {
-    return <OnboardingConnectStep fullScreen hideCloseButton />;
+    return (
+      <section className="space-y-4">
+        <div className="mx-auto w-full max-w-xl">
+          <OnboardingConnectStep fullScreen={false} />
+        </div>
+        <details className="mx-auto w-full max-w-xl rounded-xl border border-border bg-background/60 p-4">
+          <summary className="cursor-pointer text-sm font-semibold">{t.flowIncludes}</summary>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+            <li>{t.flowItem1}</li>
+            <li>{t.flowItem2}</li>
+            <li>{t.flowItem3}</li>
+          </ul>
+        </details>
+      </section>
+    );
   }
 
   if (showLoadingCheck) {
     return (
-      <section className="space-y-6">
-        <p className="text-sm text-muted-foreground">Checking your communities…</p>
+      <section className="card-tight space-y-3">
+        <p className="text-sm font-medium">{t.checkingTitle}</p>
+        <p className="text-sm text-muted-foreground">{t.checkingBody}</p>
       </section>
     );
   }
 
   if (showHomeView) {
     return (
-      <section className="space-y-6">
-        <p className="text-sm text-muted-foreground">
+      <section className="flex flex-col items-center space-y-3 text-center">
+        <p className="max-w-xl text-sm text-muted-foreground">
           {hasCommunities
-            ? "You already have communities. Create another or browse below."
-            : "Create a community or browse below."}
+            ? t.hasCommunities
+            : t.noCommunities}
         </p>
+        <p className="max-w-xl text-sm font-medium text-primary">{t.connectedHint}</p>
         <button
           type="button"
           onClick={() => {
@@ -270,15 +294,15 @@ export function DeployWizard({ options }: Props) {
           }}
           className="btn-primary cursor-pointer"
         >
-          Create community
+          {t.createCommunity}
         </button>
       </section>
     );
   }
 
-  return (
+  const overlay = (
     <div
-      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background bg-cover bg-center bg-no-repeat"
+      className="fixed inset-0 z-[100] h-dvh w-screen flex flex-col overflow-y-auto bg-background bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: "url(/contact-bg.webp)" }}
     >
       <div className="absolute right-4 top-4 z-10 flex items-center gap-3">
@@ -302,21 +326,21 @@ export function DeployWizard({ options }: Props) {
               <div className="space-y-4 text-center">
                 <h2 className="text-2xl font-semibold">
                   {session?.status === "failed"
-                    ? "Deployment paused"
+                    ? t.paused
                     : (session?.steps ?? []).some(
                         (s) => s.key === "VERIFY_DEPLOYMENT" && (s.status === "running" || s.status === "succeeded")
                       )
-                      ? "Verification"
-                      : "Deploying your community"}
+                      ? t.verification
+                      : t.deploying}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {session?.status === "failed"
-                    ? "An error occurred. Fix the issue and use Resume to continue."
+                    ? t.failedBody
                     : (session?.steps ?? []).some(
                         (s) => s.key === "VERIFY_DEPLOYMENT" && (s.status === "running" || s.status === "succeeded")
                       )
-                      ? "Running verification checks."
-                      : "Confirm transactions in your wallet when prompted. Do not close this page."}
+                      ? t.verifyingBody
+                      : t.deployingBody}
                 </p>
                 {session?.status === "failed" ? (
                   <div className="flex flex-wrap items-center justify-center gap-3">
@@ -326,7 +350,7 @@ export function DeployWizard({ options }: Props) {
                       onClick={() => void handleResume()}
                       className="btn-primary cursor-pointer"
                     >
-                      {isResuming ? "Resuming..." : "Resume"}
+                      {isResuming ? t.resuming : t.resume}
                     </button>
                   </div>
                 ) : null}
@@ -355,7 +379,7 @@ export function DeployWizard({ options }: Props) {
                           rel="noopener noreferrer"
                           className="inline-block text-center text-sm text-primary underline underline-offset-2 hover:text-primary/80"
                         >
-                          View transaction on block explorer
+                          {t.txExplorer}
                         </a>
                       ) : null;
                     })()
@@ -366,26 +390,26 @@ export function DeployWizard({ options }: Props) {
                   onClick={handleStartOver}
                   className="btn-ghost cursor-pointer"
                 >
-                  Start over
+                  {t.startOver}
                 </button>
               </div>
             </>
           ) : isCompleted ? (
             <div className="mt-8 flex w-full flex-col items-center gap-8">
               <div className="space-y-4 text-center">
-                <h2 className="text-2xl font-semibold">Verification</h2>
-                <p className="text-sm text-muted-foreground">All checks passed.</p>
+                <h2 className="text-2xl font-semibold">{t.verification}</h2>
+                <p className="text-sm text-muted-foreground">{t.allChecksPassed}</p>
               </div>
               <DeployVerificationResults results={verificationResults} />
               <div className="space-y-4 text-center">
-                <p className="text-lg font-medium text-primary">Your community is ready!</p>
+                <p className="text-lg font-medium text-primary">{t.ready}</p>
                 <div className="flex flex-wrap justify-center gap-3">
                   <button
                     type="button"
                     onClick={() => setCompletedDismissed(true)}
                     className="btn-ghost cursor-pointer"
                   >
-                    Done
+                    {t.done}
                   </button>
                   {typeof session?.communityId === "number" ? (
                     <button
@@ -393,7 +417,7 @@ export function DeployWizard({ options }: Props) {
                       onClick={() => router.push(`/communities/${session.communityId}`)}
                       className="btn-primary cursor-pointer"
                     >
-                      Go to my community
+                      {t.goCommunity}
                     </button>
                   ) : null}
                 </div>
@@ -403,10 +427,8 @@ export function DeployWizard({ options }: Props) {
           ) : (
             <>
               <div className="space-y-4">
-                <h2 className="text-2xl font-semibold">Create your community</h2>
-                <p className="text-sm text-muted-foreground">
-                  Configure your community and follow the guided steps. You will be asked to confirm some actions from your wallet.
-                </p>
+                <h2 className="text-2xl font-semibold">{t.createTitle}</h2>
+                <p className="text-sm text-muted-foreground">{t.createBody}</p>
                 {showResume ? (
                   <div className="flex flex-wrap gap-3">
                     <button
@@ -415,7 +437,7 @@ export function DeployWizard({ options }: Props) {
                       onClick={() => void handleResume()}
                       className="btn-ghost cursor-pointer"
                     >
-                      {isResuming ? "Resuming..." : "Resume"}
+                      {isResuming ? t.resuming : t.resume}
                     </button>
                   </div>
                 ) : null}
@@ -447,4 +469,7 @@ export function DeployWizard({ options }: Props) {
       </div>
     </div>
   );
+
+  if (!isClient) return null;
+  return createPortal(overlay, document.body);
 }

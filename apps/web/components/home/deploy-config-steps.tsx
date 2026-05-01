@@ -5,18 +5,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useChainId } from "wagmi";
 import type { CommunityDeploymentConfig } from "../../lib/deploy/config";
 import type { PreflightAssessment } from "../../lib/deploy/types";
+import { getI18n } from "../../lib/i18n";
 
 const STABLE_TOKENS_BY_CHAIN: Record<number, { label: string; address: string }[]> = {
   84532: [{ label: "USDC (Base Sepolia)", address: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" }],
   8453: [{ label: "USDC (Base)", address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" }]
 };
-
-const CONFIG_STEPS = [
-  { key: "name", title: "Community name", description: "Give your community a name" },
-  { key: "description", title: "Description", description: "Describe your community's purpose" },
-  { key: "currency", title: "Currency", description: "Choose the stable currency for payments and treasury" },
-  { key: "ready", title: "Ready to deploy", description: "Verify your wallet has enough ETH for gas fees" }
-] as const;
 
 function weiToEth(wei: bigint): string {
   const eth = Number(wei) / 1e18;
@@ -83,6 +77,13 @@ export function DeployConfigSteps({
   onDesignModeChange,
   onExit
 }: Props) {
+  const t = getI18n().deployConfig;
+  const CONFIG_STEPS = [
+    { key: "name", title: t.stepNameTitle, description: t.stepNameDesc },
+    { key: "description", title: t.stepDescriptionTitle, description: t.stepDescriptionDesc },
+    { key: "currency", title: t.stepCurrencyTitle, description: t.stepCurrencyDesc },
+    { key: "ready", title: t.stepReadyTitle, description: t.stepReadyDesc }
+  ] as const;
   const [stepIndex, setStepIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const chainId = useChainId();
@@ -170,41 +171,39 @@ export function DeployConfigSteps({
 
         {currentStep.key === "name" && (
           <label className="block space-y-2">
-            <span className="text-sm font-medium">Community name</span>
+            <span className="text-sm font-medium">{t.labelCommunityName}</span>
             <input
               id="community-name"
               type="text"
               className="w-full rounded-xl border border-border bg-background px-4 py-3 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20"
               value={value.communityName}
               onChange={(e) => updateField(value, onChange, "communityName", e.target.value)}
-              placeholder="e.g. Shift Builders Collective"
+              placeholder={t.placeholderCommunityName}
               autoFocus
-              aria-label="Community name"
+              aria-label={t.labelCommunityName}
             />
           </label>
         )}
 
         {currentStep.key === "description" && (
           <label className="block space-y-2">
-            <span className="text-sm font-medium">Description</span>
+            <span className="text-sm font-medium">{t.labelDescription}</span>
             <textarea
               id="community-description"
               className="min-h-24 w-full rounded-xl border border-border bg-background px-4 py-3 focus:border-secondary focus:outline-none focus:ring-2 focus:ring-secondary/20"
               value={value.communityDescription}
               onChange={(e) => updateField(value, onChange, "communityDescription", e.target.value)}
-              placeholder="Short purpose and operating model for this community"
+              placeholder={t.placeholderDescription}
               autoFocus
-              aria-label="Community description"
+              aria-label={t.labelDescription}
             />
           </label>
         )}
 
         {currentStep.key === "currency" && (
           <div className="space-y-2">
-            <span className="text-sm font-medium">Community currency</span>
-            <p className="text-xs text-muted-foreground">
-              Your community will use this currency for payments and treasury.
-            </p>
+            <span className="text-sm font-medium">{t.labelCurrency}</span>
+            <p className="text-xs text-muted-foreground">{t.currencyHelp}</p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {tokenOptions.map((opt) => (
                 <button
@@ -219,7 +218,7 @@ export function DeployConfigSteps({
                 >
                   <span>{opt.label}</span>
                   {value.treasuryStableToken === opt.address ? (
-                    <span className="text-sm font-medium text-primary">Selected</span>
+                    <span className="text-sm font-medium text-primary">{t.selected}</span>
                   ) : null}
                 </button>
               ))}
@@ -230,11 +229,11 @@ export function DeployConfigSteps({
         {currentStep.key === "ready" && (
           <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
             {!preflight && !isRefreshing ? (
-              <p className="text-sm text-muted-foreground">Checking wallet and network…</p>
+              <p className="text-sm text-muted-foreground">{t.checking}</p>
             ) : (
               <>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Preflight check</span>
+                <span className="text-sm font-medium">{t.preflightCheck}</span>
                 <button
                   type="button"
                   disabled={isRefreshing}
@@ -244,49 +243,50 @@ export function DeployConfigSteps({
                   {isRefreshing ? (
                     <>
                       <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                      Refreshing…
+                      {t.refreshing}
                     </>
                   ) : (
-                    "Refresh"
+                    t.refresh
                   )}
                 </button>
               </div>
               {likelyMock && walletAddr ? (
                 <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  ⚠️ Test/mock address detected: {walletAddr}. Data may not be from a real wallet.
+                  {t.testAddress.replace("{address}", walletAddr)}
                 </p>
               ) : null}
               {walletAddr && !likelyMock ? (
                 <p className="break-all text-xs text-muted-foreground font-mono" title={walletAddr}>
-                  Wallet: {shortenAddress(walletAddr)} — {walletAddr}
+                  {t.wallet}: {shortenAddress(walletAddr)} — {walletAddr}
                 </p>
               ) : null}
                 {preflight ? (
                   <>
                     <div className="grid gap-2 text-sm sm:grid-cols-2">
                       <p>
-                        Wallet:{" "}
+                        {t.wallet}:{" "}
                         <span className={preflight.walletConnected ? "text-primary" : "text-destructive"}>
-                          {preflight.walletConnected ? "Connected" : "Disconnected"}
+                          {preflight.walletConnected ? t.connected : t.disconnected}
                         </span>
                       </p>
                       <p>
-                        Network:{" "}
+                        {t.network}:{" "}
                         <span className={preflight.supportedNetwork ? "text-primary" : "text-destructive"}>
                           {CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}
-                          {preflight.supportedNetwork ? " (supported)" : " (unsupported)"}
+                          {preflight.supportedNetwork ? ` (${t.supported})` : ` (${t.unsupported})`}
                         </span>
                       </p>
                       <p>
-                        Balance: {weiToEth(preflight.funding.currentBalanceWei)} ETH on {CHAIN_NAMES[chainId] ?? `chain ${chainId}`}
+                        {t.balance}: {weiToEth(preflight.funding.currentBalanceWei)} ETH {t.network.toLowerCase()}{" "}
+                        {CHAIN_NAMES[chainId] ?? `chain ${chainId}`}
                         {preflight.funding.isSufficient ? (
-                          <span className="ml-1 text-primary">(sufficient)</span>
+                          <span className="ml-1 text-primary">({t.sufficient})</span>
                         ) : (
-                          <span className="ml-1 text-destructive">(insufficient)</span>
+                          <span className="ml-1 text-destructive">({t.insufficient})</span>
                         )}
                       </p>
                       <p className="text-muted-foreground">
-                        Required: ~{weiToEth(preflight.funding.requiredWei)} ETH for gas
+                        {t.required}: ~{weiToEth(preflight.funding.requiredWei)} ETH gas
                       </p>
                     </div>
                     {preflight.blockingReasons.length > 0 ? (
@@ -312,11 +312,11 @@ export function DeployConfigSteps({
                         ) : null}
                       </>
                     ) : (
-                      <p className="text-sm font-medium text-primary">All checks passed. You can deploy.</p>
+                      <p className="text-sm font-medium text-primary">{t.allChecksPassed}</p>
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">Refreshing preflight status…</p>
+                  <p className="text-sm text-muted-foreground">{t.refreshingStatus}</p>
                 )}
               </>
             )}
@@ -325,7 +325,7 @@ export function DeployConfigSteps({
       </div>
 
       {validationErrors.length > 0 && currentStep.key === "currency" ? (
-        <p className="text-sm text-destructive">Please select a currency.</p>
+        <p className="text-sm text-destructive">{t.selectCurrency}</p>
       ) : null}
 
       <div className="flex items-center justify-between gap-4">
@@ -335,7 +335,7 @@ export function DeployConfigSteps({
             onClick={onExit}
             className="btn-ghost flex cursor-pointer items-center"
           >
-            Exit
+            {t.exit}
           </button>
         ) : (
           <button
@@ -345,11 +345,11 @@ export function DeployConfigSteps({
             className="btn-ghost flex cursor-pointer items-center disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ChevronLeft className="mr-1 h-4 w-4" />
-            Back
+            {t.back}
           </button>
         )}
         <span className="text-sm text-muted-foreground">
-          Step {stepIndex + 1} of {CONFIG_STEPS.length}
+          {t.stepOf.replace("{current}", String(stepIndex + 1)).replace("{total}", String(CONFIG_STEPS.length))}
         </span>
         <button
           type="button"
@@ -359,9 +359,9 @@ export function DeployConfigSteps({
         >
           {isLastStep
             ? designMode
-              ? "Simular deploy (modo diseño)"
-              : "Create community"
-            : "Next"}
+              ? t.simulateDeploy
+              : t.createCommunity
+            : t.next}
           {!isLastStep ? <ChevronRight className="ml-1 h-4 w-4" /> : null}
         </button>
       </div>

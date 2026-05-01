@@ -3,6 +3,7 @@
 import { Wallet, X } from "lucide-react";
 import { SiCoinbase, SiWalletconnect } from "react-icons/si";
 import { useConnect } from "wagmi";
+import { getI18n } from "../../lib/i18n";
 
 function ConnectorIcon({ connectorId, connectorName }: { connectorId?: string; connectorName?: string }) {
   const id = (connectorId ?? "").toLowerCase();
@@ -27,20 +28,30 @@ type Props = {
   hideCloseButton?: boolean;
 };
 
+function getConnectErrorMessage(error: unknown, fallback: string, cancelled: string): { message: string; tone: "soft" | "error" } | null {
+  if (!error || typeof error !== "object" || !("message" in error)) return null;
+  const message = String((error as { message: string }).message ?? "");
+  const normalized = message.toLowerCase();
+  if (!message) return null;
+  if (normalized.includes("request reset") || normalized.includes("user rejected")) {
+    return { message: cancelled, tone: "soft" };
+  }
+  return { message, tone: "error" };
+}
+
 export function OnboardingConnectStep({ fullScreen = true, onClose, hideCloseButton }: Props) {
+  const t = getI18n().wizard;
   const { connectors, connect, error: connectError, isPending } = useConnect();
+  const connectErrorUi =
+    getConnectErrorMessage(connectError, t.onboardingConnectionFailed, t.onboardingConnectionCancelled) ??
+    (connectError ? { message: t.onboardingConnectionFailed, tone: "error" as const } : null);
 
   const content = (
     <>
       <div className="space-y-3 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight">Create your community on Shift</h2>
-        <p className="text-sm text-muted-foreground">
-          Shift is a modular governance platform for decentralized communities. This wizard guides you through deploying
-          your own community with governance, verification, and commerce tools built in.
-        </p>
-        <p className="text-muted-foreground">
-          Connect your wallet to get started. It&apos;s the first step.
-        </p>
+        <h2 className="text-2xl font-semibold tracking-tight">{t.onboardingTitle}</h2>
+        <p className="text-sm text-muted-foreground">{t.onboardingBody}</p>
+        <p className="text-muted-foreground">{t.onboardingHint}</p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -58,14 +69,17 @@ export function OnboardingConnectStep({ fullScreen = true, onClose, hideCloseBut
         ))}
       </div>
 
-      {connectError ? (
-        <p className="text-center text-sm text-destructive" role="alert">
-          {"message" in connectError ? connectError.message : "Connection failed"}
+      {connectErrorUi ? (
+        <p
+          className={`text-center text-sm ${connectErrorUi.tone === "error" ? "text-destructive" : "text-muted-foreground"}`}
+          role="alert"
+        >
+          {connectErrorUi.message}
         </p>
       ) : null}
 
       {isPending ? (
-        <p className="text-center text-sm text-muted-foreground">Connecting...</p>
+        <p className="text-center text-sm text-muted-foreground">{t.onboardingConnecting}</p>
       ) : null}
     </>
   );
@@ -81,7 +95,7 @@ export function OnboardingConnectStep({ fullScreen = true, onClose, hideCloseBut
             type="button"
             onClick={onClose}
             className="absolute right-4 top-4 flex size-10 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            aria-label="Close"
+            aria-label={t.close}
           >
             <X className="h-6 w-6" aria-hidden />
           </button>

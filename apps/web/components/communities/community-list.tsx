@@ -7,15 +7,17 @@ import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { useMyDeployedCommunities } from "../../hooks/useMyDeployedCommunities";
 import { CommunitiesQuery, type CommunitiesQueryResult } from "../../lib/graphql/queries";
 import type { CommunityNode } from "../../lib/graphql/queries";
+import { getI18n } from "../../lib/i18n";
 
 function CommunityGrid({ communities }: { communities: CommunityNode[] }) {
+  const t = getI18n().communityList;
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {communities.map((community) => (
         <li key={community.id} className="card block">
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
-              <span>Chain {community.chainId}</span>
+              <span>{t.chain} {community.chainId}</span>
               <span>ID {community.id}</span>
             </div>
             <div className="space-y-1">
@@ -27,7 +29,7 @@ function CommunityGrid({ communities }: { communities: CommunityNode[] }) {
               ) : null}
             </div>
             <Link className="text-sm underline" href={`/communities/${community.id}`}>
-              View community
+              {t.viewCommunity}
             </Link>
           </div>
         </li>
@@ -37,6 +39,7 @@ function CommunityGrid({ communities }: { communities: CommunityNode[] }) {
 }
 
 export function CommunityList() {
+  const t = getI18n().communityList;
   const { communityIds: myCommunityIds } = useMyDeployedCommunities();
   const { data, isLoading, isError, refetch } = useGraphQLQuery<CommunitiesQueryResult, { limit?: number }>(
     ["communities", { limit: 20 }],
@@ -59,7 +62,7 @@ export function CommunityList() {
   if (isLoading) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">Loading communities…</p>
+        <p className="text-sm text-muted-foreground">{t.loading}</p>
       </div>
     );
   }
@@ -67,16 +70,16 @@ export function CommunityList() {
   if (isError) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-destructive">Failed to load communities.</p>
+        <p className="text-sm text-destructive">{t.loadFailed}</p>
         <button className="text-sm underline" onClick={() => void refetch()}>
-          Retry
+          {t.retry}
         </button>
       </div>
     );
   }
 
   if (!communities.length) {
-    return <p className="text-sm text-muted-foreground">No communities indexed yet.</p>;
+    return <p className="text-sm text-muted-foreground">{t.empty}</p>;
   }
 
   return (
@@ -84,7 +87,7 @@ export function CommunityList() {
       {myCommunities.length > 0 ? (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            My communities
+            {t.myCommunities}
           </h3>
           <CommunityGrid communities={myCommunities} />
         </div>
@@ -92,7 +95,7 @@ export function CommunityList() {
       {otherCommunities.length > 0 ? (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            {myCommunities.length > 0 ? "All communities" : "Indexed communities"}
+            {myCommunities.length > 0 ? t.allCommunities : t.indexedCommunities}
           </h3>
           <CommunityGrid communities={otherCommunities} />
         </div>
