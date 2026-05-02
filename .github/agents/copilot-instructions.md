@@ -25,6 +25,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-15
 - N/A (on-chain writes + GraphQL/indexer reads; no new persistent storage) (011-direct-proposal-creation)
 - TypeScript (apps/web, apps/indexer), Solidity ^0.8.24 (reference-only unless hard blocker), Node 22 + Next.js 16, React 19, Ponder 0.7.17, GraphQL, viem/wagmi, OpenZeppelin 5.x (012-valuable-action-admin-ux)
 - On-chain state + Ponder projected Postgres/GraphQL read model (012-valuable-action-admin-ux)
+- TypeScript (apps/web, apps/indexer), Solidity ^0.8.24 (reference-only unless blocker), Node 22 + Next.js 16, React 19, wagmi + viem, Ponder 0.7.17, GraphQL, OpenZeppelin 5.x ABIs already synced in web/indexer (013-engagements-lifecycle-ux)
+- Canonical on-chain state + projected indexer state + IPFS evidence payloads (013-engagements-lifecycle-ux)
 
 - Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22 + OpenZeppelin 5.x (`AccessManaged`, `ReentrancyGuard`, `SafeERC20`), Foundry, Hardhat 2.22.x (001-security-fixes)
 
@@ -45,9 +47,9 @@ npm test && npm run lint
 Solidity `^0.8.24`, TypeScript (ops/deploy/test scripts), Node 22: Follow standard conventions
 
 ## Recent Changes
+- 013-engagements-lifecycle-ux: Added TypeScript (apps/web, apps/indexer), Solidity ^0.8.24 (reference-only unless blocker), Node 22 + Next.js 16, React 19, wagmi + viem, Ponder 0.7.17, GraphQL, OpenZeppelin 5.x ABIs already synced in web/indexer
 - 012-valuable-action-admin-ux: Added TypeScript (apps/web, apps/indexer), Solidity ^0.8.24 (reference-only unless hard blocker), Node 22 + Next.js 16, React 19, Ponder 0.7.17, GraphQL, viem/wagmi, OpenZeppelin 5.x
 - 011-direct-proposal-creation: Added TypeScript (Node 22), React 19 + Next.js 16 app layer + wagmi, viem (`encodeFunctionData`, `decodeEventLog`), existing community module hooks, GraphQL query hooks, existing action composer libs
-- 010-wizard-permission-parity: Added TypeScript (Node 22), Next.js app TypeScript, viem ABI utilities + viem, ts-node, Vitest, existing web ABI artifacts under apps/web/abis
 
 
 <!-- MANUAL ADDITIONS START -->

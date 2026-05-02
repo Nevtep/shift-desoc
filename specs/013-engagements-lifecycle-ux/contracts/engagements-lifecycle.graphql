@@ -1,0 +1,107 @@
+# Engagements Rich Lifecycle GraphQL Contract (additive)
+
+scalar DateTime
+
+enum EngagementLifecycleStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+enum ReadinessStatus {
+  HEALTHY
+  LAGGING
+  UNAVAILABLE
+}
+
+enum SubmitState {
+  DRAFT
+  PAYLOAD_READY
+  AWAITING_WALLET
+  HASH_RECEIVED
+  CONFIRMED_IDENTITY_RESOLVED
+  CONFIRMED_IDENTITY_PENDING
+  FAILED_WALLET
+  FAILED_CHAIN
+  FAILED_REVERT
+  FAILED_PAYLOAD
+}
+
+type EngagementReadiness {
+  status: ReadinessStatus!
+  indexedBlock: String
+  chainHeadBlock: String
+  blockLag: String
+  details: String
+}
+
+type EngagementSummary {
+  id: String!
+  communityId: String!
+  engagementId: String!
+  valuableActionId: String!
+  participant: String!
+  status: EngagementLifecycleStatus!
+  evidenceCid: String
+  submittedAt: DateTime!
+  resolvedAt: DateTime
+}
+
+type EngagementDetail {
+  id: String!
+  communityId: String!
+  engagementId: String!
+  valuableActionId: String!
+  participant: String!
+  status: EngagementLifecycleStatus!
+  evidenceCid: String
+  submittedAt: DateTime!
+  resolvedAt: DateTime
+  verifyDeadline: DateTime
+  readiness: EngagementReadiness!
+}
+
+type ActiveValuableActionOption {
+  communityId: String!
+  actionId: String!
+  titleTemplate: String
+  evidenceSpecCid: String
+  metadataSchemaId: String
+}
+
+type EngagementCatalogPayload {
+  communityId: String!
+  readiness: EngagementReadiness!
+  items: [EngagementSummary!]!
+}
+
+type EngagementSubmitTxResult {
+  txHash: String!
+  engagementId: String
+  communityId: String!
+  status: SubmitState!
+  message: String!
+}
+
+input EngagementEvidenceInput {
+  key: String!
+  value: String!
+}
+
+input SubmitEngagementInput {
+  communityId: String!
+  valuableActionId: String!
+  evidence: [EngagementEvidenceInput!]!
+}
+
+type Query {
+  engagementCatalog(communityId: String!, status: [EngagementLifecycleStatus!]): EngagementCatalogPayload!
+  engagementDetail(communityId: String!, engagementId: String!): EngagementDetail
+  engagementReadiness(communityId: String!): EngagementReadiness!
+  activeValuableActionsForEngagement(communityId: String!): [ActiveValuableActionOption!]!
+}
+
+type Mutation {
+  submitEngagement(input: SubmitEngagementInput!): EngagementSubmitTxResult!
+}

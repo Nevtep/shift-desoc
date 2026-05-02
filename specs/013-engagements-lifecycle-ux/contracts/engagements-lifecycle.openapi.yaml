@@ -1,0 +1,189 @@
+openapi: 3.0.3
+info:
+  title: Engagements Rich Lifecycle Support API
+  version: 0.1.0
+  description: |
+    Additive read and readiness endpoints supporting community-scoped Engagement list/detail surfaces.
+    Canonical authority remains on-chain; these endpoints are projection support only.
+servers:
+  - url: /api
+paths:
+  /communities/{communityId}/engagements:
+    get:
+      summary: List community-scoped engagements
+      operationId: listCommunityEngagements
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, REVOKED]
+      responses:
+        '200':
+          description: Engagement list with readiness
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EngagementListResponse'
+  /communities/{communityId}/engagements/{engagementId}:
+    get:
+      summary: Get community-scoped engagement detail
+      operationId: getCommunityEngagementDetail
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: engagementId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Engagement detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EngagementDetailResponse'
+        '404':
+          description: Engagement not found in selected community scope
+  /communities/{communityId}/engagements/readiness:
+    get:
+      summary: Get projection readiness for community engagements
+      operationId: getCommunityEngagementReadiness
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Engagement readiness state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
+  /communities/{communityId}/engagements/boundary-check:
+    post:
+      summary: Validate engagement detail boundary before navigation
+      operationId: validateEngagementBoundary
+      parameters:
+        - name: communityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [engagementId]
+              properties:
+                engagementId:
+                  type: integer
+      responses:
+        '200':
+          description: Boundary validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [communityId, engagementId, boundaryValid]
+                properties:
+                  communityId:
+                    type: integer
+                  engagementId:
+                    type: integer
+                  boundaryValid:
+                    type: boolean
+                  reasonCode:
+                    type: string
+                  reasonMessage:
+                    type: string
+components:
+  schemas:
+    Readiness:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [healthy, lagging, unavailable]
+        indexedBlock:
+          type: integer
+        chainHeadBlock:
+          type: integer
+        blockLag:
+          type: integer
+        details:
+          type: string
+    EngagementSummary:
+      type: object
+      required:
+        - id
+        - communityId
+        - engagementId
+        - valuableActionId
+        - participant
+        - status
+        - submittedAt
+      properties:
+        id:
+          type: string
+        communityId:
+          type: integer
+        engagementId:
+          type: integer
+        valuableActionId:
+          type: integer
+        participant:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, REVOKED]
+        evidenceCid:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+    EngagementListResponse:
+      type: object
+      required: [communityId, readiness, items]
+      properties:
+        communityId:
+          type: integer
+        readiness:
+          $ref: '#/components/schemas/Readiness'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EngagementSummary'
+    EngagementDetailResponse:
+      type: object
+      required: [communityId, item, readiness]
+      properties:
+        communityId:
+          type: integer
+        item:
+          $ref: '#/components/schemas/EngagementSummary'
+        verifyDeadline:
+          type: string
+          format: date-time
+          nullable: true
+        readiness:
+          $ref: '#/components/schemas/Readiness'
