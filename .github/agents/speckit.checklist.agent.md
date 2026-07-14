@@ -2,6 +2,8 @@
 description: Generate a custom checklist for the current feature based on user requirements.
 ---
 
+> Legacy workflow notice: this file belongs to the previous SpecKit workflow. SpecKit is no longer the active workflow for new Shift work. Use repo-root AGENTS.md and gentle SDD instead. This file remains only as historical/reference workflow context.
+
 ## Checklist Purpose: "Unit Tests for English"
 
 **CRITICAL CONCEPT**: Checklists are **UNIT TESTS FOR REQUIREMENTS WRITING** - they validate the quality, clarity, and completeness of requirements in a given domain.

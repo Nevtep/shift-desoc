@@ -2,7 +2,7 @@
 
 This guide walks through the main processes in Shift DeSoc, explaining how community members, workers, investors, and administrators interact with the system. Whether you're a community organizer looking to understand governance, a developer planning an integration, or a business evaluating Shift for your organization, these flows describe what happens at each step.
 
-**Key Principles**: All privileged actions require community approval through governance. The Timelock contract acts as the final gatekeeper, ensuring no single person can make critical changes unilaterally. Economic parameters, timing rules, and eligibility criteria are centrally managed through ParamController, making the system predictable and auditable. Commerce disputes are handled separately from work verification to maintain clear accountability.
+**Key Principles**: Blockchain state is canonical, while the indexer and Manager are operator conveniences layered on top. In `Governance-managed` communities, privileged actions require community approval through governance and Timelock acts as the final gatekeeper. In `Admin-managed` staging communities, the deployer may temporarily act in the Timelock's place for privileged testing and QA using the same wired admin surface. Economic parameters, timing rules, and eligibility criteria are centrally managed through ParamController, and commerce disputes are handled separately from work verification to maintain clear accountability.
 
 ---
 
@@ -454,23 +454,23 @@ Creating a new Shift community involves deploying a complete suite of contracts 
 1. `PRECHECKS`
 2. `DEPLOY_STACK`
 3. `CONFIGURE_ACCESS_PERMISSIONS`
-4. `HANDOFF_ADMIN_TO_TIMELOCK`
+4. `FINALIZE_AUTHORITY_MODE`
 5. `VERIFY_DEPLOYMENT`
 
-The run is considered successful only after the handoff is confirmed and verification checks pass.
+The run is considered successful only after the selected authority mode is confirmed and verification checks pass.
 
 Step semantics:
 1. `PRECHECKS`: validate signer/network/shared infra/funding.
 2. `DEPLOY_STACK`: deploy contract bytecode through Governance/Verification/Economic/Commerce/Coordination layer factories.
 3. `CONFIGURE_ACCESS_PERMISSIONS`: execute registry + ParamController + module wiring + role grants.
-4. `HANDOFF_ADMIN_TO_TIMELOCK`: transfer admin rights to timelock governance.
-5. `VERIFY_DEPLOYMENT`: parity checks against expected staged deployment state.
+4. `FINALIZE_AUTHORITY_MODE`: either transfer admin rights to Timelock governance (`Governance-managed`) or leave the deployer as acting admin for staging (`Admin-managed`).
+5. `VERIFY_DEPLOYMENT`: parity checks against the expected staged deployment state for the selected authority mode.
 
 **Founder Token Distribution**: To enable initial decision-making, the deployment process mints MembershipTokens to the founding members. This gives them the voting power to begin governance operations, elect initial verifiers, and define the community's first ValuableActions. Over time, as more members contribute verified work, governance power naturally distributes more broadly.
 
-**The Transition to Self-Governance**: Once deployment completes, all subsequent changes must go through governance. Even the founders cannot unilaterally modify parameters, add verifiers, or change economic rules. Any configuration change requires proposing through ShiftGovernor, passing a community vote, and executing through the Timelock. This ensures that from day one, the community's rules are transparent and community-controlled.
+**Authority After Deploy**: In `Governance-managed` communities, subsequent privileged changes go through ShiftGovernor and Timelock. In `Admin-managed` staging communities, the deployer keeps the acting admin surface so testing, QA, and contract validation can proceed without repeated governance round-trips. The underlying contract state and role wiring remain on-chain and auditable in both modes.
 
-**Integration Points**: External systems—frontends, indexers, mobile apps—read the community's contract addresses from the deployment JSON files. This keeps integrations synchronized and avoids hardcoded addresses that would break if contracts were ever redeployed.
+**Integration Points**: External systems—frontends, indexers, mobile apps—should resolve community state from chain reads and emitted events first, with deployment JSON used as a convenience bootstrap artifact. Communities can self-host these integrations and are not required to depend on Shift-provided admin or indexing tooling.
 
 ```mermaid
 sequenceDiagram

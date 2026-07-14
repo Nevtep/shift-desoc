@@ -18,7 +18,7 @@ Blocking defect recorded on 2026-03-16: Manager wizard deploy runtime currently 
 **Target Platform**: Base Sepolia staging and local test environments  
 **Project Type**: Monorepo (contracts + indexer + manager app + scripts + docs)  
 **Performance Goals**: Keep deploy and verification deterministic; no additional unbounded loops in refactors  
-**Constraints**: Preserve timelock-only privileged path post-handoff; no cross-community authority leakage; no staging migrations  
+**Constraints**: Preserve explicit post-finalization authority semantics; no cross-community authority leakage; no staging migrations  
 **Scale/Scope**: 19 per-community contracts + shared `CommunityRegistry`; deploy scripts, Manager Wizard, indexer compatibility, tests, docs/status sync
 
 ## Constitution Check
@@ -26,8 +26,8 @@ Blocking defect recorded on 2026-03-16: Manager wizard deploy runtime currently 
 *GATE: Pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - Protocol infrastructure first: PASS. Refactor keeps protocol primitives generic while moving community-local state to per-community instances.
-- Contract-first authority: PASS. Authority is enforced on contracts via per-community `AccessManager` bootstrap and timelock handoff; no app/indexer authority path.
-- Security/invariant preservation: PASS WITH STRICT CONTROLS. Affected invariants: post-handoff timelock-only privileged writes, no cross-community leakage, TreasuryAdapter guardrails, no staking verifier model.
+- Contract-first authority: PASS. Authority is enforced on contracts via per-community `AccessManager` bootstrap and explicit post-deploy authority finalization; no app/indexer authority path.
+- Security/invariant preservation: PASS WITH STRICT CONTROLS. Affected invariants: governance-managed timelock-only privileged writes, admin-managed deployer-admin staging boundaries, no cross-community leakage, TreasuryAdapter guardrails, no staking verifier model.
 - Event/indexer discipline: PASS WITH ACTIONS. ABI/event changes likely for contracts dropping `communityId` internals; requires indexer mapping updates and replay validation.
 - Monorepo vertical-slice scope: PASS. Plan includes contracts, scripts, app, indexer, tests, docs.
 - Project-management docs sync: REQUIRED. Update `.github/project-management/IMPLEMENTATION_STATUS.md` and `.github/project-management/STATUS_REVIEW.md` with architecture/policy deltas.
@@ -40,7 +40,7 @@ Blocking defect recorded on 2026-03-16: Manager wizard deploy runtime currently 
 1. Remove multi-community keyed internals from each per-community contract.
 2. Keep `CommunityRegistry` shared and remove `AccessManaged` dependency, enforcing explicit internal guards.
 3. Convert `ParamController` from shared deployment model to per-community deployment model.
-4. Confirm post-handoff authorization paths for all privileged mutations.
+4. Confirm post-finalization authorization paths for all privileged mutations.
 
 Per-contract conversion strategy (from spec matrix):
 - `RequestHub`: flatten internal state to local community instance; remove internal `communityId` branch paths.
@@ -67,15 +67,15 @@ Per-contract conversion strategy (from spec matrix):
 
 1. Update deploy pipeline to create per-community `AccessManager`, `ParamController`, `ShiftGovernor`, `TimelockController`.
 2. Add deterministic bootstrap permission wiring step in local `AccessManager`.
-3. Add explicit `HANDOFF_ADMIN_TO_TIMELOCK` action and receipt verification.
+3. Add explicit `FINALIZE_AUTHORITY_MODE` action and mode-aware receipt verification.
 4. Write finalized addresses to deployments JSON without reading legacy staged state.
 
 ### WS3 Manager Wizard
 
 1. Implement state machine exactly:
-   `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> HANDOFF_ADMIN_TO_TIMELOCK -> VERIFY_DEPLOYMENT`.
+   `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> FINALIZE_AUTHORITY_MODE -> VERIFY_DEPLOYMENT`.
 2. Enforce one active run lock and deterministic restart from `PRECHECKS`.
-3. Block completion unless handoff is confirmed on-chain.
+3. Block completion unless the selected authority mode is confirmed on-chain.
 4. Ensure no proposal-driven wiring path remains in deploy bootstrap flow.
 5. Ensure mutable deploy-step targets are run-scoped addresses produced during the current deploy run (or returned by canonical deploy API), not static `deployments/*.json` values.
 
@@ -83,50 +83,50 @@ Per-contract conversion strategy (from spec matrix):
 
 1. Contract tests per refactored contract (SC-001).
 2. Cross-community isolation and authorization leakage tests (SC-002).
-3. Deploy flow tests for bootstrap wiring + handoff + post-handoff restricted mutation failures (SC-003, SC-005).
+3. Deploy flow tests for bootstrap wiring + authority finalization + post-finalization restricted mutation behavior (SC-003, SC-005).
 4. Wizard state transition tests for required states and failure/retry handling (SC-004).
 5. Staging policy tests/assertions: no migration/backfill required (SC-006).
 
 ### WS5 Docs and Status
 
-1. Update docs reflecting per-community `ParamController` and access bootstrap-handoff model.
+1. Update docs reflecting per-community `ParamController` and access bootstrap/finalization authority model.
 2. Sync `contracts/FEATURES.md` and `neuromancer/SHIFT_SYSTEM.md` to shipped behavior (DT-001/DT-002).
 3. Update `.github/project-management/IMPLEMENTATION_STATUS.md` and `.github/project-management/STATUS_REVIEW.md` (DT-003).
 
 ## Authority Model and Invariants
 
-### Bootstrap Phase (Pre-Handoff)
+### Bootstrap Phase (Pre-Finalization)
 
 - Deployer has temporary authority to configure selector permissions in community-local `AccessManager`.
 - Scope is limited to deployment bootstrap steps required for initial wiring.
 
-### Operational Phase (Post-Handoff)
+### Operational Phase (Post-Finalization)
 
-- `AccessManager` admin is transferred to community `TimelockController`.
-- Privileged mutations execute only through governance/timelock path.
-- Direct deployer/manager privileged writes must fail.
+- `Governance-managed`: `AccessManager` admin is transferred to community `TimelockController` and privileged mutations execute through the governance/timelock path.
+- `Admin-managed`: deployer retains the acting admin surface for staging-only QA and contract validation.
+- Post-deploy authority must be explicit and verifiable; there is no ambiguous mixed authority end-state.
 
 ### Non-Negotiable Invariants
 
 - No cross-community authority leakage.
 - TreasuryAdapter guardrails unchanged.
 - Verifier governance model remains non-staking.
-- No mixed-mode runtime in Base Sepolia staging.
+- No ambiguous post-deploy authority state in Base Sepolia staging.
 
 ## Wizard State Implementation Plan
 
 1. `PRECHECKS`: network, wallet, session freshness, target config validation.
 2. `DEPLOY_STACK`: deploy contract stack and persist run addresses.
 3. `CONFIGURE_ACCESS_PERMISSIONS`: set selector-role permissions in local `AccessManager`.
-4. `HANDOFF_ADMIN_TO_TIMELOCK`: transfer admin to local timelock and verify receipt.
-5. `VERIFY_DEPLOYMENT`: validate role wiring, module references, and post-handoff constraints.
+4. `FINALIZE_AUTHORITY_MODE`: transfer admin to local timelock or retain deployer acting admin according to the selected authority mode, then verify the resulting authority state.
+5. `VERIFY_DEPLOYMENT`: validate role wiring, module references, and post-finalization constraints.
 
 ## Risk Register
 
 | Risk | Impact | Mitigation | Owner |
 |------|--------|------------|-------|
 | Partial refactor leaves hidden multi-community paths | High | Contract-by-contract test gates and code search checks for legacy keyed internals | Contracts |
-| Handoff failure leaves deployer with admin authority | High | Mandatory handoff step + blocking completion + explicit test assertions | Scripts/Web |
+| Authority finalization failure leaves wrong post-deploy admin authority | High | Mandatory authority-finalization step + blocking completion + explicit mode-aware test assertions | Scripts/Web |
 | ABI/event drift breaks indexer | Medium/High | Event delta checklist + indexer mapping updates + replay verification before merge | Contracts/Indexer |
 | Cross-community privilege leakage | High | Two-community negative tests on privileged selectors and module wiring | Contracts/Tests |
 | Spec/app drift in wizard states | Medium | Exact state enum contract + web tests for all transition paths | Web |
@@ -142,9 +142,9 @@ Per-contract conversion strategy (from spec matrix):
 
 - SC-001: Contract-level tests for each refactor row in matrix.
 - SC-002: Two-community isolation suite for privileged mutation and wiring calls.
-- SC-003: Deploy integration tests validating permission bootstrap + admin handoff.
+- SC-003: Deploy integration tests validating permission bootstrap + authority-mode finalization.
 - SC-004: Wizard state-machine tests for exact sequence and restart behavior.
-- SC-005: Post-handoff privileged mutation rejection tests for deployer/manager wallets.
+- SC-005: Post-finalization privileged mutation behavior tests for governance-managed and admin-managed runs.
 - SC-006: Deploy path verification that no migration/backfill steps are required.
 - SC-007: Merge checklist requiring zero unresolved contract/indexer/app drift items.
 
@@ -204,7 +204,7 @@ deployments/
 ## Post-Design Constitution Re-Check
 
 - Protocol infrastructure first: PASS. Shared vs per-community boundaries are explicit and align with target architecture.
-- Contract-first authority: PASS. Bootstrap authority is temporary and post-handoff privileged path is timelock-only.
+- Contract-first authority: PASS. Bootstrap authority is temporary and post-finalization privileged behavior is explicit per selected authority mode.
 - Security and invariant preservation: PASS. Invariants SI-001..SI-006 are mapped to test strategy and deploy verification.
 - Event-driven deterministic projection: PASS WITH ACTIONS. ABI/event checkpoints are included with indexer replay validation.
 - Monorepo vertical-slice delivery: PASS. Plan includes contracts, scripts, app, indexer, tests, docs, and status synchronization.

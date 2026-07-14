@@ -34,7 +34,7 @@
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-- [X] T004 Implement authority model baseline (bootstrap vs post-handoff) in `scripts/hardhat/community-deploy-lib.ts` and `test/DeploymentRoleWiring.t.sol` (FR-005, SI-001, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Pre-handoff deployer actions pass; post-handoff direct restricted writes fail]
+- [X] T004 Implement authority model baseline (bootstrap vs post-finalization) in `scripts/hardhat/community-deploy-lib.ts` and `test/DeploymentRoleWiring.t.sol` (FR-005, SI-001, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Pre-finalization deployer actions pass; post-finalization authority behavior matches the selected mode]
 - [X] T005 [P] Remove proposal-driven deploy wiring path from runtime orchestration in `apps/web/lib/deploy/default-step-executor.ts` and `apps/web/hooks/useDeployWizard.ts` (FR-004, FR-005, SC-004) [Owner: Web] [DoD: No proposal-wiring branch remains for deploy bootstrap]
 - [X] T006 [P] Add two-community isolation baseline tests in `test/Wiring.t.sol` and `test/DeploymentRoleWiring.t.sol` (FR-006, SI-003, SC-002) [Owner: Contracts] [DoD: Unauthorized cross-community privileged mutations fail]
 - [X] T007 Define ABI/event delta checklist for refactor wave in `specs/004-single-community-architecture/contracts/deploy-orchestration.openapi.yaml` and `specs/004-single-community-architecture/plan.md` (MR-002, SC-007) [Owner: Contracts+Indexer] [DoD: Contract/event change checkpoints documented and linked to tasks]
@@ -60,7 +60,7 @@ Single-community DoD rule for US1 refactor tasks:
 - [X] T009 [US1] [contracts] Refactor `contracts/modules/CommunityRegistry.sol` to remove `AccessManaged` reliance and enforce explicit internal auth guards; update `test/CommunityRegistry.t.sol` with guard-path assertions and evidence notes in `specs/004-single-community-architecture/research.md` (FR-011, SI-006, SC-001, SC-002, SC-005) [Owner: Contracts] [DoD: Single-community DoD rule satisfied for CommunityRegistry + no `AccessManaged` dependency remains]
 - [X] T010 [US1] [contracts] Refactor `contracts/modules/ParamController.sol` to per-community deployment assumptions and local authority wiring; update `test/ParamControllerVPT.t.sol` and `test/ParameterIntegration.t.sol` (FR-002, FR-003, SI-001, SC-001, SC-005) [Owner: Contracts] [DoD: Single-community DoD rule satisfied for ParamController + no shared deployment assumption remains]
 - [X] T011 [US1] [contracts] Align `contracts/core/ShiftGovernor.sol` for per-community authority linkage and local timelock constraints; update `test/CountingMultiChoice.t.sol` and `test/Wiring.t.sol` (FR-002, SI-001, SC-001, SC-005) [Owner: Contracts] [DoD: Single-community DoD rule satisfied for ShiftGovernor + local timelock-only authority validated]
-- [X] T012 [US1] [contracts] Validate per-community Timelock behavior in deploy wiring logic via `scripts/hardhat/community-deploy-lib.ts` and `test/DeploymentRoleWiring.t.sol` (FR-002, SI-001, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Single-community DoD rule satisfied for timelock wiring + post-handoff final authority enforced]
+- [X] T012 [US1] [contracts] Validate per-community Timelock behavior in deploy wiring logic via `scripts/hardhat/community-deploy-lib.ts` and `test/DeploymentRoleWiring.t.sol` (FR-002, SI-001, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Single-community DoD rule satisfied for governance-managed timelock wiring + explicit final authority enforcement]
 - [X] T013 [US1] [contracts] Validate local governance token authority assumptions in `contracts/tokens/MembershipTokenERC20Votes.sol` and `test/MembershipToken.t.sol` (FR-002, FR-003, SC-001, SC-005) [Owner: Contracts] [DoD: Single-community DoD rule satisfied for MembershipToken authority paths]
 - [X] T014 [P] [US1] [contracts] Refactor `contracts/modules/RequestHub.sol`; update `test/RequestHub.t.sol` and attach evidence reference in `specs/004-single-community-architecture/data-model.md` (FR-003, SI-003, SC-001, SC-002) [Owner: Contracts] [DoD: Single-community DoD rule satisfied for RequestHub]
 - [X] T015 [P] [US1] [contracts] Refactor `contracts/modules/DraftsManager.sol`; update `test/DraftsManager.t.sol` (FR-003, SC-001, SC-002) [Owner: Contracts] [DoD: Single-community DoD rule satisfied for DraftsManager]
@@ -89,17 +89,17 @@ Single-community DoD rule for US1 refactor tasks:
 
 ## Phase 4: User Story 2 - Deploy New Community Safely (Priority: P2)
 
-**Goal**: Per-community bootstrap wiring in AccessManager + mandatory admin handoff to timelock.
+**Goal**: Per-community bootstrap wiring in AccessManager + explicit authority-mode finalization.
 
-**Independent Test**: Fresh deploy run reaches verified state, and post-handoff direct restricted writes fail.
+**Independent Test**: Fresh deploy run reaches verified state, and post-finalization restricted mutation behavior matches the selected authority mode.
 
 - [X] T034 [US2] [scripts] Deploy per-community `AccessManager` with shared `ParamController`/`CommunityRegistry` boundaries in `scripts/hardhat/community-deploy-lib.ts` and `scripts/hardhat/deploy-shared-infra.ts` (FR-002, FR-007, SC-003, SC-006) [Owner: Scripts] [DoD: Community deploy outputs local AM address while shared infra remains limited to PC/CR]
 - [X] T035 [US2] [scripts] Implement selector permission bootstrap in local AccessManager in `scripts/hardhat/community-deploy-lib.ts` and verify via `test/DeploymentRoleWiring.t.sol` (FR-005, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Bootstrap selectors configured and validated]
-- [X] T036 [US2] [scripts] Implement and verify admin handoff to community timelock in `scripts/hardhat/community-deploy-lib.ts`; add assertions in `test/DeploymentRoleWiring.t.sol` (FR-005, SI-001, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Handoff tx confirmed and deploy completion blocked on failure]
+- [X] T036 [US2] [scripts] Implement and verify authority finalization in `scripts/hardhat/community-deploy-lib.ts`; add assertions in `test/DeploymentRoleWiring.t.sol` (FR-005, SI-001, SI-002, SC-003, SC-005) [Owner: Scripts+Contracts] [DoD: Final authority state confirmed and deploy completion blocked on failure]
 - [X] T037 [US2] [scripts] Update deployment metadata outputs in `deployments/*.json` handling inside `scripts/hardhat/community-deploy-lib.ts` to avoid legacy dependency reads (FR-007, SC-006, SC-007) [Owner: Scripts] [DoD: Fresh deployments do not require prior staged data]
-- [X] T038 [US2] [contracts] Add post-handoff negative tests for deployer/manager restricted writes in `test/DeploymentRoleWiring.t.sol` and `test/Wiring.t.sol` (SI-001, SI-002, SC-005) [Owner: Contracts] [DoD: Direct restricted writes fail after handoff]
+- [X] T038 [US2] [contracts] Add post-finalization authority-path tests in `test/DeploymentRoleWiring.t.sol` and `test/Wiring.t.sol` (SI-001, SI-002, SC-005) [Owner: Contracts] [DoD: Direct restricted writes fail after governance-managed finalization and remain explicit in admin-managed staging]
 
-**Checkpoint**: Deploy bootstrap-handoff model complete and proven.
+**Checkpoint**: Deploy bootstrap/finalization model complete and proven.
 
 ---
 
@@ -109,9 +109,9 @@ Single-community DoD rule for US1 refactor tasks:
 
 **Independent Test**: Wizard always follows required sequence and supports deterministic retry/restart.
 
-- [X] T039 [US3] [app] Implement required state enum and transitions in `apps/web/hooks/useDeployWizard.ts` for `PRECHECKS`, `DEPLOY_STACK`, `CONFIGURE_ACCESS_PERMISSIONS`, `HANDOFF_ADMIN_TO_TIMELOCK`, `VERIFY_DEPLOYMENT` (FR-004, UX-001..UX-007, SC-004) [Owner: Web] [DoD: Only allowed transitions exist]
-- [X] T040 [US3] [app] Implement execution handling for `CONFIGURE_ACCESS_PERMISSIONS` and `HANDOFF_ADMIN_TO_TIMELOCK` in `apps/web/lib/deploy/default-step-executor.ts` (FR-004, FR-005, SC-003, SC-004) [Owner: Web] [DoD: State handlers execute and persist deterministic results]
-- [X] T041 [US3] [app] Update wizard UI states and control gating in `apps/web/components/home/deploy-wizard.tsx` (UX-003, UX-004, UX-005, SC-004) [Owner: Web] [DoD: UI reflects exact states and blocks completion before handoff]
+- [X] T039 [US3] [app] Implement required state enum and transitions in `apps/web/hooks/useDeployWizard.ts` for `PRECHECKS`, `DEPLOY_STACK`, `CONFIGURE_ACCESS_PERMISSIONS`, `FINALIZE_AUTHORITY_MODE`, `VERIFY_DEPLOYMENT` (FR-004, UX-001..UX-007, SC-004) [Owner: Web] [DoD: Only allowed transitions exist]
+- [X] T040 [US3] [app] Implement execution handling for `CONFIGURE_ACCESS_PERMISSIONS` and `FINALIZE_AUTHORITY_MODE` in `apps/web/lib/deploy/default-step-executor.ts` (FR-004, FR-005, SC-003, SC-004) [Owner: Web] [DoD: State handlers execute and persist deterministic results]
+- [X] T041 [US3] [app] Update wizard UI states and control gating in `apps/web/components/home/deploy-wizard.tsx` (UX-003, UX-004, UX-005, SC-004) [Owner: Web] [DoD: UI reflects exact states and blocks completion before final authority confirmation]
 - [X] T042 [US3] [app] Remove residual proposal-driven deploy assumptions from `apps/web/lib/deploy/default-step-executor.ts` and `apps/web/components/home/deploy-wizard.tsx` (FR-005, SC-004, SC-007) [Owner: Web] [DoD: No proposal wiring path in deploy bootstrap flow]
 - [X] T043 [US3] [app] Add/refresh wizard tests in `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx` and `apps/web/tests/unit/components/deploy-wizard.test.tsx` covering success/failure/restart (UX-006, UX-007, SC-004) [Owner: Web] [DoD: Required state flow fully covered]
 

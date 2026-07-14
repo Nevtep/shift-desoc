@@ -22,7 +22,7 @@
 
 ### User Story 1 - Verify Real Permission Wiring (Priority: P1)
 
-As a governance operator, I need a verifiable permission matrix extracted from wizard deployment wiring so I can trust that only intended timelock-governed functions are exposed for proposal drafting.
+As a governance operator, I need a verifiable permission matrix extracted from wizard deployment wiring so I can trust that the governance-managed authority profile exposes only the intended Timelock-governed functions for proposal drafting.
 
 **Why this priority**: All downstream allowlist and template behavior depends on accurate role mapping and end-state role ownership.
 
@@ -31,7 +31,7 @@ As a governance operator, I need a verifiable permission matrix extracted from w
 **Acceptance Scenarios**:
 
 1. **Given** wizard deployment wiring definitions, **When** permission extraction runs, **Then** it produces a matrix row for every selector-role assignment with exact signature and selector.
-2. **Given** handoff and revocation steps, **When** final role ownership is evaluated, **Then** the matrix/report confirms whether Timelock holds ADMIN_ROLE and whether bootstrap/deployer roles are revoked as expected.
+2. **Given** `Governance-managed` handoff and revocation steps, **When** final role ownership is evaluated, **Then** the matrix/report confirms whether Timelock holds ADMIN_ROLE and whether bootstrap/deployer roles are revoked as expected.
 
 ---
 
@@ -98,7 +98,7 @@ As a governance drafter, I need guided templates for crucial transaction flows a
 - **FR-003**: The feature MUST determine final ADMIN_ROLE holder state and mark any mismatch from expected Timelock ownership.
 - **FR-004**: Every signature in the permission matrix MUST be validated against compiled ABI for its target contract before downstream processing.
 - **FR-005**: If any signature is absent from ABI, processing MUST stop and emit a Signature Not Found report listing contract, target key, signature, and selector.
-- **FR-006**: The timelock-executable surface MUST be defined only as matrix entries assigned to ADMIN_ROLE that is held by Timelock at end-state.
+- **FR-006**: For the `Governance-managed` profile, the timelock-executable surface MUST be defined only as matrix entries assigned to ADMIN_ROLE that is held by Timelock at end-state.
 - **FR-007**: The feature MUST generate a machine-readable timelock surface artifact containing contractName, targetKey, signatures, and selectors.
 - **FR-008**: The Draft Action Composer allowlist generation process MUST consume the canonical permission matrix source and include only ABI-verified timelock-executable signatures.
 - **FR-009**: The allowlist generation process MUST fail closed when canonical source data is missing, malformed, or ABI validation fails.
@@ -154,6 +154,7 @@ As a governance drafter, I need guided templates for crucial transaction flows a
 ### Assumptions
 
 - Wizard deployment wiring definitions are the canonical source for selector-role assignments in this release.
+- The current artifact set is scoped to the `Governance-managed` profile; a mode-aware authority-surface generalization is a follow-up for `Admin-managed` communities.
 - Timelock-governed proposal authoring must reflect current wiring reality, not desired future authority.
 - Critical governance flows are determined from existing layer and flow documentation and mapped to currently executable functions only.
 

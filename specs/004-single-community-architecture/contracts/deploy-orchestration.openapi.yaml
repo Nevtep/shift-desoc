@@ -106,10 +106,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DeployWizardRun'
-  /deploy/runs/{runId}/handoff-admin:
+  /deploy/runs/{runId}/finalize-authority-mode:
     post:
-      summary: Execute HANDOFF_ADMIN_TO_TIMELOCK
-      operationId: handoffAdminToTimelock
+      summary: Execute FINALIZE_AUTHORITY_MODE
+      operationId: finalizeAuthorityMode
       parameters:
         - in: path
           name: runId
@@ -118,7 +118,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Admin handoff complete
+          description: Authority mode finalized
           content:
             application/json:
               schema:
@@ -165,7 +165,7 @@ components:
             - PRECHECKS
             - DEPLOY_STACK
             - CONFIGURE_ACCESS_PERMISSIONS
-            - HANDOFF_ADMIN_TO_TIMELOCK
+            - FINALIZE_AUTHORITY_MODE
             - VERIFY_DEPLOYMENT
             - COMPLETED
             - FAILED

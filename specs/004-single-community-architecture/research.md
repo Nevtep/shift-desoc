@@ -22,15 +22,15 @@
   - Keep current pattern unchanged: rejected due to false security signaling.
 
 ## Decision 4: Deploy-time authority bootstrap model
-- Decision: Deployment is not proposal-driven; deployer configures local `AccessManager` permissions during bootstrap, then performs mandatory admin handoff to community `TimelockController`.
-- Rationale: Reduces setup friction while preserving strict post-deploy governance authority.
+- Decision: Deployment is not proposal-driven; deployer configures local `AccessManager` permissions during bootstrap, then finalizes the selected post-deploy authority mode by either handing admin to the community `TimelockController` (`Governance-managed`) or retaining deployer acting admin (`Admin-managed`).
+- Rationale: Reduces setup friction while preserving explicit, auditable post-deploy authority for either governance execution or staging QA.
 - Alternatives considered:
   - Proposal-driven wiring before first operation: rejected as unnecessary bootstrap overhead.
-  - Permanent deployer admin: rejected as governance invariant violation.
+  - Permanent deployer admin as the only allowed model: rejected because it blocks the governance-managed production path.
 
 ## Decision 5: Wizard state contract
-- Decision: Enforce exact state flow `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> HANDOFF_ADMIN_TO_TIMELOCK -> VERIFY_DEPLOYMENT`.
-- Rationale: Deterministic operational model with explicit bootstrap and authority transfer checkpoints.
+- Decision: Enforce exact state flow `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> FINALIZE_AUTHORITY_MODE -> VERIFY_DEPLOYMENT`.
+- Rationale: Deterministic operational model with explicit bootstrap and authority-state checkpoints.
 - Alternatives considered:
   - Collapse states into fewer steps: rejected due to reduced observability and weaker failure recovery.
   - Keep old proposal states: rejected by updated architecture.
@@ -42,7 +42,7 @@
   - Transitional adapters/migrations: rejected as out of scope and velocity drag.
 
 ## Decision 7: Validation and quality gates
-- Decision: Success requires per-contract tests, cross-community isolation tests, deploy bootstrap/handoff tests, and synchronized docs/indexer/app updates.
+- Decision: Success requires per-contract tests, cross-community isolation tests, deploy bootstrap/authority-finalization tests, and synchronized docs/indexer/app updates.
 - Rationale: Prevents vertical-slice drift and catches authority/security regressions early.
 - Alternatives considered:
   - Contracts-only testing: rejected due to monorepo integration risks.
@@ -63,5 +63,5 @@
 - Why this is a blocker: It violates deploy-run determinism and can route configuration/handoff writes to unrelated pre-existing community/module addresses instead of contracts created for the current run.
 - Required correction:
   - `DEPLOY_STACK` must produce run-scoped address outputs.
-  - Subsequent mutable steps (`CONFIGURE_ACCESS_PERMISSIONS`, `HANDOFF_ADMIN_TO_TIMELOCK`) must consume those run-scoped addresses.
+  - Subsequent mutable steps (`CONFIGURE_ACCESS_PERMISSIONS`, `FINALIZE_AUTHORITY_MODE`) must consume those run-scoped addresses.
   - Static deployment JSON may only be used for read-only views/inspection, never as mutable deployment execution targets.

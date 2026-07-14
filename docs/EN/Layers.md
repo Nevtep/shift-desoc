@@ -15,19 +15,24 @@ This policy applies only to the staging environment (Base Sepolia). Production r
 
 ### Staging Deploy Sequence (Manager Wizard)
 
-For Base Sepolia staging, community deployment follows this fixed state machine:
+For Base Sepolia staging, community deployment follows one shared state machine with a mode-specific final authority outcome:
 
 1. `PRECHECKS`
 2. `DEPLOY_STACK`
 3. `CONFIGURE_ACCESS_PERMISSIONS`
-4. `HANDOFF_ADMIN_TO_TIMELOCK`
+4. `FINALIZE_AUTHORITY_MODE`
 5. `VERIFY_DEPLOYMENT`
 
-Completion is blocked unless timelock handoff is confirmed and verification checks pass.
+Completion is blocked unless the selected authority mode is confirmed and verification checks pass.
+
+Authority modes:
+- `Admin-managed`: the deployer keeps the admin surface after deploy to make staging validation and QA practical without repeatedly routing privileged operations through Governor -> Timelock.
+- `Governance-managed`: the deployer hands admin control to Timelock, preserving the canonical Governor -> Timelock execution path.
 
 Step semantics are strict in staging:
 - `DEPLOY_STACK` deploys per-community bytecode only (governance, verification, economic, commerce, coordination) via shared layer factories.
 - `CONFIGURE_ACCESS_PERMISSIONS` performs `registerCommunity`, ParamController policy writes, `setModuleAddresses`, and role/permission wiring.
+- `FINALIZE_AUTHORITY_MODE` either performs the Timelock handoff (`Governance-managed`) or leaves the deployer in place as acting admin (`Admin-managed`).
 
 ---
 

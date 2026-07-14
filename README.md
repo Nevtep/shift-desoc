@@ -21,6 +21,10 @@ _Building the organizational tools that unlock human cooperation: Where communit
 
 ## 🚀 **Quick Start**
 
+## Contributor And Agent Workflow
+
+New work in this repository follows the active gentle SDD workflow described in [`AGENTS.md`](AGENTS.md). Legacy SpecKit materials remain in the repo for historical/reference use only.
+
 ### Prerequisites
 
 - Node.js >=22 (Vercel Node 24 compatible)

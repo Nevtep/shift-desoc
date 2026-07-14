@@ -100,7 +100,7 @@ As a governance operator, I can access Timelock-allowed targets across coordinat
 
 - **FR-001**: Draft composer MUST support two modes: guided templates and expert raw ABI authoring, both producing the same governance action bundle structure (`targets[]`, `values[]`, `calldatas[]`, `actionsHash`).
 - **FR-002**: Expert mode function availability MUST be controlled exclusively by an explicit per-contract Timelock allowlist; heuristic inclusion rules are forbidden.
-- **FR-003**: The Timelock allowlist source of truth MUST be derived from canonical wizard permission wiring: function signatures assigned to AccessManager `ADMIN_ROLE` that is handed off to Timelock.
+- **FR-003**: The Timelock allowlist source of truth MUST be derived from canonical wizard permission wiring for the selected `Governance-managed` profile: function signatures assigned to AccessManager `ADMIN_ROLE` that finalize under Timelock.
 - **FR-004**: The runtime allowlist source MUST be a committed versioned in-repo file consumable by the composer as deterministic input data.
 - **FR-004A**: Allowlist updates MUST be generated via script from canonical wiring inputs and then reviewed/committed through pull requests.
 - **FR-004B**: v1 MUST ship with one canonical allowlist profile aligned to Base Sepolia staging wiring; multi-network profiles are out of scope for v1.
@@ -126,7 +126,7 @@ As a governance operator, I can access Timelock-allowed targets across coordinat
 
 - **MR-001**: Primary impact is in web draft composer UI, action registry definitions, and web unit tests.
 - **MR-002**: No contract or indexer behavior changes are in scope; proposal execution mechanics remain unchanged.
-- **MR-003**: Allowlist authority MUST remain anchored to canonical deploy wiring semantics (ADMIN_ROLE assignment + Timelock handoff), avoiding shadow permission authority in UI.
+- **MR-003**: Allowlist authority MUST remain anchored to canonical deploy wiring semantics and the selected authority profile, avoiding shadow permission authority in UI.
 - **MR-004**: Expert and guided surfaces MUST reflect actual Timelock-executable capability only, not aspirational protocol behavior.
 - **MR-005**: Documentation updates MUST describe composer behavior, explicit exclusions, and disabled-state semantics for non-permitted or missing-module actions.
 
@@ -155,8 +155,8 @@ As a governance operator, I can access Timelock-allowed targets across coordinat
 
 ### Assumptions
 
-- Canonical staging and deployment wiring remains the authoritative source for Timelock-executable ADMIN_ROLE function signatures.
-- Timelock handoff is completed in the target environment before governance execution, so ADMIN_ROLE-assigned signatures are effectively Timelock-controlled.
+- Canonical staging and deployment wiring remains the authoritative source for governance-managed Timelock-executable ADMIN_ROLE function signatures.
+- v1 of this feature is scoped to the `Governance-managed` authority profile; `Admin-managed` communities may require a future authority-surface profile instead of the Timelock-only allowlist.
 - No protocol/contract rewiring is performed in this feature; unavailable permissions are represented as disabled UI capabilities.
 - ABI signatures used by templates are verified against in-repo contract ABIs.
 

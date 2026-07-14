@@ -22,8 +22,11 @@ Shift DeSoc provides two complementary CLI tools for managing deployed systems:
 In addition to CLI operations, Manager Home now includes a user-signed deploy wizard designed for staged community deployment from the web app.
 
 - Route placement: wizard appears on `/` above the communities index.
-- Flow: `Preflight -> Deploy Contract Layers -> Wire Registry/Policy/Permissions -> Handoff Admin -> Verify Community Deployment`.
+- Flow: `Preflight -> Deploy Contract Layers -> Wire Registry/Policy/Permissions -> Finalize Authority Mode -> Verify Community Deployment`.
 - Authority model: transactions are user-signed; no backend deployer key path is required.
+- Wizard authority modes:
+  - `Admin-managed` keeps the deployer as the acting admin after deploy so staging, QA, and contract testing can exercise privileged flows without going through Governor -> Timelock for every change.
+  - `Governance-managed` performs the canonical admin handoff to Timelock so privileged actions follow the full Governor -> Timelock path.
 - Shared infra policy: `accessManager`, `paramController`, and `communityRegistry` are hard preconditions.
 - Source of truth: once a community is registered, resume/completion inference must be derived from on-chain reads (CommunityRegistry/module-role checks), not deployment JSON files.
 - Verification semantics: parity with `scripts/hardhat/verify-community-deployment.ts` check set.
@@ -31,9 +34,11 @@ In addition to CLI operations, Manager Home now includes a user-signed deploy wi
 #### Access Wiring Invariants (Wizard)
 
 - Explicit selector-role mappings are applied during `CONFIGURE_ACCESS_PERMISSIONS` through `BootstrapCoordinator.bootstrapAccessAndRuntime`.
-- Governance setters are mapped to `ADMIN_ROLE` (`0`) for deterministic timelock execution templates.
-- `HANDOFF_ADMIN_TO_TIMELOCK` must leave Timelock as the sole `ADMIN_ROLE` holder; deployer and bootstrap coordinator are revoked.
-- Wizard deploy/address-loading flow remains unchanged; only role and permission assignments are expanded for parity with canonical wiring.
+- Governance setters are mapped to `ADMIN_ROLE` (`0`) in both modes; the difference is who holds that authority after deploy.
+- `Governance-managed` mode must leave Timelock as the sole `ADMIN_ROLE` holder; deployer and bootstrap coordinator are revoked.
+- `Admin-managed` mode keeps the deployer as the acting `ADMIN_ROLE` holder and skips the final Timelock handoff so privileged testing can continue directly from the deployer wallet.
+- Verification must assert the selected post-deploy authority state rather than assuming Timelock handoff for every run.
+- Wizard deploy/address-loading flow remains unchanged; the new choice only changes the final authority holder and the verification expectation.
 
 #### Verify Access Wiring (No Deployments JSON Dependency)
 

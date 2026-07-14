@@ -83,3 +83,6 @@ temp/
 # Gas usage reports
 gas-report.txt
 **/gas-report.txt
+# Local AI runtime state
+.atl/
+.engram/

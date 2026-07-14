@@ -1,6 +1,8 @@
 # Shift DeSoc Documentation Hub
 
-**Welcome to Shift DeSoc documentation.** This hub provides complete technical and business documentation for the Shift meta-governance platform.
+**Welcome to Shift DeSoc documentation.** This hub provides complete technical and business documentation for Shift as self-hostable DAO infrastructure.
+
+The canonical product is the contract system itself. The web admin and indexer stacks are reference tooling that make operations easier, but communities can deploy the contracts and build or host their own tooling without depending on Shift-run services.
 
 ## 🎯 Quick Navigation
 
@@ -78,6 +80,11 @@
 2. **Deep dive**: [Layers.md](./Layers.md) — Layer-by-layer reference
 3. **Economics**: [Tokenomics.md](./Tokenomics.md) — Token and revenue mechanics
 4. **Business**: [Whitepaper.md](./Whitepaper.md) — Vision and investment case
+
+### Source of Truth
+- On-chain state and event logs are canonical.
+- Indexers and admin UIs are convenience layers for querying and operating that state.
+- Communities may self-host alternative indexers, frontends, or CLI workflows without changing the protocol model.
 
 ### Implementing Governance
 1. [ShiftGovernor.md](./contracts/ShiftGovernor.md) — Core governance engine

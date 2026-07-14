@@ -1,7 +1,7 @@
 # Quickstart: Single-Community Architecture Refactor
 
 ## Goal
-Deliver single-community internals across deploy stack contracts with per-community authority bootstrap and mandatory admin handoff to timelock.
+Deliver single-community internals across deploy stack contracts with per-community authority bootstrap and explicit authority-mode finalization.
 
 ## Prerequisites
 - Branch: `004-single-community-architecture`
@@ -10,7 +10,7 @@ Deliver single-community internals across deploy stack contracts with per-commun
 
 ## Execution Order
 1. Contracts refactor (primary objective)
-2. Deploy scripts bootstrap/handoff update
+2. Deploy scripts bootstrap/finalization update
 3. Manager Wizard state flow update
 4. Tests (contracts + integration + web)
 5. Indexer ABI/event sync
@@ -19,8 +19,8 @@ Deliver single-community internals across deploy stack contracts with per-commun
 ## Key Runtime Model
 1. Deploy per-community stack including `AccessManager`, `ParamController`, `ShiftGovernor`, `TimelockController`
 2. Configure selector permissions in local `AccessManager` during bootstrap
-3. Transfer AccessManager admin to local timelock
-4. Verify post-handoff restricted writes fail for deployer/manager wallets
+3. Finalize the selected authority mode by transferring AccessManager admin to local timelock or retaining deployer acting admin
+4. Verify post-finalization restricted mutation behavior matches the selected authority mode
 
 ## Validation Commands
 - Contract tests: `pnpm forge:test`
@@ -40,7 +40,7 @@ Deliver single-community internals across deploy stack contracts with per-commun
 - Resolution summary:
 	- `DEPLOY_STACK` now emits run-scoped addresses via `StepExecutionResult.deploymentAddresses` in `apps/web/lib/deploy/default-step-executor.ts`.
 	- Session model persists run-scoped addresses for resume/retry in `apps/web/lib/deploy/types.ts` and `apps/web/hooks/useDeployWizard.ts`.
-	- Mutable steps `CONFIGURE_ACCESS_PERMISSIONS` and `HANDOFF_ADMIN_TO_TIMELOCK` now require `session.deploymentAddresses` and do not call static lookup.
+	- Mutable steps `CONFIGURE_ACCESS_PERMISSIONS` and `FINALIZE_AUTHORITY_MODE` now require `session.deploymentAddresses` and do not call static lookup.
 	- Regression coverage added in `apps/web/tests/unit/lib/deploy/default-step-executor.test.ts` (mutable-step static lookup guard).
 
 ## Latest Validation Evidence (T033)

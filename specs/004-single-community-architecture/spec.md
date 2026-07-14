@@ -42,17 +42,17 @@ As protocol maintainers, we can refactor each deploy stack contract from multi-c
 
 ### User Story 2 - Deploy New Community Safely (Priority: P2)
 
-As a community manager, I can deploy a full community stack where the deployer configures permissions in the local AccessManager during deployment and then hands off admin authority to the community timelock, so post-deploy privileged changes are governance-only.
+As a community manager, I can deploy a full community stack where the deployer configures permissions in the local AccessManager during deployment and then finalizes the selected authority mode, so post-deploy privileged changes follow the chosen governance or staging-admin path.
 
 **Why this priority**: This is the core risk and usability path. If this fails, deployment is blocked or unsafe.
 
-**Independent Test**: Can be fully tested by running a fresh deploy in Base Sepolia staging and verifying permissions are configured at deploy time, admin is handed off to timelock, and post-deploy restricted changes require governance.
+**Independent Test**: Can be fully tested by running a fresh deploy in Base Sepolia staging and verifying permissions are configured at deploy time, the selected authority mode is confirmed, and post-deploy restricted changes follow that authority model.
 
 **Acceptance Scenarios**:
 
 1. **Given** no prior dependency on old staged deployments, **When** manager starts a fresh deploy, **Then** wizard progresses through defined states and applies permission wiring in the community-local AccessManager.
-2. **Given** deploy-time wiring is completed, **When** admin handoff runs, **Then** AccessManager admin is assigned to the community timelock.
-3. **Given** deploy is finalized, **When** manager wallet attempts restricted mutation, **Then** mutation is rejected and governance/timelock path is required.
+2. **Given** deploy-time wiring is completed, **When** authority finalization runs in `Governance-managed` mode, **Then** AccessManager admin is assigned to the community timelock.
+3. **Given** deploy is finalized, **When** manager wallet attempts restricted mutation, **Then** the mutation outcome matches the selected authority mode: governance/timelock is required in `Governance-managed`, while deployer-admin execution remains available in `Admin-managed` staging.
 
 ---
 
@@ -67,7 +67,7 @@ As a manager, I can see a strict deploy state contract with no ambiguous or mixe
 **Acceptance Scenarios**:
 
 1. **Given** deploy started, **When** stack deployment completes, **Then** wizard enters `CONFIGURE_ACCESS_PERMISSIONS`.
-2. **Given** permission setup succeeds, **When** handoff runs, **Then** wizard enters `HANDOFF_ADMIN_TO_TIMELOCK` and completes admin transfer.
+2. **Given** permission setup succeeds, **When** authority finalization runs, **Then** wizard enters `FINALIZE_AUTHORITY_MODE` and confirms the selected post-deploy authority state.
 3. **Given** user starts a new deploy, **When** previous run exists, **Then** old run state is not resumed unless user explicitly selects resume.
 
 ---
@@ -91,7 +91,7 @@ As protocol maintainers, we can remove staging assumptions tied to old deploymen
 
 - Manager rejects signature during `DEPLOY_STACK`: wizard records failure reason and allows retry from current safe boundary.
 - Manager rejects signature during `CONFIGURE_ACCESS_PERMISSIONS`: wizard records failure reason and preserves deterministic retry from permission step.
-- Admin handoff to timelock fails: wizard blocks completion and marks deployment as non-finalized until handoff succeeds.
+- Authority finalization fails: wizard blocks completion and marks deployment as non-finalized until the selected post-deploy authority state is confirmed.
 - Multiple browser sessions trigger deploy actions: only one active run can advance state for a session at a time.
 - Contract wiring partially completes before a revert: verification detects incomplete wiring and reports exact missing links.
 - Old staging addresses are present in local cache: new deploy ignores them unless explicitly selected for read-only inspection.
@@ -104,8 +104,8 @@ As protocol maintainers, we can remove staging assumptions tied to old deploymen
 - **FR-001**: Architecture MUST be consistent with per-community deployment such that each community has isolated governance authority and module-local state.
 - **FR-002**: Each community deployment MUST instantiate its own `AccessManager`, `ParamController`, `ShiftGovernor`, and `TimelockController`.
 - **FR-003**: Per-community deployed modules MUST use single-community internals and MUST NOT depend on multi-community keyed internal state for core operations.
-- **FR-004**: Deploy Wizard MUST implement the following explicit state contract: `PRECHECKS`, `DEPLOY_STACK`, `CONFIGURE_ACCESS_PERMISSIONS`, `HANDOFF_ADMIN_TO_TIMELOCK`, `VERIFY_DEPLOYMENT`.
-- **FR-005**: Deploy-time permission wiring MAY be executed by deployer in the community-local `AccessManager`, but post-deploy restricted changes MUST be executable only via community governance through timelock authority.
+- **FR-004**: Deploy Wizard MUST implement the following explicit state contract: `PRECHECKS`, `DEPLOY_STACK`, `CONFIGURE_ACCESS_PERMISSIONS`, `FINALIZE_AUTHORITY_MODE`, `VERIFY_DEPLOYMENT`.
+- **FR-005**: Deploy-time permission wiring MAY be executed by deployer in the community-local `AccessManager`, but post-deploy restricted changes MUST follow the selected authority mode: `Governance-managed` communities execute via community governance through Timelock authority, while `Admin-managed` staging communities leave the deployer as the acting admin surface for QA and contract validation.
 - **FR-006**: System MUST prevent cross-community authority leakage; governance authority from one community MUST NOT mutate privileged state in another community deployment.
 - **FR-007**: Base Sepolia staging flow MUST assume clean-slate redeploy behavior and MUST NOT require backward compatibility or migration of prior staged state.
 - **FR-008**: Refactor scope MUST include explicit contract-level task definitions for every contract identified for single-community internal conversion.
@@ -119,8 +119,8 @@ As protocol maintainers, we can remove staging assumptions tied to old deploymen
 - **UX-001 `PRECHECKS`**: Validate wallet connectivity, network, required inputs, and session freshness before any transaction intent is generated.
 - **UX-002 `DEPLOY_STACK`**: Execute deployment of required contracts for the new community and persist deployed addresses for this run. Static deployment files may be used only for read-only reference views, never as the source of deploy-step mutable targets.
 - **UX-003 `CONFIGURE_ACCESS_PERMISSIONS`**: Apply per-selector permission and role wiring in community-local `AccessManager`.
-- **UX-004 `HANDOFF_ADMIN_TO_TIMELOCK`**: Transfer `AccessManager` admin authority from deployer bootstrap authority to community timelock.
-- **UX-005 `VERIFY_DEPLOYMENT`**: Verify role wiring, module references, and authorization invariants after admin handoff is confirmed.
+- **UX-004 `FINALIZE_AUTHORITY_MODE`**: Finalize the post-deploy authority state by either transferring `AccessManager` admin authority from deployer bootstrap authority to community Timelock (`Governance-managed`) or explicitly retaining the deployer as acting admin (`Admin-managed`).
+- **UX-005 `VERIFY_DEPLOYMENT`**: Verify role wiring, module references, and authorization invariants after the selected post-deploy authority state is confirmed.
 - **UX-006**: Wizard transitions MUST be one-way for a run except explicit restart from `PRECHECKS`.
 - **UX-007**: Restarting a deploy MUST create a fresh run context unless user explicitly selects resume.
 
@@ -128,11 +128,11 @@ As protocol maintainers, we can remove staging assumptions tied to old deploymen
 
 | Boundary | Contract | Target Classification | Required Action |
 |---|---|---|---|
-| Per-community | `AccessManager` | Per-community authority router | Deploy one per community, bootstrap permissions at deploy time, then hand off admin to local timelock |
+| Per-community | `AccessManager` | Per-community authority router | Deploy one per community, bootstrap permissions at deploy time, then finalize the selected authority mode by handing admin to local timelock or retaining deployer acting admin |
 | Shared | `CommunityRegistry` | Shared registry | Keep shared, retain registration and metadata index responsibilities, enforce explicit internal auth checks (no `AccessManaged`) |
-| Per-community | `ParamController` | Per-community policy oracle | Deploy one per community and enforce local governance-timelock authority model |
+| Per-community | `ParamController` | Per-community policy oracle | Deploy one per community and enforce the selected local authority model |
 | Per-community | `ShiftGovernor` | Per-community | Deploy one per community and wire only to local timelock/token |
-| Per-community | `TimelockController` | Per-community | Deploy one per community and use as sole privileged executor |
+| Per-community | `TimelockController` | Per-community | Deploy one per community and use as the privileged executor in `Governance-managed` communities |
 | Per-community | `MembershipTokenERC20Votes` | Per-community | Keep local governance token authority wiring only |
 | Per-community | `RequestHub` | Per-community | Refactor internals to single-community state model |
 | Per-community | `DraftsManager` | Per-community | Refactor internals to single-community state model |
@@ -156,8 +156,8 @@ As protocol maintainers, we can remove staging assumptions tied to old deploymen
 
 ### Security Invariants
 
-- **SI-001**: After admin handoff is completed, all privileged mutations MUST execute via local community timelock authority.
-- **SI-002**: Deployer wallet may execute bootstrap permission wiring only before admin handoff; after handoff, direct restricted writes by deployer/manager wallet MUST fail.
+- **SI-001**: After authority finalization is completed in `Governance-managed` mode, all privileged mutations MUST execute via local community timelock authority.
+- **SI-002**: Deployer wallet may execute bootstrap permission wiring only before authority finalization; after finalization, direct restricted writes by deployer/manager wallet MUST either fail (`Governance-managed`) or remain explicitly deployer-admin controlled (`Admin-managed`).
 - **SI-003**: No cross-community authority leakage is permitted across independently deployed communities.
 - **SI-004**: TreasuryAdapter guardrails remain enforced under refactor (frequency, percentage cap, allowlist, emergency controls).
 - **SI-005**: Verification authority remains governance-controlled (no staking/bonding reintroduction).
@@ -213,7 +213,7 @@ Priority rule: Completion of this table is the main delivery objective of the fe
 
 - Contracts: single-community internal refactor across per-community modules plus authority wiring updates.
 - Contracts: include `ParamController` migration from shared deployment model to per-community deployment model.
-- Manager app (`apps/web`): deploy wizard state contract with deploy-time access wiring and mandatory admin handoff to timelock.
+- Manager app (`apps/web`): deploy wizard state contract with deploy-time access wiring and explicit authority-mode finalization.
 - Indexer (`apps/indexer`): event/index mapping updates for changed event shapes or removed multi-community dimensions.
 - Tests (`test/` and web unit tests): contract refactor coverage, wizard state machine regressions, authority-leakage tests.
 - Documentation (`docs/EN/*`, `contracts/FEATURES.md`, status docs): synchronized architecture and staging policy narrative.
@@ -248,7 +248,7 @@ Priority rule: Completion of this table is the main delivery objective of the fe
 
 - **Community Deployment Unit**: One deployed stack with local governance authority (`AccessManager`, `ShiftGovernor`, `TimelockController`, `ParamController`) and bound per-community modules.
 - **Deploy Wizard Run**: A stateful deployment execution record with explicit state machine transitions and verification outcomes.
-- **Access Bootstrap Handoff**: Deployment-time phase where deployer configures selector permissions and then transfers admin authority to community timelock.
+- **Access Bootstrap Authority Finalization**: Deployment-time phase where deployer configures selector permissions and then finalizes the selected post-deploy authority holder.
 - **Contract Refactor Scope Item**: Per-contract conversion task definition and acceptance evidence for single-community internal model.
 
 ## Success Criteria *(mandatory)*
@@ -257,9 +257,9 @@ Priority rule: Completion of this table is the main delivery objective of the fe
 
 - **SC-001**: 100% of contracts listed in the Contract Refactor Task Plan include refactor implementation to single-community internals and passing contract-level tests.
 - **SC-002**: In two-community isolation tests, 0 unauthorized cross-community privileged mutations succeed across refactored contracts.
-- **SC-003**: 100% of successful deployments perform access permission wiring and complete admin handoff to the community timelock before deployment is marked complete.
+- **SC-003**: 100% of successful deployments perform access permission wiring and confirm the selected post-deploy authority mode before deployment is marked complete.
 - **SC-004**: 100% of successful wizard runs pass through the five required states in valid order, with no undefined intermediate state names.
-- **SC-005**: 100% of post-handoff privileged mutation tests confirm execution only through local community timelock authority.
+- **SC-005**: 100% of authority-mode privileged mutation tests confirm that `Governance-managed` runs execute only through local community timelock authority and `Admin-managed` runs retain only the explicit deployer acting-admin surface.
 - **SC-006**: 0 required migration/backfill tasks remain for Base Sepolia staging rollout; full redeploy procedure is sufficient.
 - **SC-007**: 0 unresolved contract/indexer/manager-app drift items remain at merge for this feature scope.
 - **SC-008**: 0 wizard deploy-step mutable writes target pre-existing static addresses from `deployments/*.json`; all mutable deploy-step targets are run-scoped addresses produced during the same deployment run.
@@ -267,6 +267,6 @@ Priority rule: Completion of this table is the main delivery objective of the fe
 ### Test Expectations
 
 - Contract unit tests MUST cover each refactored contract listed in the task plan.
-- Integration tests MUST cover deployment wiring, permission bootstrap, admin handoff, and post-handoff verification.
+- Integration tests MUST cover deployment wiring, permission bootstrap, authority finalization, and post-finalization verification.
 - Web unit/integration tests MUST validate wizard state transitions, restart behavior, and restricted-action handling.
 - Negative tests MUST include unauthorized direct-write attempts and cross-community authority leakage attempts.

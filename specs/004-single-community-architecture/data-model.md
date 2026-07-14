@@ -1,7 +1,7 @@
 # Data Model: Single-Community Architecture Refactor
 
 ## 1. CommunityDeploymentUnit
-- Description: One deployed community stack with local governance authority and per-community modules.
+- Description: One deployed community stack with explicit local authority mode and per-community modules.
 - Fields:
   - communityId: uint256
   - accessManager: address
@@ -16,30 +16,33 @@
   - `timelock` must be set before finalization.
   - Module addresses must be unique per key for a run.
 - State transitions:
-  - CREATED -> STACK_DEPLOYED -> PERMISSIONS_CONFIGURED -> ADMIN_HANDOFF_DONE -> VERIFIED
+  - CREATED -> STACK_DEPLOYED -> PERMISSIONS_CONFIGURED -> AUTHORITY_FINALIZED -> VERIFIED
 
-## 2. AccessBootstrapHandoff
-- Description: Deployment bootstrap authority window and mandatory handoff record.
+## 2. AccessBootstrapAuthorityFinalization
+- Description: Deployment bootstrap authority window and final authority-state record.
 - Fields:
   - deploymentRunId: string
   - bootstrapActor: address
+  - authorityMode: enum(ADMIN_MANAGED, GOVERNANCE_MANAGED)
+  - finalAuthorityHolder: address
   - handoffTargetTimelock: address
   - permissionsConfigured: bool
-  - handoffTxHash: bytes32
-  - handoffConfirmed: bool
+  - finalizationTxHash: bytes32
+  - finalizationConfirmed: bool
   - confirmedAt: uint64
 - Validation rules:
-  - `permissionsConfigured` must be true before handoff.
-  - `handoffTargetTimelock` must match local community timelock.
-  - Deployment cannot finalize unless `handoffConfirmed` is true.
+  - `permissionsConfigured` must be true before authority finalization.
+  - `handoffTargetTimelock` must match local community timelock for `GOVERNANCE_MANAGED` mode.
+  - `finalAuthorityHolder` must equal deployer for `ADMIN_MANAGED` mode and timelock for `GOVERNANCE_MANAGED` mode.
+  - Deployment cannot finalize unless `finalizationConfirmed` is true.
 - State transitions:
-  - OPEN -> CONFIGURED -> HANDED_OFF -> LOCKED
+  - OPEN -> CONFIGURED -> FINALIZED -> LOCKED
 
 ## 3. DeployWizardRun
 - Description: Manager app execution record for a deployment attempt.
 - Fields:
   - id: string
-  - state: enum(PRECHECKS, DEPLOY_STACK, CONFIGURE_ACCESS_PERMISSIONS, HANDOFF_ADMIN_TO_TIMELOCK, VERIFY_DEPLOYMENT, COMPLETED, FAILED)
+  - state: enum(PRECHECKS, DEPLOY_STACK, CONFIGURE_ACCESS_PERMISSIONS, FINALIZE_AUTHORITY_MODE, VERIFY_DEPLOYMENT, COMPLETED, FAILED)
   - startedAt: uint64
   - updatedAt: uint64
   - wallet: address

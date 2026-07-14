@@ -6,6 +6,8 @@ This document provides a high-level overview of Shift DeSoc's system architectur
 
 **Shift DeSoc is meta-governance technology** - a flexible infrastructure that enables communities to model any organizational structure they choose. Rather than imposing a specific governance model, Shift provides the building blocks (governance protocols, work verification systems, and economic mechanisms) that communities can configure to implement their unique decision-making processes, value definitions, and coordination patterns.
 
+Shift should be understood as **DAO infrastructure**, not a platform that communities must depend on operationally. Any community can deploy the contracts, self-host its own frontend and indexing stack, and operate without relying on Shift-hosted tooling after deployment.
+
 Shift implements a **modular, blockchain-native architecture** designed for scalability, security, and upgradability. The platform consists of interconnected smart contracts that manage governance, work verification, and economic incentives.
 
 ### Core Design Principles
@@ -16,6 +18,12 @@ Shift implements a **modular, blockchain-native architecture** designed for scal
 4. **Scalability**: Layer 2 deployment with efficient gas usage patterns
 5. **Transparency**: All operations verifiable on-chain with rich event logs
 
+### Canonical Truth Model
+
+- **Blockchain is the source of truth**: contract state, event logs, module wiring, and authority boundaries are canonical on-chain.
+- **Indexer is a convenience layer**: the Ponder/GraphQL stack exists to make Manager and other admin tooling easier to build and faster to query, not to replace chain authority.
+- **Self-hosting is first-class**: communities may replace Shift-provided web or indexer tooling entirely as long as they preserve the contract interfaces and on-chain authority model.
+
 ## Manager App: Community Overview Hub
 
 The Manager route `/communities/[communityId]` is the canonical community-scoped overview entrypoint.
@@ -24,6 +32,7 @@ The Manager route `/communities/[communityId]` is the canonical community-scoped
 - **Hybrid truth model**:
     - Activity previews (Requests, Drafts, Proposals) are indexer-backed, bounded to latest `N=3`, and filtered by route `communityId`.
     - Configuration surfaces (module pointers, parameter summary subset) remain on-chain authoritative, read from `CommunityRegistry`/`ParamController` wiring.
+- **Tooling independence**: the Manager UI is a reference admin surface over canonical on-chain state, not a required control plane for deployed communities.
 - **Canonical module inventory (Mar 2026)**: for new deployments, `CommunityRegistry.getCommunityModules(communityId)` stores the complete per-community contract inventory (governance, verification, economic, commerce, and access modules), enabling cross-device recovery and complete manager module summaries without legacy run-state dependence.
 - **Honest health signaling**: Overview exposes `synced|lagging|error|unknown` indexer states. Indexer degradation never hides chain-backed config sections; unavailable values are rendered explicitly as `unavailable`/`missing`.
 - **Authority-safe UX**: privileged actions (such as `Edit parameters`) are gated and default disabled when authority signals are uncertain.
@@ -39,11 +48,12 @@ The Manager route `/communities/[communityId]` is the canonical community-scoped
 
 ## 🎯 Stage & Roadmap
 
-- **Current stage (staging/test)**: Active on Base Sepolia; Base mainnet is the launch target. All privileged operations remain timelock-gated; ParamController is the policy source; no staking for verifiers; TreasuryAdapter guardrails stay intact.
-- **Access control posture (Jan 2026)**: Timelock holds AccessManager admin; deploy-complete wires per-function roles across verification, economic, and commerce modules so privileged mutations execute via governance.
-- **Manager deploy state contract (Mar 2026)**: Staging deployments execute `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> HANDOFF_ADMIN_TO_TIMELOCK -> VERIFY_DEPLOYMENT`; completion is blocked unless handoff and verification both pass.
+- **Current stage (staging/test)**: Active on Base Sepolia; Base mainnet is the launch target. ParamController remains the policy source, no staking is used for verifiers, TreasuryAdapter guardrails stay intact, and staging deployments may choose either `Admin-managed` or `Governance-managed` post-deploy authority.
+- **Access control posture (Jul 2026)**: Deploy-complete wires per-function roles across verification, economic, and commerce modules. In `Governance-managed` communities, Timelock holds AccessManager admin and privileged mutations execute through governance. In `Admin-managed` staging communities, the deployer may temporarily retain the admin surface as the acting authority for QA and contract validation.
+- **Manager deploy state contract (Jul 2026)**: Staging deployments execute `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> FINALIZE_AUTHORITY_MODE -> VERIFY_DEPLOYMENT`; completion is blocked unless the selected authority mode and verification checks both pass.
     - `DEPLOY_STACK`: bytecode deployment only through layer factories.
     - `CONFIGURE_ACCESS_PERMISSIONS`: registry + policy + module wiring + runtime role grants.
+    - `FINALIZE_AUTHORITY_MODE`: either hand admin rights to Timelock (`Governance-managed`) or leave the deployer in place as acting admin (`Admin-managed`).
 - **Achieved milestones**:
     - **Q3 2025**: Alpha contract suite and research completed; staging deployment to Base Sepolia.
     - **Q4 2025**: Marketing site live and basic admin tool shipped.

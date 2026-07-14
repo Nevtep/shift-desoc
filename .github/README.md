@@ -2,6 +2,10 @@
 
 Working state: **Testing/Staging on Base Sepolia**; functionality may change. Use the resources below to stay aligned with specs and guardrails.
 
+## Active Workflow
+
+For new work, use the active gentle SDD workflow described in [`../AGENTS.md`](../AGENTS.md). Repo-local SpecKit artifacts remain as historical/reference material only.
+
 ## Key References
 - [copilot-instructions.md](./copilot-instructions.md) — Operating Manual for AI/devs (architecture, invariants, staging caveats, gap handling).
 - [project-management/STATUS_REVIEW.md](./project-management/STATUS_REVIEW.md) — Current repo structure, workflows, invariants, and risks.

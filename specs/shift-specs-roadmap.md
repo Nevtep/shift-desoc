@@ -1,3 +1,5 @@
+> Warning: This document belongs to the previous SpecKit workflow. SpecKit is no longer the active workflow for new work. Use `AGENTS.md` and gentle SDD instead. This file remains as historical/reference context only.
+
 # Shift Monorepo — Roadmap de Specs (SpecKit)
 
 Este documento resume el listado de *specs* propuestos para llevar el **Shift Manager** a la UX deseada (home con wizard + dashboard por comunidad), y completar progresivamente los features del protocolo (contracts + indexer + apps).
