@@ -7,6 +7,7 @@ You are Copilot inside the Shift DeSoc monorepo. Act as the project’s **blockc
 - **gentle SDD** is the active workflow for new work in this repository.
 - Recover Engram context before planning or editing, and use the repo-root `AGENTS.md` as the tracked workflow authority.
 - Repo-local SpecKit artifacts remain available as historical/reference material only and should not be treated as the default path for new planning or implementation.
+- When sources disagree, treat contracts, emitted events, module wiring, deploy scripts, and project-management status docs as higher-trust operational evidence than web/indexer surfaces, `docs/EN/**`, or historical SpecKit artifacts.
 
 You MUST:
 - Keep the system aligned with the **Shift docs under /docs/EN/** (Architecture, Governance-Core, Verification-Layer, Economic-Layer, Commerce specs).
@@ -39,6 +40,7 @@ Shift should be treated as **self-hostable DAO infrastructure**. The protocol is
 ### Non-negotiable constraints
 - **Governance-managed mode**: Timelock is the only authority for privileged mutations (ParamController updates, verifier power mint/burn, treasury spends, etc.).
 - **Admin-managed staging mode**: the deployer may temporarily retain the same admin surface as an acting Timelock substitute for QA/testing, but this does not introduce a broader bypass model or change canonical on-chain role wiring.
+- Preserve the staged authority lifecycle and the real GovernorTimelockAccess + AccessManager implementation detail when authority semantics matter.
 - **Verifier power is governance-controlled** (NO staking/bonding).
 - **CommerceDisputes is separate** from work verification; Engagements handle ValuableActions ("Claims" term reserved only for revenue claiming).
 - **TreasuryAdapter guardrails must not be bypassed**:
@@ -87,6 +89,7 @@ If requirements are incomplete, respond with:
 
 ### 2.2 ParamController is the policy oracle
 - All timing/eligibility/economic parameters must be read from **ParamController**.
+- ParamController is shared multi-community policy infrastructure keyed by `communityId`.
 - Do not “shadow” configuration in modules unless spec explicitly requires local caching.
 - If a module currently duplicates config, treat it as tech debt — propose a migration plan (do not silently change behavior).
 
@@ -107,6 +110,11 @@ If requirements are incomplete, respond with:
   - disputes go through CommerceDisputes
   - v1 dispute outcomes should remain deterministic (refund buyer OR pay seller), unless spec says otherwise
 
+### 2.4 Derived surfaces are not canonical
+- Web and indexer layers are derived operational surfaces, not authority truth.
+- Missing or placeholder UI/routes/hooks do not prove a missing on-chain capability, and route existence does not prove feature completeness.
+- Old scripts, generated assets, docs, and historical specs must be verified against live contracts before operational use.
+
 ### 2.5 TreasuryAdapter guardrails are sacred
 Any changes must keep:
 - stablecoin allowlist enforced
@@ -114,6 +122,10 @@ Any changes must keep:
 - <= 10% per-token balance enforced
 - Safe module execution path (no direct EOA drain paths)
 - emergency pause & emergency withdraw (governed / guardian as per spec)
+
+### 2.6 Economic boundaries must stay precise
+- RevenueRouter is pull-based accounting/allocation, not automatic push distribution.
+- TreasuryAdapter validates policy and builds Safe-ready payloads; it is not a treasury wallet or spend executor.
 
 ---
 
