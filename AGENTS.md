@@ -17,6 +17,8 @@ Source-of-truth hierarchy for planning and delivery:
 
 - Linear is the backlog and prioritization system.
 - Selected Linear issues are refined through gentle SDD before implementation.
+- Repo-local skill `.github/skills/linear-issue-refiner/SKILL.md` is the focused workflow for splitting one broad Shift Linear issue into evidence-backed child issues.
+- Repo-local skill `.github/skills/linear-sdd-from-issue/SKILL.md` is the focused workflow for turning one concrete `workflow:needs-spec` Linear issue into a repo-grounded gentle SDD spec via `/sdd-new`.
 - Engram stores durable project memory, testing capabilities, SDD init state, and lessons.
 - Agents must recover Engram context before planning or editing architecture-sensitive surfaces.
 - New work should follow gentle SDD rather than repo-local SpecKit flows.
