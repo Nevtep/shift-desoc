@@ -1,109 +1,130 @@
-# Shift Manager — Feature Specs Roadmap (UX-driven)
+# Shift Manager Product Roadmap (Linear Review Order)
 
-This document captures the **proposed SpecKit feature specification roadmap** to evolve the Shift monorepo (contracts + Ponder indexer + Next.js Manager) toward the desired **Manager UX**:
+This document is the review companion for the current Shift Linear backlog. Use it to walk the issues in the same order the work should move: first the planning anchors, then the implementation-ready chain, then the spec-first queue. It is intentionally aligned with [IMPLEMENTATION_STATUS](../../.github/project-management/IMPLEMENTATION_STATUS.md), and the issue IDs are written exactly as they appear in Linear so you can follow along directly. Update this roadmap whenever backlog priority or execution order changes there.
 
-- Home index: **Community creation wizard** (“Inicia tu comunidad en Shift”) + **communities list**
-- Community detail: **parameters + snapshots** (requests, drafts, proposals)
-- Per-community navigation to manage: coordination, governance, verification (valuable actions/engagements/positions), investment/cohorts, economic layer, commerce (marketplace + housing + disputes), projects.
+## Current Status
 
-> Notes
-> - Ordered to build a solid UX shell first, then complete functional vertical slices.
-> - Uses Shift canonical terms (Engagements, ValuableActions, VPS, etc.).
-> - “Capability flags” are recommended so the UI never implies features that aren’t implemented/indexed yet.
+The Manager already has usable coordination and governance-adjacent slices, plus the recent Valuable Action admin vertical slice. The main remaining delivery gaps are:
 
----
+- authority-mode truth across deploy, handoff, and capability signaling
+- ParamController read and mutation flows for admin-managed and governance-managed communities
+- verifier, credential, position, and engagement admin surfaces
+- economic and commerce read models and Manager surfaces
+- explicit cleanup of contract-level TODOs that would otherwise make the product backlog look more complete than it really is
 
-## A) Manager UX Shell (IA + routing + dashboards)
+## How To Read The Linear Backlog
 
-1. **Manager Home: Community Wizard + Communities Index**  
-   Home becomes onboarding-first: wizard CTA + indexed communities list (with indexer health/lag indicators).
+| Workflow label | Meaning in practice | How to review it |
+|---|---|---|
+| `workflow:backlog` | umbrella or planning parent | read first for scope, then inspect children |
+| `workflow:agent-ready` | concrete implementation-ready slice | candidate for immediate execution |
+| `workflow:needs-spec` | real work item, but still needs gentle SDD | do not implement before spec/design/tasks |
 
-2. **Community Detail Dashboard (Overview)**  
-   `/communities/[id]` as a dashboard: key parameters + brief snapshots of Requests / Drafts / Proposals, with links to full sections.
+## Review Anchors
 
-3. **Manager Navigation IA + Section Layouts (per community)**  
-   Standard per-community sections:
-   - Coordination (Requests, Drafts)
-   - Governance (Proposals)
-   - Verification (Valuable Actions, Engagements, Verifiers, Credentials, Positions)
-   - Economy (Cohorts, Revenue, Treasury, Params, Tokens)
-   - Commerce (Marketplace, Disputes, Housing, Projects)
+Review these parent issues first so the child issues below make sense in Linear.
 
-4. **Multi-community correctness hardening (Indexer + Manager assumptions)**  
-   Remove single-community assumptions (e.g., defaults) and ensure deterministic projections/joins by communityId.
+| Anchor | Purpose |
+|---|---|
+| `SHI-9` | phase 0 source-of-truth cleanup for Admin Tool delivery |
+| `SHI-15` | ParamController backlog split across read foundation, admin-managed writes, and governance-managed proposal flow |
+| `SHI-18` | verifier roster, VPT, and juror/admin coverage umbrella |
+| `SHI-22` | credential, position, and typed SBT visibility umbrella |
+| `SHI-23` | TreasuryAdapter and CommunityToken umbrella |
+| `SHI-20` | economic read-model and Manager surface umbrella |
+| `SHI-24` | commerce read-model and Manager surface umbrella |
 
----
+## Recommended Implementation Order
 
-## B) Coordination + Governance (re-fit into new UX)
+This section is the practical delivery order for issues that are already concrete enough to review and execute. Where Linear does not yet encode the full dependency chain, the rationale column does.
 
-5. **Requests & Comments: Community-scoped UX + moderation polish**  
-   Integrate existing RequestHub UI into community sections and dashboard snapshots.
+| Order | Issue | Why this comes now | Review notes |
+|---|---|---|---|
+| 1 | `SHI-12` | authority-mode contract must be settled before downstream deploy and handoff UX is trustworthy | `needs-spec`; establishes the Base Sepolia staging contract |
+| 2 | `SHI-13` | deploy wizard cannot truthfully branch until `SHI-12` defines the lifecycle | `needs-spec`; review with deploy flow and wizard runtime |
+| 3 | `SHI-26` | deploy verification must prove the selected authority mode, not assume handoff | `needs-spec`; depends conceptually on `SHI-12` and `SHI-13` |
+| 4 | `SHI-14` | truthful gating should land as soon as the authority story is defined | `agent-ready`; docs/runtime truthfulness slice |
+| 5 | `SHI-53` | capability-flag metadata supports honest availability states across the Manager | `agent-ready`; engineering cleanup under `SHI-9` |
+| 6 | `SHI-16` | community overview is the operator entrypoint and should reflect the settled module/role/parameter truth | `agent-ready`; best reviewed after `SHI-14` and `SHI-53` |
+| 7 | `SHI-48` | ParamController read model is the foundation for both admin-managed and governance-managed parameter UX | `agent-ready`; treat as a hard prerequisite for `SHI-50` and `SHI-49` |
+| 8 | `SHI-50` | admin-managed parameter writes are the first real staging mutation flow after read truth exists | `agent-ready`; blocked by `SHI-48` |
+| 9 | `SHI-17` | community-scoped governance proposal creation must be solid before governance-managed parameter flows rely on it | `agent-ready`; governance route parity slice |
+| 10 | `SHI-21` | governance-managed handoff evidence should be visible before governance-only controls are positioned as ready | `agent-ready`; complements `SHI-17` |
+| 11 | `SHI-49` | governance-managed ParamController proposal UX should come only after read truth, proposal creation, and handoff verification are in place | `agent-ready`; explicitly blocked by `SHI-48`, and practically follows `SHI-17` plus `SHI-21` |
+| 12 | `SHI-27` | Valuable Action admin is already farthest along, so this is the first Phase 3 tightening slice | `agent-ready`; closes truth/operability gaps rather than opening a new area |
+| 13 | `SHI-19` | engagement lifecycle is the next verification surface that already has meaningful Manager coverage to extend | `agent-ready`; keep chain-vs-projection truth explicit |
+| 14 | `SHI-34` | verifier read-model foundation should land before roster and juror UI surfaces | `agent-ready`; first child under `SHI-18` |
+| 15 | `SHI-32` | verifier roster and VPT UI depends on the read foundation | `agent-ready`; follows `SHI-34` |
+| 16 | `SHI-33` | juror selection and fraud visibility should follow once verifier/VPT data is stable | `agent-ready`; follows `SHI-34`, benefits from `SHI-32` |
+| 17 | `SHI-29` | credential/position/SBT projection layer is the read foundation for the remaining typed-record surfaces | `agent-ready`; first child under `SHI-22` |
+| 18 | `SHI-28` | credential admin/read surface depends on the new projections | `agent-ready`; follows `SHI-29` |
+| 19 | `SHI-31` | position admin/read surface depends on the same projection layer | `agent-ready`; follows `SHI-29` |
+| 20 | `SHI-30` | typed SBT visibility should come after the underlying credential/position records are readable | `agent-ready`; follows `SHI-29`, benefits from `SHI-28` and `SHI-31` |
+| 21 | `SHI-52` | VPT helper cleanup should land before Phase 3 is considered stable | `agent-ready`; engineering cleanup that supports verifier truthfulness |
+| 22 | `SHI-54` | engagement revocation side effects must be closed before verification flows are treated as complete | `agent-ready`; engineering cleanup for Phase 3 stability |
+| 23 | `SHI-45` | treasury and CommunityToken read foundations should land before any economic operator surface tries to act on them | `agent-ready`; first child under `SHI-23` |
+| 24 | `SHI-46` | TreasuryAdapter preview/policy UX builds directly on the read foundation | `agent-ready`; follows `SHI-45` |
+| 25 | `SHI-47` | CommunityToken reserve and treasury UX also builds on the same foundation | `agent-ready`; follows `SHI-45` |
+| 26 | `SHI-51` | CommerceDisputes juror-integration cleanup should land before dispute UI is treated as a stable target | `agent-ready`; Phase 5 engineering cleanup |
 
-6. **Drafts Manager: Community-scoped UX + escalation polish**  
-   Integrate Draft workflows into Coordination → Drafts and tighten escalation UX.
+## Spec-First Queue
 
-7. **Governance Proposals: Community-scoped UX + navigation drift fixes**  
-   Solidify proposal list/detail, correct broken links/routes, and align with community dashboard entry points.
+These issues are real backlog, but they should be reviewed as a spec queue rather than treated as immediate implementation tickets.
 
----
+### Group 1: Authority-Mode And Deploy Contract
 
-## C) Work Verification (Valuable Actions / Engagements / VPS)
+| Priority | Issue | Why it needs spec first |
+|---|---|---|
+| 1 | `SHI-12` | defines the product contract for admin-managed versus governance-managed communities |
+| 2 | `SHI-13` | changes wizard flow and user-facing deployment branches |
+| 3 | `SHI-26` | changes what deployment verification must prove |
 
-8. **ValuableAction Registry: Admin UX + indexing expansion**  
-   Create/activate/pause valuable actions; surface evidence specs, cooldowns, panel rules; expand indexer projections for action definitions.
+### Group 2: Economic Read Models And Manager Surfaces
 
-9. **Engagements: Rich lifecycle UX (submit → jurors → votes → resolve)**  
-   Complete the end-to-end engagement lifecycle UX beyond the current minimal surface; richer state views and links to related entities.
+Review `SHI-20` first, then the child sequence below.
 
-10. **Verifiers / Jury Management (VPS): UI + projection**  
-   Verifier roster, power weights, bans/unbans, elections/admin flows (timelock-governed), and operational dashboards.
+| Priority | Issue | Why this order matters |
+|---|---|---|
+| 1 | `SHI-20` | umbrella defining the economic slice boundary |
+| 2 | `SHI-40` | projections first; everything else depends on truthful cohort/investment/revenue data |
+| 3 | `SHI-41` | readiness and capability visibility should describe the projected reality |
+| 4 | `SHI-42` | cohort admin/read surface depends on `SHI-40` |
+| 5 | `SHI-43` | investment issuance and participant visibility depends on `SHI-40` and benefits from `SHI-42` |
+| 6 | `SHI-44` | revenue and pull-claim visibility should come after the underlying economic state is projected |
 
-11. **Credentials Manager: UI + indexer**  
-   Course definitions, applications, approvals, revocations; credential explorer by community/member.
+### Group 3: Commerce Read Models And Manager Surfaces
 
-12. **Positions & Roles: UI + indexer + RevenueRouter registration visibility**  
-   Position types, applications, approvals, close outcomes; show registration/unregistration outcomes and ROLE SBT history.
+Review `SHI-24` first, then the child sequence below.
 
----
+| Priority | Issue | Why this order matters |
+|---|---|---|
+| 1 | `SHI-24` | umbrella defining the commerce slice boundary |
+| 2 | `SHI-38` | read models first; marketplace, housing, disputes, and projects all depend on them |
+| 3 | `SHI-39` | marketplace is the broadest commerce operator surface and anchors linked module behavior |
+| 4 | `SHI-35` | dispute UI should not move ahead of the settled commerce projection story; pair review with `SHI-51` |
+| 5 | `SHI-36` | housing depends on marketplace-linked operational context |
+| 6 | `SHI-37` | project shells are the lightest commerce-side slice and can safely follow the heavier flows |
 
-## D) Economic Layer (Cohorts / Revenue / Treasury / Params / Tokens)
+## Development Logic Behind This Order
 
-13. **Investment Cohorts: UI + indexer**  
-   Cohort list/detail, investor participation, target ROI progress, windows/caps, and admin visibility.
+The roadmap is intentionally shaped around four rules:
 
-14. **Revenue Router: Claims UI + indexer**  
-   Worker/investor/treasury distributions, claimable balances, and claim flows (economic claiming).
+1. settle source-of-truth and authority-mode behavior before adding more UI
+2. land read foundations before write or operator surfaces
+3. finish the already-nearby verification slices before opening the large economic and commerce fronts
+4. keep engineering cleanup visible, because several product areas look more complete than they are until those TODOs are closed
 
-15. **Treasury Adapter: Policy + Safe Tx Builder UI + indexer**  
-   Build/validate spend payloads (no custody), enforce allowlists/caps, show vault balances and policy outcomes.
+## Quick Review Path
 
-16. **ParamController: Governance-managed settings UI + indexer**  
-   View/edit governed params per community (timings, eligibility, economics, verifier params), with timelock-aware UX.
+If you want the fastest pass through Linear without losing the development logic, read issues in this order:
 
-17. **Token & SBT Explorer (CommunityToken, MembershipToken, VPT, ValuableActionSBT)**  
-   Read-only explorer + admin insights; per-member views and per-community summaries.
+1. `SHI-9`, `SHI-15`, `SHI-18`, `SHI-22`, `SHI-23`, `SHI-20`, `SHI-24`
+2. `SHI-12`, `SHI-13`, `SHI-26`, `SHI-14`, `SHI-53`, `SHI-16`
+3. `SHI-48`, `SHI-50`, `SHI-17`, `SHI-21`, `SHI-49`
+4. `SHI-27`, `SHI-19`, `SHI-34`, `SHI-32`, `SHI-33`, `SHI-29`, `SHI-28`, `SHI-31`, `SHI-30`, `SHI-52`, `SHI-54`
+5. `SHI-45`, `SHI-46`, `SHI-47`
+6. `SHI-20` with `SHI-40` to `SHI-44`, then `SHI-24` with `SHI-38`, `SHI-39`, `SHI-35`, `SHI-36`, `SHI-37`
 
----
+## Sync Note
 
-## E) Commerce Layer (Marketplace / Housing / Disputes / Projects)
-
-18. **Marketplace Core: Offers/Orders indexing + real UI**  
-   Replace placeholders with indexed catalog, offer creation, order lifecycle, settlement views, fee breakdown.
-
-19. **Housing Manager: Units/Reservations indexing + UI**  
-   Co-housing availability, reservation minting/history, refunds/cancellations, and integration with Marketplace offer kinds.
-
-20. **Commerce Disputes: indexing + UI**  
-   Dispute timelines, evidence CIDs, outcomes, and callbacks; keep commerce disputes separate from work verification.
-
-21. **Project Factory: indexing + UI**  
-   Project shells list/detail; minimal viable surface first, expanded milestones later.
-
----
-
-## Suggested starting point (if starting fresh after canonicalization)
-
-- **Spec 1**: Manager Home (wizard + list)  
-- **Spec 2**: Community Detail Dashboard  
-- **Spec 3**: Navigation IA + section layouts  
-Then proceed to multi-community hardening and feature completion slices.
+Keep this document synchronized with [IMPLEMENTATION_STATUS](../../.github/project-management/IMPLEMENTATION_STATUS.md). If a child issue changes status, a blocker changes, or a new cleanup issue changes the recommended order, update both the roadmap narrative here and the tactical backlog framing in the implementation-status document in the same change set.
