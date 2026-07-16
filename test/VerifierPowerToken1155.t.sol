@@ -345,9 +345,78 @@ contract VerifierPowerToken1155Test is Test {
         
         (uint256 totalVerifiers, uint256 totalPower, uint256 averagePower) = vpt.getCommunityStats();
         
-        assertEq(totalVerifiers, 0); // Note: This is expected as tracking is TODO
+        assertEq(totalVerifiers, 2);
         assertEq(totalPower, 300);
-        assertEq(averagePower, 0); // Division by zero when totalVerifiers is 0
+        assertEq(averagePower, 150);
+    }
+
+    function testGetCommunityVerifiersPaginatesActiveRoster() public {
+        vm.startPrank(timelock);
+        vpt.initializeCommunity("metadata");
+
+        address[] memory users = new address[](3);
+        users[0] = user1;
+        users[1] = user2;
+        users[2] = user3;
+
+        uint256[] memory amounts = new uint256[](3);
+        amounts[0] = 100;
+        amounts[1] = 200;
+        amounts[2] = 300;
+
+        vpt.batchMint(users, amounts, REASON_CID);
+        vm.stopPrank();
+
+        (address[] memory firstPageVerifiers, uint256[] memory firstPagePowers, bool firstHasMore) =
+            vpt.getCommunityVerifiers(0, 2);
+
+        assertEq(firstPageVerifiers.length, 2);
+        assertEq(firstPageVerifiers[0], user1);
+        assertEq(firstPagePowers[0], 100);
+        assertEq(firstPageVerifiers[1], user2);
+        assertEq(firstPagePowers[1], 200);
+        assertTrue(firstHasMore);
+
+        (address[] memory secondPageVerifiers, uint256[] memory secondPagePowers, bool secondHasMore) =
+            vpt.getCommunityVerifiers(2, 2);
+
+        assertEq(secondPageVerifiers.length, 1);
+        assertEq(secondPageVerifiers[0], user3);
+        assertEq(secondPagePowers[0], 300);
+        assertFalse(secondHasMore);
+    }
+
+    function testGetCommunityVerifiersRemovesZeroPowerAccounts() public {
+        vm.startPrank(timelock);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
+        vpt.mint(user2, 200, REASON_CID);
+        vpt.burn(user1, 100, REASON_CID);
+        vm.stopPrank();
+
+        (address[] memory verifiers, uint256[] memory powers, bool hasMore) =
+            vpt.getCommunityVerifiers(0, 10);
+
+        assertEq(verifiers.length, 1);
+        assertEq(verifiers[0], user2);
+        assertEq(powers[0], 200);
+        assertFalse(hasMore);
+    }
+
+    function testGetCommunityVerifiersAdminTransferMovesRosterMembership() public {
+        vm.startPrank(timelock);
+        vpt.initializeCommunity("metadata");
+        vpt.mint(user1, 100, REASON_CID);
+        vpt.adminTransfer(user1, user2, 100, REASON_CID);
+        vm.stopPrank();
+
+        (address[] memory verifiers, uint256[] memory powers, ) = vpt.getCommunityVerifiers(0, 10);
+
+        assertEq(verifiers.length, 1);
+        assertEq(verifiers[0], user2);
+        assertEq(powers[0], 100);
+        assertFalse(vpt.hasVerifierPower(user1));
+        assertTrue(vpt.hasVerifierPower(user2));
     }
     
     function testHasVerifierPower() public {
@@ -374,6 +443,54 @@ contract VerifierPowerToken1155Test is Test {
 
         assertEq(vpt.balanceOf(user1, COMMUNITY_ID_1), 100);
         assertEq(vpt.totalSupply(), 100);
+    }
+
+    function testCommunityHelpersStayIsolatedAcrossTokenInstances() public {
+        VerifierPowerToken1155 otherVpt = new VerifierPowerToken1155(address(accessManager), BASE_URI, COMMUNITY_ID_2);
+
+        vm.startPrank(timelock);
+        bytes4[] memory selectors = new bytes4[](6);
+        selectors[0] = bytes4(keccak256("initializeCommunity(string)"));
+        selectors[1] = bytes4(keccak256("mint(address,uint256,string)"));
+        selectors[2] = bytes4(keccak256("burn(address,uint256,string)"));
+        selectors[3] = bytes4(keccak256("batchMint(address[],uint256[],string)"));
+        selectors[4] = bytes4(keccak256("batchBurn(address[],uint256[],string)"));
+        selectors[5] = bytes4(keccak256("adminTransfer(address,address,uint256,string)"));
+        accessManager.setTargetFunctionRole(address(otherVpt), selectors, accessManager.ADMIN_ROLE());
+
+        vpt.initializeCommunity("metadata1");
+        otherVpt.initializeCommunity("metadata2");
+
+        vpt.mint(user1, 100, REASON_CID);
+        vpt.mint(user2, 200, REASON_CID);
+        otherVpt.mint(user3, 300, REASON_CID);
+        vm.stopPrank();
+
+        (address[] memory firstCommunityVerifiers, uint256[] memory firstCommunityPowers, ) =
+            vpt.getCommunityVerifiers(0, 10);
+        (address[] memory secondCommunityVerifiers, uint256[] memory secondCommunityPowers, ) =
+            otherVpt.getCommunityVerifiers(0, 10);
+
+        assertEq(firstCommunityVerifiers.length, 2);
+        assertEq(firstCommunityVerifiers[0], user1);
+        assertEq(firstCommunityPowers[0], 100);
+        assertEq(firstCommunityVerifiers[1], user2);
+        assertEq(firstCommunityPowers[1], 200);
+
+        assertEq(secondCommunityVerifiers.length, 1);
+        assertEq(secondCommunityVerifiers[0], user3);
+        assertEq(secondCommunityPowers[0], 300);
+
+        (uint256 firstCommunityCount, uint256 firstCommunityTotalPower, uint256 firstCommunityAveragePower) = vpt.getCommunityStats();
+        (uint256 secondCommunityCount, uint256 secondCommunityTotalPower, uint256 secondCommunityAveragePower) = otherVpt.getCommunityStats();
+
+        assertEq(firstCommunityCount, 2);
+        assertEq(firstCommunityTotalPower, 300);
+        assertEq(firstCommunityAveragePower, 150);
+
+        assertEq(secondCommunityCount, 1);
+        assertEq(secondCommunityTotalPower, 300);
+        assertEq(secondCommunityAveragePower, 300);
     }
     
     /*//////////////////////////////////////////////////////////////

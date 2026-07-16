@@ -158,16 +158,19 @@ function updateVerifierPower(address verifier, uint256 newPower) {
 ### VerifierManager Selection Integration
 
 ```solidity
-function hasVerifierPower(address account, uint256 communityId) external view returns (bool) {
+function hasVerifierPower(address account) external view returns (bool) {
     return balanceOf(account, communityId) > 0;
 }
 
-function getCommunityStats(uint256 communityId) external view returns (
-    uint256 activeVerifiers,
-    uint256 totalPower,
-    bool initialized
+function getCommunityVerifiers(
+    uint256 startIndex,
+    uint256 maxResults
+) external view returns (
+    address[] memory verifiers,
+    uint256[] memory powers,
+    bool hasMore
 ) {
-    // Used by VerifierManager for selection pool assessment
+    // Returns a paginated slice of the active verifier roster for this token's immutable community
 }
 ```
 
@@ -261,13 +264,12 @@ adminTransfer(disputedVerifier, temporaryHolder, communityId, 100, "QmDisputeRes
 ### Community Analytics and Insights
 
 ```solidity
-function getCommunityStats(uint256 communityId) external view returns (
-    uint256 totalActiveVerifiers,    // Number of addresses with power > 0
-    uint256 totalPowerDistributed,   // Sum of all verifier power
-    uint256 averagePowerPerVerifier, // Mean power distribution
-    bool isInitialized              // Community setup status
+function getCommunityStats() external view returns (
+    uint256 totalActiveVerifiers,
+    uint256 totalPowerDistributed,
+    uint256 averagePowerPerVerifier
 ) {
-    // Provides governance with community health metrics
+    // Counts only active verifiers in the bound community roster
 }
 ```
 

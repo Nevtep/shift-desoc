@@ -15,6 +15,10 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
     /// @notice Total verifier power supply for the bound community.
     uint256 internal _totalSupply;
 
+    /// @notice Active verifier roster for the bound community.
+    address[] internal _activeVerifiers;
+    mapping(address => uint256) internal _activeVerifierIndexPlusOne;
+
     /// @notice Community initialization flag for the bound community.
     bool internal _communityInitialized;
     
@@ -68,6 +72,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         
         _totalSupply += amount;
         _mint(to, communityId, amount, "");
+        _syncActiveVerifier(to);
         
         emit VerifierGranted(to, communityId, amount, reasonCID);
     }
@@ -92,6 +97,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         
         _totalSupply -= amount;
         _burn(from, communityId, amount);
+        _syncActiveVerifier(from);
         
         emit VerifierRevoked(from, communityId, amount, reasonCID);
     }
@@ -120,6 +126,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
             
             totalAmount += amounts[i];
             _mint(to[i], communityId, amounts[i], "");
+            _syncActiveVerifier(to[i]);
             
             emit VerifierGranted(to[i], communityId, amounts[i], reasonCID);
         }
@@ -155,6 +162,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
             
             totalAmount += amounts[i];
             _burn(from[i], communityId, amounts[i]);
+            _syncActiveVerifier(from[i]);
             
             emit VerifierRevoked(from[i], communityId, amounts[i], reasonCID);
         }
@@ -211,6 +219,8 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         }
         
         _safeTransferFrom(from, to, communityId, amount, "");
+        _syncActiveVerifier(from);
+        _syncActiveVerifier(to);
         
         // Emit both revocation and granting events for transparency
         emit VerifierRevoked(from, communityId, amount, reasonCID);
@@ -229,36 +239,74 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
     function communityInitialized() external view returns (bool) {
         return _communityInitialized;
     }
+
+    function _syncActiveVerifier(address account) internal {
+        uint256 indexPlusOne = _activeVerifierIndexPlusOne[account];
+        bool hasPower = balanceOf(account, communityId) > 0;
+
+        if (hasPower) {
+            if (indexPlusOne == 0) {
+                _activeVerifiers.push(account);
+                _activeVerifierIndexPlusOne[account] = _activeVerifiers.length;
+            }
+            return;
+        }
+
+        if (indexPlusOne == 0) {
+            return;
+        }
+
+        uint256 index = indexPlusOne - 1;
+        uint256 lastIndex = _activeVerifiers.length - 1;
+
+        if (index != lastIndex) {
+            address lastVerifier = _activeVerifiers[lastIndex];
+            _activeVerifiers[index] = lastVerifier;
+            _activeVerifierIndexPlusOne[lastVerifier] = indexPlusOne;
+        }
+
+        _activeVerifiers.pop();
+        delete _activeVerifierIndexPlusOne[account];
+    }
     
-    /// @notice Get all addresses with verifier power for a community (view only - gas intensive)
-    /// @dev This is a convenience function that may be expensive for large communities
+    /// @notice Get active verifier addresses and powers for the bound community.
+    /// @dev Returns a paginated slice of the current active verifier roster.
     /// @return verifiers Array of verifier addresses 
     /// @return powers Array of corresponding verifier power amounts
     /// @return hasMore True if there are more results beyond maxResults
     function getCommunityVerifiers(
-        uint256 /* communityId */,
-        uint256 /* startIndex */,
-        uint256 /* maxResults */
-    ) external pure returns (
+        uint256 startIndex,
+        uint256 maxResults
+    ) external view returns (
         address[] memory verifiers,
         uint256[] memory powers,
         bool hasMore
     ) {
-        // Note: This is a basic implementation. In production, you'd want to maintain
-        // an auxiliary data structure to track verifiers efficiently
-        
-        // This implementation requires off-chain indexing of Transfer events
-        // to efficiently query verifier sets. For now, returning empty arrays.
-        verifiers = new address[](0);
-        powers = new uint256[](0);
-        hasMore = false;
-        
-        // Future enhancement: implement efficient verifier enumeration using event indexing
-        // or maintain an auxiliary mapping of communityId => verifier addresses.
+        uint256 totalVerifiers = _activeVerifiers.length;
+        if (startIndex >= totalVerifiers || maxResults == 0) {
+            return (new address[](0), new uint256[](0), false);
+        }
+
+        uint256 endExclusive = startIndex + maxResults;
+        if (endExclusive > totalVerifiers) {
+            endExclusive = totalVerifiers;
+        }
+
+        uint256 resultLength = endExclusive - startIndex;
+        verifiers = new address[](resultLength);
+        powers = new uint256[](resultLength);
+
+        for (uint256 i = 0; i < resultLength; i++) {
+            address verifier = _activeVerifiers[startIndex + i];
+            verifiers[i] = verifier;
+            powers[i] = balanceOf(verifier, communityId);
+        }
+
+        hasMore = endExclusive < totalVerifiers;
     }
     
     /// @notice Get verifier power statistics for this token's immutable community
-    /// @return totalVerifiers Total number of verifiers (would need tracking)
+    /// @return totalVerifiers Total number of active verifiers in the bound community roster
     /// @return totalPower Total verifier power distributed
     /// @return averagePower Average power per verifier
     function getCommunityStats() external view returns (
@@ -267,10 +315,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         uint256 averagePower
     ) {
         totalPower = _totalSupply;
-        
-        // Note: totalVerifiers would need auxiliary tracking for efficiency
-        // Verifier counting requires an auxiliary indexed set to keep this call efficient.
-        totalVerifiers = 0;
+        totalVerifiers = _activeVerifiers.length;
         averagePower = totalVerifiers > 0 ? totalPower / totalVerifiers : 0;
     }
     
