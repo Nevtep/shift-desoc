@@ -287,12 +287,9 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
             return (new address[](0), new uint256[](0), false);
         }
 
-        uint256 endExclusive = startIndex + maxResults;
-        if (endExclusive > totalVerifiers) {
-            endExclusive = totalVerifiers;
-        }
+        uint256 remaining = totalVerifiers - startIndex;
+        uint256 resultLength = maxResults < remaining ? maxResults : remaining;
 
-        uint256 resultLength = endExclusive - startIndex;
         verifiers = new address[](resultLength);
         powers = new uint256[](resultLength);
 
@@ -302,8 +299,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
             powers[i] = balanceOf(verifier, communityId);
         }
 
-        hasMore = endExclusive < totalVerifiers;
-    }
+        hasMore = resultLength < remaining;
     
     /// @notice Get verifier power statistics for this token's immutable community
     /// @return totalVerifiers Total number of active verifiers in the bound community roster
