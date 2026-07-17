@@ -170,7 +170,7 @@ function getCommunityVerifiers(
     uint256[] memory powers,
     bool hasMore
 ) {
-    // Returns a paginated slice of the active verifier roster for this token's immutable community
+    // Returns a paginated slice of the active verifier roster for this token's immutable community. Order is not stable across removals (swap-and-pop).
 }
 ```
 
@@ -269,7 +269,7 @@ function getCommunityStats() external view returns (
     uint256 totalPowerDistributed,
     uint256 averagePowerPerVerifier
 ) {
-    // Counts only active verifiers in the bound community roster
+    // Counts only active verifiers in the bound community roster. This token instance is community-scoped (immutable communityId), so mint/burn/adminTransfer do not take a communityId parameter.
 }
 ```
 
