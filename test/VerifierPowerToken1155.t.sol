@@ -450,12 +450,12 @@ contract VerifierPowerToken1155Test is Test {
 
         vm.startPrank(timelock);
         bytes4[] memory selectors = new bytes4[](6);
-        selectors[0] = bytes4(keccak256("initializeCommunity(string)"));
-        selectors[1] = bytes4(keccak256("mint(address,uint256,string)"));
-        selectors[2] = bytes4(keccak256("burn(address,uint256,string)"));
-        selectors[3] = bytes4(keccak256("batchMint(address[],uint256[],string)"));
-        selectors[4] = bytes4(keccak256("batchBurn(address[],uint256[],string)"));
-        selectors[5] = bytes4(keccak256("adminTransfer(address,address,uint256,string)"));
+        selectors[0] = VerifierPowerToken1155.initializeCommunity.selector;
+        selectors[1] = VerifierPowerToken1155.mint.selector;
+        selectors[2] = VerifierPowerToken1155.burn.selector;
+        selectors[3] = VerifierPowerToken1155.batchMint.selector;
+        selectors[4] = VerifierPowerToken1155.batchBurn.selector;
+        selectors[5] = VerifierPowerToken1155.adminTransfer.selector;
         accessManager.setTargetFunctionRole(address(otherVpt), selectors, accessManager.ADMIN_ROLE());
 
         vpt.initializeCommunity("metadata1");

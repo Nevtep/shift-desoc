@@ -266,7 +266,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
     }
     
     /// @notice Get active verifier addresses and powers for the bound community.
-    /// @dev Returns a paginated slice of the current active verifier roster.
+    /// @dev Returns a paginated slice of the current active verifier roster; order is not stable across removals (swap-and-pop).
     /// @return verifiers Array of verifier addresses 
     /// @return powers Array of corresponding verifier power amounts
     /// @return hasMore True if there are more results beyond maxResults
