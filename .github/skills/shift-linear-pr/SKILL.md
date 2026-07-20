@@ -47,7 +47,7 @@ Do not use this skill to implement code, merge PRs, deploy, bypass human review,
 4. Inspect the current branch.
 5. Verify the branch name includes exactly one Linear issue ID using `feat/SHI-XXX/short-description` or `imp/SHI-XXX/short-description`.
 6. Verify the PR title includes the same issue ID.
-7. Generate or update the PR body using `.github/pull_request_template.md`.
+7. Generate or update the PR body using `.github/PULL_REQUEST_TEMPLATE.md`.
 8. Add a dedicated Linear section using `Completes SHI-XXX` when the PR fully satisfies the issue, or `Related to SHI-XXX` when the PR is partial or preparatory.
 9. Add a separate GitHub community issue section using `Related GitHub issues: #123` only when applicable.
 10. Include scope, files changed, tests run, risks, contract/deploy impact, migration impact, and review notes.
@@ -76,7 +76,7 @@ Return:
 ## References
 
 - `AGENTS.md`
-- `.github/pull_request_template.md`
+- `.github/PULL_REQUEST_TEMPLATE.md`
 - `.github/copilot-instructions.md`
 - `.github/project-management/STATUS_REVIEW.md`
 - `.github/project-management/IMPLEMENTATION_STATUS.md`
