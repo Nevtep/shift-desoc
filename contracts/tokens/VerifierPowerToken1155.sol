@@ -161,13 +161,13 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
             }
             
             totalAmount += amounts[i];
+            _totalSupply -= amounts[i];
             _burn(from[i], communityId, amounts[i]);
             _syncActiveVerifier(from[i]);
             
             emit VerifierRevoked(from[i], communityId, amounts[i], reasonCID);
         }
         
-        _totalSupply -= totalAmount;
     }
     
     /// @notice Disable regular transfers - only AccessManager-authorized transfers allowed via adminTransfer
@@ -300,7 +300,7 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         }
 
         hasMore = resultLength < remaining;
-    
+    }
     /// @notice Get verifier power statistics for this token's immutable community
     /// @return totalVerifiers Total number of active verifiers in the bound community roster
     /// @return totalPower Total verifier power distributed
