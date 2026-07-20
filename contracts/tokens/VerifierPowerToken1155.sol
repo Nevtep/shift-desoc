@@ -119,19 +119,17 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
         if (to.length != amounts.length) revert Errors.InvalidInput("Array length mismatch");
         if (!_communityInitialized) revert CommunityNotInitialized(communityId);
         
-        uint256 totalAmount = 0;
         for (uint256 i = 0; i < to.length; i++) {
             if (to[i] == address(0)) revert Errors.ZeroAddress();
             if (amounts[i] == 0) revert InvalidAmount(amounts[i]);
             
-            totalAmount += amounts[i];
+            _totalSupply += amounts[i];
             _mint(to[i], communityId, amounts[i], "");
             _syncActiveVerifier(to[i]);
             
             emit VerifierGranted(to[i], communityId, amounts[i], reasonCID);
         }
         
-        _totalSupply += totalAmount;
     }
     
     /// @notice Batch burn verifier power for this token's immutable community
@@ -150,7 +148,6 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
     ) internal {
         if (from.length != amounts.length) revert Errors.InvalidInput("Array length mismatch");
         
-        uint256 totalAmount = 0;
         for (uint256 i = 0; i < from.length; i++) {
             if (from[i] == address(0)) revert Errors.ZeroAddress();
             if (amounts[i] == 0) revert InvalidAmount(amounts[i]);
@@ -160,7 +157,6 @@ contract VerifierPowerToken1155 is ERC1155, AccessManaged {
                 revert InsufficientBalance(from[i], communityId, amounts[i], currentBalance);
             }
             
-            totalAmount += amounts[i];
             _totalSupply -= amounts[i];
             _burn(from[i], communityId, amounts[i]);
             _syncActiveVerifier(from[i]);
