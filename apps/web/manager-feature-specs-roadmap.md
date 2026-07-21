@@ -60,12 +60,11 @@ This section is the practical delivery order for issues that are already concret
 | 18 | `SHI-28` | credential admin/read surface depends on the new projections | `agent-ready`; follows `SHI-29` |
 | 19 | `SHI-31` | position admin/read surface depends on the same projection layer | `agent-ready`; follows `SHI-29` |
 | 20 | `SHI-30` | typed SBT visibility should come after the underlying credential/position records are readable | `agent-ready`; follows `SHI-29`, benefits from `SHI-28` and `SHI-31` |
-| 21 | `SHI-52` | VPT helper cleanup should land before Phase 3 is considered stable | `agent-ready`; engineering cleanup that supports verifier truthfulness |
-| 22 | `SHI-54` | engagement revocation side effects must be closed before verification flows are treated as complete | `agent-ready`; engineering cleanup for Phase 3 stability |
-| 23 | `SHI-45` | treasury and CommunityToken read foundations should land before any economic operator surface tries to act on them | `agent-ready`; first child under `SHI-23` |
-| 24 | `SHI-46` | TreasuryAdapter preview/policy UX builds directly on the read foundation | `agent-ready`; follows `SHI-45` |
-| 25 | `SHI-47` | CommunityToken reserve and treasury UX also builds on the same foundation | `agent-ready`; follows `SHI-45` |
-| 26 | `SHI-51` | CommerceDisputes juror-integration cleanup should land before dispute UI is treated as a stable target | `agent-ready`; Phase 5 engineering cleanup |
+| 21 | `SHI-54` | engagement revocation side effects must be closed before verification flows are treated as complete | `agent-ready`; engineering cleanup for Phase 3 stability |
+| 22 | `SHI-45` | treasury and CommunityToken read foundations should land before any economic operator surface tries to act on them | `agent-ready`; first child under `SHI-23` |
+| 23 | `SHI-46` | TreasuryAdapter preview/policy UX builds directly on the read foundation | `agent-ready`; follows `SHI-45` |
+| 24 | `SHI-47` | CommunityToken reserve and treasury UX also builds on the same foundation | `agent-ready`; follows `SHI-45` |
+| 25 | `SHI-51` | CommerceDisputes juror-integration cleanup should land before dispute UI is treated as a stable target | `agent-ready`; Phase 5 engineering cleanup |
 
 ## Spec-First Queue
 
@@ -121,9 +120,11 @@ If you want the fastest pass through Linear without losing the development logic
 1. `SHI-9`, `SHI-15`, `SHI-18`, `SHI-22`, `SHI-23`, `SHI-20`, `SHI-24`
 2. `SHI-12`, `SHI-13`, `SHI-26`, `SHI-14`, `SHI-53`, `SHI-16`
 3. `SHI-48`, `SHI-50`, `SHI-17`, `SHI-21`, `SHI-49`
-4. `SHI-27`, `SHI-19`, `SHI-34`, `SHI-32`, `SHI-33`, `SHI-29`, `SHI-28`, `SHI-31`, `SHI-30`, `SHI-52`, `SHI-54`
+4. `SHI-27`, `SHI-19`, `SHI-34`, `SHI-32`, `SHI-33`, `SHI-29`, `SHI-28`, `SHI-31`, `SHI-30`, `SHI-54`
 5. `SHI-45`, `SHI-46`, `SHI-47`
 6. `SHI-20` with `SHI-40` to `SHI-44`, then `SHI-24` with `SHI-38`, `SHI-39`, `SHI-35`, `SHI-36`, `SHI-37`
+
+Completed on 2026-07-20: `SHI-52` moved out of the active implementation queue after the verifier-power helper cleanup merged.
 
 ## Sync Note
 
