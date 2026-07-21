@@ -8,8 +8,10 @@ vi.mock("next/headers", () => ({
 }));
 
 import HousingPage from "../../../app/housing/page";
+import ReservationDetailPage from "../../../app/housing/reservations/[reservationId]/page";
 import HousingReservationsPage from "../../../app/housing/reservations/page";
 import MarketplacePage from "../../../app/marketplace/page";
+import OfferDetailPage from "../../../app/marketplace/offers/[offerId]/page";
 import OffersPage from "../../../app/marketplace/offers/page";
 import { renderWithProviders } from "../utils";
 
@@ -36,5 +38,15 @@ describe("marketplace and housing capability signaling", () => {
 
     renderWithProviders(await HousingReservationsPage());
     expect(screen.getByText(/reservas de housing permanece en estado placeholder|housing reservations remains a placeholder route/i)).toBeInTheDocument();
+  });
+
+  it("keeps direct offer and reservation detail routes in explicit placeholder state", async () => {
+    renderWithProviders(await OfferDetailPage({ params: Promise.resolve({ offerId: "42" }) }));
+    expect(screen.getByText(/still a placeholder in manager/i)).toBeInTheDocument();
+    expect(screen.getByText(/what is still gated/i)).toBeInTheDocument();
+
+    renderWithProviders(await ReservationDetailPage({ params: Promise.resolve({ reservationId: "7" }) }));
+    expect(screen.getAllByText(/still a placeholder in manager/i)).toHaveLength(2);
+    expect(screen.getAllByText(/what is still gated/i)).toHaveLength(2);
   });
 });

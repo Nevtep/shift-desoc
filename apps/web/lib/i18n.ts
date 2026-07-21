@@ -368,7 +368,7 @@ const dictionaries = {
     marketplacePage: {
       metaTitle: "Marketplace | Shift DeSoc",
       metaDescription:
-        "Explora ofertas, housing y módulos de mercado de Shift con navegación clara por secciones.",
+        "Revisa el alcance actual de marketplace y el estado no operable de ofertas y housing en Shift.",
       badge: "Economía colaborativa",
       title: "Marketplace en Shift",
       subtitle:
@@ -398,7 +398,7 @@ const dictionaries = {
     offersPage: {
       metaTitle: "Ofertas | Shift DeSoc",
       metaDescription:
-        "Navega las ofertas del marketplace y mantén contexto de publicación, estado e integración comunitaria.",
+        "Revisa la ruta placeholder de ofertas y el estado actual de integración pendiente en Shift.",
       badge: "Mercado de ofertas",
       title: "Ofertas en Shift",
       subtitle:
@@ -425,7 +425,7 @@ const dictionaries = {
     housingPage: {
       metaTitle: "Housing | Shift DeSoc",
       metaDescription:
-        "Explora el hub de housing para reservas, disponibilidad y coordinación residencial dentro de Shift.",
+        "Revisa el estado actual del hub de housing no operable y su alcance pendiente dentro de Shift.",
       badge: "Coordinación residencial",
       title: "Housing en Shift",
       subtitle:
@@ -433,7 +433,7 @@ const dictionaries = {
       card1Title: "Disponibilidad",
       card1Body: "Visualiza el estado general de espacios habilitados por comunidad.",
       card2Title: "Reservas",
-      card2Body: "Accede al histórico y estado operativo de reservas en módulos activos.",
+      card2Body: "El histórico y estado de reservas permanecen bloqueados hasta que exista cobertura real en Manager.",
       card3Title: "Integración modular",
       card3Body: "El detalle crece con la evolución de marketplace e indexación de housing.",
       ctaReservations: "Ver reservas (próximamente)",
@@ -452,13 +452,13 @@ const dictionaries = {
     housingReservationsPage: {
       metaTitle: "Reservas Housing | Shift DeSoc",
       metaDescription:
-        "Consulta el estado de reservas de housing y su disponibilidad dentro del flujo de marketplace en Shift.",
+        "Revisa la ruta placeholder de reservas de housing y su estado actual no operable en Shift.",
       badge: "Reservas activas",
       title: "Reservas de Housing",
       subtitle:
         "Esta ruta todavía no ofrece seguimiento operativo real en Manager; la lectura final depende de integración pendiente.",
       card1Title: "Estado de reserva",
-      card1Body: "Monitorea reservas activas, confirmadas o cerradas cuando el indexer esté sincronizado.",
+      card1Body: "El seguimiento de reservas activas, confirmadas o cerradas permanece pendiente hasta que exista lectura real en Manager.",
       card2Title: "Disponibilidad",
       card2Body: "Cruza ocupación y capacidad para decisiones de coordinación residencial.",
       card3Title: "Operación continua",
@@ -1035,7 +1035,7 @@ const dictionaries = {
     marketplacePage: {
       metaTitle: "Marketplace | Shift DeSoc",
       metaDescription:
-        "Explore offers, housing, and marketplace modules in Shift through a clear section-based hub.",
+        "Review the current marketplace scope and the non-operable offers and housing state in Shift.",
       badge: "Collaborative economy",
       title: "Marketplace on Shift",
       subtitle:
@@ -1065,7 +1065,7 @@ const dictionaries = {
     offersPage: {
       metaTitle: "Offers | Shift DeSoc",
       metaDescription:
-        "Browse marketplace offers while preserving context around publication, status, and community integration.",
+        "Review the placeholder offers route and its current pending integration state in Shift.",
       badge: "Offers marketplace",
       title: "Offers on Shift",
       subtitle:
@@ -1092,7 +1092,7 @@ const dictionaries = {
     housingPage: {
       metaTitle: "Housing | Shift DeSoc",
       metaDescription:
-        "Explore the housing hub for reservations, availability, and residential coordination in Shift.",
+        "Review the current non-operable housing hub and its pending scope in Shift.",
       badge: "Residential coordination",
       title: "Housing on Shift",
       subtitle:
@@ -1100,7 +1100,7 @@ const dictionaries = {
       card1Title: "Availability",
       card1Body: "See high-level status of spaces enabled by each community.",
       card2Title: "Reservations",
-      card2Body: "Open reservation history and operational state in active modules.",
+      card2Body: "Reservation history and operational state remain unavailable until real Manager coverage exists.",
       card3Title: "Modular integration",
       card3Body: "Detail expands as marketplace and housing indexing mature.",
       ctaReservations: "View reservations (coming soon)",
@@ -1119,13 +1119,13 @@ const dictionaries = {
     housingReservationsPage: {
       metaTitle: "Housing Reservations | Shift DeSoc",
       metaDescription:
-        "Track housing reservation status and availability within the Shift marketplace flow.",
+        "Review the placeholder housing reservations route and its current non-operable state in Shift.",
       badge: "Active reservations",
       title: "Housing Reservations",
       subtitle:
         "This route does not yet provide real reservation operations in Manager; final read support still depends on pending integration.",
       card1Title: "Reservation status",
-      card1Body: "Monitor active, confirmed, and closed reservations when indexer data is available.",
+      card1Body: "Active, confirmed, and closed reservation tracking remains unavailable until real Manager reads exist.",
       card2Title: "Availability",
       card2Body: "Combine occupancy and capacity signals for residential coordination.",
       card3Title: "Continuous operations",

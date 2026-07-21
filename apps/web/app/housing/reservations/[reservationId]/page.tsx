@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Reservation Detail | Shift"
+  title: "Reservation Detail (Coming Soon) | Shift"
 };
 
 type PageProps = {
@@ -16,14 +16,15 @@ export default async function ReservationDetailPage({ params }: PageProps) {
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Reservation</p>
         <h1 className="text-3xl font-semibold">Reservation {reservationId}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Reservation timeline, payment events, and dispute status will appear when the indexer delivers
-          housing events.
+          This detail route is still a placeholder in Manager. Reservation timeline, payment events, and
+          dispute status are not yet operable here.
         </p>
       </header>
       <section className="card">
-        <h2 className="text-lg font-medium">Stay Details</h2>
+        <h2 className="text-lg font-medium">What is still gated</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Nightly schedule, participants, and token flows display here once data is available.
+          Nightly schedule, participants, token flows, and reservation actions stay unavailable until
+          housing projections and Manager read surfaces exist.
         </p>
       </section>
     </main>
