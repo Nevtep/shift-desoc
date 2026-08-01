@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift.local/schemas/shift-agent-skill-result.v1.json",
+  "title": "Shift Agent Skill Result",
+  "description": "Versioned machine-readable result contract for repo-local Shift workflow skills.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "operationKey",
+    "status",
+    "summary",
+    "evidence",
+    "warnings",
+    "errors",
+    "nextAction",
+    "sideEffects"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "shift-agent-skill-result.v1" },
+    "operationKey": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable idempotency key for the attempted operation, such as skill-name:SHI-123 or shift-linear-pr:branch-name."
+    },
+    "status": { "enum": ["success", "blocked", "failed", "partial"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "evidence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceItem" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/errorItem" }
+    },
+    "nextAction": { "$ref": "#/$defs/nextAction" },
+    "skill": { "type": "string", "minLength": 1 },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifactItem" }
+    },
+    "sideEffects": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/sideEffectItem" }
+    },
+    "validation": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/validationItem" }
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Skill-specific extension data. Root-level extensions are not allowed."
+    }
+  },
+  "$defs": {
+    "evidenceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "source", "summary"],
+      "properties": {
+        "kind": { "enum": ["file", "command", "tool", "memory", "issue", "pr", "check", "other"] },
+        "source": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "errorItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "recoverable": { "type": "boolean" }
+      }
+    },
+    "nextAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "description"],
+      "properties": {
+        "type": { "enum": ["none", "continue", "retry", "human_input", "blocked", "handoff"] },
+        "description": { "type": "string" }
+      }
+    },
+    "artifactItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "pathOrUrl", "summary"],
+      "properties": {
+        "kind": { "enum": ["file", "issue", "pr", "branch", "commit", "comment", "sdd_artifact", "other"] },
+        "pathOrUrl": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "sideEffectItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect", "target", "status", "summary"],
+      "properties": {
+        "effect": { "enum": ["none", "branch", "commit", "push", "pr", "issue_update", "comment", "status_change", "file_write", "other"] },
+        "target": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["none", "attempted", "applied"] },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "validationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "target", "status", "summary"],
+      "properties": {
+        "kind": { "enum": ["command", "manual_check", "schema", "test", "lint", "typecheck", "other"] },
+        "target": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["passed", "failed", "skipped", "blocked"] },
+        "summary": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

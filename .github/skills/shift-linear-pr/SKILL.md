@@ -4,74 +4,64 @@ description: "Trigger: Shift PR creation, Shift PR update, Linear-linked GitHub 
 license: Apache-2.0
 metadata:
   author: GitHub Copilot
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Activation Contract
 
-Use this skill when a Shift implementation branch is ready for PR creation or update, a repo-local agent needs to open a PR from a Linear issue branch, a human wants to standardize PR title and body linkage, or a PR needs Linear linkage cleanup before review.
+Use this skill when a Shift implementation branch is ready for PR creation/update, a Linear issue branch needs a GitHub PR, or PR title/body linkage needs cleanup before review.
 
-Do not use this skill to implement code, merge PRs, deploy, bypass human review, close Linear issues manually when the native GitHub integration can handle it, or treat GitHub Issues as the internal source of truth.
+Do not use it to implement code, merge, deploy, bypass human review, manually close Linear issues handled by native GitHub integration, or treat GitHub Issues as internal planning truth.
+
+## Preconditions
+
+- Linear issue ID, GitHub branch, and PR intent are known.
+- Read the target Linear issue, `AGENTS.md`, and Engram project context for `shift-desoc` before PR metadata changes.
+- Required capability: GitHub CLI/app access in non-interactive mode. If unavailable, return blocked with evidence.
 
 ## Hard Rules
 
-- Read the target Linear issue before touching PR metadata.
-- Read `AGENTS.md` and follow the repo truth hierarchy.
-- Recover Engram context for project `shift-desoc` before deciding suitability.
-- Treat Linear as the internal source of truth for planning and implementation.
-- Do not use the global `branch-pr` skill for Shift Linear issues.
-- Verify the branch name contains exactly one primary Linear issue ID using `feat/SHI-XXX/short-description` or `imp/SHI-XXX/short-description`.
-- Verify the PR title includes the same Linear issue ID.
-- Use a Linear-supported closing phrase such as `Completes SHI-XXX`, `Fixes SHI-XXX`, `Resolves SHI-XXX`, or `Closes SHI-XXX` only when the PR fully satisfies the issue.
-- Use a non-closing phrase such as `Related to SHI-XXX` or `Refs SHI-XXX` when the PR is partial or preparatory.
-- Never use GitHub closing words for community GitHub issues unless the user explicitly wants the GitHub issue closed.
-- Do not merge, deploy, or bypass human review.
-- Do not manually close the Linear issue if the PR already uses the correct Linear closing phrase.
+- Treat Linear as internal source of truth and GitHub community issues as separate public context.
+- Do not use global `branch-pr` for Shift Linear issue PRs.
+- Verify branch name has exactly one primary issue ID: `feat/SHI-XXX/short-description` or `imp/SHI-XXX/short-description`.
+- Verify PR title and body preserve the same primary Linear issue ID.
+- Use a Linear closing phrase only when the PR fully satisfies the issue; never manually close that Linear issue afterward.
+- Do not merge, deploy, force-push, edit code, or advance Linear status unless the PR is review-ready.
+- Idempotency: update an existing PR for the branch before creating a new one; reuse prior comments when possible.
+- Codex non-interactive mode: do not rely on browser prompts; stop on missing auth, ambiguous linkage, or unavailable template.
 
 ## Decision Gates
 
 | Situation | Action |
 | --- | --- |
-| Branch and PR clearly map to one Linear issue | Proceed |
-| Branch contains no Linear issue ID or more than one primary issue ID | Stop and report the exact mismatch |
-| PR is partial or preparatory | Use a non-closing Linear phrase |
-| PR fully satisfies the Linear issue | Use a closing Linear phrase |
-| GitHub community issues are relevant but should remain open | Reference them without closing wording |
-| Human wants a GitHub community issue closed too | Use explicit GitHub closing wording only for that issue |
+| Branch/PR map to one Linear issue | Proceed |
+| No issue ID or multiple primary IDs | Stop; report mismatch |
+| Partial/preparatory PR | Use non-closing phrase |
+| Complete implementation | Use closing phrase |
+| GitHub community issue should remain open | Reference without closing wording |
+| Human explicitly wants GitHub issue closed | Use explicit GitHub closing wording only for that issue |
 
-## Procedure
+## Execution Steps
 
-1. Read the target Linear issue.
-2. Read `AGENTS.md`.
-3. Recover relevant Engram context for `shift-desoc`.
-4. Inspect the current branch.
-5. Verify the branch name includes exactly one Linear issue ID using `feat/SHI-XXX/short-description` or `imp/SHI-XXX/short-description`.
-6. Verify the PR title includes the same issue ID.
-7. Generate or update the PR body using `.github/PULL_REQUEST_TEMPLATE.md`.
-8. Add a dedicated Linear section using `Completes SHI-XXX` when the PR fully satisfies the issue, or `Related to SHI-XXX` when the PR is partial or preparatory.
-9. Add a separate GitHub community issue section using `Related GitHub issues: #123` only when applicable.
-10. Include scope, files changed, tests run, risks, contract/deploy impact, migration impact, and review notes.
-11. Open or update the GitHub PR.
-12. Update the Linear issue comment with PR URL, branch name, tests run, and whether the PR uses a closing or non-closing Linear phrase.
-13. Move the Linear issue to review only if the PR is ready for human review.
+1. Read target Linear issue and repo guidance; recover Engram memories.
+2. Inspect branch, diff summary, existing PR, and `.github/PULL_REQUEST_TEMPLATE.md`.
+3. Verify one primary Linear issue ID across branch, title, and body.
+4. Generate/update PR body with scope, files changed, tests, risks, contract/deploy impact, migration impact, and review notes.
+5. Add dedicated `Linear issue` and `Closing phrase` sections using `Completes SHI-XXX` for complete work or `Related to SHI-XXX` for partial work.
+6. Keep GitHub community issue references in a separate non-closing section unless explicitly requested.
+7. Create/update the PR, then comment/update Linear with PR URL, branch, tests, and closing/non-closing phrase.
+8. Move Linear to review only when the PR is ready for human review.
 
 ## PR Contract
 
-- The branch name, PR title, and PR body must all preserve the same primary Linear issue ID.
-- The PR body must have a dedicated `Linear issue` section and a dedicated `Closing phrase` section.
-- The PR body must keep GitHub community issues in a separate section from Linear linkage.
+- Branch name, PR title, and PR body use the same primary Linear issue ID.
 - Prefer exactly one primary Linear closing or non-closing phrase per PR.
-- If the PR is not ready for review, update the PR metadata but do not advance the Linear issue to review.
+- If not review-ready, update metadata but do not advance Linear status.
+- All external side effects must be listed in the result.
 
 ## Output Contract
 
-Return:
-- PR created or updated
-- Linear issue linked
-- closing phrase used
-- GitHub community issues referenced, if any
-- tests summarized
-- remaining review or deploy blockers
+Return a short human summary plus JSON matching `../_shared/shift-agent-skill-result.schema.json` with `schemaVersion: "shift-agent-skill-result.v1"`. `operationKey` and `sideEffects` are required; `sideEffects` must list `none`, `attempted`, or `applied` effects. Include PR URL/state, Linear issue, closing phrase, community issue refs, side effects, tests summarized, validation checks, and blockers.
 
 ## References
 
@@ -81,3 +71,4 @@ Return:
 - `.github/project-management/STATUS_REVIEW.md`
 - `.github/project-management/IMPLEMENTATION_STATUS.md`
 - `.github/skills/linear-implement-agent-ready/SKILL.md`
+- `.github/skills/_shared/shift-agent-skill-result.schema.json`

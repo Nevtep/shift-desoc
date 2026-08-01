@@ -4,78 +4,63 @@ description: "Trigger: Linear issue, workflow:agent-ready, implementation, tests
 license: Apache-2.0
 metadata:
   author: GitHub Copilot
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Activation Contract
 
-Use this skill when one Shift Linear issue is already labeled `workflow:agent-ready`, is not blocked, does not require a gentle SDD spec, and the next step is implementation rather than planning.
+Use this skill when one Shift Linear issue is labeled `workflow:agent-ready`, unblocked, spec-free, concrete, and ready for implementation.
 
-Do not use this skill for phase umbrellas, `workflow:needs-spec` issues, blocked issues, issues that are still too broad, or issues that require unresolved smart-contract architecture decisions.
+Do not use it for umbrellas, `workflow:needs-spec`, blocked issues, broad work, or unresolved smart-contract architecture decisions.
+
+## Preconditions
+
+- Required capability: Linear, git, GitHub, package/test tooling, and Engram. If unavailable, return blocked with evidence.
+- Read target issue, `AGENTS.md`, and Engram project context for `shift-desoc` before code or git changes.
+- Worktree must be clean except intentional user/other-agent edits; never revert or overwrite others.
 
 ## Hard Rules
 
-- Read the target Linear issue before touching code, git state, or Linear status.
-- Read `AGENTS.md` and follow the repo truth hierarchy.
-- Recover Engram context for project `shift-desoc` before deciding suitability.
-- Confirm the issue is concrete, unblocked, and explicitly ready for implementation.
-- Inspect only files tied to the issue evidence and affected paths.
-- Keep the implementation scoped to one issue and do not create specs.
-- Do not modify unrelated files, do not merge the PR, and do not deploy.
-- When opening the PR, include the Linear issue ID with a supported closing phrase in the PR title or description so Linear moves the issue on merge.
-- Use `.github/skills/shift-linear-pr/SKILL.md` for PR creation or PR metadata updates instead of the global `branch-pr` skill.
-- Preserve Shift architecture invariants; do not change smart-contract architecture unless the issue explicitly requires it.
-- Use the narrowest validation for the affected surface: Foundry for contracts, focused web checks for web, focused indexer checks for indexer.
+- Inspect and edit only files tied to issue evidence and acceptance criteria.
+- Do not create specs, merge PRs, deploy, edit unrelated Linear issues, or change smart-contract architecture unless the issue requires it.
+- Branch policy: use/reuse `feat/SHI-XXX/short-description` for features or `imp/SHI-XXX/short-description` for improvements; stop if current branch/worktree ownership is ambiguous.
+- Validation policy: add/update required tests, run the narrowest relevant command, and widen only when evidence requires it.
+- PR policy: use `.github/skills/shift-linear-pr/SKILL.md`; include exactly one supported Linear closing phrase for a complete implementation.
+- Idempotency: reuse existing branch/PR/comments when they match the issue; do not duplicate side effects.
+- Codex non-interactive mode: avoid prompts/browser waits; if auth, permissions, installs, or conflicts block progress, return blocked with evidence.
 
 ## Decision Gates
 
 | Situation | Action |
 | --- | --- |
-| Issue is `workflow:agent-ready`, unblocked, concrete, and spec-free | Proceed with implementation |
-| Issue is an umbrella, blocked, too broad, or missing acceptance criteria | Stop and report the exact reason |
-| Issue is `workflow:needs-spec` or says spec is required | Stop and recommend `linear-sdd-from-issue` |
-| Issue needs further splitting before a safe PR exists | Stop and recommend `linear-issue-refiner` |
+| Agent-ready, unblocked, concrete, spec-free | Implement |
+| Umbrella, blocked, broad, or missing acceptance criteria | Stop; report failed gate |
+| Needs spec | Stop; recommend `linear-sdd-from-issue` |
+| Needs splitting | Stop; recommend `linear-issue-refiner` |
+| Dirty/ambiguous worktree | Stop or isolate only with explicit permission |
 
 ## Execution Steps
 
-1. Read the target Linear issue, labels, status, parent, dependencies, acceptance criteria, and validation notes.
-2. Read `AGENTS.md`.
-3. Recover relevant Engram context for `shift-desoc`.
-4. Verify suitability: `workflow:agent-ready`, not blocked, concrete acceptance criteria, no gentle SDD spec required.
-5. If unsuitable, stop and report the exact gate that failed.
-6. Check the current git branch and working tree.
-7. If not already on an issue branch, create one using `feat/SHI-XXX/short-description` for feature issues or `imp/SHI-XXX/short-description` for improvement issues.
-8. Move the Linear issue to the existing active implementation status; do not invent a new status.
-9. Read only the issue-relevant repo paths referenced by the issue evidence.
-10. Implement the issue without widening scope.
-11. Add or update the tests required by the issue.
-12. Run the relevant validation commands for the touched surface.
-13. If validation fails, fix within scope or stop and report the blocker clearly.
-14. Commit the finished changes with a message that references the Linear issue.
-15. Push the branch.
-16. Create or update the PR through `.github/skills/shift-linear-pr/SKILL.md`.
-17. Update the same Linear issue with branch name, PR link, files changed, tests run, result, and known blockers if any.
-18. Move the Linear issue to the existing review or PR-ready status.
+1. Read issue labels, status, parent, dependencies, acceptance criteria, and validation notes.
+2. Read repo guidance and recover relevant Engram memories.
+3. Verify suitability; stop on any failed gate.
+4. Check branch and working tree; protect others' edits.
+5. Create/reuse the issue branch and move Linear to the existing implementation status.
+6. Read issue-relevant paths, implement narrowly, and update tests.
+7. Run focused validation; fix in scope or stop with blocker evidence.
+8. Commit, push, and create/update the PR via `shift-linear-pr` only when user policy allows those side effects.
+9. Update the same Linear issue with branch, PR, files changed, tests, result, and blockers; move to review only when ready.
 
 ## PR Linking Contract
 
-- Use the Linear issue ID in the branch name, for example `feat/SHI-61/baseline-pr-validation`.
-- Put one supported closing phrase in the PR title or description for the primary issue.
-- Supported closing phrases include `close*`, `fix*`, `resolve*`, and `complete*` forms, such as `Closes SHI-61`, `Fixes SHI-61`, `Resolves SHI-61`, or `Completes SHI-61`.
-- If the PR should link without closing on merge, use a non-closing phrase such as `ref SHI-61`, `related to SHI-61`, or `part of SHI-61` instead.
-- Prefer exactly one closing phrase for the primary issue in implementation PRs created by this skill.
-- Keep GitHub community issue references separate and non-closing unless the user explicitly wants a GitHub issue closed.
+- Branch, PR title, and PR body preserve the same primary Linear issue ID.
+- Closing phrases include `Closes SHI-XXX`, `Fixes SHI-XXX`, `Resolves SHI-XXX`, or `Completes SHI-XXX`.
+- Partial/preparatory work uses non-closing phrases like `Related to SHI-XXX`, `Refs SHI-XXX`, or `Part of SHI-XXX`.
+- Keep GitHub community issues separate and non-closing unless explicitly requested.
 
 ## Output Contract
 
-Return:
-- target issue
-- branch created or reused
-- files changed
-- tests run
-- PR created
-- Linear status update
-- remaining blockers, if any
+Return a short human summary plus JSON matching `../_shared/shift-agent-skill-result.schema.json` with `schemaVersion: "shift-agent-skill-result.v1"`. `operationKey` and `sideEffects` are required; `sideEffects` must list `none`, `attempted`, or `applied` effects. Include issue, branch/PR, files changed, commits if allowed, side effects, tests run, validation evidence, Linear update, and blockers.
 
 ## References
 
@@ -86,3 +71,4 @@ Return:
 - `.github/skills/shift-linear-pr/SKILL.md`
 - `.github/skills/linear-issue-refiner/SKILL.md`
 - `.github/skills/linear-sdd-from-issue/SKILL.md`
+- `.github/skills/_shared/shift-agent-skill-result.schema.json`

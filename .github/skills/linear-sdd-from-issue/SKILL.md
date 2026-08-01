@@ -4,54 +4,52 @@ description: "Trigger: Linear issue, workflow:needs-spec, gentle SDD spec requir
 license: Apache-2.0
 metadata:
   author: GitHub Copilot
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Activation Contract
 
-Use this skill when a Shift Linear issue is a concrete child issue, is labeled `workflow:needs-spec` or explicitly requires a gentle SDD spec, and the next step is spec creation rather than implementation.
+Use this skill when a concrete Shift child issue is labeled `workflow:needs-spec` or explicitly requires a gentle SDD spec, and the next step is repo-grounded `/sdd-new` planning.
 
-Do not use this skill for phase umbrellas, issues that are still too broad, issues already labeled `workflow:agent-ready`, implementation requests, or issues missing concrete outcome/evidence/acceptance details.
+Do not use it for umbrellas, broad issues, `workflow:agent-ready` issues, implementation, or issues missing concrete outcome/evidence/acceptance details.
+
+## Preconditions
+
+- Required capability: Linear access and target issue ID. If unavailable, return blocked with evidence.
+- Read the issue, `AGENTS.md`, and Engram project context for `shift-desoc` before suitability decisions.
+- Use the active gentle SDD artifact store chosen by the orchestrator; if unknown, report blocked instead of inventing one.
 
 ## Hard Rules
 
-- Read the target Linear issue before any spec work.
-- Read `AGENTS.md` and follow the repo truth hierarchy.
-- Recover Engram context for project `shift-desoc` before deciding suitability.
-- Treat the Linear issue as the primary source of truth, then verify only the referenced repo surfaces.
-- Do not implement code, modify unrelated issues, or create child issues unless the target proves too broad.
-- If the issue is too broad or under-specified, stop and recommend `.github/skills/linear-issue-refiner/SKILL.md` instead.
+- Treat the Linear issue as primary planning input, then verify only referenced repo surfaces.
+- Do not implement code, update unrelated issues, branch, commit, push, or create child issues unless the target proves too broad.
+- If too broad or under-specified, stop and recommend `.github/skills/linear-issue-refiner/SKILL.md`.
+- Preserve Shift authority, treasury, ParamController, indexer, and Manager invariants from `AGENTS.md`.
+- Idempotency: reuse/update the existing SDD artifact for the same issue/change when present; do not create duplicate specs.
+- Codex non-interactive mode: do not open browser-only flows; return blocked when required Linear/SDD tools are unavailable.
 
 ## Decision Gates
 
 | Situation | Action |
 | --- | --- |
-| Issue is an umbrella or mixes multiple delivery seams | Stop and recommend `linear-issue-refiner` |
-| Issue lacks product outcome, source evidence, affected paths, or acceptance criteria | Stop and report missing inputs |
-| Issue says spec is required and is concrete enough | Proceed into `/sdd-new` preparation |
-| Blocking open questions appear during evidence gathering | Record them in the spec and update Linear |
+| Umbrella or multiple delivery seams | Stop; recommend `linear-issue-refiner` |
+| Missing outcome, evidence, paths, or acceptance criteria | Stop; report missing inputs |
+| Concrete and spec-required | Prepare/run `/sdd-new` |
+| Blocking questions appear | Record them in SDD output and Linear update |
 
 ## Execution Steps
 
-1. Read the target Linear issue, labels, parent, status, and description.
-2. Read `AGENTS.md`.
-3. Recover relevant Engram context for `shift-desoc`.
-4. Confirm the issue is not an umbrella and includes product outcome, source evidence, affected repo paths, acceptance criteria, and explicit gentle SDD spec guidance.
-5. Gather only the issue-relevant repo context: referenced docs, contracts, tests, web/indexer files, status docs, and relevant Engram memories.
-6. If the issue is too broad, stop and recommend `/linear-issue-refiner` instead of creating a spec.
-7. If suitable, invoke or follow the existing `/sdd-new` workflow using the Linear issue as the primary source of truth.
-8. Create the spec in the repo's existing gentle SDD convention with: problem statement, user/admin goal, current evidence, target behavior, non-goals, functional requirements, data/read-model requirements, authority/permission model, UX states, error/failure states, affected files, implementation plan outline, validation strategy, and blocking open questions only when necessary.
-9. Update the same Linear issue with the spec path/link, a short spec summary, any blockers or open questions, and the recommended next status.
+1. Read issue labels, parent, status, description, acceptance criteria, and dependencies.
+2. Read repo guidance and recover relevant Engram memories.
+3. Confirm the issue is concrete, spec-required, and evidence-backed.
+4. Gather only referenced docs, contracts, tests, web/indexer paths, status docs, and memories.
+5. Invoke/follow `/sdd-new` using the Linear issue as source of truth.
+6. Ensure the spec captures problem, goal, current evidence, target behavior, non-goals, requirements, data/read models, authority/permissions, UX/error states, affected paths, validation, and open questions.
+7. Update the same Linear issue with spec path/link, summary, blockers, and next status recommendation.
 
 ## Output Contract
 
-Return:
-- target issue reviewed
-- spec created
-- spec path
-- Linear issue updated
-- whether implementation can start
-- recommended next command or issue
+Return a short human summary plus JSON matching `../_shared/shift-agent-skill-result.schema.json` with `schemaVersion: "shift-agent-skill-result.v1"`. `operationKey` and `sideEffects` are required; `sideEffects` must list `none`, `attempted`, or `applied` effects. Include target issue, SDD artifact ID/path, Linear update, side effects, suitability/validation checks, implementation readiness, blockers, and next command.
 
 ## References
 
@@ -60,3 +58,4 @@ Return:
 - `.github/project-management/STATUS_REVIEW.md`
 - `.github/project-management/IMPLEMENTATION_STATUS.md`
 - `.github/skills/linear-issue-refiner/SKILL.md`
+- `.github/skills/_shared/shift-agent-skill-result.schema.json`
