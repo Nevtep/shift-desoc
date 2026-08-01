@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift.local/schemas/linear-development-readiness-result.v1.json",
+  "title": "Linear Development Readiness Details",
+  "description": "Schema for the details payload of the read-only Shift Linear development readiness report. The root result must still use shift-agent-skill-result.v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "analyzedAt",
+    "linearSnapshot",
+    "repositorySnapshot",
+    "categories",
+    "candidateLimit",
+    "recommendedQueue",
+    "reanalysisTriggers"
+  ],
+  "properties": {
+    "analyzedAt": { "type": "string", "format": "date-time" },
+    "linearSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace", "project", "issueCount", "latestIssueUpdatedAt"],
+      "properties": {
+        "workspace": { "type": "string" },
+        "project": { "type": "string" },
+        "issueCount": { "type": "integer", "minimum": 0 },
+        "latestIssueUpdatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "repositorySnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mainCommit", "openPullRequests"],
+      "properties": {
+        "mainCommit": { "type": "string" },
+        "openPullRequests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/openPullRequest" }
+        }
+      }
+    },
+    "categories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "readyDirect",
+        "readySpecBacked",
+        "needsSpec",
+        "needsRefinement",
+        "blocked",
+        "inProgressOrPrOpen",
+        "doneOrObsolete",
+        "needsHuman"
+      ],
+      "properties": {
+        "readyDirect": { "$ref": "#/$defs/issueRefs" },
+        "readySpecBacked": { "$ref": "#/$defs/issueRefs" },
+        "needsSpec": { "$ref": "#/$defs/issueRefs" },
+        "needsRefinement": { "$ref": "#/$defs/issueRefs" },
+        "blocked": { "$ref": "#/$defs/issueRefs" },
+        "inProgressOrPrOpen": { "$ref": "#/$defs/issueRefs" },
+        "doneOrObsolete": { "$ref": "#/$defs/issueRefs" },
+        "needsHuman": { "$ref": "#/$defs/issueRefs" }
+      }
+    },
+    "candidateLimit": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum number of candidates requested for recommendedQueue."
+    },
+    "recommendedQueue": {
+      "type": "array",
+      "description": "Must contain no more items than candidateLimit.",
+      "items": { "$ref": "#/$defs/queueItem" }
+    },
+    "reanalysisTriggers": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "classification": {
+      "enum": [
+        "ready_direct",
+        "ready_spec_backed",
+        "needs_spec",
+        "needs_refinement",
+        "blocked",
+        "in_progress_or_pr_open",
+        "done_or_obsolete",
+        "needs_human"
+      ]
+    },
+    "complexity": { "enum": ["xs", "s", "m", "l", "xl", "unknown"] },
+    "risk": { "enum": ["low", "medium", "high", "unknown"] },
+    "confidence": { "enum": ["low", "medium", "high"] },
+    "issueRefs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/issueRef" }
+    },
+    "issueRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["issueId", "title", "classification", "evidence", "confidence"],
+      "properties": {
+        "issueId": { "type": "string", "pattern": "^[A-Z]+-[0-9]+$" },
+        "title": { "type": "string" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "queueItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "issueId",
+        "title",
+        "classification",
+        "executionMode",
+        "recommendedSkill",
+        "priority",
+        "readiness",
+        "complexity",
+        "risk",
+        "dependencyDepth",
+        "parallelConflictRisk",
+        "valueOrUrgency",
+        "blockedBy",
+        "conflictsWith",
+        "spec",
+        "confidence",
+        "evidence",
+        "reason"
+      ],
+      "properties": {
+        "rank": { "type": "integer", "minimum": 1 },
+        "issueId": { "type": "string", "pattern": "^[A-Z]+-[0-9]+$" },
+        "title": { "type": "string" },
+        "classification": { "$ref": "#/$defs/classification" },
+        "executionMode": { "enum": ["direct", "spec-backed", "spec", "refinement", "none"] },
+        "recommendedSkill": {
+          "enum": [
+            "linear-implement-agent-ready",
+            "linear-sdd-from-issue",
+            "linear-issue-refiner",
+            "none",
+            "human"
+          ]
+        },
+        "priority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["linear", "score", "reason"],
+          "properties": {
+            "linear": { "type": "string", "description": "Linear priority label or value." },
+            "score": { "type": "number" },
+            "reason": { "type": "string" }
+          }
+        },
+        "readiness": { "type": "string", "minLength": 1 },
+        "complexity": { "$ref": "#/$defs/complexity" },
+        "risk": { "$ref": "#/$defs/risk" },
+        "dependencyDepth": { "type": "integer", "minimum": 0 },
+        "parallelConflictRisk": { "$ref": "#/$defs/risk" },
+        "valueOrUrgency": { "type": "string", "minLength": 1 },
+        "blockedBy": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "conflictsWith": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required", "available", "artifact"],
+          "properties": {
+            "required": { "type": "boolean" },
+            "available": { "type": "boolean" },
+            "artifact": { "type": "string" }
+          }
+        },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "reason": { "type": "string" }
+      }
+    },
+    "openPullRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "title", "branch", "state", "linkedIssues"],
+      "properties": {
+        "number": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string" },
+        "branch": { "type": "string" },
+        "state": { "type": "string" },
+        "linkedIssues": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

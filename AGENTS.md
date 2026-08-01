@@ -16,6 +16,7 @@ Source-of-truth hierarchy for planning and delivery:
 ## Active Planning Workflow
 
 - Linear is the backlog and prioritization system.
+- Repo-local skill `.github/skills/linear-development-readiness/SKILL.md` is the read-only workflow for ranking open Shift issues and selecting the next safe execution queue without mutating Linear.
 - Selected Linear issues are refined through gentle SDD before implementation.
 - Repo-local skill `.github/skills/linear-issue-refiner/SKILL.md` is the focused workflow for splitting one broad Shift Linear issue into evidence-backed child issues.
 - Repo-local skill `.github/skills/linear-sdd-from-issue/SKILL.md` is the focused workflow for turning one concrete `workflow:needs-spec` Linear issue into a repo-grounded gentle SDD spec via `/sdd-new`.

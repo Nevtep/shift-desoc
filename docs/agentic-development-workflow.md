@@ -10,7 +10,7 @@ Current repo evidence:
 
 - On-chain governance exists through `ShiftGovernor -> Timelock` and governs privileged protocol actions.
 - Deploy and authority-mode handling already distinguish `admin-managed` and `governance-managed` staging outcomes.
-- Repo-local workflows now exist for issue refinement, issue-to-SDD, implementation of agent-ready/spec-backed/remediation issues, and audited PR publication.
+- Repo-local workflows now exist for backlog readiness analysis, issue refinement, issue-to-SDD, implementation of agent-ready/spec-backed/remediation issues, and audited PR publication.
 - Linear's native GitHub integration can already link PRs through branch name, PR title, and PR body wording, and can move linked Linear issues through configured PR automations on merge.
 - Repo-defined PR validation now starts with `.github/workflows/agentic-pr-checks.yml`; it covers install/lockfile, contract tests, web unit tests, and indexer unit tests without replacing external deployment checks.
 - There is no direct repo evidence of PR-to-governance, issue-to-governance, or merge-to-governance linkage.
@@ -74,11 +74,11 @@ Skills should own the reasoning-heavy repo workflows:
 
 | Skill | Purpose |
 |---|---|
+| `linear-development-readiness` | analyze open Linear issues and produce a read-only prioritized execution queue |
 | `linear-issue-refiner` | split broad or mixed Linear issues into evidence-backed child issues |
 | `linear-sdd-from-issue` | convert one concrete `workflow:needs-spec` issue into a repo-grounded gentle SDD path |
 | `linear-implement-agent-ready` | implement one concrete issue in `direct`, `spec-backed`, or `remediation` mode, then hand off for independent audit |
 | `shift-linear-pr` | create or update a Shift GitHub PR only after a passing independent audit for the same commit |
-| future `readiness analyzer` | rank and select executable Linear issues using repo evidence, dependencies, status, and workflow labels |
 | future `completeness auditor` | independently audit implementation completeness against the issue/spec/audit criteria before PR publication |
 | future `governance-release-prep` | prepare release evidence bundle for human and governance review |
 
@@ -415,7 +415,7 @@ Must be isolated from the implementation bot.
 
 1. Document the workflow and adopt the repo-local workflow skills as the reasoning layer.
 2. Add GitHub Actions for validation and PR policy enforcement.
-3. Add the missing readiness analyzer for issue selection and the completeness auditor as the PR publication gate.
+3. Add the missing completeness auditor as the PR publication gate; the readiness analyzer now exists as `linear-development-readiness`.
 4. Add orchestrator flows for Linear status sync and PR metadata sync.
 5. Keep merge and deploy human-gated.
 6. Later add governance approval metadata to release flow.
@@ -424,6 +424,7 @@ Must be isolated from the implementation bot.
 ## Repo Evidence Used For This Plan
 
 - `AGENTS.md` — active repo workflow, strict TDD map, and safety rules
+- `.github/skills/linear-development-readiness/SKILL.md` — read-only backlog readiness and execution-queue workflow
 - `.github/skills/linear-issue-refiner/SKILL.md` — issue refinement workflow
 - `.github/skills/linear-sdd-from-issue/SKILL.md` — issue-to-spec workflow
 - `.github/skills/linear-implement-agent-ready/SKILL.md` — issue-to-implementation workflow
