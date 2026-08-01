@@ -4,14 +4,14 @@ description: "Trigger: Linear issue refinement, specify issue split, workflow:ne
 license: Apache-2.0
 metadata:
   author: GitHub Copilot
-  version: "1.1"
+  version: "1.2"
 ---
 
 ## Activation Contract
 
 Use this skill when one Shift Linear issue is too broad for one PR, mixes multiple product/code surfaces, is labeled `workflow:needs-spec`, or is titled like `Specify ...`.
 
-Do not use it to create roadmaps, audit the whole repo, implement code, create specs, modify repo files, or invent unrelated backlog.
+Do not use it to create roadmaps, globally rank the backlog, audit the whole repo, implement code, create specs, modify repo files, or invent unrelated backlog.
 
 ## Preconditions
 
@@ -25,7 +25,10 @@ Do not use it to create roadmaps, audit the whole repo, implement code, create s
 - Inspect only issue-relevant surfaces: status docs, contracts, tests, deploy scripts, indexer, web, and referenced docs.
 - Preserve phase labels, parent-child structure, existing label taxonomy, and author intent.
 - Do not close issues, create repo files, commit, push, branch, or edit unrelated issues.
+- Do not mark or recommend an issue as implementation-ready from description text alone; first contrast it with repo evidence and dependencies.
+- Do not perform global backlog analysis or cross-backlog ranking; classify only the target issue and directly related children/duplicates.
 - Use idempotent updates: update existing matching children before creating new ones; include stable issue IDs in the result.
+- No-side-effect results must include `sideEffects: [{"effect":"none","target":"none","status":"none","summary":"No external side effects were performed."}]`.
 - Codex non-interactive mode: never wait for browser prompts; report missing credentials, permissions, or ambiguous duplicates as blocked.
 
 ## Decision Gates
@@ -34,23 +37,34 @@ Do not use it to create roadmaps, audit the whole repo, implement code, create s
 | --- | --- |
 | Valid umbrella for later spec | Keep parent and split/update children |
 | Multiple contracts, routes, or subsystems | Split into child issues |
-| Already narrow and executable | Mark/recommend `workflow:agent-ready` |
-| Lacks product or architecture clarity | Keep/recommend `workflow:needs-spec` |
+| Already narrow, evidence-backed, unblocked, and executable | Recommend `workflow:agent-ready` |
+| Requires design/product clarification | Recommend `workflow:needs-spec` and `linear-sdd-from-issue` |
 | Duplicates another active issue | Link evidence and stop; ask before closing |
 
 ## Execution Steps
 
-1. Read target issue labels, parent, status, description, dependencies, and existing children.
+1. Read target issue labels, parent, status, description, dependencies, updated timestamp, and existing children.
 2. Read repo guidance and recover relevant Engram memories.
 3. Verify current implementation reality from issue-relevant paths only.
 4. Classify the issue: keep, rewrite, split, agent-ready, needs-spec, or duplicate.
 5. Create/update child issues with product outcome, evidence paths, scope/non-goals, acceptance criteria, validation, dependencies, phase, and SDD requirement.
 6. Update the parent summary and child links without changing unrelated backlog.
-7. Recommend the next refinement or pickup issue.
+7. Recommend either `linear-sdd-from-issue` or `linear-implement-agent-ready` as the next workflow.
 
 ## Output Contract
 
-Return a short human summary plus JSON matching `../_shared/shift-agent-skill-result.schema.json` with `schemaVersion: "shift-agent-skill-result.v1"`. `operationKey` and `sideEffects` are required; `sideEffects` must list `none`, `attempted`, or `applied` effects. Include target issue, issues created/updated, parent-child structure, side effects, validation/evidence checks, blockers, and next recommendation.
+Return a short human summary plus JSON matching `../_shared/shift-agent-skill-result.schema.json` with `schemaVersion: "shift-agent-skill-result.v1"`. Use `operationKey: "linear-issue-refiner:SHI-123:<issue-updated-at>"`. Include required root fields: `schemaVersion`, `operationKey`, `status`, `summary`, `evidence`, `warnings`, `errors`, `nextAction`, and `sideEffects`.
+
+Put skill-specific fields under `details`:
+
+```json
+{
+  "classification": "split",
+  "issuesCreated": [],
+  "issuesUpdated": [],
+  "recommendedWorkflow": "linear-sdd-from-issue"
+}
+```
 
 ## References
 
@@ -58,4 +72,6 @@ Return a short human summary plus JSON matching `../_shared/shift-agent-skill-re
 - `.github/project-management/STATUS_REVIEW.md`
 - `.github/project-management/IMPLEMENTATION_STATUS.md`
 - `.github/copilot-instructions.md`
+- `.github/skills/linear-sdd-from-issue/SKILL.md`
+- `.github/skills/linear-implement-agent-ready/SKILL.md`
 - `.github/skills/_shared/shift-agent-skill-result.schema.json`

@@ -10,7 +10,7 @@ Current repo evidence:
 
 - On-chain governance exists through `ShiftGovernor -> Timelock` and governs privileged protocol actions.
 - Deploy and authority-mode handling already distinguish `admin-managed` and `governance-managed` staging outcomes.
-- Repo-local workflows now exist for issue refinement, issue-to-SDD, and direct implementation of `workflow:agent-ready` issues.
+- Repo-local workflows now exist for issue refinement, issue-to-SDD, implementation of agent-ready/spec-backed/remediation issues, and audited PR publication.
 - Linear's native GitHub integration can already link PRs through branch name, PR title, and PR body wording, and can move linked Linear issues through configured PR automations on merge.
 - Repo-defined PR validation now starts with `.github/workflows/agentic-pr-checks.yml`; it covers install/lockfile, contract tests, web unit tests, and indexer unit tests without replacing external deployment checks.
 - There is no direct repo evidence of PR-to-governance, issue-to-governance, or merge-to-governance linkage.
@@ -19,17 +19,17 @@ Current repo evidence:
 
 ## Local Audit Snapshot
 
-This section records a local audit snapshot for `/Users/core/Code/shift` on this machine. It is not universal repo policy and is not a permanent health guarantee. Re-verify before changing automation, but preserve these entries as the canonical local policy for this machine until a newer audit supersedes them.
+This section records a local audit snapshot for `/Users/core/Code/shift` on this machine. It is diagnostic evidence, not universal repo policy or a permanent health guarantee. Re-verify before changing automation.
 
 | Tool or surface | Local snapshot / policy |
 |---|---|
 | `gentle-ai` | Installed at `/opt/homebrew/bin/gentle-ai`, version `2.2.4`. Treat the stack as **degraded**, not failed, while `doctor` still reports issues. |
-| `gga` | `/opt/homebrew/bin/gga` exists, but version `2.10.0` has a script syntax error around lines 42-46. Homebrew reports stable `2.10.1`; upgrade is blocked because `/opt/homebrew` is not writable. Do not patch `/opt` files. |
+| `gga` | Earlier audit evidence found `/opt/homebrew/bin/gga` version `2.10.0` with a script syntax error; later same-day terminal evidence reported `2.10.1`. In managed Codex sandboxes, `/opt/homebrew` may be unreadable. Do not patch `/opt` files. |
 | `engram` | `/opt/homebrew/bin/engram`, version `1.20.0`. Engram remains the durable memory surface for project context and SDD recovery. |
 | Codex CLI | Canonical automation Codex is `/Users/core/.local/bin/codex`. Do not remove or replace the VS Code extension Codex binary. |
 | VS Code CLI | `code` is not in `PATH`; the app CLI exists at `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code`. Do not create a symlink as part of repo remediation. |
 | GitHub | `gh` exists at `/opt/homebrew/bin/gh`, but the Codex sandbox cannot read `~/.config/gh/hosts.yml`. Prefer the GitHub connector when available; treat local `gh` as context-dependent. |
-| Linear | Linear MCP is configured in Codex, but no Linear tools are available in this session. Treat Linear automation as unverified, not failed. |
+| Linear | Linear MCP is configured in Codex and has been verified readable in sessions that expose Linear tools. If a session lacks Linear tools, treat it as a session discovery/auth limitation rather than proof Linear is down. |
 | GitHub Actions | `.github/workflows/agentic-pr-checks.yml` is the repo-local minimum PR validation baseline. Vercel/Railway external statuses do not replace it and it does not duplicate deployments. |
 
 ## Orchestrator Invocation Policy
@@ -58,11 +58,13 @@ Use four layers of automation, each with a narrow responsibility:
 3. Human reviews and marks each issue `workflow:needs-spec` or `workflow:agent-ready`.
 4. `workflow:needs-spec` issues run through `linear-sdd-from-issue`.
 5. `workflow:agent-ready` issues run through `linear-implement-agent-ready`.
-6. Implementation agent creates branch, code changes, validation evidence, commit, push, and PR through the repo-local Shift PR workflow.
-7. Humans review the PR.
-8. Later, Shift governance approves whether the change may be merged or released.
-9. After governance approval plus passing checks, an automation merges and deploys.
-10. Once contracts are mostly frozen, the default automation target becomes app, indexer, docs, ops, and workflow changes rather than frequent contract mutation.
+6. Implementation agent creates/reuses a branch, code changes, validation evidence, and a stable diff or commit, then hands off to an independent completeness audit.
+7. If the audit fails, remediation addresses only audited gaps and then runs a new audit.
+8. Only after a passing audit for the same commit does `shift-linear-pr` create or update the PR.
+9. Humans review the PR.
+10. Later, Shift governance approves whether the change may be merged or released.
+11. After governance approval plus passing checks, an automation may merge and deploy.
+12. Once contracts are mostly frozen, the default automation target becomes app, indexer, docs, ops, and workflow changes rather than frequent contract mutation.
 
 ## What Should Live Where
 
@@ -74,9 +76,10 @@ Skills should own the reasoning-heavy repo workflows:
 |---|---|
 | `linear-issue-refiner` | split broad or mixed Linear issues into evidence-backed child issues |
 | `linear-sdd-from-issue` | convert one concrete `workflow:needs-spec` issue into a repo-grounded gentle SDD path |
-| `linear-implement-agent-ready` | implement one concrete `workflow:agent-ready` issue end-to-end through PR creation |
-| `shift-linear-pr` | create or update a Shift GitHub PR using Linear linkage, PR template policy, and native Linear GitHub closing behavior |
-| future `linear-review-pr` | summarize a PR for human review with issue, risk, tests, and changed-surface mapping |
+| `linear-implement-agent-ready` | implement one concrete issue in `direct`, `spec-backed`, or `remediation` mode, then hand off for independent audit |
+| `shift-linear-pr` | create or update a Shift GitHub PR only after a passing independent audit for the same commit |
+| future `readiness analyzer` | rank and select executable Linear issues using repo evidence, dependencies, status, and workflow labels |
+| future `completeness auditor` | independently audit implementation completeness against the issue/spec/audit criteria before PR publication |
 | future `governance-release-prep` | prepare release evidence bundle for human and governance review |
 
 Skills should not own cross-system scheduling, webhook handling, secret brokerage, or merge/deploy triggers.
@@ -207,7 +210,7 @@ Required linkage fields:
 
 - branch name contains `SHI-XXX`
 - PR title starts with or includes `SHI-XXX`
-- PR body includes a dedicated `Linear issue` field and an explicit closing or non-closing phrase
+- PR body includes a dedicated `Linear issue` field, audit evidence, and an explicit closing or non-closing phrase
 - Linear issue comment includes PR URL, branch name, files changed, and tests run
 
 GitHub community issues are separate:
@@ -223,7 +226,7 @@ Recommended PR body template:
 - Issue: `SHI-XXX`
 
 ## Closing phrase
-- `Completes SHI-XXX`
+- `Completes SHI-XXX` only after a passing audit for the same commit
 
 ## Community GitHub issues
 - Related GitHub issues: none
@@ -306,11 +309,14 @@ Phase 1 should avoid any new contract and avoid autonomous merge or deploy.
 1. Hermes or another intake agent drafts Linear issues.
 2. Human reviews and assigns `workflow:needs-spec` or `workflow:agent-ready`.
 3. Orchestrator launches either `linear-sdd-from-issue` or `linear-implement-agent-ready`.
-4. Implementation agent creates branch, code changes, tests, commit, push, and PR.
-5. GitHub Actions run required validation checks.
-6. Human reviews PR and decides whether it is acceptable.
-7. Human merges manually.
-8. Human runs or approves deploy manually.
+4. Implementation agent creates/reuses a branch, makes code changes, runs tests, and produces a stable diff or commit.
+5. Independent completeness audit runs in a separate Codex session/thread and reviews the implementation result against the same issue/spec and commit.
+6. Remediation runs only for audited gaps, followed by a new audit when needed.
+7. `shift-linear-pr` creates or updates the PR only after the audit passes for the current HEAD.
+8. GitHub Actions run required validation checks.
+9. Human reviews PR and decides whether it is acceptable.
+10. Human merges manually.
+11. Human runs or approves deploy manually.
 
 ### MVP automation ownership
 
@@ -319,6 +325,7 @@ Phase 1 should avoid any new contract and avoid autonomous merge or deploy.
 | Intake and issue drafting | Hermes or orchestrator |
 | Lane assignment | human |
 | Spec or implementation execution | repo-local skill |
+| Independent completeness audit | future repo-local auditor skill |
 | PR checks | GitHub Actions |
 | Merge | human |
 | Deploy | human |
@@ -362,10 +369,9 @@ Use separate credentials per automation role.
 
 ### Implementation bot
 
-- `contents:write`
-- `pull_requests:write`
+- `contents:write` when commits are allowed
 - `metadata:read`
-- optional `issues:write` only if PR comments are required
+- no PR publication permission in normal implementation mode
 
 Must not have:
 
@@ -407,12 +413,13 @@ Must be isolated from the implementation bot.
 
 ## Recommended Increment Order
 
-1. Document the workflow and adopt the three repo-local skills as the reasoning layer.
+1. Document the workflow and adopt the repo-local workflow skills as the reasoning layer.
 2. Add GitHub Actions for validation and PR policy enforcement.
-3. Add orchestrator flows for Linear status sync and PR metadata sync.
-4. Keep merge and deploy human-gated.
-5. Later add governance approval metadata to release flow.
-6. Only after the release process is stable, consider a minimal release approval registry contract.
+3. Add the missing readiness analyzer for issue selection and the completeness auditor as the PR publication gate.
+4. Add orchestrator flows for Linear status sync and PR metadata sync.
+5. Keep merge and deploy human-gated.
+6. Later add governance approval metadata to release flow.
+7. Only after the release process is stable, consider a minimal release approval registry contract.
 
 ## Repo Evidence Used For This Plan
 
