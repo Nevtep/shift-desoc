@@ -12,9 +12,33 @@ Current repo evidence:
 - Deploy and authority-mode handling already distinguish `admin-managed` and `governance-managed` staging outcomes.
 - Repo-local workflows now exist for issue refinement, issue-to-SDD, and direct implementation of `workflow:agent-ready` issues.
 - Linear's native GitHub integration can already link PRs through branch name, PR title, and PR body wording, and can move linked Linear issues through configured PR automations on merge.
-- There are currently no repo `.github/workflows/*` files, so CI and PR automation are not yet codified in GitHub Actions.
+- Repo-defined PR validation now starts with `.github/workflows/agentic-pr-checks.yml`; it covers install/lockfile, contract tests, web unit tests, and indexer unit tests without replacing external deployment checks.
 - There is no direct repo evidence of PR-to-governance, issue-to-governance, or merge-to-governance linkage.
 - GitHub Issues may be used as community-facing intake or discussion, while Linear remains the internal planning and implementation source of truth.
+
+
+## Local Audit Snapshot
+
+This section records a local audit snapshot for `/Users/core/Code/shift` on this machine. It is not universal repo policy and is not a permanent health guarantee. Re-verify before changing automation, but preserve these entries as the canonical local policy for this machine until a newer audit supersedes them.
+
+| Tool or surface | Local snapshot / policy |
+|---|---|
+| `gentle-ai` | Installed at `/opt/homebrew/bin/gentle-ai`, version `2.2.4`. Treat the stack as **degraded**, not failed, while `doctor` still reports issues. |
+| `gga` | `/opt/homebrew/bin/gga` exists, but version `2.10.0` has a script syntax error around lines 42-46. Homebrew reports stable `2.10.1`; upgrade is blocked because `/opt/homebrew` is not writable. Do not patch `/opt` files. |
+| `engram` | `/opt/homebrew/bin/engram`, version `1.20.0`. Engram remains the durable memory surface for project context and SDD recovery. |
+| Codex CLI | Canonical automation Codex is `/Users/core/.local/bin/codex`. Do not remove or replace the VS Code extension Codex binary. |
+| VS Code CLI | `code` is not in `PATH`; the app CLI exists at `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code`. Do not create a symlink as part of repo remediation. |
+| GitHub | `gh` exists at `/opt/homebrew/bin/gh`, but the Codex sandbox cannot read `~/.config/gh/hosts.yml`. Prefer the GitHub connector when available; treat local `gh` as context-dependent. |
+| Linear | Linear MCP is configured in Codex, but no Linear tools are available in this session. Treat Linear automation as unverified, not failed. |
+| GitHub Actions | `.github/workflows/agentic-pr-checks.yml` is the repo-local minimum PR validation baseline. Vercel/Railway external statuses do not replace it and it does not duplicate deployments. |
+
+## Orchestrator Invocation Policy
+
+- Prefer `/Users/core/.local/bin/codex` for Codex automation launched by local orchestrators.
+- Do not use or patch `/opt/homebrew/bin/gga` until the syntax error and Homebrew upgrade path are resolved outside the repo.
+- Treat `gentle-ai` availability as degraded while `doctor` reports issues; do not repeat the earlier incorrect diagnosis that `gentle-ai` is missing.
+- Use the GitHub connector as the primary GitHub integration in Codex sessions where sandboxed `gh` cannot access its auth host file.
+- Keep OpenSpec artifacts and Engram memory separate pending confirmation: `gentle-ai sdd-status` currently reports `artifactStore: openspec` with no active changes, while `openspec/` is absent; legacy specs live under `specs/` and SpecKit assets under `.specify/`. Do not infer Engram-backed active SDD changes from OpenSpec status output.
 
 ## Design Decision
 
@@ -347,7 +371,7 @@ Must not have:
 
 - admin rights
 - environment approval bypass
-- secret management rights beyond what is needed to push branches and open PRs
+- secret management rights
 
 ### Merge or release bot
 

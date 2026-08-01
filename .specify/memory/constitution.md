@@ -82,8 +82,7 @@ workflow requirements change.
 
 ## Delivery, Testing, And Documentation Gates
 
-- SpecKit-first is mandatory: work MUST start from a spec and maintain traceable
-	contract/indexer/app/docs impact.
+- Legacy SpecKit-first language is historical/reference only for current work. New work should follow `AGENTS.md` and gentle SDD while preserving traceable contract/indexer/app/docs impact.
 - Contracts MUST ship with unit/integration/security/invariant-minded tests for
 	critical flows.
 - Indexer changes MUST demonstrate deterministic replay viability, migration
@@ -105,8 +104,8 @@ Amendment Policy:
 - PATCH: Clarify wording, examples, and non-semantic process details.
 
 Compliance Review Expectations:
-- Every feature plan MUST include constitution checks across protocol/indexer/app.
-- Every task list MUST include cross-layer synchronization tasks where impacted.
+- Historical SpecKit feature plans used constitution checks across protocol/indexer/app; current gentle SDD work should preserve those checks through the active `AGENTS.md` workflow.
+- Current task lists should include cross-layer synchronization tasks where impacted, regardless of whether the artifact originated in gentle SDD or legacy SpecKit.
 - Reviews MUST reject changes that introduce authority drift, event/schema drift,
 	or app behavior that exceeds actual contract support.
 - Reviews MUST reject PRs that update one of
