@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "shift-agent-skill-result.v1",
+  "operationKey": "linear-implementation-completeness-audit:SHI-123:abc1234",
+  "status": "success",
+  "summary": "Independent audit passed for SHI-123 at abc1234; the audited commit matches branch HEAD and implementation result commit.",
+  "evidence": [
+    {
+      "kind": "issue",
+      "source": "Linear SHI-123 snapshot 2026-08-01T15:00:00Z",
+      "summary": "Acceptance criteria were captured before audit."
+    },
+    {
+      "kind": "command",
+      "source": "git diff def5678..abc1234",
+      "summary": "Diff reviewed against the declared base commit."
+    },
+    {
+      "kind": "check",
+      "source": "pnpm --filter @shift/web test:unit",
+      "summary": "Required validation passed according to captured output."
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "nextAction": {
+    "type": "handoff",
+    "description": "Invoke shift-linear-pr using this audit result and the unchanged audited commit."
+  },
+  "sideEffects": [
+    {
+      "effect": "none",
+      "target": "Repository, Linear, and GitHub",
+      "status": "none",
+      "summary": "Independent read-only audit; no external state was changed."
+    }
+  ],
+  "details": {
+    "issueId": "SHI-123",
+    "implementationOperationKey": "linear-implement-agent-ready:SHI-123:direct:def5678",
+    "auditOperationKey": "linear-implementation-completeness-audit:SHI-123:abc1234",
+    "auditedCommit": "abc1234",
+    "auditVerdict": "pass",
+    "safeToPublish": true,
+    "audit": {
+      "baseCommit": "def5678",
+      "auditedCommit": "abc1234",
+      "branchHead": "abc1234",
+      "implementationResultCommit": "abc1234",
+      "verdict": "pass",
+      "safeToPublish": true,
+      "confidence": "high",
+      "independentSession": true,
+      "maximumRemediationCycles": 3
+    },
+    "criteria": [
+      {
+        "id": "AC-1",
+        "description": "Manager route renders unavailable state truthfully when the feature is not indexed.",
+        "source": "linear",
+        "status": "satisfied",
+        "evidence": [
+          {
+            "kind": "file",
+            "source": "apps/web/app/example/page.tsx",
+            "summary": "Reviewed route copy and fail-closed branch."
+          },
+          {
+            "kind": "command",
+            "source": "pnpm --filter @shift/web test:unit",
+            "summary": "Focused route tests passed."
+          }
+        ],
+        "notes": "No related indexer or contract changes were required."
+      }
+    ],
+    "validations": [
+      {
+        "command": "pnpm --filter @shift/web test:unit",
+        "status": "passed",
+        "required": true,
+        "evidence": [
+          {
+            "kind": "check",
+            "source": "captured test output",
+            "summary": "Focused web unit suite passed."
+          }
+        ]
+      }
+    ],
+    "missingWork": [],
+    "unintendedScope": [],
+    "risks": [],
+    "remediation": {
+      "required": false,
+      "allowed": false,
+      "targetCommit": "abc1234",
+      "items": []
+    }
+  }
+}

@@ -21,6 +21,7 @@ Source-of-truth hierarchy for planning and delivery:
 - Repo-local skill `.github/skills/linear-issue-refiner/SKILL.md` is the focused workflow for splitting one broad Shift Linear issue into evidence-backed child issues.
 - Repo-local skill `.github/skills/linear-sdd-from-issue/SKILL.md` is the focused workflow for turning one concrete `workflow:needs-spec` Linear issue into a repo-grounded gentle SDD spec via `/sdd-new`.
 - Repo-local skill `.github/skills/linear-implement-agent-ready/SKILL.md` is the focused workflow for implementing one concrete Linear issue through branch, code changes, validation, and audit handoff; PR creation waits for an independent completeness audit in a separate session/thread.
+- Repo-local skill `.github/skills/linear-implementation-completeness-audit/SKILL.md` is the read-only, separate-session workflow for auditing implementation completeness against Linear/spec/result/diff/code/tests before PR publication.
 - Repo-local skill `.github/skills/shift-linear-pr/SKILL.md` is the focused workflow for creating or updating Shift GitHub PRs only after an independent separate-session audit passes for the same commit, using Linear as the internal source of truth and Linear's native GitHub integration for linking and closing.
 - Engram stores durable project memory, testing capabilities, SDD init state, and lessons.
 - Agents must recover Engram context before planning or editing architecture-sensitive surfaces.

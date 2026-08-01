@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "shift-agent-skill-result.v1",
+  "operationKey": "linear-implementation-completeness-audit:SHI-123:abc1234",
+  "status": "partial",
+  "summary": "Independent audit found SHI-123 incomplete: one acceptance criterion is partially implemented and needs bounded remediation.",
+  "evidence": [
+    {
+      "kind": "issue",
+      "source": "Linear SHI-123 snapshot 2026-08-01T15:00:00Z",
+      "summary": "Acceptance criteria reviewed."
+    },
+    {
+      "kind": "command",
+      "source": "git diff def5678..abc1234",
+      "summary": "Diff reviewed against declared implementation base."
+    }
+  ],
+  "warnings": [
+    "Previous audit is invalid after any remediation commit; run a new independent audit after fixes."
+  ],
+  "errors": [],
+  "nextAction": {
+    "type": "handoff",
+    "description": "Invoke linear-implement-agent-ready in remediation mode using the listed missing work."
+  },
+  "sideEffects": [
+    {
+      "effect": "none",
+      "target": "Repository, Linear, and GitHub",
+      "status": "none",
+      "summary": "Independent read-only audit; no external state was changed."
+    }
+  ],
+  "details": {
+    "issueId": "SHI-123",
+    "implementationOperationKey": "linear-implement-agent-ready:SHI-123:direct:def5678",
+    "auditOperationKey": "linear-implementation-completeness-audit:SHI-123:abc1234",
+    "auditedCommit": "abc1234",
+    "auditVerdict": "incomplete",
+    "safeToPublish": false,
+    "audit": {
+      "baseCommit": "def5678",
+      "auditedCommit": "abc1234",
+      "branchHead": "abc1234",
+      "implementationResultCommit": "abc1234",
+      "verdict": "incomplete",
+      "safeToPublish": false,
+      "confidence": "high",
+      "independentSession": true,
+      "maximumRemediationCycles": 3
+    },
+    "criteria": [
+      {
+        "id": "AC-2",
+        "description": "Unavailable state must include the reason and recovery path.",
+        "source": "linear",
+        "status": "partial",
+        "evidence": [
+          {
+            "kind": "file",
+            "source": "apps/web/app/example/page.tsx",
+            "summary": "Reason is shown, but no recovery path is rendered."
+          }
+        ],
+        "notes": "Fix is limited to the affected Manager route and tests."
+      }
+    ],
+    "validations": [
+      {
+        "command": "pnpm --filter @shift/web test:unit",
+        "status": "passed",
+        "required": true,
+        "evidence": [
+          {
+            "kind": "check",
+            "source": "captured test output",
+            "summary": "Current tests pass but do not cover the missing recovery path."
+          }
+        ]
+      }
+    ],
+    "missingWork": [
+      "Add recovery-path UI and focused test coverage for AC-2."
+    ],
+    "unintendedScope": [],
+    "risks": [
+      "Publishing now would overstate issue completion."
+    ],
+    "remediation": {
+      "required": true,
+      "allowed": true,
+      "targetCommit": "abc1234",
+      "items": [
+        {
+          "criterionId": "AC-2",
+          "problem": "Recovery path required by the acceptance criterion is absent.",
+          "requiredChange": "Render the recovery path and add focused test coverage.",
+          "evidence": [
+            {
+              "kind": "file",
+              "source": "apps/web/app/example/page.tsx",
+              "summary": "Reviewed rendered unavailable-state branch."
+            }
+          ],
+          "allowedScope": [
+            "apps/web/app/example/page.tsx",
+            "apps/web/tests/unit/example-page.test.tsx"
+          ],
+          "requiredValidation": [
+            "pnpm --filter @shift/web test:unit"
+          ]
+        }
+      ]
+    }
+  }
+}

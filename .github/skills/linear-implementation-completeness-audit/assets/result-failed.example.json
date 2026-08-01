@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "shift-agent-skill-result.v1",
+  "operationKey": "linear-implementation-completeness-audit:SHI-123:abc1234",
+  "status": "failed",
+  "summary": "Independent audit failed for SHI-123: the audited commit contains an unauthorized architecture change outside the issue scope.",
+  "evidence": [
+    {
+      "kind": "issue",
+      "source": "Linear SHI-123 snapshot 2026-08-01T15:00:00Z",
+      "summary": "Acceptance criteria did not authorize changing contract authority wiring."
+    },
+    {
+      "kind": "command",
+      "source": "git diff def5678..abc1234",
+      "summary": "Diff includes out-of-scope authority changes."
+    }
+  ],
+  "warnings": [],
+  "errors": [
+    {
+      "code": "AUDIT_UNAUTHORIZED_SCOPE",
+      "message": "The audited commit changes governance authority behavior outside the approved SHI-123 scope.",
+      "recoverable": false
+    }
+  ],
+  "nextAction": {
+    "type": "blocked",
+    "description": "Stop publication and obtain human direction before any remediation or PR publication."
+  },
+  "sideEffects": [
+    {
+      "effect": "none",
+      "target": "Repository, Linear, and GitHub",
+      "status": "none",
+      "summary": "Independent read-only audit; no external state was changed."
+    }
+  ],
+  "details": {
+    "issueId": "SHI-123",
+    "implementationOperationKey": "linear-implement-agent-ready:SHI-123:direct:def5678",
+    "auditOperationKey": "linear-implementation-completeness-audit:SHI-123:abc1234",
+    "auditedCommit": "abc1234",
+    "auditVerdict": "failed",
+    "safeToPublish": false,
+    "audit": {
+      "baseCommit": "def5678",
+      "auditedCommit": "abc1234",
+      "branchHead": "abc1234",
+      "implementationResultCommit": "abc1234",
+      "verdict": "failed",
+      "safeToPublish": false,
+      "confidence": "high",
+      "independentSession": true,
+      "maximumRemediationCycles": 3
+    },
+    "criteria": [
+      {
+        "id": "SCOPE-1",
+        "description": "Implementation must stay within the approved issue scope and preserve authority invariants.",
+        "source": "agents",
+        "status": "missing",
+        "evidence": [
+          {
+            "kind": "file",
+            "source": "contracts/src/example/AuthorityExample.sol",
+            "summary": "Reviewed unauthorized authority-wiring change in audited diff."
+          }
+        ],
+        "notes": "This is a publication-stopping failure, not a bounded completeness gap."
+      }
+    ],
+    "validations": [
+      {
+        "command": "pnpm forge:test",
+        "status": "passed",
+        "required": true,
+        "evidence": [
+          {
+            "kind": "check",
+            "source": "captured test output",
+            "summary": "Contract tests passing does not authorize the out-of-scope governance behavior change."
+          }
+        ]
+      }
+    ],
+    "missingWork": [],
+    "unintendedScope": [
+      "Governance authority wiring changed without Linear/spec authorization."
+    ],
+    "risks": [
+      "Publishing would merge an unauthorized security-sensitive architecture change."
+    ],
+    "remediation": {
+      "required": false,
+      "allowed": false,
+      "targetCommit": "abc1234",
+      "items": []
+    }
+  }
+}

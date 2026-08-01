@@ -54,7 +54,8 @@ Do not use it for umbrellas, unresolved smart-contract architecture decisions, P
 6. Read issue/spec/audit-relevant paths, implement narrowly, and update tests.
 7. Run focused validation; fix in scope or stop with blocker evidence.
 8. Create a commit only when policy permits; do not push or create/update PRs.
-9. Return `nextAction.type: "handoff"` with `nextAction.description: "Run the independent completeness audit in a separate session/thread."`.
+9. Set `details.auditReady: true` only when `details.resultCommit` is populated with the commit that contains the implementation result.
+10. Return `nextAction.type: "handoff"` with `nextAction.description: "Run the independent completeness audit in a separate session/thread for resultCommit <sha>."`.
 
 ## Output Contract
 
@@ -86,7 +87,7 @@ Put skill-specific fields under `details`:
 }
 ```
 
-`details.auditReady` may be `true` only when there is an identifiable commit or stable diff, required validations ran, no known implementer errors remain, and evidence is sufficient for the future independent completeness auditor.
+`details.auditReady` may be `true` only when `details.resultCommit` is an identifiable commit containing the implementation result, required validations ran, no known implementer errors remain, and evidence is sufficient for the independent `linear-implementation-completeness-audit` auditor. Stable uncommitted diffs are not audit-ready and must not be handed to the audit or PR gate.
 
 ## References
 
@@ -98,4 +99,4 @@ Put skill-specific fields under `details`:
 - `.github/skills/linear-issue-refiner/SKILL.md`
 - `.github/skills/shift-linear-pr/SKILL.md`
 - `.github/skills/_shared/shift-agent-skill-result.schema.json`
-- Future missing skill: `completeness auditor`
+- `.github/skills/linear-implementation-completeness-audit/SKILL.md`

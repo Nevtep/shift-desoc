@@ -92,4 +92,4 @@ Put skill-specific fields under `details`:
 - `.github/project-management/IMPLEMENTATION_STATUS.md`
 - `.github/skills/linear-implement-agent-ready/SKILL.md`
 - `.github/skills/_shared/shift-agent-skill-result.schema.json`
-- Future missing skill: `completeness auditor`
+- `.github/skills/linear-implementation-completeness-audit/SKILL.md`

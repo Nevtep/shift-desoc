@@ -58,7 +58,7 @@ Use four layers of automation, each with a narrow responsibility:
 3. Human reviews and marks each issue `workflow:needs-spec` or `workflow:agent-ready`.
 4. `workflow:needs-spec` issues run through `linear-sdd-from-issue`.
 5. `workflow:agent-ready` issues run through `linear-implement-agent-ready`.
-6. Implementation agent creates/reuses a branch, code changes, validation evidence, and a stable diff or commit, then hands off to an independent completeness audit.
+6. Implementation agent creates/reuses a branch, code changes, validation evidence, and an identifiable result commit, then hands off to an independent completeness audit.
 7. If the audit fails, remediation addresses only audited gaps and then runs a new audit.
 8. Only after a passing audit for the same commit does `shift-linear-pr` create or update the PR.
 9. Humans review the PR.
@@ -78,8 +78,8 @@ Skills should own the reasoning-heavy repo workflows:
 | `linear-issue-refiner` | split broad or mixed Linear issues into evidence-backed child issues |
 | `linear-sdd-from-issue` | convert one concrete `workflow:needs-spec` issue into a repo-grounded gentle SDD path |
 | `linear-implement-agent-ready` | implement one concrete issue in `direct`, `spec-backed`, or `remediation` mode, then hand off for independent audit |
+| `linear-implementation-completeness-audit` | independently audit implementation completeness against the issue/spec/result/diff/code/tests before PR publication |
 | `shift-linear-pr` | create or update a Shift GitHub PR only after a passing independent audit for the same commit |
-| future `completeness auditor` | independently audit implementation completeness against the issue/spec/audit criteria before PR publication |
 | future `governance-release-prep` | prepare release evidence bundle for human and governance review |
 
 Skills should not own cross-system scheduling, webhook handling, secret brokerage, or merge/deploy triggers.
@@ -309,7 +309,7 @@ Phase 1 should avoid any new contract and avoid autonomous merge or deploy.
 1. Hermes or another intake agent drafts Linear issues.
 2. Human reviews and assigns `workflow:needs-spec` or `workflow:agent-ready`.
 3. Orchestrator launches either `linear-sdd-from-issue` or `linear-implement-agent-ready`.
-4. Implementation agent creates/reuses a branch, makes code changes, runs tests, and produces a stable diff or commit.
+4. Implementation agent creates/reuses a branch, makes code changes, runs tests, and produces an identifiable result commit.
 5. Independent completeness audit runs in a separate Codex session/thread and reviews the implementation result against the same issue/spec and commit.
 6. Remediation runs only for audited gaps, followed by a new audit when needed.
 7. `shift-linear-pr` creates or updates the PR only after the audit passes for the current HEAD.
@@ -325,7 +325,7 @@ Phase 1 should avoid any new contract and avoid autonomous merge or deploy.
 | Intake and issue drafting | Hermes or orchestrator |
 | Lane assignment | human |
 | Spec or implementation execution | repo-local skill |
-| Independent completeness audit | future repo-local auditor skill |
+| Independent completeness audit | `linear-implementation-completeness-audit` repo-local skill |
 | PR checks | GitHub Actions |
 | Merge | human |
 | Deploy | human |
@@ -415,7 +415,7 @@ Must be isolated from the implementation bot.
 
 1. Document the workflow and adopt the repo-local workflow skills as the reasoning layer.
 2. Add GitHub Actions for validation and PR policy enforcement.
-3. Add the missing completeness auditor as the PR publication gate; the readiness analyzer now exists as `linear-development-readiness`.
+3. Use `linear-implementation-completeness-audit` as the PR publication gate; the readiness analyzer now exists as `linear-development-readiness`.
 4. Add orchestrator flows for Linear status sync and PR metadata sync.
 5. Keep merge and deploy human-gated.
 6. Later add governance approval metadata to release flow.
@@ -428,6 +428,7 @@ Must be isolated from the implementation bot.
 - `.github/skills/linear-issue-refiner/SKILL.md` — issue refinement workflow
 - `.github/skills/linear-sdd-from-issue/SKILL.md` — issue-to-spec workflow
 - `.github/skills/linear-implement-agent-ready/SKILL.md` — issue-to-implementation workflow
+- `.github/skills/linear-implementation-completeness-audit/SKILL.md` — independent implementation completeness audit workflow
 - `.github/project-management/IMPLEMENTATION_STATUS.md` — tactical backlog and definition-of-done expectations
 - `.github/project-management/STATUS_REVIEW.md` — strategic governance, authority, and workflow baseline
 - `docs/permission-matrix.md` — authority-mode and timelock-surface evidence

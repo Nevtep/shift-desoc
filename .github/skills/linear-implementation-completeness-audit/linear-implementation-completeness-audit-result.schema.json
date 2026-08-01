@@ -1,0 +1,587 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shift.local/schemas/linear-implementation-completeness-audit-result.v1.json",
+  "title": "Shift Linear Implementation Completeness Audit Result",
+  "description": "Skill-specific details contract for independent read-only implementation completeness audits.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "operationKey",
+    "status",
+    "summary",
+    "evidence",
+    "warnings",
+    "errors",
+    "nextAction",
+    "sideEffects",
+    "details"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "shift-agent-skill-result.v1"
+    },
+    "operationKey": {
+      "type": "string",
+      "pattern": "^linear-implementation-completeness-audit:SHI-[0-9]+:[0-9a-fA-F]{7,40}$"
+    },
+    "status": {
+      "enum": [
+        "success",
+        "blocked",
+        "failed",
+        "partial"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rootEvidenceItem"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/errorItem"
+      }
+    },
+    "nextAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "description"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "none",
+            "continue",
+            "retry",
+            "human_input",
+            "blocked",
+            "handoff"
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "sideEffects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effect",
+          "target",
+          "status",
+          "summary"
+        ],
+        "properties": {
+          "effect": {
+            "const": "none"
+          },
+          "target": {
+            "const": "Repository, Linear, and GitHub"
+          },
+          "status": {
+            "const": "none"
+          },
+          "summary": {
+            "const": "Independent read-only audit; no external state was changed."
+          }
+        }
+      }
+    },
+    "details": {
+      "$ref": "#/$defs/auditDetails"
+    },
+    "skill": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifactItem"
+      }
+    },
+    "validation": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rootValidationItem"
+      }
+    }
+  },
+  "$defs": {
+    "rootEvidenceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source",
+        "summary"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "file",
+            "command",
+            "tool",
+            "memory",
+            "issue",
+            "pr",
+            "check",
+            "other"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "detailedEvidenceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source",
+        "summary"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "file",
+            "command",
+            "tool",
+            "memory",
+            "issue",
+            "pr",
+            "check",
+            "other",
+            "symbol",
+            "event",
+            "route"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "errorItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recoverable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "artifactItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "pathOrUrl",
+        "summary"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "file",
+            "issue",
+            "pr",
+            "branch",
+            "commit",
+            "comment",
+            "sdd_artifact",
+            "other"
+          ]
+        },
+        "pathOrUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "rootValidationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "target",
+        "status",
+        "summary"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "command",
+            "manual_check",
+            "schema",
+            "test",
+            "lint",
+            "typecheck",
+            "other"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "skipped",
+            "blocked"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "description",
+        "source",
+        "status",
+        "evidence",
+        "notes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "enum": [
+            "linear",
+            "spec",
+            "implementation",
+            "agents",
+            "code",
+            "test",
+            "status_docs"
+          ]
+        },
+        "status": {
+          "enum": [
+            "satisfied",
+            "partial",
+            "missing",
+            "not_applicable",
+            "unverifiable"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/detailedEvidenceItem"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command",
+        "status",
+        "evidence",
+        "required"
+      ],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "skipped",
+            "blocked",
+            "unverifiable"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/detailedEvidenceItem"
+          }
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "remediationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "criterionId",
+        "problem",
+        "requiredChange",
+        "evidence",
+        "allowedScope",
+        "requiredValidation"
+      ],
+      "properties": {
+        "criterionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "problem": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requiredChange": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/detailedEvidenceItem"
+          }
+        },
+        "allowedScope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "requiredValidation": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "auditDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issueId",
+        "implementationOperationKey",
+        "auditOperationKey",
+        "auditedCommit",
+        "audit",
+        "criteria",
+        "validations",
+        "missingWork",
+        "unintendedScope",
+        "risks",
+        "remediation",
+        "auditVerdict",
+        "safeToPublish"
+      ],
+      "properties": {
+        "issueId": {
+          "type": "string",
+          "pattern": "^SHI-[0-9]+$"
+        },
+        "implementationOperationKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseCommit",
+            "auditedCommit",
+            "branchHead",
+            "implementationResultCommit",
+            "verdict",
+            "safeToPublish",
+            "confidence",
+            "independentSession",
+            "maximumRemediationCycles"
+          ],
+          "properties": {
+            "baseCommit": {
+              "type": "string",
+              "minLength": 7
+            },
+            "auditedCommit": {
+              "type": "string",
+              "minLength": 7
+            },
+            "branchHead": {
+              "type": "string",
+              "minLength": 7
+            },
+            "implementationResultCommit": {
+              "type": "string",
+              "minLength": 7
+            },
+            "verdict": {
+              "enum": [
+                "pass",
+                "incomplete",
+                "blocked",
+                "failed"
+              ]
+            },
+            "safeToPublish": {
+              "type": "boolean"
+            },
+            "confidence": {
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ]
+            },
+            "independentSession": {
+              "type": "boolean"
+            },
+            "maximumRemediationCycles": {
+              "type": "integer",
+              "const": 3
+            }
+          }
+        },
+        "criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/criterion"
+          }
+        },
+        "validations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/validation"
+          }
+        },
+        "missingWork": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unintendedScope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "remediation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "allowed",
+            "targetCommit",
+            "items"
+          ],
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "allowed": {
+              "type": "boolean"
+            },
+            "targetCommit": {
+              "type": "string"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/remediationItem"
+              }
+            }
+          }
+        },
+        "auditOperationKey": {
+          "type": "string",
+          "pattern": "^linear-implementation-completeness-audit:SHI-[0-9]+:[0-9a-fA-F]{7,40}$"
+        },
+        "auditedCommit": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{7,40}$"
+        },
+        "auditVerdict": {
+          "enum": [
+            "pass",
+            "incomplete",
+            "blocked",
+            "failed"
+          ]
+        },
+        "safeToPublish": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "schemaVersion": "shift-agent-skill-result.v1",
+  "operationKey": "linear-implementation-completeness-audit:SHI-123:abc1234",
+  "status": "blocked",
+  "summary": "Independent audit is blocked because the branch HEAD no longer matches the implementer result commit.",
+  "evidence": [
+    {
+      "kind": "command",
+      "source": "git rev-parse HEAD",
+      "summary": "Current branch HEAD resolved to fedcba9."
+    },
+    {
+      "kind": "other",
+      "source": "implementation result details.resultCommit",
+      "summary": "Implementer reported result commit abc1234."
+    }
+  ],
+  "warnings": [],
+  "errors": [
+    {
+      "code": "AUDIT_COMMIT_MISMATCH",
+      "message": "branchHead fedcba9 does not match implementation resultCommit abc1234.",
+      "recoverable": true
+    }
+  ],
+  "nextAction": {
+    "type": "blocked",
+    "description": "Resolve the reported audit precondition before retrying."
+  },
+  "sideEffects": [
+    {
+      "effect": "none",
+      "target": "Repository, Linear, and GitHub",
+      "status": "none",
+      "summary": "Independent read-only audit; no external state was changed."
+    }
+  ],
+  "details": {
+    "issueId": "SHI-123",
+    "implementationOperationKey": "linear-implement-agent-ready:SHI-123:direct:def5678",
+    "auditOperationKey": "linear-implementation-completeness-audit:SHI-123:abc1234",
+    "auditedCommit": "abc1234",
+    "auditVerdict": "blocked",
+    "safeToPublish": false,
+    "audit": {
+      "baseCommit": "def5678",
+      "auditedCommit": "abc1234",
+      "branchHead": "fedcba9",
+      "implementationResultCommit": "abc1234",
+      "verdict": "blocked",
+      "safeToPublish": false,
+      "confidence": "high",
+      "independentSession": true,
+      "maximumRemediationCycles": 3
+    },
+    "criteria": [
+      {
+        "id": "PRECONDITION-COMMIT-BINDING",
+        "description": "Audited commit, branch HEAD, and implementation result commit must match before approval.",
+        "source": "implementation",
+        "status": "unverifiable",
+        "evidence": [
+          {
+            "kind": "command",
+            "source": "git rev-parse HEAD",
+            "summary": "HEAD differs from implementer result commit."
+          }
+        ],
+        "notes": "Completeness was not evaluated because the precondition failed."
+      }
+    ],
+    "validations": [],
+    "missingWork": [],
+    "unintendedScope": [],
+    "risks": [
+      "Any PR publication from this audit must be rejected until a new audit binds to current HEAD."
+    ],
+    "remediation": {
+      "required": false,
+      "allowed": false,
+      "targetCommit": "abc1234",
+      "items": []
+    }
+  }
+}
