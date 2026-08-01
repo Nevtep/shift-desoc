@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
@@ -46,33 +45,35 @@ export default async function MarketplacePage() {
         </article>
       </section>
 
+      <section className="card-tight border-dashed border-primary/25 text-center">
+        <p className="text-sm font-semibold text-foreground">{t.statusNotice}</p>
+      </section>
+
       <section className="grid gap-5 sm:grid-cols-2">
-        <Link
-          className="group relative block overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-[rgba(246,240,225,0.92)] via-background to-background/95 p-5 shadow-[0_4px_18px_rgba(86,102,69,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/45 hover:shadow-[0_12px_32px_rgba(221,136,72,0.14)]"
-          href="/marketplace/offers"
-        >
+        <article className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-[rgba(246,240,225,0.92)] via-background to-background/95 p-5 shadow-[0_4px_18px_rgba(86,102,69,0.08)]">
           <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-secondary via-primary to-secondary opacity-90" aria-hidden />
           <div className="space-y-3 pt-1">
             <h2 className="text-lg font-semibold text-primary">{t.offersTitle}</h2>
             <p className="text-sm text-muted-foreground">
               {t.offersBody}
             </p>
-            <p className="text-sm font-semibold text-secondary">{t.openSection} →</p>
+            <button className="btn-ghost" type="button" disabled>
+              {t.offersTitle} · {t.openSection}
+            </button>
           </div>
-        </Link>
-        <Link
-          className="group relative block overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-[rgba(246,240,225,0.92)] via-background to-background/95 p-5 shadow-[0_4px_18px_rgba(86,102,69,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:border-secondary/45 hover:shadow-[0_12px_32px_rgba(221,136,72,0.14)]"
-          href="/housing/reservations"
-        >
+        </article>
+        <article className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-[rgba(246,240,225,0.92)] via-background to-background/95 p-5 shadow-[0_4px_18px_rgba(86,102,69,0.08)]">
           <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-secondary via-primary to-secondary opacity-90" aria-hidden />
           <div className="space-y-3 pt-1">
             <h2 className="text-lg font-semibold text-primary">{t.housingTitle}</h2>
             <p className="text-sm text-muted-foreground">
               {t.housingBody}
             </p>
-            <p className="text-sm font-semibold text-secondary">{t.openSection} →</p>
+            <button className="btn-ghost" type="button" disabled>
+              {t.housingTitle} · {t.openSection}
+            </button>
           </div>
-        </Link>
+        </article>
       </section>
 
       <section className="card space-y-4 border-primary/15">

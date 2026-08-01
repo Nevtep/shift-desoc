@@ -368,11 +368,11 @@ const dictionaries = {
     marketplacePage: {
       metaTitle: "Marketplace | Shift DeSoc",
       metaDescription:
-        "Explora ofertas, housing y módulos de mercado de Shift con navegación clara por secciones.",
+        "Revisa el alcance actual de marketplace y el estado no operable de ofertas y housing en Shift.",
       badge: "Economía colaborativa",
       title: "Marketplace en Shift",
       subtitle:
-        "El marketplace organiza ofertas y housing para coordinación económica comunitaria. Esta vista actúa como hub de navegación modular.",
+        "El marketplace organiza el alcance económico comunitario, pero las superficies operativas de Offers y Housing todavía no están habilitadas en Manager.",
       card1Title: "Ofertas",
       card1Body: "Servicios y productos publicados por comunidades y participantes.",
       card2Title: "Housing",
@@ -380,27 +380,29 @@ const dictionaries = {
       card3Title: "Evolución modular",
       card3Body: "Nuevos verticales del marketplace se integran gradualmente en este hub.",
       offersTitle: "Ofertas",
-      offersBody: "Explora el listado indexado de ofertas y su estado operativo.",
+      offersBody: "La ruta de ofertas todavía no es operable en Manager y permanece en estado próximamente.",
       housingTitle: "Housing",
-      housingBody: "Revisa reservas y estado de disponibilidad de espacios.",
-      openSection: "Abrir sección",
+      housingBody: "La ruta de housing todavía no es operable en Manager y permanece en estado próximamente.",
+      openSection: "Próximamente",
+      statusNotice:
+        "Marketplace sigue en estado no operable en Manager. Usa esta vista solo como referencia de alcance y estado actual.",
       infoTitle: "Sobre esta vista",
       infoIntro:
-        "Marketplace centraliza rutas de economía colaborativa. Algunas secciones pueden mostrar estado preliminar mientras madura la indexación.",
+        "Marketplace mantiene el contexto del dominio, pero las rutas operativas quedan bloqueadas hasta que existan read models y superficies reales en indexer + Manager.",
       infoMoreSummary: "Alcance actual y próximos pasos",
-      infoLi1: "Offers y Housing son los módulos activos de navegación en este hub.",
-      infoLi2: "Los datos finales dependen de indexación y habilitación por comunidad.",
-      infoLi3: "Cuando falte una ruta funcional, usa este hub como punto de entrada consistente.",
+      infoLi1: "Offers y Housing siguen sin disponibilidad operativa en Manager hoy.",
+      infoLi2: "La capacidad on-chain existe, pero la cobertura real de indexer y Manager todavía es insuficiente.",
+      infoLi3: "No trates estas rutas como flujos vivos hasta que haya datos y acciones reales habilitadas.",
       infoLi4: "Mantén validación cruzada con detalle on-chain cuando la operación sea crítica."
     },
     offersPage: {
       metaTitle: "Ofertas | Shift DeSoc",
       metaDescription:
-        "Navega las ofertas del marketplace y mantén contexto de publicación, estado e integración comunitaria.",
+        "Revisa la ruta placeholder de ofertas y el estado actual de integración pendiente en Shift.",
       badge: "Mercado de ofertas",
       title: "Ofertas en Shift",
       subtitle:
-        "Esta sección reúne la capa de ofertas del marketplace. El feed final depende del avance de indexación de eventos.",
+        "Esta ruta todavía no es operable en Manager. El catálogo real depende de read models e integración que aún no están entregados.",
       card1Title: "Catálogo comunitario",
       card1Body: "Ofertas publicadas por comunidades y participantes bajo reglas modulares.",
       card2Title: "Trazabilidad económica",
@@ -409,63 +411,69 @@ const dictionaries = {
       card3Body: "La grilla final se habilita conforme maduran eventos y consultas del indexer.",
       ctaCreate: "Crear oferta (próximamente)",
       ctaBack: "Volver a marketplace",
+      statusNotice:
+        "Offers permanece en estado placeholder: no hay lectura operativa ni creación disponible en Manager todavía.",
       infoTitle: "Sobre esta vista",
       infoIntro:
-        "Ofertas funciona como punto de lectura para actividad de marketplace. Si no hay datos, puede deberse a indexación o despliegue de módulos.",
+        "La vista existe para mantener el contrato de navegación, no para representar un flujo operable hoy.",
       infoMoreSummary: "Alcance y validación",
       infoLi1: "El contenido definitivo depende de eventos del módulo marketplace.",
       infoLi2: "Puede haber desfase entre transacción y visibilidad en esta pantalla.",
-      infoLi3: "Usa esta vista como entrada estable al flujo de ofertas.",
+      infoLi3: "No uses esta vista como si ya existiera un flujo activo de ofertas.",
       infoLi4: "Verifica operaciones críticas en explorador y contratos."
     },
     housingPage: {
       metaTitle: "Housing | Shift DeSoc",
       metaDescription:
-        "Explora el hub de housing para reservas, disponibilidad y coordinación residencial dentro de Shift.",
+        "Revisa el estado actual del hub de housing no operable y su alcance pendiente dentro de Shift.",
       badge: "Coordinación residencial",
       title: "Housing en Shift",
       subtitle:
-        "Housing consolida disponibilidad, reservas y reglas operativas para experiencias de convivencia comunitaria.",
+        "Housing conserva el contexto residencial del protocolo, pero la experiencia operativa todavía no está habilitada en Manager.",
       card1Title: "Disponibilidad",
       card1Body: "Visualiza el estado general de espacios habilitados por comunidad.",
       card2Title: "Reservas",
-      card2Body: "Accede al histórico y estado operativo de reservas en módulos activos.",
+      card2Body: "El histórico y estado de reservas permanecen bloqueados hasta que exista cobertura real en Manager.",
       card3Title: "Integración modular",
       card3Body: "El detalle crece con la evolución de marketplace e indexación de housing.",
-      ctaReservations: "Ver reservas",
+      ctaReservations: "Ver reservas (próximamente)",
       ctaBack: "Volver a marketplace",
+      statusNotice:
+        "Housing sigue en estado no operable en Manager. La navegación se mantiene, pero la reserva y lectura real todavía no están listas.",
       infoTitle: "Sobre esta vista",
       infoIntro:
-        "Housing actúa como hub operativo. Algunos paneles pueden estar en estado preliminar hasta completar integración.",
+        "Housing todavía no debe interpretarse como hub operativo; hoy funciona solo como señalización honesta del alcance pendiente.",
       infoMoreSummary: "Cobertura y límites",
       infoLi1: "Las reservas visibles dependen de indexación y permisos de cada comunidad.",
       infoLi2: "Puede existir retraso breve entre escritura on-chain y lectura aquí.",
-      infoLi3: "Usa este hub para mantener una navegación consistente.",
+      infoLi3: "No trates este hub como superficie viva mientras la integración siga pendiente.",
       infoLi4: "Confirma datos críticos con fuentes on-chain."
     },
     housingReservationsPage: {
       metaTitle: "Reservas Housing | Shift DeSoc",
       metaDescription:
-        "Consulta el estado de reservas de housing y su disponibilidad dentro del flujo de marketplace en Shift.",
+        "Revisa la ruta placeholder de reservas de housing y su estado actual no operable en Shift.",
       badge: "Reservas activas",
       title: "Reservas de Housing",
       subtitle:
-        "Aquí se concentra el seguimiento de reservas, ocupación y estado operativo de espacios.",
+        "Esta ruta todavía no ofrece seguimiento operativo real en Manager; la lectura final depende de integración pendiente.",
       card1Title: "Estado de reserva",
-      card1Body: "Monitorea reservas activas, confirmadas o cerradas cuando el indexer esté sincronizado.",
+      card1Body: "El seguimiento de reservas activas, confirmadas o cerradas permanece pendiente hasta que exista lectura real en Manager.",
       card2Title: "Disponibilidad",
       card2Body: "Cruza ocupación y capacidad para decisiones de coordinación residencial.",
       card3Title: "Operación continua",
       card3Body: "Esta vista se vuelve más rica conforme avanza la integración de eventos.",
       ctaBackHousing: "Volver a housing",
       ctaBackMarketplace: "Volver a marketplace",
+      statusNotice:
+        "Reservas de Housing permanece en estado placeholder: todavía no hay un panel operable de reservas en Manager.",
       infoTitle: "Sobre esta vista",
       infoIntro:
-        "Reservas depende de la capa de housing del marketplace. Si ves poca data, puede ser una etapa temprana de indexación.",
+        "La ruta existe como contenedor de navegación, pero todavía no representa una superficie operativa confiable.",
       infoMoreSummary: "Sincronización y trazabilidad",
       infoLi1: "La información final proviene de eventos y estados on-chain de housing.",
       infoLi2: "Puede haber rezago temporal entre ejecución y aparición en listado.",
-      infoLi3: "Esta pantalla prioriza lectura operativa y navegación estable.",
+      infoLi3: "No uses esta pantalla como si ya hubiera seguimiento activo de reservas.",
       infoLi4: "Para auditoría, valida también en explorador de bloques."
     },
     deployConfig: {
@@ -1027,11 +1035,11 @@ const dictionaries = {
     marketplacePage: {
       metaTitle: "Marketplace | Shift DeSoc",
       metaDescription:
-        "Explore offers, housing, and marketplace modules in Shift through a clear section-based hub.",
+        "Review the current marketplace scope and the non-operable offers and housing state in Shift.",
       badge: "Collaborative economy",
       title: "Marketplace on Shift",
       subtitle:
-        "Marketplace organizes offers and housing for community economic coordination. This page is the modular hub entrypoint.",
+        "Marketplace preserves the economic domain context, but the Offers and Housing operator surfaces are not yet enabled in Manager.",
       card1Title: "Offers",
       card1Body: "Services and products published by communities and participants.",
       card2Title: "Housing",
@@ -1039,27 +1047,29 @@ const dictionaries = {
       card3Title: "Modular evolution",
       card3Body: "New marketplace verticals will integrate progressively into this hub.",
       offersTitle: "Offers",
-      offersBody: "Browse indexed offers and their operational state.",
+      offersBody: "The offers route is not yet operable in Manager and remains in coming-soon state.",
       housingTitle: "Housing",
-      housingBody: "Review reservations and current space availability.",
-      openSection: "Open section",
+      housingBody: "The housing route is not yet operable in Manager and remains in coming-soon state.",
+      openSection: "Coming soon",
+      statusNotice:
+        "Marketplace remains non-operable in Manager. Use this page only as a truthful scope and status reference.",
       infoTitle: "About this view",
       infoIntro:
-        "Marketplace centralizes collaborative economy routes. Some sections may remain in early state while indexing matures.",
+        "Marketplace keeps the domain context visible, but operator routes stay gated until real read models and Manager surfaces exist.",
       infoMoreSummary: "Current scope and next steps",
-      infoLi1: "Offers and Housing are the active navigation modules in this hub.",
-      infoLi2: "Final data quality depends on indexer sync and community enablement.",
-      infoLi3: "When a route is still limited, use this hub as a stable entrypoint.",
+      infoLi1: "Offers and Housing are still unavailable as live Manager operator routes today.",
+      infoLi2: "On-chain capability exists, but current indexer and Manager coverage is still insufficient.",
+      infoLi3: "Do not treat these routes as live workflows until real data and actions are enabled.",
       infoLi4: "Keep cross-checking on-chain details for critical operations."
     },
     offersPage: {
       metaTitle: "Offers | Shift DeSoc",
       metaDescription:
-        "Browse marketplace offers while preserving context around publication, status, and community integration.",
+        "Review the placeholder offers route and its current pending integration state in Shift.",
       badge: "Offers marketplace",
       title: "Offers on Shift",
       subtitle:
-        "This section contains the marketplace offers layer. Final feed quality depends on ongoing event indexing.",
+        "This route is not yet operable in Manager. The real catalog depends on read models and integration that have not shipped yet.",
       card1Title: "Community catalog",
       card1Body: "Offers published by communities and participants under modular rules.",
       card2Title: "Economic traceability",
@@ -1068,63 +1078,69 @@ const dictionaries = {
       card3Body: "The final grid unlocks progressively as indexer coverage matures.",
       ctaCreate: "Create offer (coming soon)",
       ctaBack: "Back to marketplace",
+      statusNotice:
+        "Offers remains a placeholder route: there is no operable read surface or creation flow in Manager yet.",
       infoTitle: "About this view",
       infoIntro:
-        "Offers acts as a marketplace read hub. Missing data can come from indexing lag or module rollout state.",
+        "This route exists to preserve navigation contract, not to represent a live workflow today.",
       infoMoreSummary: "Scope and validation",
       infoLi1: "Final content depends on events emitted by marketplace modules.",
       infoLi2: "There can be lag between transaction confirmation and visibility here.",
-      infoLi3: "Use this view as a stable entrypoint to the offers flow.",
+      infoLi3: "Do not use this view as if an active offers workflow already exists.",
       infoLi4: "Validate critical operations against explorer and contracts."
     },
     housingPage: {
       metaTitle: "Housing | Shift DeSoc",
       metaDescription:
-        "Explore the housing hub for reservations, availability, and residential coordination in Shift.",
+        "Review the current non-operable housing hub and its pending scope in Shift.",
       badge: "Residential coordination",
       title: "Housing on Shift",
       subtitle:
-        "Housing consolidates availability, reservations, and operational rules for community living experiences.",
+        "Housing keeps the residential protocol context visible, but the operational experience is not enabled in Manager yet.",
       card1Title: "Availability",
       card1Body: "See high-level status of spaces enabled by each community.",
       card2Title: "Reservations",
-      card2Body: "Open reservation history and operational state in active modules.",
+      card2Body: "Reservation history and operational state remain unavailable until real Manager coverage exists.",
       card3Title: "Modular integration",
       card3Body: "Detail expands as marketplace and housing indexing mature.",
-      ctaReservations: "View reservations",
+      ctaReservations: "View reservations (coming soon)",
       ctaBack: "Back to marketplace",
+      statusNotice:
+        "Housing remains non-operable in Manager. Navigation stays visible, but real reservation and read flows are not ready yet.",
       infoTitle: "About this view",
       infoIntro:
-        "Housing works as an operational hub. Some panels may stay preliminary until integration is complete.",
+        "Housing should not be interpreted as an operational hub yet; today it only signals honest pending scope.",
       infoMoreSummary: "Coverage and limits",
       infoLi1: "Visible reservations depend on indexer sync and community enablement.",
       infoLi2: "Slight lag may occur between on-chain writes and updates here.",
-      infoLi3: "Use this hub for consistent module navigation.",
+      infoLi3: "Do not treat this hub as a live surface while integration is still pending.",
       infoLi4: "Verify critical data against on-chain sources."
     },
     housingReservationsPage: {
       metaTitle: "Housing Reservations | Shift DeSoc",
       metaDescription:
-        "Track housing reservation status and availability within the Shift marketplace flow.",
+        "Review the placeholder housing reservations route and its current non-operable state in Shift.",
       badge: "Active reservations",
       title: "Housing Reservations",
       subtitle:
-        "This view focuses on reservation tracking, occupancy, and operational state of housing spaces.",
+        "This route does not yet provide real reservation operations in Manager; final read support still depends on pending integration.",
       card1Title: "Reservation status",
-      card1Body: "Monitor active, confirmed, and closed reservations when indexer data is available.",
+      card1Body: "Active, confirmed, and closed reservation tracking remains unavailable until real Manager reads exist.",
       card2Title: "Availability",
       card2Body: "Combine occupancy and capacity signals for residential coordination.",
       card3Title: "Continuous operations",
       card3Body: "This view grows richer as housing event integration advances.",
       ctaBackHousing: "Back to housing",
       ctaBackMarketplace: "Back to marketplace",
+      statusNotice:
+        "Housing Reservations remains a placeholder route: there is no operable reservations panel in Manager yet.",
       infoTitle: "About this view",
       infoIntro:
-        "Reservations depend on the housing marketplace layer. Sparse data can indicate early indexing stage.",
+        "The route exists as a navigation container, but it does not yet represent a reliable live operating surface.",
       infoMoreSummary: "Sync and traceability",
       infoLi1: "Final values come from housing on-chain events and states.",
       infoLi2: "Short lag may happen between execution and feed visibility.",
-      infoLi3: "This page prioritizes operational readability and stable navigation.",
+      infoLi3: "Do not use this page as if active reservation tracking already exists.",
       infoLi4: "For audits, validate in block explorer as well."
     },
     deployConfig: {

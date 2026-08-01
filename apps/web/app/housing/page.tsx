@@ -46,10 +46,14 @@ export default async function HousingPage() {
         </article>
       </section>
 
+      <section className="card-tight border-dashed border-primary/25 text-center">
+        <p className="text-sm font-semibold text-foreground">{t.statusNotice}</p>
+      </section>
+
       <section className="flex flex-wrap gap-3">
-        <Link className="btn-primary" href="/housing/reservations">
+        <button className="btn-primary cursor-not-allowed opacity-80" type="button" disabled>
           {t.ctaReservations}
-        </Link>
+        </button>
         <Link className="btn-ghost" href="/marketplace">
           {t.ctaBack}
         </Link>

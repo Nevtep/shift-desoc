@@ -47,7 +47,7 @@ export default async function HousingReservationsPage() {
       </section>
 
       <section className="card-tight border-dashed border-primary/25 text-center">
-        <p className="text-sm text-muted-foreground">{t.infoIntro}</p>
+        <p className="text-sm font-semibold text-foreground">{t.statusNotice}</p>
       </section>
 
       <section className="flex flex-wrap gap-3">

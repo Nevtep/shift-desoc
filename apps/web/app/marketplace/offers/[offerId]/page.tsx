@@ -1,7 +1,5 @@
-import Link from "next/link";
-
 export const metadata = {
-  title: "Offer Detail | Shift"
+  title: "Offer Detail (Coming Soon) | Shift"
 };
 
 type PageProps = {
@@ -12,8 +10,6 @@ type PageProps = {
 
 export default async function OfferDetailPage({ params }: PageProps) {
   const { offerId } = await params;
-  // TODO: replace with canonical marketplace claims route when implemented.
-  const marketplaceClaimsHref = "#";
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
@@ -21,25 +17,24 @@ export default async function OfferDetailPage({ params }: PageProps) {
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Offer</p>
         <h1 className="text-3xl font-semibold">Offer {offerId}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Offer metadata, pricing, and verification stats will show after the marketplace indexer is wired
-          in.
+          This detail route is still a placeholder in Manager. Offer metadata, pricing, and verification
+          stats are not yet operable here.
         </p>
       </header>
       <section className="space-y-4">
         <div className="card">
-          <h2 className="text-lg font-medium">Order History</h2>
+          <h2 className="text-lg font-medium">Current status</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Order and reservation history will render using GraphQL queries.
+            Order, reservation, and settlement history remain unavailable until marketplace projections
+            and read models are delivered.
           </p>
         </div>
         <div className="card">
-          <h2 className="text-lg font-medium">Disputes</h2>
+          <h2 className="text-lg font-medium">What is still gated</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Dispute timelines and outcomes appear once the dispute events are ingested.
+            Dispute timelines, related actions, and offer-specific operations stay blocked here until the
+            marketplace and disputes surfaces are implemented.
           </p>
-          <Link className="mt-3 inline-flex text-sm underline" href={marketplaceClaimsHref}>
-            View related claims
-          </Link>
         </div>
       </section>
     </main>
