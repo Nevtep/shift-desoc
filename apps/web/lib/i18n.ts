@@ -385,7 +385,7 @@ const dictionaries = {
       housingBody: "La ruta de housing todavía no es operable en Manager y permanece en estado próximamente.",
       openSection: "Próximamente",
       statusNotice:
-        "Marketplace sigue en estado no operable en Manager. Usá esta vista solo como referencia de alcance y estado actual.",
+        "Marketplace sigue en estado no operable en Manager. Usa esta vista solo como referencia de alcance y estado actual.",
       infoTitle: "Sobre esta vista",
       infoIntro:
         "Marketplace mantiene el contexto del dominio, pero las rutas operativas quedan bloqueadas hasta que existan read models y superficies reales en indexer + Manager.",

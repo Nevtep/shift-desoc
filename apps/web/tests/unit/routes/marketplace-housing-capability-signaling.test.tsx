@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next/headers", () => ({
-  cookies: vi.fn(async () => ({
+  cookies: vi.fn(() => ({
     get: () => undefined
   }))
 }));
@@ -32,21 +32,23 @@ describe("marketplace and housing capability signaling", () => {
   });
 
   it("marks offers and housing reservations routes as placeholders instead of live flows", async () => {
-    renderWithProviders(await OffersPage());
+    const offersRender = renderWithProviders(await OffersPage());
     expect(screen.getByRole("button", { name: /crear oferta|create offer/i })).toBeDisabled();
     expect(screen.getByText(/offers permanece en estado placeholder|offers remains a placeholder route/i)).toBeInTheDocument();
 
+    offersRender.unmount();
     renderWithProviders(await HousingReservationsPage());
     expect(screen.getByText(/reservas de housing permanece en estado placeholder|housing reservations remains a placeholder route/i)).toBeInTheDocument();
   });
 
   it("keeps direct offer and reservation detail routes in explicit placeholder state", async () => {
-    renderWithProviders(await OfferDetailPage({ params: Promise.resolve({ offerId: "42" }) }));
+    const offerDetailRender = renderWithProviders(await OfferDetailPage({ params: Promise.resolve({ offerId: "42" }) }));
     expect(screen.getByText(/still a placeholder in manager/i)).toBeInTheDocument();
     expect(screen.getByText(/what is still gated/i)).toBeInTheDocument();
 
+    offerDetailRender.unmount();
     renderWithProviders(await ReservationDetailPage({ params: Promise.resolve({ reservationId: "7" }) }));
-    expect(screen.getAllByText(/still a placeholder in manager/i)).toHaveLength(2);
-    expect(screen.getAllByText(/what is still gated/i)).toHaveLength(2);
+    expect(screen.getByText(/still a placeholder in manager/i)).toBeInTheDocument();
+    expect(screen.getByText(/what is still gated/i)).toBeInTheDocument();
   });
 });
