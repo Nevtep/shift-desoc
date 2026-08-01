@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Link from "next/link";
 
+import { getManagerCapabilityMetadata } from "../../lib/community-overview/availability";
+import { MANAGER_CAPABILITY_ROUTE_KEYS } from "../../lib/community-overview/routes";
 import { getI18n, LOCALE_COOKIE_KEY, sanitizeLocale } from "../../lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -17,6 +20,8 @@ export default async function MarketplacePage() {
   const cookieStore = await cookies();
   const locale = sanitizeLocale(cookieStore.get(LOCALE_COOKIE_KEY)?.value);
   const t = getI18n(locale).marketplacePage;
+  const offersCapability = getManagerCapabilityMetadata(MANAGER_CAPABILITY_ROUTE_KEYS.MARKETPLACE_OFFERS);
+  const housingCapability = getManagerCapabilityMetadata(MANAGER_CAPABILITY_ROUTE_KEYS.HOUSING);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10 sm:py-12">
@@ -57,9 +62,21 @@ export default async function MarketplacePage() {
             <p className="text-sm text-muted-foreground">
               {t.offersBody}
             </p>
-            <button className="btn-ghost" type="button" disabled>
-              {t.offersTitle} · {t.openSection}
-            </button>
+            {offersCapability.enabled ? (
+              <Link className="btn-ghost" href={offersCapability.href}>
+                {t.offersTitle}
+              </Link>
+            ) : (
+              <button
+                className="btn-ghost"
+                type="button"
+                disabled
+                data-capability-key={offersCapability.key}
+                data-capability-state={offersCapability.status}
+              >
+                {t.offersTitle} · {t.openSection}
+              </button>
+            )}
           </div>
         </article>
         <article className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-[rgba(246,240,225,0.92)] via-background to-background/95 p-5 shadow-[0_4px_18px_rgba(86,102,69,0.08)]">
@@ -69,9 +86,21 @@ export default async function MarketplacePage() {
             <p className="text-sm text-muted-foreground">
               {t.housingBody}
             </p>
-            <button className="btn-ghost" type="button" disabled>
-              {t.housingTitle} · {t.openSection}
-            </button>
+            {housingCapability.enabled ? (
+              <Link className="btn-ghost" href={housingCapability.href}>
+                {t.housingTitle}
+              </Link>
+            ) : (
+              <button
+                className="btn-ghost"
+                type="button"
+                disabled
+                data-capability-key={housingCapability.key}
+                data-capability-state={housingCapability.status}
+              >
+                {t.housingTitle} · {t.openSection}
+              </button>
+            )}
           </div>
         </article>
       </section>

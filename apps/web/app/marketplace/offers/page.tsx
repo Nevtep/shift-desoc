@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
+import { getManagerCapabilityMetadata } from "../../../lib/community-overview/availability";
+import { MANAGER_CAPABILITY_ROUTE_KEYS } from "../../../lib/community-overview/routes";
 import { getI18n, LOCALE_COOKIE_KEY, sanitizeLocale } from "../../../lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,6 +20,7 @@ export default async function OffersPage() {
   const cookieStore = await cookies();
   const locale = sanitizeLocale(cookieStore.get(LOCALE_COOKIE_KEY)?.value);
   const t = getI18n(locale).offersPage;
+  const capability = getManagerCapabilityMetadata(MANAGER_CAPABILITY_ROUTE_KEYS.MARKETPLACE_OFFERS);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10 sm:py-12">
@@ -51,7 +54,13 @@ export default async function OffersPage() {
       </section>
 
       <section className="flex flex-wrap gap-3">
-        <button className="btn-primary cursor-not-allowed opacity-80" type="button" disabled>
+        <button
+          className="btn-primary cursor-not-allowed opacity-80"
+          type="button"
+          disabled={!capability.enabled}
+          data-capability-key={capability.key}
+          data-capability-state={capability.status}
+        >
           {t.ctaCreate}
         </button>
         <Link className="btn-ghost" href="/marketplace">

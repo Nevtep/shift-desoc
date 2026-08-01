@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
+import { getManagerCapabilityMetadata } from "../../../lib/community-overview/availability";
+import { MANAGER_CAPABILITY_ROUTE_KEYS } from "../../../lib/community-overview/routes";
 import { getI18n, LOCALE_COOKIE_KEY, sanitizeLocale } from "../../../lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -18,9 +20,14 @@ export default async function HousingReservationsPage() {
   const cookieStore = await cookies();
   const locale = sanitizeLocale(cookieStore.get(LOCALE_COOKIE_KEY)?.value);
   const t = getI18n(locale).housingReservationsPage;
+  const capability = getManagerCapabilityMetadata(MANAGER_CAPABILITY_ROUTE_KEYS.HOUSING_RESERVATIONS);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10 sm:py-12">
+    <main
+      className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10 sm:py-12"
+      data-capability-key={capability.key}
+      data-capability-state={capability.status}
+    >
       <header className="space-y-4">
         <p className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary">
           {t.badge}
