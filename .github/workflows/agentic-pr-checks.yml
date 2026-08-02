@@ -49,8 +49,6 @@ jobs:
       - name: Checkout
         # actions/checkout@v4
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          submodules: recursive
 
       - name: Setup pnpm
         # pnpm/action-setup@v4
@@ -73,6 +71,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install Foundry library dependencies
+        run: bash scripts/ci/install-foundry-dependencies.sh
+
+      - name: Verify Foundry dependency preflight
+        run: |
+          test -f lib/forge-std/src/Test.sol || { echo "missing lib/forge-std/src/Test.sol"; exit 1; }
+          test -f lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol || { echo "missing lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol"; exit 1; }
 
       - name: Run Forge tests
         run: pnpm forge:test
