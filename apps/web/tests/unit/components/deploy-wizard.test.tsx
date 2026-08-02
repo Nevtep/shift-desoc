@@ -20,8 +20,12 @@ vi.mock("../../../hooks/useDeployResume", () => ({
   })
 }));
 
+async function openWizard() {
+  await userEvent.click(await screen.findByRole("button", { name: /Create community/i }));
+}
+
 describe("DeployWizard", () => {
-  it("shows 5-step progress labels during in-progress deployment", async () => {
+  it("shows 5-step progress labels after opening the creation flow", async () => {
     mockWagmiHooks({
       connected: true,
       address: "0xabc1230000000000000000000000000000000000",
@@ -57,6 +61,7 @@ describe("DeployWizard", () => {
       />
     );
 
+    await openWizard();
     const start = await screen.findByRole("button", { name: /^Next$/i });
     expect(screen.getByText(/Wire Registry/i)).toBeInTheDocument();
     expect(screen.getByText(/Handoff/i)).toBeInTheDocument();
@@ -69,7 +74,7 @@ describe("DeployWizard", () => {
     renderWithProviders(<DeployWizard />);
 
     expect(
-      await screen.findByText(/Connect your wallet to get started. It's the first step./i)
+      await screen.findByText(/Connect your wallet to get started. This is the first step./i)
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Mock/i })).toBeInTheDocument();
   });
@@ -78,6 +83,7 @@ describe("DeployWizard", () => {
     mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000" });
     renderWithProviders(<DeployWizard />);
 
+    await openWizard();
     const startButton = await screen.findByRole("button", { name: /^Next$/i });
     expect(startButton).toBeDisabled();
 
@@ -120,7 +126,7 @@ describe("DeployWizard", () => {
     expect(screen.queryByRole("button", { name: /Resume deploy/i })).not.toBeInTheDocument();
   });
 
-  it("renders in-progress deployment heading", async () => {
+  it("renders the creation heading after expanding the wizard", async () => {
     mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000", chainId: 84532 });
     renderWithProviders(
       <DeployWizard
@@ -151,6 +157,7 @@ describe("DeployWizard", () => {
       />
     );
 
-    expect(await screen.findByText(/Create your community/i)).toBeInTheDocument();
+    await openWizard();
+    expect(await screen.findByRole("heading", { name: /^Create your community$/i })).toBeInTheDocument();
   });
 });

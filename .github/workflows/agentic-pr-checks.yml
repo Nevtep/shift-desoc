@@ -49,8 +49,6 @@ jobs:
       - name: Checkout
         # actions/checkout@v4
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          submodules: recursive
 
       - name: Setup pnpm
         # pnpm/action-setup@v4
@@ -73,6 +71,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install Foundry library dependencies
+        run: bash scripts/ci/install-foundry-dependencies.sh
+
+      - name: Verify Foundry dependency preflight
+        run: |
+          test -f lib/forge-std/src/Test.sol || { echo "missing lib/forge-std/src/Test.sol"; exit 1; }
+          test -f lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol || { echo "missing lib/openzeppelin-contracts/contracts/access/manager/AccessManager.sol"; exit 1; }
 
       - name: Run Forge tests
         run: pnpm forge:test
@@ -103,6 +109,41 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Compile Hardhat artifacts for web tests
+        run: pnpm hh:compile
+
+      - name: Verify web-required Hardhat artifacts
+        run: |
+          test -s artifacts/contracts/modules/factories/GovernanceLayerFactory.sol/GovernanceLayerFactory.json
+          test -s artifacts/contracts/modules/factories/VerificationLayerFactory.sol/VerificationLayerFactory.json
+          test -s artifacts/contracts/modules/factories/EconomicLayerFactory.sol/EconomicLayerFactory.json
+          test -s artifacts/contracts/modules/factories/CommerceLayerFactory.sol/CommerceLayerFactory.json
+          test -s artifacts/contracts/modules/factories/CoordinationLayerFactory.sol/CoordinationLayerFactory.json
+          test -s artifacts/contracts/tokens/MembershipTokenERC20Votes.sol/MembershipTokenERC20Votes.json
+          test -s artifacts/contracts/core/ShiftTimelockController.sol/ShiftTimelockController.json
+          test -s artifacts/contracts/core/ShiftGovernor.sol/ShiftGovernor.json
+          test -s artifacts/contracts/core/CountingMultiChoice.sol/CountingMultiChoice.json
+          test -s artifacts/contracts/tokens/VerifierPowerToken1155.sol/VerifierPowerToken1155.json
+          test -s artifacts/contracts/modules/VerifierElection.sol/VerifierElection.json
+          test -s artifacts/contracts/modules/VerifierManager.sol/VerifierManager.json
+          test -s artifacts/contracts/modules/ValuableActionRegistry.sol/ValuableActionRegistry.json
+          test -s artifacts/contracts/modules/ValuableActionSBT.sol/ValuableActionSBT.json
+          test -s artifacts/contracts/modules/Engagements.sol/Engagements.json
+          test -s artifacts/contracts/modules/PositionManager.sol/PositionManager.json
+          test -s artifacts/contracts/modules/CredentialManager.sol/CredentialManager.json
+          test -s artifacts/contracts/modules/CohortRegistry.sol/CohortRegistry.json
+          test -s artifacts/contracts/modules/InvestmentCohortManager.sol/InvestmentCohortManager.json
+          test -s artifacts/contracts/modules/RevenueRouter.sol/RevenueRouter.json
+          test -s artifacts/contracts/tokens/CommunityToken.sol/CommunityToken.json
+          test -s artifacts/contracts/modules/TreasuryAdapter.sol/TreasuryAdapter.json
+          test -s artifacts/contracts/modules/CommerceDisputes.sol/CommerceDisputes.json
+          test -s artifacts/contracts/modules/Marketplace.sol/Marketplace.json
+          test -s artifacts/contracts/modules/HousingManager.sol/HousingManager.json
+          test -s artifacts/contracts/modules/ProjectFactory.sol/ProjectFactory.json
+          test -s artifacts/contracts/modules/RequestHub.sol/RequestHub.json
+          test -s artifacts/contracts/modules/DraftsManager.sol/DraftsManager.json
+          test -s artifacts/contracts/core/ShiftAccessManager.sol/ShiftAccessManager.json
 
       - name: Run web unit tests
         run: pnpm --filter @shift/web test:unit
