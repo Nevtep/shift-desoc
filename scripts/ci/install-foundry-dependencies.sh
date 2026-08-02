@@ -63,8 +63,10 @@ install_or_verify_dep() {
   tmp_target="$(mktemp -d "$(dirname "$target")/.bootstrap.$(basename "$target").XXXXXX")"
   TEMP_DIRS+=("$tmp_target")
 
-  git clone --no-checkout "$repo" "$tmp_target"
-  git -C "$tmp_target" checkout --detach "$commit"
+  git -C "$tmp_target" init -q
+  git -C "$tmp_target" remote add origin "$repo"
+  git -C "$tmp_target" fetch --depth 1 origin "$commit"
+  git -C "$tmp_target" checkout --detach FETCH_HEAD
 
   mv "$tmp_target" "$target"
   tmp_target=""
