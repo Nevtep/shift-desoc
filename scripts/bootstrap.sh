@@ -39,7 +39,6 @@ write_secret GITHUB_TOKEN "${GITHUB_TOKEN:-}"
 write_secret GH_TOKEN "${GITHUB_TOKEN:-}"
 write_secret OPENROUTER_API_KEY "${OPENROUTER_API_KEY:-}"
 write_secret OPENAI_API_KEY "${OPENAI_API_KEY:-}"
-write_secret NOUS_API_KEY "${NOUS_API_KEY:-}"
 
 # Clone once into the persistent workspace volume.
 if [[ ! -d "$REPO_DIR/.git" ]]; then
@@ -58,6 +57,10 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 git reset --hard origin/main
+if [[ -f .engram/manifest.json ]]; then
+  echo "Importing Git-synced Engram memories..."
+  engram sync --import
+fi
 mkdir -p .worktrees
 
 grep -qxF '.worktrees/' .gitignore || {

@@ -26,7 +26,6 @@ services:
       GH_TOKEN: ${GITHUB_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      NOUS_API_KEY: ${NOUS_API_KEY:-}
       TZ: ${TZ:-America/Argentina/Cordoba}
     volumes:
       - hermes_data:/opt/data
@@ -52,7 +51,6 @@ services:
       GH_TOKEN: ${GITHUB_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      NOUS_API_KEY: ${NOUS_API_KEY:-}
       TZ: ${TZ:-America/Argentina/Cordoba}
       HERMES_UID: "10000"
       HERMES_GID: "10000"

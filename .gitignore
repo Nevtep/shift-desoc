@@ -86,6 +86,16 @@ gas-report.txt
 **/gas-report.txt
 # Local AI runtime state
 .atl/
-.engram/
+.engram/*
+!.engram/manifest.json
+!.engram/chunks/
+!.engram/chunks/**
+!.engram/config.json
+.engram/*.db
+.engram/*.db-*
+.engram/*.sqlite
+.engram/*.sqlite-*
+.engram/*.wal
+.engram/*.shm
 .agent-runs/
 .worktrees/
