@@ -27,6 +27,10 @@ Status semantics used in this file:
 - `Partial`: meaningful implementation exists, but key sub-capabilities are missing or incomplete.
 - `Missing`: no meaningful implementation found in this layer.
 
+Latest tactical delta (2026-08-01, SHI-53):
+- Marketplace and housing unavailable/coming-soon states now derive from explicit Manager capability metadata in `apps/web/lib/community-overview/availability.ts` and route keys in `apps/web/lib/community-overview/routes.ts`, instead of static placeholder copy.
+- This is a truthfulness/signaling cleanup only: marketplace, housing, and dispute flows remain non-operable until their indexer projections, data reads, and contract-backed Manager actions are implemented.
+
 Latest tactical delta (2026-07-20):
 - `SHI-52` completed the `VerifierPowerToken1155` enumeration and counting helper cleanup.
 - Removed the stale VPT helper gap from the contract cleanup backlog and cross-layer drift notes.
@@ -59,9 +63,9 @@ Latest tactical delta (2026-04-10):
 | `3.6 Position & Role Management` | Implemented | Missing | Missing | `contracts/modules/PositionManager.sol`, `test/PositionManager.t.sol`; no position projection in `apps/indexer/ponder.config.ts` or `apps/indexer/src/index.ts`; no position UI in `apps/web/app` |
 | `3.7 Investment Cohort System` | Implemented | Missing | Missing | `contracts/modules/CohortRegistry.sol`, `contracts/modules/InvestmentCohortManager.sol`, `test/CohortRegistry.t.sol`, `test/InvestmentCohortManager.t.sol`; no cohort projection in `apps/indexer/src/index.ts`; no cohort UI in `apps/web/app` |
 | `3.8 Revenue Distribution` | Implemented | Missing | Missing | `contracts/modules/RevenueRouter.sol`, `test/MarketplaceRevenueRouter.t.sol`, `test/RevenueRouterCohort.t.sol`; no revenue projection in `apps/indexer/src/index.ts`; no revenue claim/treasury UI in `apps/web/app` |
-| `3.9 Marketplace & Commerce` | Implemented | Missing | Missing | `contracts/modules/Marketplace.sol`, `test/MarketplaceHousing.t.sol`, `test/MarketplaceDisputes.t.sol`; no marketplace projection handlers in `apps/indexer/src/index.ts`; marketplace routes now render explicit unavailable/coming-soon states in `apps/web/app/marketplace/page.tsx`, `apps/web/app/marketplace/offers/page.tsx` |
+| `3.9 Marketplace & Commerce` | Implemented | Missing | Missing | `contracts/modules/Marketplace.sol`, `test/MarketplaceHousing.t.sol`, `test/MarketplaceDisputes.t.sol`; no marketplace projection handlers in `apps/indexer/src/index.ts`; marketplace routes now derive explicit unavailable/coming-soon states from capability metadata in `apps/web/lib/community-overview/availability.ts`, `apps/web/lib/community-overview/routes.ts`, `apps/web/app/marketplace/page.tsx`, `apps/web/app/marketplace/offers/page.tsx` |
 | `3.10 Commerce Disputes` | Partial | Missing | Missing | `contracts/modules/CommerceDisputes.sol` (admin-only TODO noted in file), `test/MarketplaceDisputes.t.sol`; no dispute tables/handlers in `apps/indexer/ponder.schema.ts`, `apps/indexer/src/index.ts`; no active dispute UI in `apps/web/app/marketplace/offers/[offerId]/page.tsx` |
-| `3.11 Co-Housing Manager` | Implemented | Missing | Missing | `contracts/modules/HousingManager.sol`, `test/MarketplaceHousing.t.sol`; no housing projection in `apps/indexer/src/index.ts`; housing routes now render explicit unavailable/coming-soon states in `apps/web/app/housing/page.tsx`, `apps/web/app/housing/reservations/page.tsx` |
+| `3.11 Co-Housing Manager` | Implemented | Missing | Missing | `contracts/modules/HousingManager.sol`, `test/MarketplaceHousing.t.sol`; no housing projection in `apps/indexer/src/index.ts`; housing routes now derive explicit unavailable/coming-soon states from capability metadata in `apps/web/lib/community-overview/availability.ts`, `apps/web/lib/community-overview/routes.ts`, `apps/web/app/housing/page.tsx`, `apps/web/app/housing/reservations/page.tsx` |
 | `3.12 Request Hub` | Implemented | Partial | Implemented | `contracts/modules/RequestHub.sol`, `test/RequestHub.t.sol`; request/comment/status/moderation handlers in `apps/indexer/src/index.ts`; request create/detail/comment/moderation UI in `apps/web/components/requests/*`, `apps/web/app/requests/page.tsx` |
 | `3.13 Drafts Manager` | Implemented | Implemented | Implemented | `contracts/modules/DraftsManager.sol`, `test/DraftsManager.t.sol`; draft/version/review/escalation handlers in `apps/indexer/src/index.ts`; drafts create/list/detail/escalation UI in `apps/web/components/drafts/*`, `apps/web/app/drafts/page.tsx` |
 | `3.14 Treasury Adapter` | Implemented | Missing | Missing | `contracts/modules/TreasuryAdapter.sol`, `test/TreasuryAdapter.t.sol`; no treasury adapter projection in `apps/indexer/src/index.ts`; no treasury adapter UI in `apps/web/app` |
@@ -74,7 +78,7 @@ Latest tactical delta (2026-04-10):
 
 - Contracts: Broadly implemented across all feature areas, with remaining partials concentrated in unresolved cleanup seams (`CommerceDisputes` juror finalization and parts of `Engagements`) plus still-missing projection/UI layers elsewhere.
 - Ponder indexer: Deep support for coordination/governance/engagement slices (`communities`, `requests/comments`, `drafts/reviews/versions`, `proposals/votes`, `engagements/jurors`), but missing most economic/commerce/token surfaces.
-- Manager app: Functional for requests, drafts, governance proposals, and claims/engagement interactions; marketplace and housing now fail closed with explicit unavailable states, while disputes, token, economic, treasury, and other admin modules still lack operable UX.
+- Manager app: Functional for requests, drafts, governance proposals, and claims/engagement interactions; marketplace and housing now fail closed from explicit capability metadata with unavailable states, while disputes, token, economic, treasury, and other admin modules still lack operable UX.
 
 ---
 
@@ -95,7 +99,7 @@ Latest tactical delta (2026-04-10):
 
 4. UX navigation still has uneven truthfulness across some surfaces.
 - Governance links to `/governance/activity`, but this route is not present (`apps/web/app/governance/page.tsx`; only proposal routes exist under `apps/web/app/governance/**`).
-- Marketplace and housing now fail closed with explicit unavailable copy, but community detail and other placeholder surfaces still need the same rigor (`apps/web/app/communities/[communityId]/page.tsx` and remaining placeholder modules).
+- Marketplace and housing now fail closed from explicit capability metadata, but community detail and other placeholder surfaces still need the same rigor (`apps/web/app/communities/[communityId]/page.tsx` and remaining placeholder modules).
 
 5. Contract-level TODOs can propagate false completeness assumptions.
 - `contracts/modules/CommerceDisputes.sol` documents admin-only finalization TODO for juror integration.
@@ -152,8 +156,8 @@ Latest tactical delta (2026-04-10):
 - CommerceDisputes juror integration path.
 - Engagement revoke side-effect completeness.
 
-2. Replace placeholder text with capability flags.
-- Introduce feature-flag metadata so pages render explicit "not available on this deployment" states from config, not static copy.
+2. Extend capability metadata beyond marketplace and housing placeholder surfaces.
+- Reuse explicit capability metadata for remaining placeholder modules so unsupported routes render honest "not available on this deployment" states from config, not static copy.
 
 ---
 

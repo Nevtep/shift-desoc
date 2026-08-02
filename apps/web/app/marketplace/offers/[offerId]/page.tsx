@@ -1,3 +1,6 @@
+import { getManagerCapabilityMetadata } from "../../../../lib/community-overview/availability";
+import { MANAGER_CAPABILITY_ROUTE_KEYS } from "../../../../lib/community-overview/routes";
+
 export const metadata = {
   title: "Offer Detail (Coming Soon) | Shift"
 };
@@ -10,9 +13,14 @@ type PageProps = {
 
 export default async function OfferDetailPage({ params }: PageProps) {
   const { offerId } = await params;
+  const capability = getManagerCapabilityMetadata(MANAGER_CAPABILITY_ROUTE_KEYS.MARKETPLACE_OFFER_DETAIL);
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10">
+    <main
+      className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10"
+      data-capability-key={capability.key}
+      data-capability-state={capability.status}
+    >
       <header className="space-y-2">
         <p className="text-xs uppercase tracking-wide text-muted-foreground">Offer</p>
         <h1 className="text-3xl font-semibold">Offer {offerId}</h1>
