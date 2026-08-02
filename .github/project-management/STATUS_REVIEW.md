@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Jul 20, 2026)
+# Shift DeSoc Status Review (Aug 1, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -69,6 +69,7 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-08-01: Recorded `SHI-53` tactical cleanup for Manager marketplace and housing availability signaling. The existing non-operable marketplace/housing placeholder routes now derive unavailable/coming-soon states from explicit capability metadata in `apps/web/lib/community-overview/availability.ts` and route keys in `apps/web/lib/community-overview/routes.ts`; this does not make marketplace or housing operable and remains synchronized with `.github/project-management/IMPLEMENTATION_STATUS.md`.
 - 2026-07-20: Implemented `SHI-14` truthfulness gating for current Manager marketplace and housing surfaces. `apps/web` now renders those non-operable routes with explicit coming-soon / unavailable states instead of navigable-looking operator CTAs, and `.github/project-management/IMPLEMENTATION_STATUS.md` was refreshed to distinguish truthful unavailable routing from operable slices.
 - 2026-07-20: Recorded `SHI-52` as complete after the merged verifier-power cleanup. Synchronized `.github/project-management/IMPLEMENTATION_STATUS.md` and `apps/web/manager-feature-specs-roadmap.md` to remove stale references to the resolved `VerifierPowerToken1155` enumeration/counting helper gap, leaving `CommerceDisputes` juror integration and `Engagements` revocation side effects as the remaining contract cleanup items in that queue.
 - 2026-04-12: Added Valuable Action governance composer coverage in `apps/web` action templates. Guided mode now supports `ValuableActionRegistry.activateFromGovernance(uint256,bytes32)` and `ValuableActionRegistry.proposeValuableAction(...,bytes32)` with deterministic calldata encoding (including validated bytes32 and structured params JSON parsing), and expert mode coverage is enforced by tests asserting both allowlisted signatures are available.
