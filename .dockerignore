@@ -1,0 +1,12 @@
+.git
+.worktrees
+.agent-runs
+node_modules
+**/node_modules
+.next
+**/.next
+coverage
+**/coverage
+.env
+.env.*
+!.env.hermes.example

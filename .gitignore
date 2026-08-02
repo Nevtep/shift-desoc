@@ -70,6 +70,7 @@ lerna-debug.log*
 !**/.env.example
 .secret
 .privatekey
+.env.hermes
 
 # Temporary files
 tmp/
@@ -86,3 +87,5 @@ gas-report.txt
 # Local AI runtime state
 .atl/
 .engram/
+.agent-runs/
+.worktrees/

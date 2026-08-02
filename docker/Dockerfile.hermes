@@ -1,0 +1,35 @@
+FROM nousresearch/hermes-agent:latest
+
+USER root
+
+ARG CODEX_VERSION=0.135.0
+ARG PNPM_VERSION=9.15.9
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl git git-lfs jq openssh-client ripgrep sqlite3 \
+    build-essential pkg-config libssl-dev gh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Hermes already includes Node, but pin the CLIs used by Shift.
+RUN npm install -g "@openai/codex@${CODEX_VERSION}" \
+    && corepack enable \
+    && corepack prepare "pnpm@${PNPM_VERSION}" --activate
+
+# Install Gentle AI and Engram using their supported installer/build paths.
+# Failure is explicit during image build rather than hidden at runtime.
+RUN curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/install.sh | bash \
+    && command -v gentle-ai \
+    && command -v gga \
+    && command -v engram
+
+COPY hermes-bootstrap /opt/shift-hermes/bootstrap
+COPY scripts /opt/shift-hermes/scripts
+
+RUN chmod +x /opt/shift-hermes/scripts/*.sh \
+    && mkdir -p /workspace /opt/data \
+    && chown -R hermes:hermes /workspace /opt/data /opt/shift-hermes
+
+USER hermes
+WORKDIR /workspace/shift
+
+# Keep the official image entrypoint and s6 supervision.

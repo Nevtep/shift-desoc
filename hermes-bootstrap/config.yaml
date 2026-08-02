@@ -1,0 +1,46 @@
+model:
+  provider: openrouter
+  default: anthropic/claude-sonnet-4.6
+
+terminal:
+  backend: local
+  cwd: /workspace/shift
+  home_mode: profile
+
+skills:
+  external_dirs:
+    - /workspace/shift/.github/skills
+    - /opt/data/skills
+
+delegation:
+  max_concurrent_children: 3
+  max_spawn_depth: 2
+  orchestrator_enabled: true
+
+agent:
+  max_turns: 500
+
+checkpoints:
+  enabled: true
+  max_snapshots: 20
+
+cron:
+  provider: ""
+
+kanban:
+  auto_decompose: false
+  orchestrator_profile: default
+
+curator:
+  enabled: true
+  interval_hours: 24
+
+toolsets:
+  cli:
+    - terminal
+    - file
+    - skills
+    - memory
+    - delegation
+    - cron
+    - kanban

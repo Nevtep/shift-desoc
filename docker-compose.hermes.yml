@@ -1,0 +1,92 @@
+name: shift-hermes
+
+services:
+  init:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.hermes
+      args:
+        CODEX_VERSION: ${CODEX_VERSION:-0.135.0}
+        PNPM_VERSION: ${PNPM_VERSION:-9.15.9}
+    image: shift-hermes:local
+    container_name: shift-hermes-init
+    user: "10000:10000"
+    entrypoint: ["/bin/bash", "/opt/shift-hermes/scripts/bootstrap.sh"]
+    environment:
+      HERMES_HOME: /opt/data
+      HOME: /opt/data/home
+      SHIFT_REPO_URL: ${SHIFT_REPO_URL:-https://github.com/Nevtep/shift-desoc.git}
+      SHIFT_REPO_FULL_NAME: ${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}
+      SHIFT_REPO_DIR: /workspace/shift
+      SHIFT_LOOP_MINUTES: ${SHIFT_LOOP_MINUTES:-5}
+      SHIFT_MAX_OPEN_PRS: ${SHIFT_MAX_OPEN_PRS:-2}
+      SHIFT_MAX_REMEDIATIONS: ${SHIFT_MAX_REMEDIATIONS:-3}
+      SHIFT_ALLOW_CONTRACT_ISSUES: ${SHIFT_ALLOW_CONTRACT_ISSUES:-false}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GH_TOKEN: ${GITHUB_TOKEN:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      NOUS_API_KEY: ${NOUS_API_KEY:-}
+      TZ: ${TZ:-America/Argentina/Cordoba}
+    volumes:
+      - hermes_data:/opt/data
+      - shift_workspace:/workspace
+
+  gateway:
+    image: shift-hermes:local
+    container_name: shift-hermes
+    restart: unless-stopped
+    init: true
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    environment:
+      HERMES_HOME: /opt/data
+      HOME: /opt/data/home
+      SHIFT_REPO_DIR: /workspace/shift
+      SHIFT_REPO_FULL_NAME: ${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}
+      SHIFT_MAX_OPEN_PRS: ${SHIFT_MAX_OPEN_PRS:-2}
+      SHIFT_MAX_REMEDIATIONS: ${SHIFT_MAX_REMEDIATIONS:-3}
+      SHIFT_ALLOW_CONTRACT_ISSUES: ${SHIFT_ALLOW_CONTRACT_ISSUES:-false}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GH_TOKEN: ${GITHUB_TOKEN:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      NOUS_API_KEY: ${NOUS_API_KEY:-}
+      TZ: ${TZ:-America/Argentina/Cordoba}
+      HERMES_UID: "10000"
+      HERMES_GID: "10000"
+    volumes:
+      - hermes_data:/opt/data
+      - shift_workspace:/workspace
+    command: ["gateway", "run"]
+    healthcheck:
+      test: ["CMD", "/opt/hermes/.venv/bin/hermes", "status", "--deep"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 120s
+
+  dashboard:
+    image: shift-hermes:local
+    container_name: shift-hermes-dashboard
+    restart: unless-stopped
+    depends_on:
+      gateway:
+        condition: service_started
+    environment:
+      HERMES_HOME: /opt/data
+      HOME: /opt/data/home
+      HERMES_DASHBOARD_HOST: 0.0.0.0
+      HERMES_UID: "10000"
+      HERMES_GID: "10000"
+    volumes:
+      - hermes_data:/opt/data
+      - shift_workspace:/workspace
+    ports:
+      - "127.0.0.1:9119:9119"
+    command: ["dashboard", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--insecure"]
+
+volumes:
+  hermes_data:
+  shift_workspace:
