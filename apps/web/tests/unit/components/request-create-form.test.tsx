@@ -35,20 +35,13 @@ vi.mock("../../../hooks/useCommunityModules", () => {
 describe("RequestCreateForm", () => {
   it("requires title and content", async () => {
     mockWagmiHooks({ connected: true });
-    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
 
     renderWithProviders(<RequestCreateForm />);
 
-    await userEvent.type(screen.getByLabelText(/Community ID/i), "1");
-    await userEvent.type(screen.getByLabelText(/^Title$/i), " ");
-    await userEvent.type(screen.getByLabelText(/Content/i), " ");
-    await userEvent.click(screen.getByRole("button", { name: /Submit request/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
-    await waitFor(() =>
-      expect(alertSpy).toHaveBeenCalledWith(expect.stringMatching(/Title and content are required/i))
-    );
-
-    alertSpy.mockRestore();
+    expect(await screen.findByText(/Title \/ Content/i)).toBeInTheDocument();
   });
 
   it("submits request and shows success", async () => {
@@ -56,23 +49,29 @@ describe("RequestCreateForm", () => {
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
       ok: true,
       json: async () => ({ cid: "mock-cid" })
-    } as any);
+    } as Response);
 
     renderWithProviders(<RequestCreateForm />);
 
     await userEvent.clear(screen.getByLabelText(/Community ID/i));
     await userEvent.type(screen.getByLabelText(/Community ID/i), "3");
-    await userEvent.type(screen.getByLabelText(/Tags/i), "governance,core");
-    await userEvent.type(screen.getByLabelText(/^Title$/i), "New request");
-    await userEvent.type(screen.getByLabelText(/Content/i), "Need to build feature");
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
+    await userEvent.type(screen.getByRole("textbox", { name: /^Title$/i }), "New request");
+    await userEvent.type(screen.getByRole("textbox", { name: /Tags/i }), "governance, core");
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /Content \(markdown\)/i }),
+      "## Need\n\nBuild the feature."
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
     await userEvent.click(screen.getByRole("button", { name: /Submit request/i }));
 
-    await waitFor(() => expect(screen.getByText(/Request submitted on-chain/i)).toBeInTheDocument());
-    expect(fetchSpy).toHaveBeenCalledWith(
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(
       "/api/ipfs/upload",
       expect.objectContaining({ method: "POST" })
-    );
+    ));
+    expect(await screen.findByText(/Request created/i)).toBeInTheDocument();
 
     fetchSpy.mockRestore();
   });

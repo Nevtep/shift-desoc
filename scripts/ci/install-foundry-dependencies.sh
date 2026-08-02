@@ -6,6 +6,10 @@ cd "$ROOT_DIR"
 
 TEMP_DIRS=()
 cleanup() {
+  if [[ ${#TEMP_DIRS[@]} -eq 0 ]]; then
+    return
+  fi
+
   for dir in "${TEMP_DIRS[@]}"; do
     if [[ -n "$dir" ]]; then
       rm -rf "$dir"
