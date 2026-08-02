@@ -13,15 +13,20 @@ vi.mock("../../../hooks/useMyDeployedCommunities", () => ({
   })
 }));
 
+async function openWizard() {
+  await userEvent.click(await screen.findByRole("button", { name: /Create community/i }));
+}
+
 describe("Deploy preflight gating", () => {
   it("auto-loads and displays shared infra details", async () => {
     mockWagmiHooks({ connected: true, chainId: 84532, address: "0xabc1230000000000000000000000000000000000" });
     renderWithProviders(<DeployWizard />);
 
+    await openWizard();
     await userEvent.type(screen.getByLabelText(/Community name/i), "Test Community");
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
-    await userEvent.type(screen.getByLabelText(/Community description/i), "Test Description");
+    await userEvent.type(screen.getByLabelText(/^Description$/i), "Test Description");
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
     await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
@@ -49,10 +54,11 @@ describe("Deploy preflight gating", () => {
       />
     );
 
+    await openWizard();
     await userEvent.type(screen.getByLabelText(/Community name/i), "Test Community");
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
-    await userEvent.type(screen.getByLabelText(/Community description/i), "Test Description");
+    await userEvent.type(screen.getByLabelText(/^Description$/i), "Test Description");
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
     await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
