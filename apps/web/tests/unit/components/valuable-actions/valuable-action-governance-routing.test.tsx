@@ -22,7 +22,7 @@ describe("valuable action governance routing", () => {
     });
 
     expect(result.route).toBe("governance");
-    expect(result.status).toBe("submitted");
+    expect(result.status).toBe("pending");
     expect(result.contractPayload?.membershipTokenReward).toBe(1);
     expect(result.contractPayload?.jurorsMin).toBe(3);
     expect(result.contractPayload?.panelSize).toBe(5);

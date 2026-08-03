@@ -41,7 +41,10 @@ export default async function CommunityDirectProposalCreatePage({ params, search
         valuableActionTemplate={
           template === "valuable_action"
             ? {
-                operation: operation === "create" || operation === "activate" || operation === "deactivate" ? operation : "create",
+                operation:
+                  operation === "create" || operation === "edit" || operation === "activate" || operation === "deactivate"
+                    ? operation
+                    : "create",
                 actionId,
                 nextActive,
               }

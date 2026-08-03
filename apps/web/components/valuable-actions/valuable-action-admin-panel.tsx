@@ -6,10 +6,20 @@ import { type Address, keccak256, stringToHex } from "viem";
 import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
 
 import type { ValuableActionDto } from "../../lib/graphql/queries";
-import { useValuableActionAuthorityMode } from "../../hooks/useValuableActionAuthorityMode";
-import { useValuableActionAdminMutations } from "../../hooks/useValuableActionAdminMutations";
+import {
+  useValuableActionAuthorityMode,
+  useValuableActionDirectWriteAuthority,
+} from "../../hooks/useValuableActionAuthorityMode";
+import {
+  useValuableActionAdminMutations,
+  type ValuableActionMutationPayload,
+} from "../../hooks/useValuableActionAdminMutations";
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
-import { buildValuableActionProposalHref } from "../../lib/valuable-actions/governance";
+import {
+  buildValuableActionCreateDraftKey,
+  buildValuableActionEditDraftKey,
+  buildValuableActionProposalHref,
+} from "../../lib/valuable-actions/governance";
 import { ValuableActionActivationControls } from "./valuable-action-activation-controls";
 import { ValuableActionForm, type ValuableActionFormValue } from "./valuable-action-form";
 import { ValuableActionSubmitPreview } from "./valuable-action-submit-preview";
@@ -26,7 +36,7 @@ function extractWriteFailureMessage(error: unknown): string {
     }
   }
 
-  return "Failed to propose Valuable Action.";
+  return "Failed to submit Valuable Action transaction.";
 }
 
 function isAccessManagedUnauthorized(error: unknown): boolean {
@@ -49,6 +59,11 @@ function isAccessManagedUnauthorized(error: unknown): boolean {
   return combined.includes("accessmanagedunauthorized") || combined.includes("unauthorized");
 }
 
+function persistGovernanceDraft(key: string, payload: unknown): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(key, JSON.stringify(payload));
+}
+
 type Props = {
   communityId: number;
   action: ValuableActionDto | null;
@@ -69,20 +84,44 @@ export function ValuableActionAdminPanel({
   const { address } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
-  const { writeContractAsync, isPending: isWritingCreate } = useWriteContract();
+  const { writeContractAsync, isPending: isWriting } = useWriteContract();
   const { modules } = useCommunityModules({ communityId, chainId, enabled: communityId > 0 });
   const [previewPayload, setPreviewPayload] = useState<ValuableActionFormValue | null>(null);
   const [createdActionId, setCreatedActionId] = useState<number | null>(null);
-  const [createGovernanceFallback, setCreateGovernanceFallback] = useState(false);
-  const [createStatusMessage, setCreateStatusMessage] = useState<string | null>(null);
-  const [createErrorMessage, setCreateErrorMessage] = useState<string | null>(null);
+  const [createGovernanceCta, setCreateGovernanceCta] = useState(false);
+  const [editGovernanceCta, setEditGovernanceCta] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activationStatusMessage, setActivationStatusMessage] = useState<string | null>(null);
+  const [activationErrorMessage, setActivationErrorMessage] = useState<string | null>(null);
+  const [isTogglingActivation, setIsTogglingActivation] = useState(false);
   const mutations = useValuableActionAdminMutations();
   const isCreateFlow = !action;
+
+  const authorityCheckEnabled = boundaryValid && isConnected && communityId > 0;
+
+  const adminAuthority = useValuableActionDirectWriteAuthority({
+    operation: isCreateFlow ? "create" : "edit",
+    walletAddress: address,
+    registryAddress: modules?.valuableActionRegistry,
+    accessManagerAddress: modules?.accessManager,
+    publicClient,
+    enabled: authorityCheckEnabled,
+  });
+
+  const activationAuthority = useValuableActionDirectWriteAuthority({
+    operation: action?.isActive ? "deactivate" : "activate",
+    walletAddress: address,
+    registryAddress: modules?.valuableActionRegistry,
+    accessManagerAddress: modules?.accessManager,
+    publicClient,
+    enabled: authorityCheckEnabled && !isCreateFlow,
+  });
 
   const adminMode = useValuableActionAuthorityMode({
     operation: isCreateFlow ? "create" : "edit",
     boundaryValid,
-    hasDirectWrite: isCreateFlow,
+    hasDirectWrite: adminAuthority.hasDirectWrite,
     hasGovernancePath: true,
     isConnected,
   });
@@ -90,7 +129,7 @@ export function ValuableActionAdminPanel({
   const activationMode = useValuableActionAuthorityMode({
     operation: action?.isActive ? "deactivate" : "activate",
     boundaryValid,
-    hasDirectWrite: false,
+    hasDirectWrite: activationAuthority.hasDirectWrite,
     hasGovernancePath: true,
     isConnected,
   });
@@ -100,6 +139,224 @@ export function ValuableActionAdminPanel({
   const createBlockedByReadiness = readinessBlocked && !canCreate;
   const mutationBlocked = isCreateFlow ? createBlockedByReadiness : readinessBlocked;
 
+  async function submitDirectRegistryWrite(args: {
+    functionName: "proposeValuableAction" | "update";
+    args: readonly unknown[];
+  }): Promise<`0x${string}`> {
+    if (!modules?.valuableActionRegistry) {
+      throw new Error("ValuableActionRegistry module is not registered for this community.");
+    }
+    if (!publicClient) {
+      throw new Error("Public client unavailable for transaction confirmation.");
+    }
+    if (!address) {
+      throw new Error("Connect a wallet to continue.");
+    }
+
+    await publicClient.simulateContract({
+      address: modules.valuableActionRegistry,
+      abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+      functionName: args.functionName,
+      args: args.args,
+      account: address as Address,
+    });
+
+    const txHash = await writeContractAsync({
+      address: modules.valuableActionRegistry,
+      abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+      functionName: args.functionName,
+      args: args.args,
+    });
+
+    await publicClient.waitForTransactionReceipt({ hash: txHash });
+    return txHash;
+  }
+
+  async function handleCreateSubmit(basePayload: ValuableActionMutationPayload) {
+    try {
+      const result = await mutations.create.mutateAsync({ mode: adminMode.mode, payload: basePayload });
+
+      if (adminMode.mode !== "direct_write") {
+        persistGovernanceDraft(buildValuableActionCreateDraftKey(communityId), basePayload);
+        setCreateGovernanceCta(true);
+        setStatusMessage(
+          "Connected wallet is not authorized for direct creation. Payload saved for the governance proposal builder."
+        );
+        return;
+      }
+
+      if (!result.contractPayload) {
+        throw new Error("Unable to build Valuable Action contract payload.");
+      }
+      if (!publicClient || !modules?.valuableActionRegistry) {
+        throw new Error("ValuableActionRegistry module is not registered for this community.");
+      }
+
+      const proposalRef = keccak256(
+        stringToHex(
+          `${communityId}:${(basePayload.title ?? "").trim()}:${(basePayload.metadataCid ?? "").trim()}:${Date.now()}`
+        )
+      );
+
+      try {
+        const lastIdBefore = await publicClient.readContract({
+          address: modules.valuableActionRegistry,
+          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+          functionName: "lastId",
+        });
+
+        await submitDirectRegistryWrite({
+          functionName: "proposeValuableAction",
+          args: [result.contractPayload, proposalRef],
+        });
+
+        const lastIdAfter = await publicClient.readContract({
+          address: modules.valuableActionRegistry,
+          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+          functionName: "lastId",
+        });
+
+        const normalizedBefore = typeof lastIdBefore === "bigint" ? lastIdBefore : BigInt(lastIdBefore as number);
+        const normalizedAfter = typeof lastIdAfter === "bigint" ? lastIdAfter : BigInt(lastIdAfter as number);
+        const resolvedActionId = Number(normalizedAfter > normalizedBefore ? normalizedAfter : normalizedBefore);
+        setCreatedActionId(Number.isFinite(resolvedActionId) && resolvedActionId > 0 ? resolvedActionId : null);
+        setStatusMessage("Valuable Action proposed on-chain. Continue with activation proposal.");
+      } catch (writeError) {
+        if (isAccessManagedUnauthorized(writeError)) {
+          persistGovernanceDraft(buildValuableActionCreateDraftKey(communityId), basePayload);
+          setCreateGovernanceCta(true);
+          setStatusMessage("Direct write was rejected on-chain for this wallet. Continue via governance proposal.");
+          return;
+        }
+        throw writeError;
+      }
+    } catch (error) {
+      setErrorMessage(extractWriteFailureMessage(error));
+    }
+  }
+
+  async function handleEditSubmit(basePayload: ValuableActionMutationPayload) {
+    const actionId = action?.actionId;
+    if (typeof actionId !== "number") {
+      setErrorMessage("Select a Valuable Action before editing.");
+      return;
+    }
+
+    const editPayload = { ...basePayload, actionId };
+
+    try {
+      const result = await mutations.edit.mutateAsync({ mode: adminMode.mode, payload: editPayload });
+
+      if (adminMode.mode !== "direct_write") {
+        persistGovernanceDraft(buildValuableActionEditDraftKey(communityId, actionId), editPayload);
+        setEditGovernanceCta(true);
+        setStatusMessage(
+          "Connected wallet is not authorized for direct edits. Payload saved for the governance proposal builder."
+        );
+        return;
+      }
+
+      if (!result.contractPayload) {
+        throw new Error("Unable to build Valuable Action contract payload.");
+      }
+
+      try {
+        await submitDirectRegistryWrite({
+          functionName: "update",
+          args: [BigInt(actionId), result.contractPayload],
+        });
+        setStatusMessage(`Valuable Action #${actionId} updated on-chain.`);
+      } catch (writeError) {
+        if (isAccessManagedUnauthorized(writeError)) {
+          persistGovernanceDraft(buildValuableActionEditDraftKey(communityId, actionId), editPayload);
+          setEditGovernanceCta(true);
+          setStatusMessage("Direct update was rejected on-chain for this wallet. Continue via governance proposal.");
+          return;
+        }
+        throw writeError;
+      }
+    } catch (error) {
+      setErrorMessage(extractWriteFailureMessage(error));
+    }
+  }
+
+  async function handleActivationToggle() {
+    const actionId = action?.actionId;
+    if (readinessBlocked || typeof actionId !== "number") return;
+    if (activationMode.mode !== "direct_write") return;
+
+    setActivationStatusMessage(null);
+    setActivationErrorMessage(null);
+    setIsTogglingActivation(true);
+
+    try {
+      if (!modules?.valuableActionRegistry || !publicClient || !address) {
+        throw new Error("ValuableActionRegistry module is not registered for this community.");
+      }
+
+      if (action?.isActive) {
+        await publicClient.simulateContract({
+          address: modules.valuableActionRegistry,
+          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+          functionName: "deactivate",
+          args: [BigInt(actionId)],
+          account: address as Address,
+        });
+        const txHash = await writeContractAsync({
+          address: modules.valuableActionRegistry,
+          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+          functionName: "deactivate",
+          args: [BigInt(actionId)],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+        setActivationStatusMessage(`Valuable Action #${actionId} deactivated on-chain.`);
+      } else {
+        const proposalRef = await publicClient.readContract({
+          address: modules.valuableActionRegistry,
+          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+          functionName: "pendingValuableActions",
+          args: [BigInt(actionId)],
+        });
+
+        if (
+          !proposalRef ||
+          proposalRef === "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ) {
+          setActivationErrorMessage(
+            `No pending governance reference exists for Valuable Action #${actionId}. Activation requires a pending proposal reference.`
+          );
+          return;
+        }
+
+        await publicClient.simulateContract({
+          address: modules.valuableActionRegistry,
+          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+          functionName: "activateFromGovernance",
+          args: [BigInt(actionId), proposalRef],
+          account: address as Address,
+        });
+        const txHash = await writeContractAsync({
+          address: modules.valuableActionRegistry,
+          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+          functionName: "activateFromGovernance",
+          args: [BigInt(actionId), proposalRef],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+        setActivationStatusMessage(`Valuable Action #${actionId} activated on-chain.`);
+      }
+    } catch (error) {
+      if (isAccessManagedUnauthorized(error)) {
+        setActivationErrorMessage(
+          "Direct activation change was rejected on-chain for this wallet. Use the governance proposal link below."
+        );
+      } else {
+        setActivationErrorMessage(extractWriteFailureMessage(error));
+      }
+    } finally {
+      setIsTogglingActivation(false);
+    }
+  }
+
   return (
     <section className="card space-y-3 p-4" aria-label="valuable-action-admin-panel">
       <h3 className="text-lg font-semibold">{isCreateFlow ? "Create Valuable Action" : "Admin"}</h3>
@@ -107,9 +364,18 @@ export function ValuableActionAdminPanel({
       {mutationBlocked ? (
         <p className="text-sm text-amber-600">Projection unavailable. Mutations are gated until readiness recovers.</p>
       ) : null}
+      {adminAuthority.isChecking ? (
+        <p className="text-xs text-muted-foreground">Verifying wallet authority against the community AccessManager...</p>
+      ) : null}
+      {adminMode.mode === "direct_write" ? (
+        <p className="text-xs text-emerald-600">
+          Connected wallet is verified for direct on-chain execution via the community AccessManager.
+        </p>
+      ) : null}
       {adminMode.mode === "governance_required" ? (
         <p className="text-xs text-muted-foreground">
-          Changes are executed through governance proposals. Evidence spec is pinned to IPFS automatically when you submit.
+          The connected wallet has no verified direct authority for this operation. Changes are executed through
+          governance proposals; evidence spec is pinned to IPFS automatically when you submit.
         </p>
       ) : null}
       {isCreateFlow ? (
@@ -126,10 +392,12 @@ export function ValuableActionAdminPanel({
         }}
         onSubmit={async (payload) => {
           if (mutationBlocked) return;
+          if (adminMode.mode === "blocked") return;
           setPreviewPayload(payload);
-          setCreateGovernanceFallback(false);
-          setCreateErrorMessage(null);
-          setCreateStatusMessage(null);
+          setCreateGovernanceCta(false);
+          setEditGovernanceCta(false);
+          setErrorMessage(null);
+          setStatusMessage(null);
 
           const basePayload = {
             communityId,
@@ -147,105 +415,21 @@ export function ValuableActionAdminPanel({
             revocable: payload.revocable,
             proposalThreshold: payload.proposalThreshold,
             titleTemplate: payload.title,
-          } as const;
+          };
 
           if (isCreateFlow) {
-            try {
-              if (!modules?.valuableActionRegistry) {
-                throw new Error("ValuableActionRegistry module is not registered for this community.");
-              }
-              if (!publicClient) {
-                throw new Error("Public client unavailable for transaction confirmation.");
-              }
-
-              const result = await mutations.create.mutateAsync({
-                mode: "direct_write",
-                payload: basePayload,
-              });
-
-              if (!result.contractPayload) {
-                throw new Error("Unable to build Valuable Action contract payload.");
-              }
-
-              if (!address) {
-                throw new Error("Connect a wallet to continue.");
-              }
-
-              const proposalRef = keccak256(
-                stringToHex(
-                  `${communityId}:${payload.title.trim()}:${payload.metadataCid.trim()}:${Date.now()}`
-                )
-              );
-
-              try {
-                await publicClient.simulateContract({
-                  address: modules.valuableActionRegistry,
-                  abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
-                  functionName: "proposeValuableAction",
-                  args: [result.contractPayload, proposalRef],
-                  account: address as Address,
-                });
-              } catch (simulationError) {
-                if (isAccessManagedUnauthorized(simulationError)) {
-                  if (typeof window !== "undefined") {
-                    window.sessionStorage.setItem(
-                      `va-proposal-draft:${communityId}`,
-                      JSON.stringify(basePayload)
-                    );
-                  }
-                  setCreateGovernanceFallback(true);
-                  setCreateStatusMessage("Direct write is not authorized for this wallet. Continue via governance proposal.");
-                  return;
-                }
-                throw simulationError;
-              }
-
-              const lastIdBefore = await publicClient.readContract({
-                address: modules.valuableActionRegistry,
-                abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
-                functionName: "lastId",
-              });
-
-              const txHash = await writeContractAsync({
-                address: modules.valuableActionRegistry,
-                abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
-                functionName: "proposeValuableAction",
-                args: [result.contractPayload, proposalRef],
-              });
-
-              await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-              const lastIdAfter = await publicClient.readContract({
-                address: modules.valuableActionRegistry,
-                abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
-                functionName: "lastId",
-              });
-
-              const normalizedBefore = typeof lastIdBefore === "bigint" ? lastIdBefore : BigInt(lastIdBefore as number);
-              const normalizedAfter = typeof lastIdAfter === "bigint" ? lastIdAfter : BigInt(lastIdAfter as number);
-              const resolvedActionId = Number(normalizedAfter > normalizedBefore ? normalizedAfter : normalizedBefore);
-              setCreatedActionId(Number.isFinite(resolvedActionId) && resolvedActionId > 0 ? resolvedActionId : null);
-              setCreateStatusMessage("Valuable Action proposed on-chain. Continue with activation proposal.");
-            } catch (error) {
-              setCreateErrorMessage(extractWriteFailureMessage(error));
-            }
+            await handleCreateSubmit(basePayload);
             return;
           }
 
-          void mutations.edit.mutateAsync({
-            mode: adminMode.mode,
-            payload: {
-              actionId: action?.actionId,
-              ...basePayload,
-            },
-          });
+          await handleEditSubmit(basePayload);
         }}
       />
 
       {previewPayload ? <ValuableActionSubmitPreview payload={previewPayload} /> : null}
 
-      {isCreateFlow && createStatusMessage ? <p className="text-xs text-emerald-600">{createStatusMessage}</p> : null}
-      {isCreateFlow && createErrorMessage ? <p className="text-xs text-destructive">{createErrorMessage}</p> : null}
+      {statusMessage ? <p className="text-xs text-emerald-600">{statusMessage}</p> : null}
+      {errorMessage ? <p className="text-xs text-destructive">{errorMessage}</p> : null}
       {isCreateFlow && createdActionId ? (
         <Link
           className="btn-primary"
@@ -259,10 +443,22 @@ export function ValuableActionAdminPanel({
           Create activation proposal
         </Link>
       ) : null}
-      {isCreateFlow && createGovernanceFallback ? (
+      {isCreateFlow && createGovernanceCta ? (
         <Link
           className="btn-outline"
           href={buildValuableActionProposalHref({ communityId, operation: "create" })}
+        >
+          Open governance proposal builder
+        </Link>
+      ) : null}
+      {!isCreateFlow && editGovernanceCta && typeof action?.actionId === "number" ? (
+        <Link
+          className="btn-outline"
+          href={buildValuableActionProposalHref({
+            communityId,
+            operation: "edit",
+            actionId: action.actionId,
+          })}
         >
           Open governance proposal builder
         </Link>
@@ -274,25 +470,16 @@ export function ValuableActionAdminPanel({
         isActive={Boolean(action?.isActive)}
         mode={readinessBlocked ? "blocked" : activationMode.mode}
         onToggle={() => {
-          if (readinessBlocked) return;
-          void mutations.toggleActivation.mutateAsync({
-            mode: activationMode.mode,
-            payload: {
-              communityId,
-              actionId: action?.actionId,
-              active: !action?.isActive,
-            },
-          });
+          void handleActivationToggle();
         }}
       />
 
-      {mutations.toggleActivation.isPending ? (
-        <p className="text-xs text-muted-foreground">Waiting for projection confirmation...</p>
+      {isTogglingActivation ? (
+        <p className="text-xs text-muted-foreground">Submitting activation transaction...</p>
       ) : null}
-      {mutations.toggleActivation.data ? (
-        <p className="text-xs text-muted-foreground">{mutations.toggleActivation.data.message}</p>
-      ) : null}
-      {isCreateFlow && isWritingCreate ? (
+      {activationStatusMessage ? <p className="text-xs text-emerald-600">{activationStatusMessage}</p> : null}
+      {activationErrorMessage ? <p className="text-xs text-destructive">{activationErrorMessage}</p> : null}
+      {isWriting ? (
         <p className="text-xs text-muted-foreground">Submitting Valuable Action transaction...</p>
       ) : null}
     </section>
