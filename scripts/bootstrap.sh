@@ -78,6 +78,24 @@ engram setup codex || true
 # Initialize Hermes Kanban for durable task/handoff history.
 hermes kanban init || true
 
+echo "Installing persistent Hermes workflow skills..."
+
+mkdir -p "$HOME/.hermes/skills"
+
+for skill in \
+  shift-autonomous-development \
+  shift-runtime-tools \
+  shift-learning-governance
+do
+  rm -rf "$HOME/.hermes/skills/$skill"
+  cp -a \
+    "/opt/shift-hermes/bootstrap/skills/$skill" \
+    "$HOME/.hermes/skills/$skill"
+done
+
+hermes skills list | grep -E \
+  'shift-autonomous-development|shift-runtime-tools|shift-learning-governance'
+  
 echo
 echo "Bootstrap complete."
 echo "Next: authenticate Hermes model provider and Linear MCP if not already done."

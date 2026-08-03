@@ -6,50 +6,74 @@ ARG CODEX_VERSION=0.135.0
 ARG PNPM_VERSION=9.15.9
 ARG ENGRAM_VERSION=1.20.0
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl git git-lfs jq openssh-client ripgrep sqlite3 \
-    build-essential pkg-config libssl-dev gh \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bubblewrap \
+        build-essential \
+        ca-certificates \
+        curl \
+        gh \
+        git \
+        git-lfs \
+        jq \
+        libssl-dev \
+        openssh-client \
+        pkg-config \
+        ripgrep \
+        sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Hermes already includes Node, but pin the CLIs used by Shift.
+# Pin the CLIs used by the Shift workflow.
 RUN npm install -g \
-    "@openai/codex@${CODEX_VERSION}" \
-    "pnpm@${PNPM_VERSION}" \
+        "@openai/codex@${CODEX_VERSION}" \
+        "pnpm@${PNPM_VERSION}" \
     && codex --version \
     && pnpm --version
 
-# Instala únicamente el binario Gentle AI.
-# La configuración de agentes y componentes se realiza después, en bootstrap.
+# Install the Gentle AI launcher.
+# Agent/component configuration remains a runtime/bootstrap concern.
 RUN curl -fsSL \
-      https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh \
+        https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh \
       | bash \
     && gentle-ai --version
 
-# Engram se instala explícitamente como herramienta independiente.
+# Install Engram's released binary for the container architecture.
 RUN set -eux; \
     architecture="$(dpkg --print-architecture)"; \
-    case "$architecture" in \
+    case "${architecture}" in \
       arm64) asset_arch="arm64" ;; \
       amd64) asset_arch="amd64" ;; \
-      *) echo "Unsupported architecture: $architecture" >&2; exit 1 ;; \
+      *) echo "Unsupported architecture: ${architecture}" >&2; exit 1 ;; \
     esac; \
+    archive="/var/tmp/engram.tar.gz"; \
+    install_dir="/var/tmp/engram-install"; \
     curl -fsSL \
       "https://github.com/Gentleman-Programming/engram/releases/download/v${ENGRAM_VERSION}/engram_${ENGRAM_VERSION}_linux_${asset_arch}.tar.gz" \
-      -o /var/tmp/engram.tar.gz; \
-    mkdir -p /var/tmp/engram-install; \
-    tar -xzf /var/tmp/engram.tar.gz -C /var/tmp/engram-install; \
-    install -m 0755 /var/tmp/engram-install/engram /usr/local/bin/engram; \
-    rm -rf /var/tmp/engram.tar.gz /var/tmp/engram-install; \
+      -o "${archive}"; \
+    mkdir -p "${install_dir}"; \
+    tar -xzf "${archive}" -C "${install_dir}"; \
+    install -m 0755 "${install_dir}/engram" /usr/local/bin/engram; \
+    rm -rf "${archive}" "${install_dir}"; \
     engram version
 
 COPY hermes-bootstrap /opt/shift-hermes/bootstrap
-COPY scripts /opt/shift-hermes/scripts
+COPY scripts/bootstrap.sh /opt/shift-hermes/scripts/bootstrap.sh
+COPY scripts/install-loop.sh /opt/shift-hermes/scripts/install-loop.sh
+COPY scripts/doctor.sh /opt/shift-hermes/scripts/doctor.sh
 
-RUN chmod +x /opt/shift-hermes/scripts/*.sh \
+RUN chmod 0755 /opt/shift-hermes/scripts/*.sh \
     && mkdir -p /workspace /opt/data \
-    && chown -R hermes:hermes /workspace /opt/data /opt/shift-hermes
+    && chown -R hermes:hermes \
+        /workspace \
+        /opt/data \
+        /opt/shift-hermes
 
-USER hermes
+# Deliberately remain root here.
+# The inherited /init entrypoint performs container initialization and
+# launches operational processes as the unprivileged hermes user.
+USER root
+
 WORKDIR /workspace/shift
 
-# Keep the official image entrypoint and s6 supervision.
+# Inherited unchanged:
+# ENTRYPOINT ["/init", "/opt/hermes/docker/main-wrapper.sh"]
