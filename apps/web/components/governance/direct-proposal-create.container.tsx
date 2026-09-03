@@ -235,14 +235,15 @@ export function DirectProposalCreateContainer({
     }
 
     if (valuableActionTemplate.operation === "edit") {
-      if (!Number.isFinite(valuableActionTemplate.actionId) || (valuableActionTemplate.actionId as number) <= 0) {
+      const rawActionId = valuableActionTemplate.actionId as number;
+      if (!Number.isSafeInteger(rawActionId) || rawActionId <= 0) {
         setErrorMessage("Valuable Action template requires a valid actionId for edit.");
         valuableActionTemplateApplied.current = true;
         return;
       }
 
       if (typeof window === "undefined") return;
-      const actionId = BigInt(valuableActionTemplate.actionId as number);
+      const actionId = BigInt(rawActionId);
       const editRaw = window.sessionStorage.getItem(
         buildValuableActionEditDraftKey(communityId, valuableActionTemplate.actionId as number)
       );
