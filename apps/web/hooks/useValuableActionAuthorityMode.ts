@@ -130,10 +130,12 @@ export type ValuableActionDirectAuthorityStatus = "unknown" | "verified" | "unau
  * (delayed) grants and unreadable results never enable direct execution.
  */
 export function mapCanCallToDirectAuthority(result: unknown): ValuableActionDirectAuthorityStatus {
-  if (!Array.isArray(result)) return "unavailable";
-  const [immediate] = result;
-  if (immediate === true) return "verified";
-  return "unauthorized";
+  if (!Array.isArray(result) || result.length < 2) return "unavailable";
+  const [immediate, delay] = result as [unknown, unknown];
+  const isZeroDelay = delay === 0 || delay === 0n;
+  if (immediate === true && isZeroDelay) return "verified";
+  if (immediate === true || immediate === false) return "unauthorized";
+  return "unavailable";
 }
 
 type MinimalPublicClient = {
