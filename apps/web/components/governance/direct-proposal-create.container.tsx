@@ -21,6 +21,7 @@ import {
   buildValuableActionEditDraftKey,
 } from "../../lib/valuable-actions/governance";
 import { getAllowlistedSignatureSet } from "../../lib/actions/allowlist";
+import { readGovernanceDraft } from "../../lib/valuable-actions/draft-persistence";
 import {
   buildTargetAvailability,
   type CommunityModuleAddressMap,
@@ -244,7 +245,7 @@ export function DirectProposalCreateContainer({
 
       if (typeof window === "undefined") return;
       const actionId = BigInt(rawActionId);
-      const editRaw = window.sessionStorage.getItem(
+      const editRaw = readGovernanceDraft(
         buildValuableActionEditDraftKey(communityId, valuableActionTemplate.actionId as number)
       );
       if (!editRaw) {
@@ -308,7 +309,7 @@ export function DirectProposalCreateContainer({
     }
 
     if (typeof window === "undefined") return;
-    const raw = window.sessionStorage.getItem(buildValuableActionCreateDraftKey(communityId));
+    const raw = readGovernanceDraft(buildValuableActionCreateDraftKey(communityId));
     if (!raw) {
       setStatusMessage("Valuable Action template selected. Complete the action payload in admin before routing here.");
       valuableActionTemplateApplied.current = true;

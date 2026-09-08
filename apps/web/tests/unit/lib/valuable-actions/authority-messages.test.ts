@@ -36,8 +36,14 @@ describe("buildGovernanceFallbackMessage", () => {
     expect(failed).toContain("could not be saved locally");
   });
 
+  it("describes delayed authority truthfully without claiming unauthorized", () => {
+    const message = buildGovernanceFallbackMessage("delayed", "create", true);
+    expect(message).toContain("execution delay");
+    expect(message).not.toContain("not authorized");
+  });
+
   it("always points to the governance proposal builder fallback", () => {
-    for (const status of ["unauthorized", "unknown", "unavailable", "verified"] as const) {
+    for (const status of ["unauthorized", "unknown", "unavailable", "delayed", "verified"] as const) {
       for (const draftSaved of [true, false]) {
         expect(buildGovernanceFallbackMessage(status, "create", draftSaved)).toContain(
           "governance proposal builder"

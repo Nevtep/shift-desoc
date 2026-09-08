@@ -122,20 +122,22 @@ export function resolveValuableActionOperationSelector(operation: ValuableAction
   }
 }
 
-export type ValuableActionDirectAuthorityStatus = "unknown" | "verified" | "unauthorized" | "unavailable";
+export type ValuableActionDirectAuthorityStatus = "unknown" | "verified" | "delayed" | "unauthorized" | "unavailable";
 
 /**
  * Fail-closed mapping from an AccessManager `canCall` result to a direct-write
- * authority status. Only an immediate grant counts as verified; scheduled
- * (delayed) grants and unreadable results never enable direct execution.
+ * authority status. Only an immediate grant counts as verified. A grant with a
+ * non-zero execution delay is reported as `delayed` (truthful wording, still
+ * fail-closed for direct writes); unreadable results are `unavailable`.
  */
 export function mapCanCallToDirectAuthority(result: unknown): ValuableActionDirectAuthorityStatus {
   if (!Array.isArray(result) || result.length < 2) return "unavailable";
   const [immediate, delay] = result as [unknown, unknown];
   const isZeroDelay = delay === 0 || delay === 0n;
   if (immediate === true && isZeroDelay) return "verified";
-  if (immediate === true || immediate === false) return "unauthorized";
-  return "unavailable";
+  if (immediate !== true && immediate !== false) return "unavailable";
+  if (!isZeroDelay && (typeof delay === "number" || typeof delay === "bigint")) return "delayed";
+  return "unauthorized";
 }
 
 type MinimalPublicClient = {

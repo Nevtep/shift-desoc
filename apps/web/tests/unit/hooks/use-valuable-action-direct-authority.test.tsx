@@ -32,7 +32,8 @@ describe("valuable action direct-write authority resolution", () => {
   it("treats only an immediate canCall grant as verified direct authority", () => {
     expect(mapCanCallToDirectAuthority([true, 0])).toBe("verified");
     expect(mapCanCallToDirectAuthority([false, 0])).toBe("unauthorized");
-    expect(mapCanCallToDirectAuthority([false, 3600])).toBe("unauthorized");
+    expect(mapCanCallToDirectAuthority([false, 3600])).toBe("delayed");
+    expect(mapCanCallToDirectAuthority([false, 3600n])).toBe("delayed");
     expect(mapCanCallToDirectAuthority(undefined)).toBe("unavailable");
     expect(mapCanCallToDirectAuthority("bogus")).toBe("unavailable");
   });

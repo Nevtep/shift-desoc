@@ -20,6 +20,8 @@ export function buildGovernanceFallbackMessage(
   switch (status) {
     case "unauthorized":
       return `Connected wallet is not authorized for ${operationNoun}. ${suffix}`;
+    case "delayed":
+      return `Connected wallet is authorized for ${operationNoun} only after an AccessManager execution delay; direct execution is disabled here. ${suffix}`;
     case "unknown":
       return `Wallet authority for ${operationNoun} is still being verified. ${suffix}`;
     case "unavailable":
