@@ -24,7 +24,8 @@ check engram engram version
 check github gh repo view "${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}"
 check repo test -d "$REPO/.git"
 check agents test -f "$REPO/AGENTS.md"
-check supervisor-skill test -f "$HERMES_HOME/skills/shift-autonomous-development/SKILL.md"
+check supervisor-skill hermes skills inspect shift-autonomous-development
+check review-convergence-skill hermes skills inspect shift-pr-review-convergence
 check repo-skills test -f "$REPO/.github/skills/linear-development-readiness/SKILL.md"
 check linear bash -lc "codex mcp list | grep -q linear"
 check cron hermes cron status

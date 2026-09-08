@@ -9,8 +9,7 @@ terminal:
 
 skills:
   external_dirs:
-    - /workspace/shift/.github/skills
-    - /opt/data/skills
+    - /workspace/shift/hermes-bootstrap/skills
 
 delegation:
   max_concurrent_children: 3

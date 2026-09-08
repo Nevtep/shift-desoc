@@ -18,13 +18,6 @@ if [[ ! -f "$HERMES_HOME/SOUL.md" ]]; then
   cp "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md"
 fi
 
-# Seed/update only the Shift-owned Hermes skills.
-for skill_dir in "$BOOTSTRAP"/skills/*; do
-  skill_name="$(basename "$skill_dir")"
-  mkdir -p "$HERMES_HOME/skills/$skill_name"
-  cp -R "$skill_dir/." "$HERMES_HOME/skills/$skill_name/"
-done
-
 # Secrets are supplied through Compose and copied into Hermes' persistent env.
 touch "$HERMES_HOME/.env"
 chmod 600 "$HERMES_HOME/.env"
@@ -78,23 +71,19 @@ engram setup codex || true
 # Initialize Hermes Kanban for durable task/handoff history.
 hermes kanban init || true
 
-echo "Installing persistent Hermes workflow skills..."
-
-mkdir -p "$HOME/.hermes/skills"
+echo "Verifying Hermes workflow skills from repo-managed source..."
 
 for skill in \
   shift-autonomous-development \
   shift-runtime-tools \
-  shift-learning-governance
+  shift-learning-governance \
+  shift-pr-review-convergence
 do
-  rm -rf "$HOME/.hermes/skills/$skill"
-  cp -a \
-    "/opt/shift-hermes/bootstrap/skills/$skill" \
-    "$HOME/.hermes/skills/$skill"
+  hermes skills inspect "$skill" >/dev/null
 done
 
 hermes skills list | grep -E \
-  'shift-autonomous-development|shift-runtime-tools|shift-learning-governance'
+  'shift-autonomous-development|shift-runtime-tools|shift-learning-governance|shift-pr-review-convergence'
   
 echo
 echo "Bootstrap complete."
