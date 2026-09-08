@@ -15,6 +15,9 @@ import {
   type ValuableActionMutationPayload,
 } from "../../hooks/useValuableActionAdminMutations";
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
+import { buildGovernanceFallbackMessage } from "../../lib/valuable-actions/authority-messages";
+import { extractCreatedActionIdFromReceipt } from "../../lib/valuable-actions/created-action-id";
+import { persistGovernanceDraft } from "../../lib/valuable-actions/draft-persistence";
 import {
   buildValuableActionCreateDraftKey,
   buildValuableActionEditDraftKey,
@@ -57,11 +60,6 @@ function isAccessManagedUnauthorized(error: unknown): boolean {
 
   const combined = `${asAny?.message ?? ""} ${asAny?.shortMessage ?? ""} ${asAny?.cause?.message ?? ""}`.toLowerCase();
   return combined.includes("accessmanagedunauthorized") || combined.includes("unauthorized");
-}
-
-function persistGovernanceDraft(key: string, payload: unknown): void {
-  if (typeof window === "undefined") return;
-  window.sessionStorage.setItem(key, JSON.stringify(payload));
 }
 
 type Props = {
@@ -142,7 +140,7 @@ export function ValuableActionAdminPanel({
   async function submitDirectRegistryWrite(args: {
     functionName: "proposeValuableAction" | "update";
     args: readonly unknown[];
-  }): Promise<`0x${string}`> {
+  }) {
     if (!modules?.valuableActionRegistry) {
       throw new Error("ValuableActionRegistry module is not registered for this community.");
     }
@@ -168,8 +166,7 @@ export function ValuableActionAdminPanel({
       args: args.args,
     });
 
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
-    return txHash;
+    return publicClient.waitForTransactionReceipt({ hash: txHash });
   }
 
   async function handleCreateSubmit(basePayload: ValuableActionMutationPayload) {
@@ -179,9 +176,7 @@ export function ValuableActionAdminPanel({
       if (adminMode.mode !== "direct_write") {
         persistGovernanceDraft(buildValuableActionCreateDraftKey(communityId), basePayload);
         setCreateGovernanceCta(true);
-        setStatusMessage(
-          "Connected wallet is not authorized for direct creation. Payload saved for the governance proposal builder."
-        );
+        setStatusMessage(buildGovernanceFallbackMessage(adminAuthority.status, "create"));
         return;
       }
 
@@ -199,27 +194,12 @@ export function ValuableActionAdminPanel({
       );
 
       try {
-        const lastIdBefore = await publicClient.readContract({
-          address: modules.valuableActionRegistry,
-          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
-          functionName: "lastId",
-        });
-
-        await submitDirectRegistryWrite({
+        const receipt = await submitDirectRegistryWrite({
           functionName: "proposeValuableAction",
           args: [result.contractPayload, proposalRef],
         });
 
-        const lastIdAfter = await publicClient.readContract({
-          address: modules.valuableActionRegistry,
-          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
-          functionName: "lastId",
-        });
-
-        const normalizedBefore = typeof lastIdBefore === "bigint" ? lastIdBefore : BigInt(lastIdBefore as number);
-        const normalizedAfter = typeof lastIdAfter === "bigint" ? lastIdAfter : BigInt(lastIdAfter as number);
-        const resolvedActionId = Number(normalizedAfter > normalizedBefore ? normalizedAfter : normalizedBefore);
-        setCreatedActionId(Number.isFinite(resolvedActionId) && resolvedActionId > 0 ? resolvedActionId : null);
+        setCreatedActionId(extractCreatedActionIdFromReceipt(receipt));
         setStatusMessage("Valuable Action proposed on-chain. Continue with activation proposal.");
       } catch (writeError) {
         if (isAccessManagedUnauthorized(writeError)) {
@@ -250,9 +230,7 @@ export function ValuableActionAdminPanel({
       if (adminMode.mode !== "direct_write") {
         persistGovernanceDraft(buildValuableActionEditDraftKey(communityId, actionId), editPayload);
         setEditGovernanceCta(true);
-        setStatusMessage(
-          "Connected wallet is not authorized for direct edits. Payload saved for the governance proposal builder."
-        );
+        setStatusMessage(buildGovernanceFallbackMessage(adminAuthority.status, "edit"));
         return;
       }
 
@@ -290,8 +268,14 @@ export function ValuableActionAdminPanel({
     setIsTogglingActivation(true);
 
     try {
-      if (!modules?.valuableActionRegistry || !publicClient || !address) {
+      if (!modules?.valuableActionRegistry) {
         throw new Error("ValuableActionRegistry module is not registered for this community.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for transaction confirmation.");
+      }
+      if (!address) {
+        throw new Error("Connect a wallet to continue.");
       }
 
       if (action?.isActive) {

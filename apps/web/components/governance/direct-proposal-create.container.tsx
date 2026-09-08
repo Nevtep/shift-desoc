@@ -366,7 +366,7 @@ export function DirectProposalCreateContainer({
     } finally {
       valuableActionTemplateApplied.current = true;
     }
-  }, [communityId, publicClient, valuableActionTemplate]);
+  }, [chainId, communityId, moduleAddressMap, publicClient, valuableActionTemplate]);
 
   function resolveActionTarget(targetId: ActionTargetId): Address | null {
     try {
