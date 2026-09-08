@@ -5,13 +5,17 @@ import type { ValuableActionDirectAuthorityStatus } from "../../hooks/useValuabl
  * direct-write authority status. "Not authorized" is only claimed when the
  * AccessManager check genuinely returned unauthorized; other statuses get
  * accurate wording instead of a blanket authorization claim.
+ *
+ * The draft-persistence suffix is also truthful: it only claims the payload
+ * was saved when best-effort persistence actually succeeded.
  */
 export function buildGovernanceFallbackMessage(
   status: ValuableActionDirectAuthorityStatus,
-  operation: "create" | "edit"
+  operation: "create" | "edit",
+  draftSaved: boolean
 ): string {
   const operationNoun = operation === "create" ? "direct creation" : "direct edits";
-  const suffix = "Payload saved for the governance proposal builder.";
+  const suffix = buildDraftPersistenceSuffix(draftSaved);
 
   switch (status) {
     case "unauthorized":
@@ -23,4 +27,14 @@ export function buildGovernanceFallbackMessage(
     default:
       return `Direct execution is unavailable for ${operationNoun}. ${suffix}`;
   }
+}
+
+/**
+ * Truthful suffix describing whether the governance prefill draft was
+ * actually persisted for the proposal builder.
+ */
+export function buildDraftPersistenceSuffix(draftSaved: boolean): string {
+  return draftSaved
+    ? "Payload saved for the governance proposal builder."
+    : "The draft could not be saved locally; re-enter the details in the governance proposal builder.";
 }

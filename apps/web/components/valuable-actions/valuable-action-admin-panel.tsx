@@ -15,7 +15,10 @@ import {
   type ValuableActionMutationPayload,
 } from "../../hooks/useValuableActionAdminMutations";
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
-import { buildGovernanceFallbackMessage } from "../../lib/valuable-actions/authority-messages";
+import {
+  buildDraftPersistenceSuffix,
+  buildGovernanceFallbackMessage,
+} from "../../lib/valuable-actions/authority-messages";
 import { extractCreatedActionIdFromReceipt } from "../../lib/valuable-actions/created-action-id";
 import { persistGovernanceDraft } from "../../lib/valuable-actions/draft-persistence";
 import {
@@ -174,9 +177,9 @@ export function ValuableActionAdminPanel({
       const result = await mutations.create.mutateAsync({ mode: adminMode.mode, payload: basePayload });
 
       if (adminMode.mode !== "direct_write") {
-        persistGovernanceDraft(buildValuableActionCreateDraftKey(communityId), basePayload);
+        const draftSaved = persistGovernanceDraft(buildValuableActionCreateDraftKey(communityId), basePayload);
         setCreateGovernanceCta(true);
-        setStatusMessage(buildGovernanceFallbackMessage(adminAuthority.status, "create"));
+        setStatusMessage(buildGovernanceFallbackMessage(adminAuthority.status, "create", draftSaved));
         return;
       }
 
@@ -199,13 +202,20 @@ export function ValuableActionAdminPanel({
           args: [result.contractPayload, proposalRef],
         });
 
-        setCreatedActionId(extractCreatedActionIdFromReceipt(receipt));
-        setStatusMessage("Valuable Action proposed on-chain. Continue with activation proposal.");
+        const decodedActionId = extractCreatedActionIdFromReceipt(receipt);
+        setCreatedActionId(decodedActionId);
+        setStatusMessage(
+          decodedActionId !== null
+            ? "Valuable Action proposed on-chain. Continue with activation proposal."
+            : "Valuable Action proposed on-chain, but the created action id could not be decoded from the receipt. Locate the new action in the list to continue with activation."
+        );
       } catch (writeError) {
         if (isAccessManagedUnauthorized(writeError)) {
-          persistGovernanceDraft(buildValuableActionCreateDraftKey(communityId), basePayload);
+          const draftSaved = persistGovernanceDraft(buildValuableActionCreateDraftKey(communityId), basePayload);
           setCreateGovernanceCta(true);
-          setStatusMessage("Direct write was rejected on-chain for this wallet. Continue via governance proposal.");
+          setStatusMessage(
+            `Direct write was rejected on-chain for this wallet. Continue via governance proposal. ${buildDraftPersistenceSuffix(draftSaved)}`
+          );
           return;
         }
         throw writeError;
@@ -228,9 +238,9 @@ export function ValuableActionAdminPanel({
       const result = await mutations.edit.mutateAsync({ mode: adminMode.mode, payload: editPayload });
 
       if (adminMode.mode !== "direct_write") {
-        persistGovernanceDraft(buildValuableActionEditDraftKey(communityId, actionId), editPayload);
+        const draftSaved = persistGovernanceDraft(buildValuableActionEditDraftKey(communityId, actionId), editPayload);
         setEditGovernanceCta(true);
-        setStatusMessage(buildGovernanceFallbackMessage(adminAuthority.status, "edit"));
+        setStatusMessage(buildGovernanceFallbackMessage(adminAuthority.status, "edit", draftSaved));
         return;
       }
 
@@ -246,9 +256,11 @@ export function ValuableActionAdminPanel({
         setStatusMessage(`Valuable Action #${actionId} updated on-chain.`);
       } catch (writeError) {
         if (isAccessManagedUnauthorized(writeError)) {
-          persistGovernanceDraft(buildValuableActionEditDraftKey(communityId, actionId), editPayload);
+          const draftSaved = persistGovernanceDraft(buildValuableActionEditDraftKey(communityId, actionId), editPayload);
           setEditGovernanceCta(true);
-          setStatusMessage("Direct update was rejected on-chain for this wallet. Continue via governance proposal.");
+          setStatusMessage(
+            `Direct update was rejected on-chain for this wallet. Continue via governance proposal. ${buildDraftPersistenceSuffix(draftSaved)}`
+          );
           return;
         }
         throw writeError;
@@ -378,6 +390,7 @@ export function ValuableActionAdminPanel({
           if (mutationBlocked) return;
           if (adminMode.mode === "blocked") return;
           setPreviewPayload(payload);
+          setCreatedActionId(null);
           setCreateGovernanceCta(false);
           setEditGovernanceCta(false);
           setErrorMessage(null);
