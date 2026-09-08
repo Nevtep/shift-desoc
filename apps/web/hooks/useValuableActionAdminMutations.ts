@@ -192,8 +192,8 @@ export async function executeMutationByMode(
   if (mode === "governance_required") {
     return {
       mode,
-      status: "submitted",
-      message: "Routed to governance proposal flow.",
+      status: "pending",
+      message: "Payload validated. Continue in the governance proposal builder to create the proposal.",
       route: "governance",
       payload,
       contractPayload,
@@ -202,8 +202,8 @@ export async function executeMutationByMode(
 
   return {
     mode,
-    status: "submitted",
-    message: "Submitted via direct write path.",
+    status: "pending",
+    message: "Payload validated. Confirm the on-chain transaction with the connected wallet.",
     route: "direct_write",
     payload,
     contractPayload,

@@ -16,7 +16,12 @@ import {
   buildValuableActionContractPayload,
   type ValuableActionMutationPayload,
 } from "../../hooks/useValuableActionAdminMutations";
+import {
+  buildValuableActionCreateDraftKey,
+  buildValuableActionEditDraftKey,
+} from "../../lib/valuable-actions/governance";
 import { getAllowlistedSignatureSet } from "../../lib/actions/allowlist";
+import { readGovernanceDraft } from "../../lib/valuable-actions/draft-persistence";
 import {
   buildTargetAvailability,
   type CommunityModuleAddressMap,
@@ -51,7 +56,7 @@ function toModuleAddressMap(modules: ReturnType<typeof useCommunityModules>["mod
 }
 
 type ValuableActionTemplateContext = {
-  operation: "create" | "activate" | "deactivate";
+  operation: "create" | "edit" | "activate" | "deactivate";
   actionId?: number;
   nextActive?: boolean;
 };
@@ -230,8 +235,81 @@ export function DirectProposalCreateContainer({
       };
     }
 
+    if (valuableActionTemplate.operation === "edit") {
+      const rawActionId = valuableActionTemplate.actionId as number;
+      if (!Number.isSafeInteger(rawActionId) || rawActionId <= 0) {
+        setErrorMessage("Valuable Action template requires a valid actionId for edit.");
+        valuableActionTemplateApplied.current = true;
+        return;
+      }
+
+      if (typeof window === "undefined") return;
+      const actionId = BigInt(rawActionId);
+      const editRaw = readGovernanceDraft(
+        buildValuableActionEditDraftKey(communityId, valuableActionTemplate.actionId as number)
+      );
+      if (!editRaw) {
+        setStatusMessage(
+          "Valuable Action edit template selected. Complete the edit payload in the admin panel before routing here."
+        );
+        valuableActionTemplateApplied.current = true;
+        return;
+      }
+
+      try {
+        const payload = JSON.parse(editRaw) as ValuableActionMutationPayload;
+        const contractPayload = buildValuableActionContractPayload(payload);
+
+        const calldata = encodeFunctionData({
+          abi: COMMUNITY_MODULE_ABIS.valuableActionRegistry,
+          functionName: "update",
+          args: [actionId, contractPayload],
+        });
+
+        const preparedAction: PreparedAction = {
+          targetId: "valuableActionRegistry",
+          target: targetAddress,
+          value: 0n,
+          calldata,
+          targetLabel: getTargetDefinition("valuableActionRegistry").label,
+          functionSignature:
+            "update(uint256,(uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64))",
+          argsPreview: [
+            `valuableActionId: ${actionId.toString()}`,
+            `title: ${payload.title ?? ""}`,
+            `category: ${payload.category ?? "ENGAGEMENT_ONE_SHOT"}`,
+            `policy: ${payload.verifierPolicy ?? "JURY"}`,
+            `jurorsMin: ${contractPayload.jurorsMin}`,
+            `panelSize: ${contractPayload.panelSize}`,
+            `verifyWindow: ${contractPayload.verifyWindow}`,
+            `cooldownPeriod: ${contractPayload.cooldownPeriod}`,
+            `evidenceSpecCID: ${contractPayload.evidenceSpecCID}`,
+          ],
+        };
+
+        setActions((prev) => {
+          if (prev.some((item) => item.functionSignature.startsWith("update("))) return prev;
+          return [...prev, preparedAction];
+        });
+
+        if (payload.title?.trim()) {
+          setTitle(`Update Valuable Action #${actionId.toString()}: ${payload.title.trim()}`);
+        }
+        setSummary(`Update Valuable Action #${actionId.toString()}`);
+        setDescription(
+          `Template valuable_action preloaded from admin edit payload.\n\nEvidence CID: ${payload.metadataCid ?? ""}\nRule Summary: ${payload.ruleSummary ?? ""}`
+        );
+        setStatusMessage("Valuable Action update action preloaded with complete payload.");
+      } catch {
+        setErrorMessage("Unable to parse Valuable Action edit payload from session storage.");
+      } finally {
+        valuableActionTemplateApplied.current = true;
+      }
+      return;
+    }
+
     if (typeof window === "undefined") return;
-    const raw = window.sessionStorage.getItem(`va-proposal-draft:${communityId}`);
+    const raw = readGovernanceDraft(buildValuableActionCreateDraftKey(communityId));
     if (!raw) {
       setStatusMessage("Valuable Action template selected. Complete the action payload in admin before routing here.");
       valuableActionTemplateApplied.current = true;
@@ -289,7 +367,7 @@ export function DirectProposalCreateContainer({
     } finally {
       valuableActionTemplateApplied.current = true;
     }
-  }, [communityId, publicClient, valuableActionTemplate]);
+  }, [chainId, communityId, moduleAddressMap, publicClient, valuableActionTemplate]);
 
   function resolveActionTarget(targetId: ActionTargetId): Address | null {
     try {

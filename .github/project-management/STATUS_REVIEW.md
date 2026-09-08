@@ -1,4 +1,4 @@
-# Shift DeSoc Status Review (Aug 1, 2026)
+# Shift DeSoc Status Review (Aug 3, 2026)
 
 > Living document — update after meaningful implementations or deploys; bump the date and note deltas in the changelog.
 
@@ -69,6 +69,7 @@
 - **Integrations**: Uses GraphQL (graphql-request) against indexer APIs; wagmi/viem for onchain reads/writes. Keep ABIs in sync with contracts and update types when addresses or interfaces change.
 
 ## Changelog
+- 2026-08-03: Implemented `SHI-27` Valuable Action admin operability and status truth. Manager admin authority modes for Valuable Action create/edit/activate/deactivate are now verified against the community AccessManager (`canCall`) for the connected wallet and fail closed to governance routing; edit gained an honest path (direct on-chain `update` for verified wallets, per-action governance prefill draft + `operation=edit` proposal-builder template otherwise); activation controls perform real `deactivate`/`activateFromGovernance` writes only under verified authority; admin mutation helpers stopped claiming `submitted` without an on-chain transaction. `.github/project-management/IMPLEMENTATION_STATUS.md` feature 3.3 evidence and remaining-gap notes were synchronized (indexer per-action authority endpoint remains fail-closed and unconsumed; engagement lifecycle truth stays in `SHI-19`).
 - 2026-08-01: Recorded `SHI-53` tactical cleanup for Manager marketplace and housing availability signaling. The existing non-operable marketplace/housing placeholder routes now derive unavailable/coming-soon states from explicit capability metadata in `apps/web/lib/community-overview/availability.ts` and route keys in `apps/web/lib/community-overview/routes.ts`; this does not make marketplace or housing operable and remains synchronized with `.github/project-management/IMPLEMENTATION_STATUS.md`.
 - 2026-07-20: Implemented `SHI-14` truthfulness gating for current Manager marketplace and housing surfaces. `apps/web` now renders those non-operable routes with explicit coming-soon / unavailable states instead of navigable-looking operator CTAs, and `.github/project-management/IMPLEMENTATION_STATUS.md` was refreshed to distinguish truthful unavailable routing from operable slices.
 - 2026-07-20: Recorded `SHI-52` as complete after the merged verifier-power cleanup. Synchronized `.github/project-management/IMPLEMENTATION_STATUS.md` and `apps/web/manager-feature-specs-roadmap.md` to remove stale references to the resolved `VerifierPowerToken1155` enumeration/counting helper gap, leaving `CommerceDisputes` juror integration and `Engagements` revocation side effects as the remaining contract cleanup items in that queue.
