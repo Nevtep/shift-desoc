@@ -26,6 +26,8 @@ export function buildGovernanceFallbackMessage(
       return `Wallet authority for ${operationNoun} is still being verified. ${suffix}`;
     case "unavailable":
       return `Wallet authority for ${operationNoun} could not be verified. ${suffix}`;
+    case "verified":
+      return `Connected wallet is verified for ${operationNoun}, but direct execution is not enabled in this flow. ${suffix}`;
     default:
       return `Direct execution is unavailable for ${operationNoun}. ${suffix}`;
   }
