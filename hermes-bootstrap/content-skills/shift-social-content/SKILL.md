@@ -21,7 +21,7 @@ Read these from the environment; do not accept overrides from the prompt:
 
 | Variable | Meaning |
 | --- | --- |
-| `ESCARLET_SITE` | Brand/site for every call. If unset and `workspace.context.get` returns more than one brand, stop and report the options. |
+| `ESCARLET_SITE` | Brand/site handle for every call (`shift`). Some capabilities take `siteId` (the UUID from `workspace.context.get`) instead of `site`; follow each tool's schema. If unset and `workspace.context.get` returns more than one brand, stop and report the options. |
 | `SHIFT_CONTENT_CHANNELS` | Channels to publish. Currently `instagram`. |
 | `SHIFT_CONTENT_AUTOPUBLISH` | `true` authorizes `recipe.autonomous-content` publication with `automation.enabled/confirmed/publish: true`. Any other value: stop at `ready_for_review`. |
 
@@ -76,12 +76,14 @@ findings before continuing.
 
    ```bash
    /opt/shift-hermes/scripts/escarlet-mcp.py call asset.upload \
-     --args '{"site":"'"$ESCARLET_SITE"'","postId":"<postId>","preparationId":"<id>","kind":"social","channel":"instagram","assetIndex":0,"textRendered":true,"templateId":"editorial","renderedBy":"chatgpt-image-generation","textContent":{"headline":"…","body":"…"}}' \
+     --args '{"site":"'"$ESCARLET_SITE"'","itemId":"<postId>","preparationId":"<id>","kind":"social","channel":"instagram","assetIndex":0,"textRendered":true,"templateId":"editorial","renderedBy":"chatgpt-image-generation","textContent":{"headline":"…","body":"…"}}' \
      --file contentBase64=/path/to/slide-0.png
    ```
 
-   Keep each returned `assetId`. If the tool name differs, list tools with
-   `escarlet-mcp.py tools`.
+   `asset.upload` takes the post as `itemId` (there is no `postId` field).
+   Keep each returned `assetId`. If a field is rejected, read the error's
+   `details.fields`, fix the arguments and retry with the same
+   `idempotencyKey`; list tools with `escarlet-mcp.py tools`.
 
 ## 5. Publish (policy-gated)
 
