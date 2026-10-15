@@ -79,6 +79,11 @@ claude -p "<lane prompt>" \
 - Record each result's `session_id`, `subtype`, `num_turns` and
   `total_cost_usd`. Treat `error_max_turns`, `error_budget` or a missing
   structured result as `blocked`, not as success.
+- Claude Code sessions also load Gentle AI's global ODD/RDD instructions
+  (`~/.claude/CLAUDE.md`). The repository `AGENTS.md` and the lane's
+  repo-local skill decide scope, artifacts and stop conditions; an RDD native
+  review run by the implementer is extra evidence for the auditor, never a
+  substitute for the independent completeness audit.
 - Use a Hermes `delegate_task` child only for supervision work that does not
   edit code (e.g. summarising evidence); it never replaces the Claude Code
   implementer or auditor.

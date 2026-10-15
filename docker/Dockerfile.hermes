@@ -9,7 +9,7 @@ USER root
 ARG CLAUDE_CODE_VERSION=2.1.294
 ARG PNPM_VERSION=9.15.9
 ARG ENGRAM_VERSION=1.20.0
-ARG GENTLE_AI_VERSION=2.2.4
+ARG GENTLE_AI_VERSION=4.2.0
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -31,7 +31,8 @@ RUN apt-get update \
 # Pin the CLIs used by the Shift workflow. Claude Code is the coding agent
 # Hermes delegates implementation and audits to; its self-updater is disabled
 # so the version only changes through this pin.
-ENV DISABLE_AUTOUPDATER=1
+ENV DISABLE_AUTOUPDATER=1 \
+    GENTLE_AI_ENGRAM_BIN=/usr/local/bin/engram
 RUN npm install -g \
         "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
         "pnpm@${PNPM_VERSION}" \

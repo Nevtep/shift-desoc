@@ -42,7 +42,7 @@ services:
         CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-2.1.294}
         PNPM_VERSION: ${PNPM_VERSION:-9.15.9}
         ENGRAM_VERSION: ${ENGRAM_VERSION:-1.20.0}
-        GENTLE_AI_VERSION: ${GENTLE_AI_VERSION:-2.2.4}
+        GENTLE_AI_VERSION: ${GENTLE_AI_VERSION:-4.2.0}
 
     image: shift-hermes:local
     container_name: shift-hermes-init

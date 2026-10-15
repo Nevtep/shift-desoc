@@ -116,10 +116,16 @@ gentle-ai skill-registry refresh --cwd "$REPO_DIR" --quiet
 
 # Claude Code is the coding agent. Its config (~/.claude, ~/.claude.json)
 # lives in the persistent HOME (/opt/data).
-# Gentle AI: SDD workflow + skills + Engram wiring for Claude Code (once).
-if [[ ! -f "$HERMES_HOME/.shift-gentle-claude-code" ]]; then
-  gentle-ai install --agents claude-code --components engram,sdd,skills --scope global
-  touch "$HERMES_HOME/.shift-gentle-claude-code"
+# Gentle AI (v4+): ODD orchestrator prompt, RDD native-review agents, skills
+# and Engram wiring for Claude Code. Re-applied whenever the pinned gentle-ai
+# version changes; install is idempotent and converges with sync. The image
+# sets GENTLE_AI_ENGRAM_BIN so gentle-ai reuses the pinned engram binary
+# instead of `go install`-ing another one into the data volume.
+gentle_version="$(gentle-ai --version | awk '{print $NF}')"
+gentle_marker="$HERMES_HOME/.shift-gentle-claude-code"
+if [[ "$(cat "$gentle_marker" 2>/dev/null)" != "$gentle_version" ]]; then
+  gentle-ai install --agents claude-code --components engram,permissions,skills --scope global </dev/null
+  printf '%s\n' "$gentle_version" > "$gentle_marker"
 fi
 # gentle-ai enables the Engram plugin in ~/.claude/settings.json; install it
 # explicitly so headless `claude -p` sessions have it. (`engram setup
