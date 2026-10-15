@@ -68,6 +68,7 @@ lerna-debug.log*
 **/.env.*
 !.env.example
 !**/.env.example
+!.env.hermes.example
 .secret
 .privatekey
 .env.hermes

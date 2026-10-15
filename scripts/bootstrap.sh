@@ -2,7 +2,8 @@
 set -euo pipefail
 
 export HERMES_HOME="${HERMES_HOME:-/opt/data}"
-export HOME="${HOME:-$HERMES_HOME/home}"
+# The image's main-wrapper exports HOME=/opt/data before running this script.
+export HOME="${HOME:-$HERMES_HOME}"
 REPO_DIR="${SHIFT_REPO_DIR:-/workspace/shift}"
 REPO_URL="${SHIFT_REPO_URL:?SHIFT_REPO_URL is required}"
 BOOTSTRAP=/opt/shift-hermes/bootstrap
@@ -10,13 +11,47 @@ BOOTSTRAP=/opt/shift-hermes/bootstrap
 mkdir -p "$HERMES_HOME" "$HOME" "$HERMES_HOME/skills" /workspace
 chmod 700 "$HERMES_HOME" "$HOME" || true
 
-# Seed configuration once. Preserve Hermes learning and user changes thereafter.
-if [[ ! -f "$HERMES_HOME/config.yaml" ]]; then
-  cp "$BOOTSTRAP/config.yaml" "$HERMES_HOME/config.yaml"
-fi
+# Seed configuration once. The image's stage2 hook has already written a
+# default config.yaml by now, so a marker (not file existence) decides whether
+# the Shift baseline still has to be merged in. Afterwards Hermes and the
+# operator own the file.
+SEED_MARKER="$HERMES_HOME/.shift-config-seeded"
+touch "$HERMES_HOME/config.yaml"
 if [[ ! -f "$HERMES_HOME/SOUL.md" ]]; then
   cp "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md"
 fi
+
+# Re-assert repo-managed keys (skills dirs, MCP servers, cron limits) on every
+# bootstrap so reviewed changes reach existing volumes, and stamp the config
+# version so Hermes does not treat the seeded file as an unmigratable legacy
+# config.
+seed_layer=""
+[[ -f "$SEED_MARKER" ]] || seed_layer="$BOOTSTRAP/config.yaml"
+/opt/hermes/.venv/bin/python - "$HERMES_HOME/config.yaml" "$BOOTSTRAP/managed-keys.yaml" "$seed_layer" <<'PY'
+import sys, yaml
+from hermes_cli.config import DEFAULT_CONFIG
+
+config_path, managed_path, seed_path = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(config_path) as fh:
+    config = yaml.safe_load(fh) or {}
+layers = [seed_path] if seed_path else []
+layers.append(managed_path)
+
+def merge(dst, src):
+    for key, value in src.items():
+        if isinstance(value, dict) and isinstance(dst.get(key), dict):
+            merge(dst[key], value)
+        else:
+            dst[key] = value
+
+for layer in layers:
+    with open(layer) as fh:
+        merge(config, yaml.safe_load(fh) or {})
+config.setdefault("_config_version", DEFAULT_CONFIG.get("_config_version"))
+with open(config_path, "w") as fh:
+    yaml.safe_dump(config, fh, sort_keys=False)
+PY
+touch "$SEED_MARKER"
 
 # Secrets are supplied through Compose and copied into Hermes' persistent env.
 touch "$HERMES_HOME/.env"
@@ -32,6 +67,9 @@ write_secret GITHUB_TOKEN "${GITHUB_TOKEN:-}"
 write_secret GH_TOKEN "${GITHUB_TOKEN:-}"
 write_secret OPENROUTER_API_KEY "${OPENROUTER_API_KEY:-}"
 write_secret OPENAI_API_KEY "${OPENAI_API_KEY:-}"
+write_secret LINEAR_API_KEY "${LINEAR_API_KEY:-}"
+write_secret ANTHROPIC_API_KEY "${ANTHROPIC_API_KEY:-}"
+write_secret CLAUDE_CODE_OAUTH_TOKEN "${CLAUDE_CODE_OAUTH_TOKEN:-}"
 
 # Clone once into the persistent workspace volume.
 if [[ ! -d "$REPO_DIR/.git" ]]; then
@@ -42,12 +80,23 @@ cd "$REPO_DIR"
 git config --global user.name "Shift Hermes Agent"
 git config --global user.email "shift-hermes-agent@users.noreply.github.com"
 git config --global --add safe.directory "$REPO_DIR"
+# Let git push over HTTPS with GH_TOKEN (only the publication stage pushes).
+if [[ -n "${GH_TOKEN:-}" ]]; then
+  gh auth setup-git
+else
+  echo "WARNING: GITHUB_TOKEN not set; GitHub reads/pushes will fail." >&2
+fi
 
 git fetch origin --prune
 git switch main
 if [[ -n "$(git status --porcelain)" ]]; then
-  echo "ERROR: persistent main checkout is dirty; refusing bootstrap." >&2
-  exit 1
+  # The main checkout must stay pristine (work happens in .worktrees/), but a
+  # stray edit must not brick every future boot either. Preserve it in a
+  # stash for human review, then continue.
+  stash_msg="hermes-bootstrap-autosave-$(date -u +%Y%m%dT%H%M%SZ)"
+  echo "WARNING: persistent main checkout is dirty; preserving it as stash '$stash_msg':" >&2
+  git status --short >&2
+  git stash push --include-untracked -m "$stash_msg"
 fi
 git reset --hard origin/main
 if [[ -f .engram/manifest.json ]]; then
@@ -65,27 +114,47 @@ pnpm config set store-dir "$HERMES_HOME/pnpm-store"
 pnpm install --frozen-lockfile
 gentle-ai skill-registry refresh --cwd "$REPO_DIR" --quiet
 
-# Engram and Codex use the profile HOME persisted in /opt/data/home.
-engram setup codex || true
+# Claude Code is the coding agent. Its config (~/.claude, ~/.claude.json)
+# lives in the persistent HOME (/opt/data).
+# Gentle AI: SDD workflow + skills + Engram wiring for Claude Code (once).
+if [[ ! -f "$HERMES_HOME/.shift-gentle-claude-code" ]]; then
+  gentle-ai install --agents claude-code --components engram,sdd,skills --scope global
+  touch "$HERMES_HOME/.shift-gentle-claude-code"
+fi
+# gentle-ai enables the Engram plugin in ~/.claude/settings.json; install it
+# explicitly so headless `claude -p` sessions have it. (`engram setup
+# claude-code` is not used: it waits on stdin in a non-interactive container.)
+if ! claude plugin list </dev/null 2>/dev/null | grep -q 'engram@engram'; then
+  claude plugin marketplace add Gentleman-Programming/engram </dev/null || true
+  claude plugin install engram@engram </dev/null
+fi
+
+# Linear MCP for Claude Code children (user scope, refreshed every boot so a
+# rotated key takes effect).
+if [[ -n "${LINEAR_API_KEY:-}" ]]; then
+  claude mcp remove --scope user linear >/dev/null 2>&1 || true
+  claude mcp add --scope user --transport http linear https://mcp.linear.app/mcp \
+    --header "Authorization: Bearer ${LINEAR_API_KEY}"
+fi
 
 # Initialize Hermes Kanban for durable task/handoff history.
 hermes kanban init || true
 
 echo "Verifying Hermes workflow skills from repo-managed source..."
-
+# `hermes skills inspect` queries remote registries (and exits 0 on a miss),
+# so check the locally loaded skill set instead. COLUMNS avoids truncation.
+loaded="$(COLUMNS=250 hermes skills list --source local --enabled-only 2>/dev/null)"
 for skill in \
   shift-autonomous-development \
   shift-runtime-tools \
   shift-learning-governance \
   shift-pr-review-convergence
 do
-  hermes skills inspect "$skill" >/dev/null
+  grep -qw -- "$skill" <<<"$loaded" || { echo "ERROR: Hermes skill not loaded: $skill" >&2; exit 1; }
+  echo "  ok $skill"
 done
 
-hermes skills list | grep -E \
-  'shift-autonomous-development|shift-runtime-tools|shift-learning-governance|shift-pr-review-convergence'
-  
 echo
 echo "Bootstrap complete."
-echo "Next: authenticate Hermes model provider and Linear MCP if not already done."
+echo "Next: verify with /opt/shift-hermes/scripts/doctor.sh"
 echo "Then run: /opt/shift-hermes/scripts/install-loop.sh"

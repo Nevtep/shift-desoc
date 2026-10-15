@@ -1,0 +1,16 @@
+# Keys owned by the repository. bootstrap.sh deep-merges these into the
+# persistent $HERMES_HOME/config.yaml on every bootstrap, so reviewed changes
+# here reach existing deployments. Everything else in config.yaml is left to
+# Hermes and the operator.
+skills:
+  external_dirs:
+    - /workspace/shift/hermes-bootstrap/skills
+
+mcp_servers:
+  linear:
+    url: https://mcp.linear.app/mcp
+    headers:
+      Authorization: "Bearer ${LINEAR_API_KEY}"
+
+cron:
+  max_parallel_jobs: 1

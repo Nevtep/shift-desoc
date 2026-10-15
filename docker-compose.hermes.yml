@@ -1,46 +1,65 @@
 name: shift-hermes
 
+x-shift-env: &shift-env
+  HERMES_HOME: /opt/data
+  # NOTE: the image's main-wrapper always exports HOME=/opt/data, so HOME is
+  # intentionally not set here (a different value would be silently ignored).
+  HERMES_UID: "10000"
+  HERMES_GID: "10000"
+
+  SHIFT_REPO_URL: ${SHIFT_REPO_URL:-https://github.com/Nevtep/shift-desoc.git}
+  SHIFT_REPO_FULL_NAME: ${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}
+  SHIFT_REPO_DIR: /workspace/shift
+
+  SHIFT_LOOP_MINUTES: ${SHIFT_LOOP_MINUTES:-30}
+  SHIFT_MAX_OPEN_PRS: ${SHIFT_MAX_OPEN_PRS:-2}
+  SHIFT_MAX_REMEDIATIONS: ${SHIFT_MAX_REMEDIATIONS:-3}
+  SHIFT_ALLOW_CONTRACT_ISSUES: ${SHIFT_ALLOW_CONTRACT_ISSUES:-false}
+
+  GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+  GH_TOKEN: ${GITHUB_TOKEN:-}
+  LINEAR_API_KEY: ${LINEAR_API_KEY:-}
+
+  # Hermes supervisor model provider.
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+
+  # Claude Code (coding agent) auth: an Anthropic API key, or a long-lived
+  # subscription token from `claude setup-token`. One is required.
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+  SHIFT_CLAUDE_MAX_BUDGET_USD: ${SHIFT_CLAUDE_MAX_BUDGET_USD:-20}
+
+  TZ: ${TZ:-America/Argentina/Cordoba}
+
 services:
   init:
     build:
       context: .
       dockerfile: docker/Dockerfile.hermes
       args:
-        CODEX_VERSION: ${CODEX_VERSION:-0.135.0}
+        HERMES_IMAGE_TAG: ${HERMES_IMAGE_TAG:-v2026.9.24}
+        CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-2.1.294}
         PNPM_VERSION: ${PNPM_VERSION:-9.15.9}
         ENGRAM_VERSION: ${ENGRAM_VERSION:-1.20.0}
+        GENTLE_AI_VERSION: ${GENTLE_AI_VERSION:-2.2.4}
 
     image: shift-hermes:local
     container_name: shift-hermes-init
 
-    # Keep the inherited /init entrypoint.
-    # Its wrapper executes this command as the hermes user after initialization.
+    # Run with Docker's tiny init as PID 1. The image's entrypoint-dispatch.sh
+    # then skips the s6 supervision tree (it still runs the stage2 setup and
+    # drops to the hermes user). Without this, /init would also start the
+    # dashboard and re-start the persisted default-profile gateway inside the
+    # init container, racing the real gateway on the same data volume.
+    init: true
+
     command:
       - /bin/bash
       - /opt/shift-hermes/scripts/bootstrap.sh
 
     environment:
-      HERMES_HOME: /opt/data
-      HOME: /opt/data/home
-      HERMES_UID: "10000"
-      HERMES_GID: "10000"
-
-      SHIFT_REPO_URL: ${SHIFT_REPO_URL:-https://github.com/Nevtep/shift-desoc.git}
-      SHIFT_REPO_FULL_NAME: ${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}
-      SHIFT_REPO_DIR: /workspace/shift
-
-      SHIFT_LOOP_MINUTES: ${SHIFT_LOOP_MINUTES:-5}
-      SHIFT_MAX_OPEN_PRS: ${SHIFT_MAX_OPEN_PRS:-2}
-      SHIFT_MAX_REMEDIATIONS: ${SHIFT_MAX_REMEDIATIONS:-3}
-      SHIFT_ALLOW_CONTRACT_ISSUES: ${SHIFT_ALLOW_CONTRACT_ISSUES:-false}
-
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      GH_TOKEN: ${GITHUB_TOKEN:-}
-
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-
-      TZ: ${TZ:-America/Argentina/Cordoba}
+      <<: *shift-env
 
     volumes:
       - hermes_data:/opt/data
@@ -60,31 +79,21 @@ services:
       - run
 
     environment:
-      HERMES_HOME: /opt/data
-      HOME: /opt/data/home
-      HERMES_UID: "10000"
-      HERMES_GID: "10000"
+      <<: *shift-env
 
-      SHIFT_REPO_DIR: /workspace/shift
-      SHIFT_REPO_FULL_NAME: ${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}
+      # One autonomous cycle at a time.
+      HERMES_CRON_MAX_PARALLEL: "1"
 
-      SHIFT_LOOP_MINUTES: ${SHIFT_LOOP_MINUTES:-5}
-      SHIFT_MAX_OPEN_PRS: ${SHIFT_MAX_OPEN_PRS:-2}
-      SHIFT_MAX_REMEDIATIONS: ${SHIFT_MAX_REMEDIATIONS:-3}
-      SHIFT_ALLOW_CONTRACT_ISSUES: ${SHIFT_ALLOW_CONTRACT_ISSUES:-false}
-
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-      GH_TOKEN: ${GITHUB_TOKEN:-}
-
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-
-      # Start the dashboard as Hermes' supervised side-process.
+      # Dashboard as Hermes' supervised side-process. A non-loopback bind
+      # requires an auth provider (the image fails closed otherwise), so the
+      # bundled basic-auth provider is configured. The host only publishes the
+      # port on 127.0.0.1; reach it through an SSH/SSM tunnel.
       HERMES_DASHBOARD: "1"
       HERMES_DASHBOARD_HOST: "0.0.0.0"
       HERMES_DASHBOARD_PORT: "9119"
-
-      TZ: ${TZ:-America/Argentina/Cordoba}
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_USERNAME:-shift}
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_PASSWORD:?HERMES_DASHBOARD_PASSWORD is required}
+      HERMES_DASHBOARD_BASIC_AUTH_SECRET: ${HERMES_DASHBOARD_SESSION_SECRET:-}
 
     volumes:
       - hermes_data:/opt/data
@@ -92,19 +101,24 @@ services:
 
     ports:
       - "127.0.0.1:9119:9119"
-      - "127.0.0.1:41833:41833"
 
     shm_size: "1gb"
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
     healthcheck:
+      # Lightweight local check; `status --deep` calls OpenRouter on every run.
       test:
         - CMD
         - /opt/hermes/.venv/bin/hermes
         - status
-        - --deep
-      interval: 60s
+      interval: 5m
       timeout: 30s
-      retries: 5
+      retries: 3
       start_period: 120s
 
 volumes:

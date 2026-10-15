@@ -2,14 +2,14 @@
 set -euo pipefail
 
 export HERMES_HOME="${HERMES_HOME:-/opt/data}"
-export HOME="${HOME:-$HERMES_HOME/home}"
-MINUTES="${SHIFT_LOOP_MINUTES:-5}"
+export HOME="${HOME:-$HERMES_HOME}"
+MINUTES="${SHIFT_LOOP_MINUTES:-30}"
 
 cd "${SHIFT_REPO_DIR:-/workspace/shift}"
 
 # Validate core capabilities before scheduling.
 hermes status --deep
-codex mcp list | grep -q linear
+test -n "${LINEAR_API_KEY:-}" || { echo "LINEAR_API_KEY is required" >&2; exit 1; }
 gh repo view "${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}" >/dev/null
 
 # Ask Hermes itself to create/manage the recurring agentic job. This uses the
