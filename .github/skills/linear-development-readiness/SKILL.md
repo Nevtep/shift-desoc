@@ -4,20 +4,20 @@ description: "Trigger: Linear backlog readiness, execution queue, workable Shift
 license: Apache-2.0
 metadata:
   author: GitHub Copilot
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Activation Contract
 
 Use this skill when a supervisor needs to analyze open Shift Linear issues, identify workable issues, order an execution queue, re-evaluate backlog after merges or issue/PR changes, or emit a read-only readiness report.
 
-Do not use it for one issue already selected for refinement, SDD, implementation, audit, or PR publication. Use the focused repo-local skill for that lane instead.
+Do not use it for one issue already selected for refinement, ODD planning, implementation, audit, or PR publication. Use the focused repo-local skill for that lane instead.
 
 ## Hard Rules
 
 - Required capabilities: Linear read, Git read, GitHub PR/check read, Engram read, and repo status-doc read. If any needed capability is unavailable, return `blocked` with evidence.
 - Do not modify Linear, GitHub, Engram, branches, repository files, specs, PRs, comments, or labels while running the analysis; Engram access is read-only.
-- Read relevant open issues: status, priority, labels, parent/children, blockers/dependencies, comments, acceptance criteria, linked specs, linked PRs, timestamps, and recent changes.
+- Read relevant open issues: status, priority, labels, parent/children, blockers/dependencies, comments, acceptance criteria, linked specs (ODD feature documents `odd/tasks/<feature-name>.md` and their Engram mirrors), linked PRs, timestamps, and recent changes.
 - Check overlapping open PRs and code reality only for candidate verification; do not exhaustively audit the repo per issue.
 - Assign exactly one classification per issue: `ready_direct`, `ready_spec_backed`, `needs_spec`, `needs_refinement`, `blocked`, `in_progress_or_pr_open`, `done_or_obsolete`, or `needs_human`.
 - Never let high Linear priority override incompleteness, blockers, open PRs, unresolved decisions, umbrella scope, or missing spec approval.
@@ -27,9 +27,9 @@ Do not use it for one issue already selected for refinement, SDD, implementation
 
 | Issue evidence | Classification / next skill |
 | --- | --- |
-| Concrete, verifiable, unblocked, no pending architecture/SDD need, one-PR scope, no PR conflict | `ready_direct` / `linear-implement-agent-ready` |
-| `workflow:agent-ready`, approved/localizable spec, criteria and validations sufficient, dependencies resolved, no PR | `ready_spec_backed` / `linear-implement-agent-ready` |
-| Concrete but design, contract, data, permission, UX, or cross-surface behavior is unresolved | `needs_spec` / `linear-sdd-from-issue` |
+| Concrete, verifiable, unblocked, no pending architecture/ODD-document need, one-PR scope, no PR conflict | `ready_direct` / `linear-implement-agent-ready` |
+| `workflow:agent-ready`, approved/localizable ODD feature document, criteria and validations sufficient, dependencies resolved, no PR | `ready_spec_backed` / `linear-implement-agent-ready` |
+| Concrete but design, contract, data, permission, UX, or cross-surface behavior is unresolved | `needs_spec` / `linear-odd-from-issue` |
 | Umbrella, multiple seams, too broad, or incomplete criteria | `needs_refinement` / `linear-issue-refiner` |
 | Dependency, blocker, unavailable infra, active conflicting PR, or explicit blocked status | `blocked` |
 | Active work or linked/open PR exists | `in_progress_or_pr_open` |
@@ -66,6 +66,6 @@ Put all skill-specific data under `details`; do not add custom root fields. Use 
 - `.github/skills/_shared/shift-agent-skill-result.schema.json`
 - `.github/skills/linear-development-readiness/linear-development-readiness-result.schema.json`
 - `.github/skills/linear-issue-refiner/SKILL.md`
-- `.github/skills/linear-sdd-from-issue/SKILL.md`
+- `.github/skills/linear-odd-from-issue/SKILL.md`
 - `.github/skills/linear-implement-agent-ready/SKILL.md`
 - `.github/skills/shift-linear-pr/SKILL.md`

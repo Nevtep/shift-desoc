@@ -235,9 +235,11 @@
             "branch",
             "commit",
             "comment",
+            "odd_document",
             "sdd_artifact",
             "other"
-          ]
+          ],
+          "description": "odd_document is an ODD feature document (odd/tasks/<feature-name>.md). sdd_artifact is legacy, kept only so pre-ODD results stay valid; do not emit it for new work."
         },
         "pathOrUrl": {
           "type": "string",

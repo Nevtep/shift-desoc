@@ -23,7 +23,7 @@ _Building the organizational tools that unlock human cooperation: Where communit
 
 ## Contributor And Agent Workflow
 
-New work in this repository follows the active gentle SDD workflow described in [`AGENTS.md`](AGENTS.md). Legacy SpecKit materials remain in the repo for historical/reference use only.
+New work in this repository follows the active gentle-ai ODD + RDD workflow described in [`AGENTS.md`](AGENTS.md). Legacy SpecKit materials remain in the repo for historical/reference use only.
 
 ### Prerequisites
 

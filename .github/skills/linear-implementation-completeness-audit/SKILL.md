@@ -4,7 +4,7 @@ description: "Trigger: implementation audit, auditReady, remediation complete, P
 license: Apache-2.0
 metadata:
   author: GitHub Copilot
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## Activation Contract
@@ -16,10 +16,10 @@ Do not use it before implementation, for generic style review, post-PR Copilot r
 ## Hard Rules
 
 - Run only in a different agent session/thread from the implementer; same-session self-audit is invalid for PR publication.
-- Do not receive or reuse implementer conversational reasoning. Accept only verifiable artifacts: issue ID/snapshot, spec/artifact when present, implementation operation key/result, base commit, result commit, branch/worktree, diff, declared tests, and evidence.
+- Do not receive or reuse implementer conversational reasoning. Accept only verifiable artifacts: issue ID/snapshot, ODD feature document (`odd/tasks/<feature-name>.md` and its Engram mirror) when present, implementation operation key/result, base commit, result commit, branch/worktree, diff, declared tests, and evidence.
 - Require the implementer result to provide an identifiable `resultCommit`; stable uncommitted diffs are not valid audit or PR-gate inputs.
 - Read Linear, final code, diff against base, validations, relevant status docs, and `AGENTS.md`; never trust implementer completion claims alone.
-- Return `blocked` when Linear is unreadable, issue is stale, the implementer result has no identifiable result commit, commits do not exist, branch HEAD is inconsistent, diff is unavailable, implementer result is invalid, required spec is not localizable, or post-result unaudited changes exist.
+- Return `blocked` when Linear is unreadable, issue is stale, the implementer result has no identifiable result commit, commits do not exist, branch HEAD is inconsistent, diff is unavailable, implementer result is invalid, required ODD feature document is not localizable or disagrees with its Engram mirror, or post-result unaudited changes exist.
 - Every criterion finding needs concrete evidence: file, symbol, test, command, event, route, or observable behavior. File existence, commit names, Linear comments, and summaries alone are insufficient.
 - Do not soften missing criteria, broaden requirements, approve by test count, demand unrelated surfaces, mix style review with completeness, fix code, publish PRs, change Linear, or mutate Engram.
 
@@ -38,7 +38,7 @@ Classify each criterion as `satisfied`, `partial`, `missing`, `not_applicable`, 
 
 1. Verify independence and inputs, then compute `operationKey: "linear-implementation-completeness-audit:SHI-123:<audited-commit>"`.
 2. Check preconditions and commit binding before assessing completeness.
-3. Audit only relevant dimensions: functional completeness, AC, spec/requirements, scope/non-goals, tests, errors, permissions/authority, contracts/events, indexer/read models, Manager/UI, required status docs, regressions, unintended scope, migrations/deploy impact, and `AGENTS.md` contradictions.
+3. Audit only relevant dimensions: functional completeness, AC, ODD Spec items (`S#`) and tasks (`T#`), scope/non-goals, tests, errors, permissions/authority, contracts/events, indexer/read models, Manager/UI, required status docs, regressions, unintended scope, migrations/deploy impact, and `AGENTS.md` contradictions.
 4. Record evidence per criterion and validation; mark unverifiable instead of guessing.
 5. For `incomplete`, emit remediation items compatible with `linear-implement-agent-ready` remediation mode: `criterionId`, `problem`, `requiredChange`, `evidence`, `allowedScope`, and `requiredValidation`.
 6. Recommend maximum remediation cycles: 3; after that, set next action to `human_input`.

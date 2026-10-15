@@ -10,7 +10,7 @@ Current repo evidence:
 
 - On-chain governance exists through `ShiftGovernor -> Timelock` and governs privileged protocol actions.
 - Deploy and authority-mode handling already distinguish `admin-managed` and `governance-managed` staging outcomes.
-- Repo-local workflows now exist for backlog readiness analysis, issue refinement, issue-to-SDD, implementation of agent-ready/spec-backed/remediation issues, and audited PR publication.
+- Repo-local workflows now exist for backlog readiness analysis, issue refinement, issue-to-ODD feature document, implementation of agent-ready/spec-backed/remediation issues, and audited PR publication.
 - Linear's native GitHub integration can already link PRs through branch name, PR title, and PR body wording, and can move linked Linear issues through configured PR automations on merge.
 - Repo-defined PR validation now starts with `.github/workflows/agentic-pr-checks.yml`; it covers install/lockfile, contract tests, web unit tests, and indexer unit tests without replacing external deployment checks.
 - There is no direct repo evidence of PR-to-governance, issue-to-governance, or merge-to-governance linkage.
@@ -23,9 +23,9 @@ This section records a local audit snapshot for `/Users/core/Code/shift` on this
 
 | Tool or surface | Local snapshot / policy |
 |---|---|
-| `gentle-ai` | Installed at `/opt/homebrew/bin/gentle-ai`, version `2.2.4`. Treat the stack as **degraded**, not failed, while `doctor` still reports issues. |
+| `gentle-ai` | Installed at `/opt/homebrew/bin/gentle-ai`, version `4.2.0` (2026-10-15). v4 retired SDD/OpenSpec in favor of ODD plus RDD native review; `gentle-ai review mode status` reports review mode on by default. |
 | `gga` | Earlier audit evidence found `/opt/homebrew/bin/gga` version `2.10.0` with a script syntax error; later same-day terminal evidence reported `2.10.1`. In managed Codex sandboxes, `/opt/homebrew` may be unreadable. Do not patch `/opt` files. |
-| `engram` | `/opt/homebrew/bin/engram`, version `1.20.0`. Engram remains the durable memory surface for project context and SDD recovery. |
+| `engram` | `/opt/homebrew/bin/engram`, version `3.4.0` (2026-10-15). Engram remains the durable memory surface for project context and ODD feature-document mirrors (topic `odd/<feature-name>/tasks`). |
 | Codex CLI | Canonical automation Codex is `/Users/core/.local/bin/codex`. Do not remove or replace the VS Code extension Codex binary. |
 | VS Code CLI | `code` is not in `PATH`; the app CLI exists at `/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code`. Do not create a symlink as part of repo remediation. |
 | GitHub | `gh` exists at `/opt/homebrew/bin/gh`, but the Codex sandbox cannot read `~/.config/gh/hosts.yml`. Prefer the GitHub connector when available; treat local `gh` as context-dependent. |
@@ -36,9 +36,9 @@ This section records a local audit snapshot for `/Users/core/Code/shift` on this
 
 - Prefer `/Users/core/.local/bin/codex` for Codex automation launched by local orchestrators.
 - Do not use or patch `/opt/homebrew/bin/gga` until the syntax error and Homebrew upgrade path are resolved outside the repo.
-- Treat `gentle-ai` availability as degraded while `doctor` reports issues; do not repeat the earlier incorrect diagnosis that `gentle-ai` is missing.
+- Re-verify `gentle-ai` with `gentle-ai --version` before relying on version-specific commands; do not repeat the earlier incorrect diagnosis that `gentle-ai` is missing.
 - Use the GitHub connector as the primary GitHub integration in Codex sessions where sandboxed `gh` cannot access its auth host file.
-- Keep OpenSpec artifacts and Engram memory separate pending confirmation: `gentle-ai sdd-status` currently reports `artifactStore: openspec` with no active changes, while `openspec/` is absent; legacy specs live under `specs/` and SpecKit assets under `.specify/`. Do not infer Engram-backed active SDD changes from OpenSpec status output.
+- Planning artifacts for new work are ODD feature documents at `odd/tasks/<feature-name>.md` with an Engram mirror under topic `odd/<feature-name>/tasks`. gentle-ai v4 removed the SDD status/artifact-store commands and OpenSpec integration; legacy specs live under `specs/` and SpecKit assets under `.specify/` as reference only.
 
 ## Design Decision
 
@@ -56,7 +56,7 @@ Use four layers of automation, each with a narrow responsibility:
 1. Intake agent captures requirements.
 2. Agent creates or updates Linear issues.
 3. Human reviews and marks each issue `workflow:needs-spec` or `workflow:agent-ready`.
-4. `workflow:needs-spec` issues run through `linear-sdd-from-issue`.
+4. `workflow:needs-spec` issues run through `linear-odd-from-issue`, which produces the ODD feature document.
 5. `workflow:agent-ready` issues run through `linear-implement-agent-ready`.
 6. Implementation agent creates/reuses a branch, code changes, validation evidence, and an identifiable result commit, then hands off to an independent completeness audit.
 7. If the audit fails, remediation addresses only audited gaps and then runs a new audit.
@@ -76,7 +76,7 @@ Skills should own the reasoning-heavy repo workflows:
 |---|---|
 | `linear-development-readiness` | analyze open Linear issues and produce a read-only prioritized execution queue |
 | `linear-issue-refiner` | split broad or mixed Linear issues into evidence-backed child issues |
-| `linear-sdd-from-issue` | convert one concrete `workflow:needs-spec` issue into a repo-grounded gentle SDD path |
+| `linear-odd-from-issue` | convert one concrete `workflow:needs-spec` issue into a repo-grounded ODD feature document plus Engram mirror |
 | `linear-implement-agent-ready` | implement one concrete issue in `direct`, `spec-backed`, or `remediation` mode, then hand off for independent audit |
 | `linear-implementation-completeness-audit` | independently audit implementation completeness against the issue/spec/result/diff/code/tests before PR publication |
 | `shift-linear-pr` | create or update a Shift GitHub PR only after a passing independent audit for the same commit |
@@ -308,7 +308,7 @@ Phase 1 should avoid any new contract and avoid autonomous merge or deploy.
 
 1. Hermes or another intake agent drafts Linear issues.
 2. Human reviews and assigns `workflow:needs-spec` or `workflow:agent-ready`.
-3. Orchestrator launches either `linear-sdd-from-issue` or `linear-implement-agent-ready`.
+3. Orchestrator launches either `linear-odd-from-issue` or `linear-implement-agent-ready`.
 4. Implementation agent creates/reuses a branch, makes code changes, runs tests, and produces an identifiable result commit.
 5. Independent completeness audit runs in a separate Codex session/thread and reviews the implementation result against the same issue/spec and commit.
 6. Remediation runs only for audited gaps, followed by a new audit when needed.
@@ -426,7 +426,7 @@ Must be isolated from the implementation bot.
 - `AGENTS.md` — active repo workflow, strict TDD map, and safety rules
 - `.github/skills/linear-development-readiness/SKILL.md` — read-only backlog readiness and execution-queue workflow
 - `.github/skills/linear-issue-refiner/SKILL.md` — issue refinement workflow
-- `.github/skills/linear-sdd-from-issue/SKILL.md` — issue-to-spec workflow
+- `.github/skills/linear-odd-from-issue/SKILL.md` — issue-to-ODD feature document workflow
 - `.github/skills/linear-implement-agent-ready/SKILL.md` — issue-to-implementation workflow
 - `.github/skills/linear-implementation-completeness-audit/SKILL.md` — independent implementation completeness audit workflow
 - `.github/project-management/IMPLEMENTATION_STATUS.md` — tactical backlog and definition-of-done expectations
