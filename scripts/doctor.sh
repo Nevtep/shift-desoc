@@ -19,13 +19,16 @@ check() {
 check hermes hermes --version
 check claude-code claude --version
 check claude-auth bash -c "test -n \"\${ANTHROPIC_API_KEY:-}\${CLAUDE_CODE_OAUTH_TOKEN:-}\""
-check claude-linear-mcp bash -c "claude mcp list 2>/dev/null | grep -q linear"
+check claude-linear-mcp bash -c "out=\$(claude mcp list 2>/dev/null); grep -q linear <<<\"\$out\""
 check gentle gentle-ai --version
 check engram engram version
 check github gh repo view "${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}"
 check repo test -d "$REPO/.git"
 check agents test -f "$REPO/AGENTS.md"
-hermes_skill_loaded() { COLUMNS=250 hermes skills list --source local --enabled-only 2>/dev/null | grep -qw -- "$1"; }
+# Capture first: with pipefail, `grep -q` closing the pipe early makes the
+# producer die of SIGPIPE and the pipeline report failure on a match.
+LOADED_SKILLS="$(COLUMNS=250 hermes skills list --source local --enabled-only 2>/dev/null || true)"
+hermes_skill_loaded() { grep -qw -- "$1" <<<"$LOADED_SKILLS"; }
 check supervisor-skill hermes_skill_loaded shift-autonomous-development
 check review-convergence-skill hermes_skill_loaded shift-pr-review-convergence
 check repo-skills test -f "$REPO/.github/skills/linear-development-readiness/SKILL.md"

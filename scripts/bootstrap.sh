@@ -130,7 +130,8 @@ fi
 # gentle-ai enables the Engram plugin in ~/.claude/settings.json; install it
 # explicitly so headless `claude -p` sessions have it. (`engram setup
 # claude-code` is not used: it waits on stdin in a non-interactive container.)
-if ! claude plugin list </dev/null 2>/dev/null | grep -q 'engram@engram'; then
+installed_plugins="$(claude plugin list </dev/null 2>/dev/null || true)"
+if ! grep -q 'engram@engram' <<<"$installed_plugins"; then
   claude plugin marketplace add Gentleman-Programming/engram </dev/null || true
   claude plugin install engram@engram </dev/null
 fi
