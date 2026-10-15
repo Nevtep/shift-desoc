@@ -13,6 +13,10 @@ case "${1:-shell}" in
   shell) aws ssm start-session --target "$INSTANCE_ID" ;;
   hermes) run "sudo docker exec -it -u hermes -e HOME=/opt/data -w /workspace/shift shift-hermes bash" ;;
   dashboard)
+    if lsof -nP -iTCP:"${LOCAL_PORT:-9119}" -sTCP:LISTEN >/dev/null 2>&1; then
+      echo "Port ${LOCAL_PORT:-9119} is already in use (another tunnel?). Close it or set LOCAL_PORT." >&2
+      exit 1
+    fi
     echo "Dashboard: http://127.0.0.1:${LOCAL_PORT:-9119} (user: shift; password in SSM $PARAM_PATH/HERMES_DASHBOARD_PASSWORD)"
     aws ssm start-session --target "$INSTANCE_ID" --document-name AWS-StartPortForwardingSession \
       --parameters "{\"portNumber\":[\"9119\"],\"localPortNumber\":[\"${LOCAL_PORT:-9119}\"]}" ;;
