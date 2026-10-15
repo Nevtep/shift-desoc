@@ -34,6 +34,10 @@ check review-convergence-skill hermes_skill_loaded shift-pr-review-convergence
 check repo-skills test -f "$REPO/.github/skills/linear-development-readiness/SKILL.md"
 check linear-key test -n "${LINEAR_API_KEY:-}"
 check linear-mcp hermes mcp test linear
+check content-skill hermes_skill_loaded shift-social-content
+check escarlet-mcp-content-skill hermes_skill_loaded escarlet-mcp-content
+check escarlet-config bash -c "test -n \"\${ESCARLET_MCP_URL:-}\" -a -n \"\${ESCARLET_MCP_TOKEN:-}\""
+check escarlet-mcp hermes mcp test escarlet
 check main-clean bash -c "cd '$REPO' && test -z \"\$(git status --porcelain)\""
 check cron hermes cron status
 

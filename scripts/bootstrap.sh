@@ -70,6 +70,8 @@ write_secret OPENAI_API_KEY "${OPENAI_API_KEY:-}"
 write_secret LINEAR_API_KEY "${LINEAR_API_KEY:-}"
 write_secret ANTHROPIC_API_KEY "${ANTHROPIC_API_KEY:-}"
 write_secret CLAUDE_CODE_OAUTH_TOKEN "${CLAUDE_CODE_OAUTH_TOKEN:-}"
+write_secret ESCARLET_MCP_URL "${ESCARLET_MCP_URL:-}"
+write_secret ESCARLET_MCP_TOKEN "${ESCARLET_MCP_TOKEN:-}"
 
 # Clone once into the persistent workspace volume.
 if [[ ! -d "$REPO_DIR/.git" ]]; then
@@ -155,7 +157,9 @@ for skill in \
   shift-autonomous-development \
   shift-runtime-tools \
   shift-learning-governance \
-  shift-pr-review-convergence
+  shift-pr-review-convergence \
+  escarlet-mcp-content \
+  shift-social-content
 do
   grep -qw -- "$skill" <<<"$loaded" || { echo "ERROR: Hermes skill not loaded: $skill" >&2; exit 1; }
   echo "  ok $skill"

@@ -69,8 +69,9 @@ COPY hermes-bootstrap /opt/shift-hermes/bootstrap
 COPY scripts/bootstrap.sh /opt/shift-hermes/scripts/bootstrap.sh
 COPY scripts/install-loop.sh /opt/shift-hermes/scripts/install-loop.sh
 COPY scripts/doctor.sh /opt/shift-hermes/scripts/doctor.sh
+COPY scripts/escarlet-mcp.py /opt/shift-hermes/scripts/escarlet-mcp.py
 
-RUN chmod 0755 /opt/shift-hermes/scripts/*.sh \
+RUN chmod 0755 /opt/shift-hermes/scripts/*.sh /opt/shift-hermes/scripts/*.py \
     && mkdir -p /workspace/shift /opt/data \
     && chown -R hermes:hermes \
         /workspace \

@@ -4,13 +4,24 @@
 # Hermes and the operator.
 skills:
   external_dirs:
+    # Development skills: live from the reviewed main checkout.
     - /workspace/shift/hermes-bootstrap/skills
+    # Content skills: shipped in the image from the deployed git ref.
+    - /opt/shift-hermes/bootstrap/content-skills
 
 mcp_servers:
   linear:
     url: https://mcp.linear.app/mcp
     headers:
       Authorization: "Bearer ${LINEAR_API_KEY}"
+  escarlet:
+    url: "${ESCARLET_MCP_URL}"
+    headers:
+      Authorization: "Bearer ${ESCARLET_MCP_TOKEN}"
+
+# Image generation for content jobs (Instagram slides with rendered text).
+image_gen:
+  provider: openrouter
 
 cron:
   max_parallel_jobs: 1

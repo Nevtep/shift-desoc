@@ -30,6 +30,13 @@ x-shift-env: &shift-env
   CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
   SHIFT_CLAUDE_MAX_BUDGET_USD: ${SHIFT_CLAUDE_MAX_BUDGET_USD:-20}
 
+  # Escarlet MCP (content publishing) and the daily content job policy.
+  ESCARLET_MCP_URL: ${ESCARLET_MCP_URL:-}
+  ESCARLET_MCP_TOKEN: ${ESCARLET_MCP_TOKEN:-}
+  ESCARLET_SITE: ${ESCARLET_SITE:-}
+  SHIFT_CONTENT_CHANNELS: ${SHIFT_CONTENT_CHANNELS:-instagram}
+  SHIFT_CONTENT_AUTOPUBLISH: ${SHIFT_CONTENT_AUTOPUBLISH:-false}
+
   TZ: ${TZ:-America/Argentina/Cordoba}
 
 services:
