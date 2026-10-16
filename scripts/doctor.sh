@@ -38,6 +38,7 @@ check content-skill hermes_skill_loaded shift-social-content
 check escarlet-mcp-content-skill hermes_skill_loaded escarlet-mcp-content
 check escarlet-config bash -c "test -n \"\${ESCARLET_MCP_URL:-}\" -a -n \"\${ESCARLET_MCP_TOKEN:-}\""
 check escarlet-mcp hermes mcp test escarlet
+check gh-persisted-login bash -c "env -u GH_TOKEN -u GITHUB_TOKEN gh auth status --hostname github.com"
 check terminal-home bash -c "grep -q 'home_mode: real' \"\$HERMES_HOME/config.yaml\""
 check main-clean bash -c "cd '$REPO' && test -z \"\$(git status --porcelain)\""
 check cron hermes cron status

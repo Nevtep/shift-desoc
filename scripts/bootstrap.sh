@@ -99,8 +99,13 @@ git config --global user.name "Shift Hermes Agent"
 git config --global user.email "shift-hermes-agent@users.noreply.github.com"
 git config --global --add safe.directory "$REPO_DIR"
 # Let git push over HTTPS with GH_TOKEN (only the publication stage pushes).
+# Hermes hard-blocks GH_TOKEN/GITHUB_TOKEN from the agent's terminal (they
+# double as model-provider credentials), so the login is persisted to
+# ~/.config/gh/hosts.yml instead; re-done every boot so token rotation applies.
 if [[ -n "${GH_TOKEN:-}" ]]; then
-  gh auth setup-git
+  printf '%s\n' "$GH_TOKEN" | env -u GH_TOKEN -u GITHUB_TOKEN gh auth login --hostname github.com --git-protocol https --with-token
+  env -u GH_TOKEN -u GITHUB_TOKEN gh auth setup-git
+  env -u GH_TOKEN -u GITHUB_TOKEN gh auth status --hostname github.com >/dev/null
 else
   echo "WARNING: GITHUB_TOKEN not set; GitHub reads/pushes will fail." >&2
 fi
