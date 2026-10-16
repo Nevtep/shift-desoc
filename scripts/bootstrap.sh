@@ -122,6 +122,26 @@ if [[ -d "$HERMES_HOME/home/.engram" && ! -e "$HERMES_HOME/.shift-engram-home-mi
   touch "$HERMES_HOME/.shift-engram-home-migrated"
 fi
 
+# Belt and braces for any code path that still runs tools with
+# HOME=$HERMES_HOME/home (Hermes `auto` home mode in containers): expose the
+# tool configs that live in the real HOME there too. Idempotent; an existing
+# non-empty directory is moved aside, never merged.
+PROFILE_HOME="$HERMES_HOME/home"
+mkdir -p "$PROFILE_HOME"
+link_into_profile_home() {
+  local name="$1" src="$HERMES_HOME/$1" dst="$PROFILE_HOME/$1"
+  [[ -e "$src" ]] || return 0
+  if [[ -L "$dst" ]]; then ln -sfn "$src" "$dst"; return 0; fi
+  if [[ -e "$dst" ]]; then
+    if [[ -d "$dst" && -z "$(ls -A "$dst")" ]]; then rmdir "$dst"
+    else mv "$dst" "$dst.pre-link-$(date -u +%Y%m%d%H%M%S)"; fi
+  fi
+  ln -sfn "$src" "$dst"
+}
+for name in .gitconfig .config .claude .claude.json .engram .gentle-ai; do
+  link_into_profile_home "$name"
+done
+
 # Clone once into the persistent workspace volume.
 if [[ ! -d "$REPO_DIR/.git" ]]; then
   git clone "$REPO_URL" "$REPO_DIR"

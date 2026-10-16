@@ -97,6 +97,12 @@ services:
       # One autonomous cycle at a time.
       HERMES_CRON_MAX_PARALLEL: "1"
 
+      # Terminal subprocess HOME. config.yaml's terminal.home_mode is exported
+      # as this env var by interactive sessions but NOT by cron runs, which
+      # then fall back to `auto` (= /opt/data/home in a container) and lose
+      # gh/git/Claude Code configuration. Set it process-wide.
+      TERMINAL_HOME_MODE: real
+
       # Hermes' own write_file/patch tools are limited to these roots (the
       # image defaults to /opt/data only). The supervisor writes ODD feature
       # documents and worktree files under /workspace/shift.
