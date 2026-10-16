@@ -146,7 +146,7 @@
         "recommendedSkill": {
           "enum": [
             "linear-implement-agent-ready",
-            "linear-sdd-from-issue",
+            "linear-odd-from-issue",
             "linear-issue-refiner",
             "none",
             "human"

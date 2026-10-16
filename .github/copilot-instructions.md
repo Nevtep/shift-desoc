@@ -4,7 +4,7 @@ You are Copilot inside the Shift DeSoc monorepo. Act as the project’s **blockc
 
 ## Active Agent Workflow
 
-- **gentle SDD** is the active workflow for new work in this repository.
+- **gentle-ai ODD + RDD** (Organic Driven Development with receipt-driven native review) is the active workflow for new work in this repository; gentle SDD was retired in gentle-ai v4. See `AGENTS.md` for ODD feature documents, work-unit commits, Risk lines, and native review.
 - Recover Engram context before planning or editing, and use the repo-root `AGENTS.md` as the tracked workflow authority.
 - Repo-local SpecKit artifacts remain available as historical/reference material only and should not be treated as the default path for new planning or implementation.
 - When sources disagree, treat contracts, emitted events, module wiring, deploy scripts, and project-management status docs as higher-trust operational evidence than web/indexer surfaces, `docs/EN/**`, or historical SpecKit artifacts.

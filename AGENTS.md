@@ -1,6 +1,6 @@
 # Shift Agent Workflow
 
-This repository uses **gentle SDD** as the active workflow for new work.
+This repository uses **gentle-ai ODD** (Organic Driven Development) with **RDD** (receipt-driven native review) as the active workflow for new work. gentle-ai v4 retired SDD and all of its commands; do not plan around them.
 
 ## Workflow Authority
 
@@ -10,29 +10,44 @@ Source-of-truth hierarchy for planning and delivery:
 2. Module wiring, deploy scripts, and access-role configuration
 3. `.github/project-management/STATUS_REVIEW.md` and `.github/project-management/IMPLEMENTATION_STATUS.md`
 4. Active repo guidance in `.github/copilot-instructions.md` and this file
-5. Selected Linear issues refined through gentle SDD artifacts and execution
+5. Selected Linear issues refined through ODD feature documents and execution
 6. `docs/EN/**` and historical specs as reference only unless cross-checked against the layers above
 
 ## Active Planning Workflow
 
 - Linear is the backlog and prioritization system.
 - Repo-local skill `.github/skills/linear-development-readiness/SKILL.md` is the read-only workflow for ranking open Shift issues and selecting the next safe execution queue without mutating Linear.
-- Selected Linear issues are refined through gentle SDD before implementation.
+- Selected Linear issues are planned through ODD before implementation: small tasks go inline with no artifacts; large tasks (including every `workflow:needs-spec` issue) get an ODD feature document.
 - Repo-local skill `.github/skills/linear-issue-refiner/SKILL.md` is the focused workflow for splitting one broad Shift Linear issue into evidence-backed child issues.
-- Repo-local skill `.github/skills/linear-sdd-from-issue/SKILL.md` is the focused workflow for turning one concrete `workflow:needs-spec` Linear issue into a repo-grounded gentle SDD spec via `/sdd-new`.
+- Repo-local skill `.github/skills/linear-odd-from-issue/SKILL.md` is the focused workflow for turning one concrete `workflow:needs-spec` Linear issue into a repo-grounded ODD feature document `odd/tasks/<feature-name>.md` plus its Engram mirror.
 - Repo-local skill `.github/skills/linear-implement-agent-ready/SKILL.md` is the focused workflow for implementing one concrete Linear issue through branch, code changes, validation, and audit handoff; PR creation waits for an independent completeness audit in a separate session/thread.
-- Repo-local skill `.github/skills/linear-implementation-completeness-audit/SKILL.md` is the read-only, separate-session workflow for auditing implementation completeness against Linear/spec/result/diff/code/tests before PR publication.
+- Repo-local skill `.github/skills/linear-implementation-completeness-audit/SKILL.md` is the read-only, separate-session workflow for auditing implementation completeness against Linear/ODD document/result/diff/code/tests before PR publication.
 - Repo-local skill `.github/skills/shift-linear-pr/SKILL.md` is the focused workflow for creating or updating Shift GitHub PRs only after an independent separate-session audit passes for the same commit, using Linear as the internal source of truth and Linear's native GitHub integration for linking and closing.
 - Hermes-native supervisor skills are versioned under `hermes-bootstrap/skills/` and loaded by Hermes from that repo path; do not treat `.github/skills/` as a Hermes skill root.
-- Engram stores durable project memory, testing capabilities, SDD init state, and lessons.
+- Engram stores durable project memory, testing capabilities, ODD feature-document mirrors, and lessons.
 - Agents must recover Engram context before planning or editing architecture-sensitive surfaces.
-- New work should follow gentle SDD rather than repo-local SpecKit flows.
+- New work should follow ODD + RDD rather than repo-local SpecKit flows or the retired gentle SDD flow.
 - SpecKit artifacts in `.specify/`, `.github/prompts/speckit.*`, `.github/agents/speckit.*`, and related playbooks are legacy/reference only unless a task explicitly requires historical context.
 - Future audit targets must be grounded in real repo architecture and implemented module groups. Do not invent new vertical taxonomy from product vision alone.
 
+## ODD Feature Documents
+
+- Locator: `odd/tasks/<feature-name>.md`, mirrored in Engram (project `shift-desoc`) under topic `odd/<feature-name>/tasks`. For Linear work, `<feature-name>` is `shi-<number>-<short-slug>` so one issue maps to exactly one document.
+- Structure: objective, problem, scope, non-goals, Spec items `S1..Sn` (testable requirements and acceptance criteria), tasks `T1..Tn` that cite the Spec items they satisfy, checks (validation commands), open questions, and an append-only `## Log` of decisions, progress, and verification evidence.
+- The repo file and the Engram mirror must say the same thing; update both together. If they disagree, stop and reconcile before planning or implementing.
+- Implementation lands as work-unit commits: each commit is one coherent, validated task (or tightly coupled task group) and is recorded against its `T#` in the `## Log`.
+- Every change closes with a `Risk:` line (tier plus the reason). An independent ODD verifier runs when a high-risk item fires; in Shift, contracts, authority/role wiring, ParamController policy, treasury paths, deploy flows, and indexer event compatibility are always high-risk.
+- The ODD verifier and native review never replace the mandatory separate-session `linear-implementation-completeness-audit` before PR publication.
+
+## Native Review (RDD)
+
+- Native review runs through `gentle-ai review assess|start|status`; it is on by default.
+- Review mode is user-owned: only the user toggles it with `gentle-ai review mode enable|disable|status`. Agents may read `gentle-ai review mode status` but must not enable or disable it.
+- Implementers record the review outcome (or that review mode is off) as evidence in their result; reviewer findings are fixed in scope before the result commit is marked audit-ready.
+
 ## Strict TDD And Validation
 
-Strict TDD is active.
+Strict TDD is active (test-first is the gentle-ai v4 default): write or update the failing test before the change, then make it pass.
 
 Known validation map:
 
@@ -63,5 +78,5 @@ Agents must choose the narrowest validating command for the surface they change 
 
 ## Legacy Policy
 
-SpecKit is no longer the active workflow for new work in this repository.
+SpecKit and gentle SDD are no longer the active workflow for new work in this repository.
 Legacy SpecKit files remain for historical and technical reference, and may still help explain prior specs, but they must not be treated as the default operating path for new planning or implementation.

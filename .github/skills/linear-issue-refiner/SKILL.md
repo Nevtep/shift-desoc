@@ -1,10 +1,10 @@
 ---
 name: linear-issue-refiner
-description: "Trigger: Linear issue refinement, specify issue split, workflow:needs-spec, broad backlog issue. Refine one Shift Linear issue into evidence-backed child issues for gentle SDD."
+description: "Trigger: Linear issue refinement, specify issue split, workflow:needs-spec, broad backlog issue. Refine one Shift Linear issue into evidence-backed child issues for ODD planning."
 license: Apache-2.0
 metadata:
   author: GitHub Copilot
-  version: "1.2"
+  version: "1.3"
 ---
 
 ## Activation Contract
@@ -38,7 +38,7 @@ Do not use it to create roadmaps, globally rank the backlog, audit the whole rep
 | Valid umbrella for later spec | Keep parent and split/update children |
 | Multiple contracts, routes, or subsystems | Split into child issues |
 | Already narrow, evidence-backed, unblocked, and executable | Recommend `workflow:agent-ready` |
-| Requires design/product clarification | Recommend `workflow:needs-spec` and `linear-sdd-from-issue` |
+| Requires design/product clarification | Recommend `workflow:needs-spec` and `linear-odd-from-issue` |
 | Duplicates another active issue | Link evidence and stop; ask before closing |
 
 ## Execution Steps
@@ -47,9 +47,9 @@ Do not use it to create roadmaps, globally rank the backlog, audit the whole rep
 2. Read repo guidance and recover relevant Engram memories.
 3. Verify current implementation reality from issue-relevant paths only.
 4. Classify the issue: keep, rewrite, split, agent-ready, needs-spec, or duplicate.
-5. Create/update child issues with product outcome, evidence paths, scope/non-goals, acceptance criteria, validation, dependencies, phase, and SDD requirement.
+5. Create/update child issues with product outcome, evidence paths, scope/non-goals, acceptance criteria, validation, dependencies, phase, and whether an ODD feature document is required.
 6. Update the parent summary and child links without changing unrelated backlog.
-7. Recommend either `linear-sdd-from-issue` or `linear-implement-agent-ready` as the next workflow.
+7. Recommend either `linear-odd-from-issue` or `linear-implement-agent-ready` as the next workflow.
 
 ## Output Contract
 
@@ -62,7 +62,7 @@ Put skill-specific fields under `details`:
   "classification": "split",
   "issuesCreated": [],
   "issuesUpdated": [],
-  "recommendedWorkflow": "linear-sdd-from-issue"
+  "recommendedWorkflow": "linear-odd-from-issue"
 }
 ```
 
@@ -72,6 +72,6 @@ Put skill-specific fields under `details`:
 - `.github/project-management/STATUS_REVIEW.md`
 - `.github/project-management/IMPLEMENTATION_STATUS.md`
 - `.github/copilot-instructions.md`
-- `.github/skills/linear-sdd-from-issue/SKILL.md`
+- `.github/skills/linear-odd-from-issue/SKILL.md`
 - `.github/skills/linear-implement-agent-ready/SKILL.md`
 - `.github/skills/_shared/shift-agent-skill-result.schema.json`

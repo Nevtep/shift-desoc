@@ -18,7 +18,7 @@ The Manager already has usable coordination and governance-adjacent slices, plus
 |---|---|---|
 | `workflow:backlog` | umbrella or planning parent | read first for scope, then inspect children |
 | `workflow:agent-ready` | concrete implementation-ready slice | candidate for immediate execution |
-| `workflow:needs-spec` | real work item, but still needs gentle SDD | do not implement before spec/design/tasks |
+| `workflow:needs-spec` | real work item, but still needs an ODD feature document | do not implement before spec/design/tasks |
 
 ## Review Anchors
 

@@ -1,4 +1,4 @@
-> Warning: This document belongs to the previous SpecKit workflow. SpecKit is no longer the active workflow for new work. Use `AGENTS.md` and gentle SDD instead. This file remains as historical/reference context only.
+> Warning: This document belongs to the previous SpecKit workflow. SpecKit is no longer the active workflow for new work. Use `AGENTS.md` and gentle-ai ODD + RDD instead. This file remains as historical/reference context only.
 
 # Shift SpecKit + Copilot Playbook (Clarify-First, Implementation-Exact)
 
