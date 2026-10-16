@@ -44,6 +44,13 @@ Inside the container, finish the one-time steps from `README-HERMES-RUNTIME.md`
 Rotate a secret: re-run `put-secrets.sh` (or `aws ssm put-parameter --overwrite`),
 then `update.sh`.
 
+## Engram memory sync
+
+`infra/aws/hermes/sync-engram.sh` exports new local `shift-desoc` memories as a
+chunk in `.engram/` and imports them into the agent's Engram on the host
+(idempotent; other local projects are never sent). Commit `.engram/` afterwards
+so bootstraps from `main` include it. The repo is public: review chunks first.
+
 ## Operators (SSH with sudo)
 
 Each person gets an IAM user in the stack's operators group (SSM/SSH to this
