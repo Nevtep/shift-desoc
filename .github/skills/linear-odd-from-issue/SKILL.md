@@ -25,7 +25,7 @@ This skill replaces `linear-sdd-from-issue`; gentle-ai v4 removed the SDD comman
 ## Hard Rules
 
 - Treat the Linear issue as primary planning input, then verify only referenced repo surfaces.
-- Do not implement code, update unrelated issues, branch, commit, push, create PRs, or create child issues unless the target proves too broad. Writing the ODD document in the working tree and its Engram mirror are the only repo/memory writes; the implementer commits the document with its first work unit.
+- Do not implement code, update unrelated issues, branch, commit, push, create PRs, or create child issues unless the target proves too broad. Writing the ODD document in the working tree and its Engram mirror are the only repo/memory writes; the Engram mirror is the handoff. `linear-implement-agent-ready` materializes the document from the verified mirror in its own worktree (or adopts this issue-owned file when it reuses this checkout and the file matches the mirror) and commits it with its first work unit.
 - If too broad or under-specified, stop and recommend `.github/skills/linear-issue-refiner/SKILL.md`.
 - Preserve Shift authority, treasury, ParamController, indexer, and Manager invariants from `AGENTS.md`.
 - Idempotency: reuse/update the existing ODD document and Engram topic for the same issue when present; never create a second document for one issue, and keep `<feature-name>` stable once chosen.

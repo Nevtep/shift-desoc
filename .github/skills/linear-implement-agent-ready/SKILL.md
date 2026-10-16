@@ -25,9 +25,10 @@ Do not use it for umbrellas, unresolved smart-contract architecture decisions, P
 
 - Inspect and edit only files tied to issue evidence, spec requirements, audit findings, and acceptance criteria.
 - Read the ODD feature document before `spec-backed` work; read the audit result before `remediation` work.
+- `spec-backed` document handoff: after the clean-tree check, if the branch lacks `odd/tasks/<feature-name>.md`, materialize it from the verified Engram mirror; when the planning checkout is reused, the only uncommitted change it may adopt is that issue-owned document, and only if it matches the mirror. Any other uncommitted change still blocks.
 - `spec-backed` work follows the document's tasks: commit the document with the first work unit if it is not yet in the branch, make one work-unit commit per task (or tightly coupled task group), and append each commit and its validation evidence to the document's `## Log` and Engram mirror. `direct` work stays inline with no ODD artifacts.
 - Strict TDD: write or update the failing test before the implementation change, and record RED and GREEN evidence.
-- Native review (RDD): before marking audit-ready, run `gentle-ai review assess` and, when it calls for review, `gentle-ai review start` on the result candidate; fix findings in scope. Read `gentle-ai review mode status` but never enable or disable review mode; if it is off, record that as evidence. Native review and the ODD verifier never replace the separate-session completeness audit.
+- Native review (RDD): before marking audit-ready, review the committed range, not the (clean) working tree: run `gentle-ai review assess --base-ref <baseCommit> --committed-only` and, when it calls for review, `gentle-ai review start --base-ref <baseCommit> --committed-only`, then follow the returned transitions on that same range; fix findings in scope. Read `gentle-ai review mode status` but never enable or disable review mode; if it is off, record that as evidence. Native review and the ODD verifier never replace the separate-session completeness audit.
 - Close the result with a `Risk:` line (tier and reason). Contracts, authority/role wiring, ParamController policy, treasury paths, deploy flows, and indexer event compatibility are always high-risk and require the independent ODD verifier before audit handoff.
 - Normal execution may create/reuse a branch, write files, run validations, and create commits only when supervisor policy allows.
 - Normal execution must not push, open/update PRs, move Linear to review, use closing phrases, or claim the issue is definitively complete.
@@ -46,7 +47,7 @@ Do not use it for umbrellas, unresolved smart-contract architecture decisions, P
 | Audit result requests bounded fixes | Implement only those fixes in `remediation` mode |
 | Needs ODD feature document | Stop; recommend `linear-odd-from-issue` |
 | Needs splitting | Stop; recommend `linear-issue-refiner` |
-| Dirty/ambiguous worktree or unresolved owner | Stop or isolate only with explicit permission |
+| Dirty/ambiguous worktree or unresolved owner (other than the issue-owned ODD document that matches its mirror) | Stop or isolate only with explicit permission |
 
 ## Execution Steps
 
