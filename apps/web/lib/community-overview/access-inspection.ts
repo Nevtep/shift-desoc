@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 
+import { ZERO_ADDRESS } from "./constants";
 import type { CommunityModules } from "../../hooks/useCommunityModules";
 
 // Mirrors CHECKS in apps/web/scripts/verify-access-wiring.mjs (parity enforced by unit test).
@@ -156,7 +157,9 @@ export function evaluateAccessInspection(
   const timelockAdmin: AccessSignal = adminHeld === null ? "unavailable" : adminHeld ? "pass" : "fail";
 
   const rows = ACCESS_WIRING_CHECKS.map((check, index): AccessInspectionRow => {
-    const target = (modules?.[moduleKeyForTarget(check.targetKey)] as Address | undefined) ?? null;
+    const rawTarget = (modules?.[moduleKeyForTarget(check.targetKey)] as Address | undefined) ?? null;
+    // AccessManager reports role 0 (= ADMIN) for unconfigured targets, so a zeroed module must never pass.
+    const target = rawTarget && rawTarget.toLowerCase() !== ZERO_ADDRESS ? rawTarget : null;
     const expected = check.role === "ADMIN" ? adminRole : BigInt(check.role);
     const actual = reads?.functionRoles[index] ?? null;
     const base = {

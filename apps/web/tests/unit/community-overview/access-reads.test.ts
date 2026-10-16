@@ -29,7 +29,7 @@ function healthyClient(overrides: { fail?: (fn: string, args: readonly unknown[]
       calls.push(functionName);
       if (overrides.fail?.(functionName, args)) throw new Error("rpc down");
       if (functionName === "ADMIN_ROLE") return 0n;
-      if (functionName === "getTargetFunctionRole") return bySelector.get(`${args[0]}:${args[1]}`);
+      if (functionName === "getTargetFunctionRole") return bySelector.get(`${args[0]}:${args[1]}`) ?? 0n;
       if (functionName === "hasRole") return [(args[1] as string) === TIMELOCK, 0];
       throw new Error("unexpected");
     }
@@ -56,6 +56,14 @@ describe("readAccessResults", () => {
     client.readContract = async (a: any) => (a.functionName === "getTargetFunctionRole" ? ("garbage" as any) : orig(a));
     const reads = await readAccessResults(client as any, m);
     expect(evaluateAccessInspection(m, reads).overall).toBe("unavailable");
+  });
+
+  it("does not read roles for zero-address targets", async () => {
+    const m = { ...modules(), marketplace: "0x0000000000000000000000000000000000000000" as `0x${string}` };
+    const client = healthyClient();
+    const reads = await readAccessResults(client as any, m);
+    const idx = ACCESS_WIRING_CHECKS.findIndex((c) => c.targetKey === "marketplace");
+    expect(reads?.functionRoles[idx]).toBeNull();
   });
 
   it("returns null without access manager or timelock and makes no calls", async () => {

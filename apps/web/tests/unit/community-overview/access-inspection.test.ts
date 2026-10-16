@@ -95,6 +95,16 @@ describe("access inspection", () => {
     expect(result.overall).toBe("unavailable");
   });
 
+  it("treats a zero-address module as missing, never verified", () => {
+    const modules = fullModules();
+    modules.valuableActionRegistry = "0x0000000000000000000000000000000000000000";
+    const result = evaluateAccessInspection(modules, healthyReads(modules));
+    const row = result.rows.find((r) => r.targetKey === "valuableActionRegistry" && r.expectedRole === "0");
+    expect(row?.target).toBeNull();
+    expect(row?.status).toBe("unavailable");
+    expect(result.overall).toBe("unavailable");
+  });
+
   it("is unavailable without reads or access manager, and fail beats unavailable", () => {
     expect(evaluateAccessInspection(null, null).overall).toBe("unavailable");
     const modules = fullModules();

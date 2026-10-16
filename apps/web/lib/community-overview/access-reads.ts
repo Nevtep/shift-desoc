@@ -4,6 +4,7 @@ import accessManagerArtifact from "../../abis/ShiftAccessManager.json" assert { 
 import type { CachedPublicClient } from "../../hooks/useCachedPublicClient";
 import type { CommunityModules } from "../../hooks/useCommunityModules";
 import { selectorFromSignature } from "../actions/permission-matrix";
+import { ZERO_ADDRESS } from "./constants";
 import { ACCESS_WIRING_CHECKS, moduleKeyForTarget, type AccessReadResults } from "./access-inspection";
 
 const ABI = accessManagerArtifact.abi as Abi;
@@ -39,7 +40,7 @@ export async function readAccessResults(
   await Promise.all(
     ACCESS_WIRING_CHECKS.map(async (check, index) => {
       const target = modules[moduleKeyForTarget(check.targetKey)];
-      if (!target) {
+      if (!target || target.toLowerCase() === ZERO_ADDRESS) {
         functionRoles[index] = null;
         return;
       }

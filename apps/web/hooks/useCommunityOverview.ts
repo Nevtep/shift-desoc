@@ -184,7 +184,7 @@ export function useCommunityOverview(communityId: number) {
   const [params, setParams] = useState<OverviewRawParameters | null>(null);
   const [paramsError, setParamsError] = useState(false);
   const [paramsLoading, setParamsLoading] = useState(false);
-  const [accessReads, setAccessReads] = useState<AccessReadResults | null>(null);
+  const [accessReads, setAccessReads] = useState<{ modules: CommunityModules; reads: AccessReadResults | null } | null>(null);
   const [accessLoading, setAccessLoading] = useState(false);
 
   useEffect(() => {
@@ -232,9 +232,9 @@ export function useCommunityOverview(communityId: number) {
       setAccessLoading(true);
       try {
         const reads = await readAccessResults(publicClient, modules);
-        if (!cancelled) setAccessReads(reads);
+        if (!cancelled) setAccessReads({ modules, reads });
       } catch {
-        if (!cancelled) setAccessReads(null);
+        if (!cancelled) setAccessReads({ modules, reads: null });
       } finally {
         if (!cancelled) setAccessLoading(false);
       }
@@ -324,7 +324,10 @@ export function useCommunityOverview(communityId: number) {
   }, [communityId, modules?.paramController, publicClient]);
 
   const moduleItems = useMemo(() => buildModuleSummaryItems(modules, bytecodes), [modules, bytecodes]);
-  const accessInspection = useMemo(() => evaluateAccessInspection(modules, accessReads), [modules, accessReads]);
+  const accessInspection = useMemo(
+    () => evaluateAccessInspection(modules, accessReads && accessReads.modules === modules ? accessReads.reads : null),
+    [modules, accessReads]
+  );
   const parameterItems = useMemo(() => buildParameterSummaryItems(params), [params]);
 
   const newestTimestamp = useMemo(() => {
@@ -352,7 +355,9 @@ export function useCommunityOverview(communityId: number) {
     moduleItems,
     parameterItems,
     accessInspection,
-    accessLoading,
+    accessLoading:
+      accessLoading ||
+      Boolean(modules?.accessManager && modules.timelock && publicClient.raw && accessReads?.modules !== modules),
     modulesLoading,
     paramsLoading,
     paramsError,
