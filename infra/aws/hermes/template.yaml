@@ -304,6 +304,9 @@ Resources:
   OperatorsGroup:
     Type: AWS::IAM::Group
     Properties:
+      ManagedPolicyArns:
+        # Lets operators set their own console password on first sign-in.
+        - arn:aws:iam::aws:policy/IAMUserChangePassword
       Policies:
         - PolicyName: shift-hermes-operator
           PolicyDocument:
