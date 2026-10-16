@@ -97,6 +97,12 @@ claude -p "<lane prompt>" \
 
 ## Mandatory preflight
 
+0. If the cron MONITOR block says `PREFLIGHT=STOP`, reply exactly `[SILENT]`
+   and do nothing else: the guard already decided this cycle must wait.
+   Otherwise take the cycle lock so the guard keeps other runs out:
+   `mkdir -p /opt/data/shift && date -u +%FT%TZ > /opt/data/shift/dev-loop.lock`.
+   Release it (`rm -f /opt/data/shift/dev-loop.lock`) as the very last action
+   of the cycle, on every exit path.
 1. `cd /workspace/shift`.
 2. Read `AGENTS.md`.
 3. Recover relevant Hermes memory and Engram context.
@@ -298,5 +304,9 @@ A cycle is complete when one of these is true:
 - a human decision is required;
 - a non-recoverable capability failure blocks work.
 
-Never continue into another issue within the same cycle. The recurring cron job
-will re-evaluate after merges and changes.
+Never continue into another issue within the same cycle. Release the cycle
+lock (`rm -f /opt/data/shift/dev-loop.lock`) as the last action. The next
+cycle starts from the daily schedule or from the merge watcher: when a PR
+merges, `shift-post-merge-learning` syncs the checkout, learns from the
+review and the post-audit fixes, and triggers this job again, so do not
+re-analyse already merged PRs here.

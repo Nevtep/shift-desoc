@@ -40,6 +40,9 @@ check escarlet-config bash -c "test -n \"\${ESCARLET_MCP_URL:-}\" -a -n \"\${ESC
 check escarlet-mcp hermes mcp test escarlet
 check gh-persisted-login bash -c "env -u GH_TOKEN -u GITHUB_TOKEN gh auth status --hostname github.com"
 check terminal-home bash -c "grep -q 'home_mode: real' \"\$HERMES_HOME/config.yaml\""
+check monitor-scripts bash -c "test -x \"\$HERMES_HOME/scripts/shift-dev-monitor.sh\" -a -x \"\$HERMES_HOME/scripts/shift-merge-watch.sh\""
+check cron-jobs bash -c "test -s \"\$HERMES_HOME/shift/jobs.env\""
+check post-merge-skill hermes_skill_loaded shift-post-merge-learning
 check main-clean bash -c "cd '$REPO' && test -z \"\$(git status --porcelain)\""
 check cron hermes cron status
 

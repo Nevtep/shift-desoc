@@ -220,6 +220,11 @@ if [[ -n "${LINEAR_API_KEY:-}" ]]; then
     --header "Authorization: Bearer ${LINEAR_API_KEY}"
 fi
 
+# Cron monitor scripts (fail-fast preflight, merge watcher) live under
+# $HERMES_HOME/scripts as Hermes requires; refreshed on every boot.
+mkdir -p "$HERMES_HOME/scripts" "$HERMES_HOME/shift"
+install -m 0755 "$BOOTSTRAP"/scripts/shift-*.sh "$HERMES_HOME/scripts/"
+
 # Initialize Hermes Kanban for durable task/handoff history.
 hermes kanban init || true
 
@@ -232,6 +237,7 @@ for skill in \
   shift-runtime-tools \
   shift-learning-governance \
   shift-pr-review-convergence \
+  shift-post-merge-learning \
   escarlet-mcp-content \
   shift-social-content
 do

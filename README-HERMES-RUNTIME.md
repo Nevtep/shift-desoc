@@ -50,14 +50,23 @@ hermes status --deep
 exit
 ```
 
-## 4. Install the intelligent recurring loop
+## 4. Install the cron jobs
 
 ```bash
 docker compose --env-file .env.hermes -f docker-compose.hermes.yml run --rm \
   --entrypoint /bin/bash gateway /opt/shift-hermes/scripts/install-loop.sh
 ```
 
-Hermes itself creates the recurring cron job through its `cronjob` tool.
+Creates or updates two jobs (idempotent, ids written to `/opt/data/shift/jobs.env`):
+
+| Job | Schedule | Monitor script (no LLM) | Agent runs when |
+| --- | --- | --- | --- |
+| Shift autonomous development loop | daily 06:00 | `shift-dev-monitor.sh`: gh auth, Linear key, cycle lock, open agent PRs `< SHIFT_MAX_OPEN_PRS`, `origin/main` | guard says GO and the day or `origin/main` changed; repeated STOP costs nothing |
+| Shift merge watcher | every 5 min | `shift-merge-watch.sh`: merged PRs not yet handed over | a PR merged → `shift-post-merge-learning` (sync checkout, prune worktrees, learn from reviews and post-audit fixes, persist to memory/Engram) → triggers the dev loop |
+
+So the human loop is: review → merge on GitHub → within 5 minutes Hermes
+learns from the merge and starts the next feature, which stops by itself when
+`SHIFT_MAX_OPEN_PRS` agent PRs are already open.
 
 ## 5. Start
 
@@ -84,7 +93,7 @@ docker compose --env-file .env.hermes -f docker-compose.hermes.yml exec gateway 
 
 ## 7. Trigger immediately
 
-Get the job id from `hermes cron list` (step 6), then:
+Job ids are in `/opt/data/shift/jobs.env` (or `hermes cron list`), then:
 
 ```bash
 docker compose --env-file .env.hermes -f docker-compose.hermes.yml exec gateway \
@@ -93,8 +102,8 @@ docker compose --env-file .env.hermes -f docker-compose.hermes.yml exec gateway 
 
 ## Behavior
 
-Each cron invocation starts a fresh Hermes agent session with the supervisor
-skill loaded. Hermes:
+Each development-loop run starts a fresh Hermes agent session with the
+supervisor skill loaded, after the monitor script's guard passed. Hermes:
 - runs the Linear readiness skill;
 - reasons over the queue;
 - creates a repo-local worktree;
