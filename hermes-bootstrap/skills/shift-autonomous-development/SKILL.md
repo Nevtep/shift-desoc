@@ -200,7 +200,9 @@ repo file and the Engram mirror in sync.
 
 The implementer must:
 - recover Engram;
-- re-read Linear;
+- re-read Linear, treating the issue's `QA: how to test` section as part of
+  the acceptance criteria (the auditor checks it; an implementation that
+  satisfies the bullet-point criteria but not the QA steps is incomplete);
 - implement narrowly, test-first;
 - include tests and required status-document synchronization;
 - create work-unit commits;
