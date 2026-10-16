@@ -170,7 +170,7 @@ export function evaluateAccessInspection(
   const adminRole = reads?.adminRole ?? null;
   const adminKey = adminRole === null ? null : adminRole.toString();
   const adminHeld = adminKey === null ? null : (reads?.timelockHasRole[adminKey] ?? null);
-  const timelockAdmin: AccessSignal = adminHeld === null ? "unavailable" : adminHeld ? "pass" : "fail";
+  const timelockAdmin: AccessSignal = adminHeld === null || modules?.timelock?.toLowerCase() === ZERO_ADDRESS ? "unavailable" : adminHeld ? "pass" : "fail";
 
   const rows = ACCESS_WIRING_CHECKS.map((check, index): AccessInspectionRow => {
     const rawTarget = (modules?.[moduleKeyForTarget(check.targetKey)] as Address | undefined) ?? null;

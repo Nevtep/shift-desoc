@@ -73,3 +73,23 @@ describe("role holder visibility", () => {
     expect(holder(evaluateAccessInspection(m, ok, addr(88)), "connectedWallet").state).toBe("unavailable");
   });
 });
+
+describe("zeroed timelock module", () => {
+  it("is unavailable, never a checked negative holder, and is not read", async () => {
+    const m = { ...modules(), timelock: "0x0000000000000000000000000000000000000000" as `0x${string}` };
+    const calls: string[] = [];
+    const c = {
+      readContract: async (a: any) => {
+        calls.push(`${a.functionName}:${String(a.args?.[1])}`);
+        if (a.functionName === "ADMIN_ROLE") return 0n;
+        if (a.functionName === "getTargetFunctionRole") return 0n;
+        return [false, 0];
+      }
+    };
+    const reads = await readAccessResults(c as any, m, null);
+    const i = evaluateAccessInspection(m, reads, null);
+    expect(i.holders.find((h) => h.key === "timelock")).toMatchObject({ address: null, state: "unavailable" });
+    expect(i.timelockAdmin).toBe("unavailable");
+    expect(calls.some((x) => x.startsWith("hasRole") && x.endsWith("0x0000000000000000000000000000000000000000"))).toBe(false);
+  });
+});

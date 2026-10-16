@@ -78,7 +78,9 @@ export async function readAccessResults(
   const timelockHasRole: AccessReadResults["timelockHasRole"] = {};
   await Promise.all(
     [...roleIds].map(async (role) => {
-      timelockHasRole[role.toString()] = await readHasRole(role, timelock);
+      // hasRole(role, address(0)) returns false rather than reverting; a zeroed timelock must stay unchecked.
+      timelockHasRole[role.toString()] =
+        timelock.toLowerCase() === ZERO_ADDRESS ? null : await readHasRole(role, timelock);
     })
   );
 
