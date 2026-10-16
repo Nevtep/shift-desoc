@@ -1,0 +1,392 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Shift Hermes autonomous development runtime. Single Graviton EC2 host running
+  docker-compose.hermes.yml, no inbound ports (access via SSM Session Manager),
+  secrets from SSM Parameter Store, persistent encrypted EBS data volume with
+  daily snapshots.
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t4g.xlarge
+    AllowedValues: [t4g.large, t4g.xlarge, t4g.2xlarge, m7g.large, m7g.xlarge]
+    Description: Graviton (arm64) instance type. xlarge = 4 vCPU / 16 GiB.
+  DataVolumeSizeGiB:
+    Type: Number
+    Default: 100
+    MinValue: 40
+    Description: Docker data-root (image, hermes_data and shift_workspace volumes).
+  RepoUrl:
+    Type: String
+    Default: https://github.com/Nevtep/shift-desoc.git
+  GitRef:
+    Type: String
+    Default: main
+    Description: Branch or tag of the Shift repo used to build and run the container.
+  ParameterPath:
+    Type: String
+    Default: /shift/hermes
+    AllowedPattern: "^/[A-Za-z0-9/_-]+[^/]$"
+    Description: SSM Parameter Store path holding the .env.hermes keys.
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+  VpcCidr:
+    Type: String
+    Default: 10.42.0.0/24
+
+Resources:
+  # --- Network: dedicated public subnet, egress only (no inbound rules) ---
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags: [{ Key: Name, Value: shift-hermes }]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: [{ Key: Name, Value: shift-hermes }]
+
+  GatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  Subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref VpcCidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: shift-hermes }]
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet
+      RouteTableId: !Ref RouteTable
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Shift Hermes host - no inbound, all outbound
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags: [{ Key: Name, Value: shift-hermes }]
+
+  # --- IAM: SSM management + read-only access to this deployment's params ---
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: read-hermes-parameters
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParametersByPath, ssm:GetParameters, ssm:GetParameter]
+                Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${ParameterPath}*"
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref InstanceRole]
+
+  # --- Persistent data volume (survives instance replacement) ---
+  DataVolume:
+    Type: AWS::EC2::Volume
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      AvailabilityZone: !GetAtt Subnet.AvailabilityZone
+      Size: !Ref DataVolumeSizeGiB
+      VolumeType: gp3
+      Encrypted: true
+      Tags:
+        - { Key: Name, Value: shift-hermes-data }
+        - { Key: shift-hermes-backup, Value: daily }
+
+  Instance:
+    Type: AWS::EC2::Instance
+    DependsOn: DefaultRoute
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      SubnetId: !Ref Subnet
+      SecurityGroupIds: [!Ref SecurityGroup]
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags: [{ Key: Name, Value: shift-hermes }]
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            set -euxo pipefail
+            exec > >(tee -a /var/log/shift-hermes-bootstrap.log) 2>&1
+
+            REGION="${AWS::Region}"
+            PARAM_PATH="${ParameterPath}"
+            REPO_URL="${RepoUrl}"
+            GIT_REF="${GitRef}"
+            DATA_VOLUME_SERIAL="${VolumeSerial}"
+            DATA_DIR=/srv/hermes
+
+            dnf install -y docker git jq
+
+            # Pinned Docker CLI plugins, checksum-verified.
+            mkdir -p /usr/local/lib/docker/cli-plugins
+            cd /usr/local/lib/docker/cli-plugins
+            curl -fsSL -o docker-compose https://github.com/docker/compose/releases/download/v2.40.3/docker-compose-linux-aarch64
+            echo "d26373b19e89160546d15407516cc59f453030d9bc5b43ba7faf16f7b4980137  docker-compose" | sha256sum -c -
+            curl -fsSL -o docker-buildx https://github.com/docker/buildx/releases/download/v0.29.1/buildx-v0.29.1.linux-arm64
+            echo "50e85c4e290b698908421161c1aee069bcc5d4a65b7b7201bfac3a176b223a7e  docker-buildx" | sha256sum -c -
+            chmod 0755 docker-compose docker-buildx
+            cd /
+
+            # Wait for the persistent data volume (attached after boot).
+            for _ in $(seq 1 90); do
+              DEV="$(lsblk -dpno NAME,SERIAL | awk -v s="$DATA_VOLUME_SERIAL" '$2==s {print $1}')"
+              [[ -n "$DEV" ]] && break
+              sleep 5
+            done
+            [[ -n "$DEV" ]] || { echo "data volume not found" >&2; exit 1; }
+            blkid "$DEV" || mkfs.xfs -L shift-hermes "$DEV"
+            mkdir -p "$DATA_DIR"
+            grep -q "LABEL=shift-hermes" /etc/fstab || echo "LABEL=shift-hermes $DATA_DIR xfs defaults,nofail 0 2" >> /etc/fstab
+            mount -a
+            mountpoint -q "$DATA_DIR"
+
+            # Swap headroom for pnpm/forge/next builds run by subagents.
+            if [[ ! -f "$DATA_DIR/swapfile" ]]; then
+              fallocate -l 8G "$DATA_DIR/swapfile"
+              chmod 600 "$DATA_DIR/swapfile"
+              mkswap "$DATA_DIR/swapfile"
+            fi
+            grep -q "$DATA_DIR/swapfile" /etc/fstab || echo "$DATA_DIR/swapfile none swap sw,nofail 0 0" >> /etc/fstab
+            swapon -a || true
+
+            mkdir -p /etc/docker
+            cat > /etc/docker/daemon.json <<JSON
+            {"data-root": "$DATA_DIR/docker", "log-driver": "json-file", "log-opts": {"max-size": "20m", "max-file": "5"}}
+            JSON
+            systemctl enable --now docker
+
+            # Deployment settings consumed by the helper scripts.
+            cat > /etc/shift-hermes.conf <<CONF
+            REGION=$REGION
+            PARAM_PATH=$PARAM_PATH
+            REPO_URL=$REPO_URL
+            GIT_REF=$GIT_REF
+            DATA_DIR=$DATA_DIR
+            CONF
+
+            # Render .env.hermes from SSM Parameter Store (root-only).
+            cat > /usr/local/bin/shift-hermes-sync-env <<'SH'
+            #!/bin/bash
+            set -euo pipefail
+            source /etc/shift-hermes.conf
+            tmp="$(mktemp "$DATA_DIR/.env.hermes.XXXXXX")"
+            chmod 600 "$tmp"
+            aws ssm get-parameters-by-path --region "$REGION" --path "$PARAM_PATH" \
+              --recursive --with-decryption --output json \
+              | jq -r '.Parameters[] | "\(.Name | split("/") | last)=\(.Value)"' > "$tmp"
+            grep -q '^HERMES_DASHBOARD_PASSWORD=' "$tmp" || { echo "missing HERMES_DASHBOARD_PASSWORD in $PARAM_PATH" >&2; exit 1; }
+            mv "$tmp" "$DATA_DIR/.env.hermes"
+            SH
+
+            # Fetch the configured ref, rebuild and (re)start the stack.
+            cat > /usr/local/bin/shift-hermes-update <<'SH'
+            #!/bin/bash
+            set -euo pipefail
+            source /etc/shift-hermes.conf
+            ref="${!1:-$GIT_REF}"
+            src="$DATA_DIR/src"
+            [[ -d "$src/.git" ]] || git clone "$REPO_URL" "$src"
+            git -C "$src" fetch --prune origin
+            git -C "$src" checkout --force --detach "origin/$ref" 2>/dev/null || git -C "$src" checkout --force --detach "$ref"
+            sed -i "s|^GIT_REF=.*|GIT_REF=$ref|" /etc/shift-hermes.conf
+            /usr/local/bin/shift-hermes-sync-env
+            cd "$src"
+            docker compose --env-file "$DATA_DIR/.env.hermes" -f docker-compose.hermes.yml build
+            docker compose --env-file "$DATA_DIR/.env.hermes" -f docker-compose.hermes.yml up -d --remove-orphans
+            docker compose --env-file "$DATA_DIR/.env.hermes" -f docker-compose.hermes.yml ps
+            SH
+
+            # Convenience wrapper: `shift-hermes <compose args>`.
+            cat > /usr/local/bin/shift-hermes <<'SH'
+            #!/bin/bash
+            set -euo pipefail
+            source /etc/shift-hermes.conf
+            cd "$DATA_DIR/src"
+            exec docker compose --env-file "$DATA_DIR/.env.hermes" -f docker-compose.hermes.yml "$@"
+            SH
+            chmod 0755 /usr/local/bin/shift-hermes-sync-env /usr/local/bin/shift-hermes-update /usr/local/bin/shift-hermes
+
+            # Start on every boot with fresh secrets (restart policy keeps it up).
+            cat > /etc/systemd/system/shift-hermes.service <<'UNIT'
+            [Unit]
+            Description=Shift Hermes runtime
+            Requires=docker.service
+            After=docker.service network-online.target
+            Wants=network-online.target
+
+            [Service]
+            Type=oneshot
+            RemainAfterExit=yes
+            ExecStartPre=/usr/local/bin/shift-hermes-sync-env
+            ExecStart=/usr/local/bin/shift-hermes up -d
+            ExecStop=/usr/local/bin/shift-hermes stop
+            TimeoutStartSec=1800
+
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+            systemctl daemon-reload
+            systemctl enable shift-hermes.service
+
+            # First deploy: clone, build and start.
+            /usr/local/bin/shift-hermes-update "$GIT_REF"
+          - VolumeSerial: !Join ["", !Split ["-", !Ref DataVolume]]
+
+  DataVolumeAttachment:
+    Type: AWS::EC2::VolumeAttachment
+    Properties:
+      InstanceId: !Ref Instance
+      VolumeId: !Ref DataVolume
+      Device: /dev/sdf
+
+  # --- Human operators: SSH/SSM into this instance only ---
+  # Add a person with: aws iam add-user-to-group --group-name <OperatorsGroup> --user-name <user>
+  # then infra/aws/hermes/add-operator.sh <name> <their key.pub> for the Linux account.
+  OperatorsGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      ManagedPolicyArns:
+        # Lets operators set their own console password on first sign-in.
+        - arn:aws:iam::aws:policy/IAMUserChangePassword
+      Policies:
+        - PolicyName: shift-hermes-operator
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: StartSessionsOnHermesHost
+                Effect: Allow
+                Action: ssm:StartSession
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Instance}"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartSSHSession"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartPortForwardingSession"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartInteractiveCommand"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/SSM-SessionManagerRunShell"
+              - Sid: ManageOwnSessions
+                Effect: Allow
+                Action: [ssm:TerminateSession, ssm:ResumeSession]
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:session/${!aws:username}-*"
+                  - !Sub "arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:session/${!aws:userid}-*"
+              - Sid: ReadStackForHelperScripts
+                Effect: Allow
+                Action: cloudformation:DescribeStacks
+                Resource: !Ref AWS::StackId
+              - Sid: ReadDashboardCredentials
+                Effect: Allow
+                Action: ssm:GetParameter
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${ParameterPath}/HERMES_DASHBOARD_USERNAME"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${ParameterPath}/HERMES_DASHBOARD_PASSWORD"
+              - Sid: DecryptDashboardCredentials
+                Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
+
+  # --- Daily snapshots of the data volume (7 retained) ---
+  SnapshotRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: dlm.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSDataLifecycleManagerServiceRole
+
+  SnapshotPolicy:
+    Type: AWS::DLM::LifecyclePolicy
+    Properties:
+      Description: shift-hermes daily data snapshots
+      State: ENABLED
+      ExecutionRoleArn: !GetAtt SnapshotRole.Arn
+      PolicyDetails:
+        ResourceTypes: [VOLUME]
+        TargetTags:
+          - { Key: shift-hermes-backup, Value: daily }
+        Schedules:
+          - Name: daily
+            CreateRule: { Interval: 24, IntervalUnit: HOURS, Times: ["06:00"] }
+            RetainRule: { Count: 7 }
+            CopyTags: true
+
+Outputs:
+  InstanceId:
+    Value: !Ref Instance
+  DataVolumeId:
+    Value: !Ref DataVolume
+  Region:
+    Value: !Ref AWS::Region
+  OperatorsGroupName:
+    Value: !Ref OperatorsGroup
+  ShellCommand:
+    Value: !Sub "aws ssm start-session --region ${AWS::Region} --target ${Instance}"
+  DashboardTunnelCommand:
+    Value: !Sub >-
+      aws ssm start-session --region ${AWS::Region} --target ${Instance}
+      --document-name AWS-StartPortForwardingSession
+      --parameters '{"portNumber":["9119"],"localPortNumber":["9119"]}'

@@ -1,10 +1,15 @@
-FROM nousresearch/hermes-agent:latest
+# Pin the Hermes base image. `latest` moves daily and silently changes the
+# runtime contract (config schema, s6 services, dashboard auth gate).
+# Bump deliberately and re-run scripts/doctor.sh after upgrading.
+ARG HERMES_IMAGE_TAG=v2026.9.24
+FROM nousresearch/hermes-agent:${HERMES_IMAGE_TAG}
 
 USER root
 
-ARG CODEX_VERSION=0.135.0
+ARG CLAUDE_CODE_VERSION=2.1.294
 ARG PNPM_VERSION=9.15.9
 ARG ENGRAM_VERSION=1.20.0
+ARG GENTLE_AI_VERSION=4.2.0
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -23,57 +28,60 @@ RUN apt-get update \
         sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Pin the CLIs used by the Shift workflow.
+# Pin the CLIs used by the Shift workflow. Claude Code is the coding agent
+# Hermes delegates implementation and audits to; its self-updater is disabled
+# so the version only changes through this pin.
+ENV DISABLE_AUTOUPDATER=1 \
+    GENTLE_AI_ENGRAM_BIN=/usr/local/bin/engram
 RUN npm install -g \
-        "@openai/codex@${CODEX_VERSION}" \
+        "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
         "pnpm@${PNPM_VERSION}" \
-    && codex --version \
+    && claude --version \
     && pnpm --version
 
-# Install the Gentle AI launcher.
-# Agent/component configuration remains a runtime/bootstrap concern.
-RUN curl -fsSL \
-        https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh \
-      | bash \
-    && gentle-ai --version
-
-# Install Engram's released binary for the container architecture.
+# Install pinned release binaries, verified against each release's checksums.
+# (No `curl | bash` from a moving branch.)
 RUN set -eux; \
     architecture="$(dpkg --print-architecture)"; \
     case "${architecture}" in \
-      arm64) asset_arch="arm64" ;; \
-      amd64) asset_arch="amd64" ;; \
+      arm64|amd64) asset_arch="${architecture}" ;; \
       *) echo "Unsupported architecture: ${architecture}" >&2; exit 1 ;; \
     esac; \
-    archive="/var/tmp/engram.tar.gz"; \
-    install_dir="/var/tmp/engram-install"; \
-    curl -fsSL \
-      "https://github.com/Gentleman-Programming/engram/releases/download/v${ENGRAM_VERSION}/engram_${ENGRAM_VERSION}_linux_${asset_arch}.tar.gz" \
-      -o "${archive}"; \
-    mkdir -p "${install_dir}"; \
-    tar -xzf "${archive}" -C "${install_dir}"; \
-    install -m 0755 "${install_dir}/engram" /usr/local/bin/engram; \
-    rm -rf "${archive}" "${install_dir}"; \
+    work="$(mktemp -d)"; \
+    cd "${work}"; \
+    install_release() { \
+      repo="$1"; version="$2"; asset="$3"; binary="$4"; \
+      base="https://github.com/Gentleman-Programming/${repo}/releases/download/v${version}"; \
+      curl -fsSLO "${base}/${asset}"; \
+      curl -fsSL "${base}/checksums.txt" -o "${repo}-checksums.txt"; \
+      grep " ${asset}\$" "${repo}-checksums.txt" | sha256sum -c -; \
+      mkdir -p "${repo}"; \
+      tar -xzf "${asset}" -C "${repo}"; \
+      install -m 0755 "${repo}/${binary}" "/usr/local/bin/${binary}"; \
+    }; \
+    install_release gentle-ai "${GENTLE_AI_VERSION}" "gentle-ai_${GENTLE_AI_VERSION}_linux_${asset_arch}.tar.gz" gentle-ai; \
+    install_release engram "${ENGRAM_VERSION}" "engram_${ENGRAM_VERSION}_linux_${asset_arch}.tar.gz" engram; \
+    cd /; rm -rf "${work}"; \
+    gentle-ai --version; \
     engram version
 
 COPY hermes-bootstrap /opt/shift-hermes/bootstrap
 COPY scripts/bootstrap.sh /opt/shift-hermes/scripts/bootstrap.sh
 COPY scripts/install-loop.sh /opt/shift-hermes/scripts/install-loop.sh
 COPY scripts/doctor.sh /opt/shift-hermes/scripts/doctor.sh
+COPY scripts/escarlet-mcp.py /opt/shift-hermes/scripts/escarlet-mcp.py
 
-RUN chmod 0755 /opt/shift-hermes/scripts/*.sh \
-    && mkdir -p /workspace /opt/data \
+RUN chmod 0755 /opt/shift-hermes/scripts/*.sh /opt/shift-hermes/scripts/*.py \
+    && mkdir -p /workspace/shift /opt/data \
     && chown -R hermes:hermes \
         /workspace \
         /opt/data \
         /opt/shift-hermes
 
-# Deliberately remain root here.
-# The inherited /init entrypoint performs container initialization and
-# launches operational processes as the unprivileged hermes user.
-USER root
-
+# Deliberately remain root: the inherited entrypoint (s6-overlay /init)
+# initializes the container and drops operational processes to the
+# unprivileged hermes user.
 WORKDIR /workspace/shift
 
 # Inherited unchanged:
-# ENTRYPOINT ["/init", "/opt/hermes/docker/main-wrapper.sh"]
+# ENTRYPOINT ["/opt/hermes/docker/entrypoint-dispatch.sh"]

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Escarlet MCP Content"
+  short_description: "Genera, administra y publica contenido vía MCP"
+  default_prompt: "Usa $escarlet-mcp-content para crear, revisar y publicar contenido con el MCP v3 de Escarlet."

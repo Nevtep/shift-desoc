@@ -1,3 +1,6 @@
+# Seeded into $HERMES_HOME/config.yaml on first bootstrap. Afterwards Hermes
+# (and you) own the file; bootstrap.sh only re-asserts the repo-managed keys
+# listed in hermes-bootstrap/managed-keys.yaml.
 model:
   provider: openrouter
   default: anthropic/claude-fable-5
@@ -5,11 +8,17 @@ model:
 terminal:
   backend: local
   cwd: /workspace/shift
-  home_mode: profile
+  home_mode: real
 
 skills:
   external_dirs:
     - /workspace/shift/hermes-bootstrap/skills
+
+mcp_servers:
+  linear:
+    url: https://mcp.linear.app/mcp
+    headers:
+      Authorization: "Bearer ${LINEAR_API_KEY}"
 
 delegation:
   max_concurrent_children: 3
@@ -25,6 +34,7 @@ checkpoints:
 
 cron:
   provider: ""
+  max_parallel_jobs: 1
 
 kanban:
   auto_decompose: false

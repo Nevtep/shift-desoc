@@ -2,7 +2,7 @@
 set -euo pipefail
 
 export HERMES_HOME="${HERMES_HOME:-/opt/data}"
-export HOME="${HOME:-$HERMES_HOME/home}"
+export HOME="${HOME:-$HERMES_HOME}"
 REPO="${SHIFT_REPO_DIR:-/workspace/shift}"
 
 fail=0
@@ -17,17 +17,30 @@ check() {
 }
 
 check hermes hermes --version
-check codex codex --version
+check claude-code claude --version
+check claude-auth bash -c "test -n \"\${ANTHROPIC_API_KEY:-}\${CLAUDE_CODE_OAUTH_TOKEN:-}\""
+check claude-linear-mcp bash -c "out=\$(claude mcp list 2>/dev/null); grep -q linear <<<\"\$out\""
 check gentle gentle-ai --version
-check gga gga --version
 check engram engram version
 check github gh repo view "${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}"
 check repo test -d "$REPO/.git"
 check agents test -f "$REPO/AGENTS.md"
-check supervisor-skill hermes skills inspect shift-autonomous-development
-check review-convergence-skill hermes skills inspect shift-pr-review-convergence
+# Capture first: with pipefail, `grep -q` closing the pipe early makes the
+# producer die of SIGPIPE and the pipeline report failure on a match.
+LOADED_SKILLS="$(COLUMNS=250 hermes skills list --source local --enabled-only 2>/dev/null || true)"
+hermes_skill_loaded() { grep -qw -- "$1" <<<"$LOADED_SKILLS"; }
+check supervisor-skill hermes_skill_loaded shift-autonomous-development
+check review-convergence-skill hermes_skill_loaded shift-pr-review-convergence
 check repo-skills test -f "$REPO/.github/skills/linear-development-readiness/SKILL.md"
-check linear bash -lc "codex mcp list | grep -q linear"
+check linear-key test -n "${LINEAR_API_KEY:-}"
+check linear-mcp hermes mcp test linear
+check content-skill hermes_skill_loaded shift-social-content
+check escarlet-mcp-content-skill hermes_skill_loaded escarlet-mcp-content
+check escarlet-config bash -c "test -n \"\${ESCARLET_MCP_URL:-}\" -a -n \"\${ESCARLET_MCP_TOKEN:-}\""
+check escarlet-mcp hermes mcp test escarlet
+check gh-persisted-login bash -c "env -u GH_TOKEN -u GITHUB_TOKEN gh auth status --hostname github.com"
+check terminal-home bash -c "grep -q 'home_mode: real' \"\$HERMES_HOME/config.yaml\""
+check main-clean bash -c "cd '$REPO' && test -z \"\$(git status --porcelain)\""
 check cron hermes cron status
 
 echo

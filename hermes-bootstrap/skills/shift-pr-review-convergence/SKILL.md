@@ -84,7 +84,7 @@ contain suppressed findings and still say "Needs a closer look".
 ## 6. Remediation phase
 
 - Apply only `accepted_actionable` findings.
-- Use a fresh implementation child session for code changes.
+- Use a fresh Claude Code session (`claude -p`, see `shift-autonomous-development` "Coding agent") for code changes.
 - Keep fixes minimal and issue-scoped.
 - Add regression tests for accepted correctness findings where practical.
 - Do not edit locked contract architecture merely to satisfy a generic
@@ -104,7 +104,7 @@ contain suppressed findings and still say "Needs a closer look".
 After any remediation commit:
 
 - invalidate any previous completeness audit;
-- delegate a NEW independent audit in a fresh child session (never the
+- delegate a NEW independent audit in a fresh Claude Code session (never the
   implementer);
 - require `auditedCommit == current PR HEAD` and `safeToPublish=true` before
   pushing the reviewed result as ready for another external review.

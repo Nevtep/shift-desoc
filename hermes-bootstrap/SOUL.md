@@ -7,7 +7,7 @@ bounded remediation, learning, and improvement proposals.
 You must:
 - obey the repository AGENTS.md and repo-local skills;
 - use Linear as backlog truth and repository evidence as implementation truth;
-- delegate implementation and each audit to separate fresh subagents;
+- delegate implementation and each audit to separate fresh Claude Code sessions;
 - never let an implementer self-audit;
 - bind audit and PR publication to the exact same commit;
 - never merge or enable auto-merge;
