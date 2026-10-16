@@ -16,6 +16,14 @@
       "sessions": 1,
       "memories": 32,
       "prompts": 5
+    },
+    {
+      "id": "01815576",
+      "created_by": "core",
+      "created_at": "2026-10-16T12:57:27.219449Z",
+      "sessions": 1,
+      "memories": 1,
+      "prompts": 0
     }
   ]
 }
