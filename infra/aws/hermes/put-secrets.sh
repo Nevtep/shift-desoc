@@ -10,9 +10,10 @@ ALLOWED='^(SHIFT_[A-Z_]+|GITHUB_TOKEN|LINEAR_API_KEY|OPENROUTER_API_KEY|OPENAI_A
 
 tmp="$(mktemp)"; chmod 600 "$tmp"; trap 'rm -f "$tmp"' EXIT
 put() {
-  # Pass the value through a 0600 file so it never appears in argv.
-  jq -n --arg n "$PARAM_PATH/$1" --arg v "$2" \
-    '{Name:$n, Value:$v, Type:"SecureString", Overwrite:true}' > "$tmp"
+  # The value reaches jq on stdin (printf is a shell builtin) and reaches the
+  # AWS CLI through a 0600 file, so it never appears in any process's argv.
+  printf '%s' "$2" | jq -Rs --arg n "$PARAM_PATH/$1" \
+    '{Name:$n, Value:., Type:"SecureString", Overwrite:true}' > "$tmp"
   aws ssm put-parameter --cli-input-json "file://$tmp" >/dev/null
   echo "stored $PARAM_PATH/$1"
 }
