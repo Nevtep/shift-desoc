@@ -25,7 +25,7 @@ Do not use it for one issue already selected for refinement, ODD planning, imple
 - Do not invent dependencies, treat historical docs above code, use unapproved specs as implementation authorization, recommend conflicting issues in parallel, or hide uncertainty.
 - The unit of work is a **Feature issue**: one contract capability delivered as a vertical slice (contract calls → indexer projection/endpoints → Manager route or wizard → QA check). A Feature that has sub-issues is one unit; its sub-issues are tasks and are never classified or queued on their own.
 - A `Feature` or `Improvement` without a `QA: how to test` section (an admin-runnable check on Base Sepolia) is `needs_refinement`, whatever its workflow label says.
-- Issues labelled `domain:contracts` change Solidity. Classify them normally but set `details.contractScope: true` on their queue entry so the supervisor can apply its contract gate.
+- Issues labelled `domain:contracts` change Solidity. Classify them normally but set `contractScope: true` on their `recommendedQueue` entry (schema field) so the supervisor can apply its contract gate.
 
 ## Decision Gates
 

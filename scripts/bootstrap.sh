@@ -222,7 +222,7 @@ fi
 
 # Cron monitor scripts (fail-fast preflight, merge watcher) live under
 # $HERMES_HOME/scripts as Hermes requires; refreshed on every boot.
-mkdir -p "$HERMES_HOME/scripts" "$HERMES_HOME/shift"
+mkdir -p "$HERMES_HOME/scripts" "$HERMES_HOME/shift" "$HERMES_HOME/cache/shift"
 install -m 0755 "$BOOTSTRAP"/scripts/shift-*.sh "$HERMES_HOME/scripts/"
 
 # Initialize Hermes Kanban for durable task/handoff history.
