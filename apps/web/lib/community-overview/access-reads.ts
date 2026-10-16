@@ -1,4 +1,4 @@
-import type { Abi } from "viem";
+import type { Abi, Address } from "viem";
 
 import accessManagerArtifact from "../../abis/ShiftAccessManager.json" assert { type: "json" };
 import type { CachedPublicClient } from "../../hooks/useCachedPublicClient";
@@ -26,7 +26,8 @@ async function safeBigint(read: () => Promise<unknown>): Promise<bigint | null> 
  */
 export async function readAccessResults(
   client: ReadClient,
-  modules: CommunityModules | null
+  modules: CommunityModules | null,
+  connectedWallet: Address | null = null
 ): Promise<AccessReadResults | null> {
   const accessManager = modules?.accessManager;
   const timelock = modules?.timelock;
@@ -59,23 +60,30 @@ export async function readAccessResults(
   const roleIds = new Set<bigint>();
   if (adminRole !== null) roleIds.add(adminRole);
 
+  const readHasRole = async (role: bigint, account: Address): Promise<boolean | null> => {
+    try {
+      const result = await client.readContract<readonly [boolean, number] | boolean>({
+        address: accessManager,
+        abi: ABI,
+        functionName: "hasRole",
+        args: [role, account]
+      });
+      const member = Array.isArray(result) ? result[0] : result;
+      return typeof member === "boolean" ? member : null;
+    } catch {
+      return null;
+    }
+  };
+
   const timelockHasRole: AccessReadResults["timelockHasRole"] = {};
   await Promise.all(
     [...roleIds].map(async (role) => {
-      try {
-        const result = await client.readContract<readonly [boolean, number] | boolean>({
-          address: accessManager,
-          abi: ABI,
-          functionName: "hasRole",
-          args: [role, timelock]
-        });
-        const member = Array.isArray(result) ? result[0] : result;
-        timelockHasRole[role.toString()] = typeof member === "boolean" ? member : null;
-      } catch {
-        timelockHasRole[role.toString()] = null;
-      }
+      timelockHasRole[role.toString()] = await readHasRole(role, timelock);
     })
   );
 
-  return { adminRole, functionRoles, timelockHasRole };
+  const connectedWalletHasAdmin =
+    connectedWallet && adminRole !== null ? await readHasRole(adminRole, connectedWallet) : null;
+
+  return { adminRole, functionRoles, timelockHasRole, connectedWallet, connectedWalletHasAdmin };
 }

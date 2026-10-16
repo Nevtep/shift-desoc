@@ -14,6 +14,7 @@ const row = (status: "pass" | "fail" | "unavailable") => ({
 });
 
 const inspection = (overall: "pass" | "fail" | "unavailable", rows = [row(overall)]): AccessInspection => ({
+  holders: [],
   overall,
   timelockAdmin: overall,
   rows

@@ -179,6 +179,7 @@ export function useCommunityOverview(communityId: number) {
   const account = useAccount();
   const { modules, isLoading: modulesLoading } = useCommunityModules({ communityId, chainId, enabled: Boolean(communityId) });
   const publicClient = useCachedPublicClient();
+  const connectedWallet = account.status === "connected" ? (account.address ?? null) : null;
 
   const [bytecodes, setBytecodes] = useState<Partial<Record<keyof CommunityModules, string | null>>>({});
   const [params, setParams] = useState<OverviewRawParameters | null>(null);
@@ -231,7 +232,7 @@ export function useCommunityOverview(communityId: number) {
       }
       setAccessLoading(true);
       try {
-        const reads = await readAccessResults(publicClient, modules);
+        const reads = await readAccessResults(publicClient, modules, connectedWallet);
         if (!cancelled) setAccessReads({ modules, reads });
       } catch {
         if (!cancelled) setAccessReads({ modules, reads: null });
@@ -244,7 +245,7 @@ export function useCommunityOverview(communityId: number) {
     return () => {
       cancelled = true;
     };
-  }, [modules, publicClient]);
+  }, [modules, publicClient, connectedWallet]);
 
   useEffect(() => {
     let cancelled = false;
@@ -325,8 +326,8 @@ export function useCommunityOverview(communityId: number) {
 
   const moduleItems = useMemo(() => buildModuleSummaryItems(modules, bytecodes), [modules, bytecodes]);
   const accessInspection = useMemo(
-    () => evaluateAccessInspection(modules, accessReads && accessReads.modules === modules ? accessReads.reads : null),
-    [modules, accessReads]
+    () => evaluateAccessInspection(modules, accessReads && accessReads.modules === modules ? accessReads.reads : null, connectedWallet),
+    [modules, accessReads, connectedWallet]
   );
   const parameterItems = useMemo(() => buildParameterSummaryItems(params), [params]);
 

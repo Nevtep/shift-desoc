@@ -124,6 +124,19 @@ export type AccessReadResults = {
   functionRoles: Record<number, bigint | null>;
   /** role id (decimal string) -> whether the timelock holds it */
   timelockHasRole: Record<string, boolean | null>;
+  /** wallet the ADMIN-holder read was made for (null when none was connected) */
+  connectedWallet?: Address | null;
+  /** whether connectedWallet holds ADMIN; null when the read failed or was not performed */
+  connectedWalletHasAdmin?: boolean | null;
+};
+
+export type AccessHolderState = "holds_admin" | "no_admin" | "unavailable" | "not_checked" | "address_only";
+
+export type AccessHolder = {
+  key: "accessManager" | "timelock" | "connectedWallet" | "bootstrapCoordinator";
+  label: string;
+  address: Address | null;
+  state: AccessHolderState;
 };
 
 export type AccessInspectionRow = {
@@ -139,6 +152,8 @@ export type AccessInspection = {
   overall: AccessSignal;
   timelockAdmin: AccessSignal;
   rows: AccessInspectionRow[];
+  /** Informational ADMIN-holder visibility (analogue of verify-handoff-admin-role.ts); never affects `overall`. */
+  holders: AccessHolder[];
 };
 
 function rollUp(signals: AccessSignal[]): AccessSignal {
@@ -149,7 +164,8 @@ function rollUp(signals: AccessSignal[]): AccessSignal {
 
 export function evaluateAccessInspection(
   modules: CommunityModules | null,
-  reads: AccessReadResults | null
+  reads: AccessReadResults | null,
+  connectedWallet: Address | null = null
 ): AccessInspection {
   const adminRole = reads?.adminRole ?? null;
   const adminKey = adminRole === null ? null : adminRole.toString();
@@ -181,9 +197,36 @@ export function evaluateAccessInspection(
     return { ...base, status: "pass" };
   });
 
+  const rawTimelock = (modules?.timelock as Address | undefined) ?? null;
+  const rawManager = (modules?.accessManager as Address | undefined) ?? null;
+  const nonZero = (a: Address | null) => (a && a.toLowerCase() !== ZERO_ADDRESS ? a : null);
+
+  let walletState: AccessHolderState = "not_checked";
+  if (connectedWallet) {
+    // Reads made for a different wallet (or none) must never be shown for the current one.
+    const fresh = reads?.connectedWallet?.toLowerCase() === connectedWallet.toLowerCase();
+    const held = fresh ? (reads?.connectedWalletHasAdmin ?? null) : null;
+    walletState = held === null ? "unavailable" : held ? "holds_admin" : "no_admin";
+  }
+
+  const holders: AccessHolder[] = [
+    { key: "accessManager", label: "AccessManager", address: nonZero(rawManager), state: "address_only" },
+    {
+      key: "timelock",
+      label: "Timelock",
+      address: nonZero(rawTimelock),
+      state: timelockAdmin === "pass" ? "holds_admin" : timelockAdmin === "fail" ? "no_admin" : "unavailable"
+    },
+    // The browser has no deployer/staging-admin address source other than the connected wallet.
+    { key: "connectedWallet", label: "Connected wallet (staging admin / deployer if connected)", address: connectedWallet, state: walletState },
+    // No browser-available source for the BootstrapCoordinator address: explicitly not checked.
+    { key: "bootstrapCoordinator", label: "Bootstrap coordinator", address: null, state: "not_checked" }
+  ];
+
   return {
     overall: rollUp([timelockAdmin, ...rows.map((r) => r.status)]),
     timelockAdmin,
-    rows
+    rows,
+    holders
   };
 }
