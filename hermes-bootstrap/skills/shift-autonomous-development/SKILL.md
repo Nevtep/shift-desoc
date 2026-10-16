@@ -4,7 +4,7 @@ description: "Autonomously run one complete Shift Linear-to-audited-PR cycle, le
 license: Apache-2.0
 metadata:
   author: Shift
-  version: "1.0"
+  version: "1.1"
   hermes:
     tags: ["shift", "orchestrator", "linear", "github", "learning"]
     config:
@@ -35,10 +35,17 @@ read the file directly from the checkout the work runs in:
 | --- | --- |
 | `linear-development-readiness` | `.github/skills/linear-development-readiness/SKILL.md` |
 | `linear-issue-refiner` | `.github/skills/linear-issue-refiner/SKILL.md` |
-| `linear-sdd-from-issue` | `.github/skills/linear-sdd-from-issue/SKILL.md` |
+| `linear-odd-from-issue` | `.github/skills/linear-odd-from-issue/SKILL.md` |
 | `linear-implement-agent-ready` | `.github/skills/linear-implement-agent-ready/SKILL.md` |
 | `linear-implementation-completeness-audit` | `.github/skills/linear-implementation-completeness-audit/SKILL.md` |
 | `shift-linear-pr` | `.github/skills/shift-linear-pr/SKILL.md` |
+
+Every `recommendedSkill` value the readiness result can return must resolve to
+a row above: `linear-implement-agent-ready`, `linear-odd-from-issue`,
+`linear-issue-refiner` (plus `none` and `human`, which have no file and mean
+"stop"). In this workflow "spec" means the ODD feature document, and the
+names `workflow:needs-spec`, `needs_spec`, `ready_spec_backed` and
+`spec-backed` are unchanged.
 
 Shared result schema: `.github/skills/_shared/shift-agent-skill-result.schema.json`.
 When delegating, pass the absolute path in the child's task text; children do
@@ -121,6 +128,34 @@ Before acting, re-read the selected Linear issue and current repository evidence
 If the analyzer's classification is stale or wrong, do not implement it. Record
 the discrepancy and either choose the next safe queued issue or stop.
 
+## Dispatch on `recommendedSkill`
+
+Dispatch on the selected queue item's `recommendedSkill`, not on the
+classification name:
+
+| `recommendedSkill` | Typical classification | Action |
+| --- | --- | --- |
+| `linear-implement-agent-ready` | `ready_direct`, `ready_spec_backed` | Go to "Prepare isolated worktree" and implement in the item's `executionMode` (`direct` or `spec-backed`). |
+| `linear-odd-from-issue` | `needs_spec` | Run the planning lane below, then stop the cycle. |
+| `linear-issue-refiner` | `needs_refinement` | Out of scope for this cycle; surface it for a human. |
+| `none`, `human` | other | Do not act. |
+
+An unknown `recommendedSkill` value is a contract mismatch: stop and record it.
+
+### Planning lane (`linear-odd-from-issue`)
+
+Run the planner as a fresh Claude Code session (see "Coding agent"), following
+`.github/skills/linear-odd-from-issue/SKILL.md`. Its only writes are the ODD
+feature document `odd/tasks/<feature-name>.md` and the Engram mirror under topic
+`odd/<feature-name>/tasks`; it does not commit or push. From its result, require
+`details.artifactStore == "odd"` and record `details.artifactId` (the Engram
+topic) and `details.artifactPath` (the file). If `details.implementationReady`
+is false or `openQuestions` is non-empty, stop and surface them for a human.
+
+Implementation of that issue is a later cycle, once it is `ready_spec_backed`.
+Then pass `artifactStore`, `artifactId` and `artifactPath` to both the
+implementer and the auditor.
+
 ## Prepare isolated worktree
 
 Use `.worktrees/<ISSUE_ID>` inside the repository root.
@@ -138,14 +173,33 @@ Start a fresh Claude Code session (see "Coding agent"). Require it to read and
 execute `.github/skills/linear-implement-agent-ready/SKILL.md` with the
 selected execution mode.
 
+In `spec-backed` mode, put `artifactStore` (`odd`), `artifactId` and
+`artifactPath` from the planner's result in the lane prompt. The implementer
+follows the ODD document's tasks (one work-unit commit per task) and keeps the
+repo file and the Engram mirror in sync.
+
 The implementer must:
 - recover Engram;
 - re-read Linear;
-- implement narrowly;
+- implement narrowly, test-first;
 - include tests and required status-document synchronization;
-- create a commit;
+- create work-unit commits;
+- run native review (RDD) on the committed range:
+  `gentle-ai review assess --base-ref <baseCommit> --committed-only` and, when
+  it calls for review, `gentle-ai review start --base-ref <baseCommit>
+  --committed-only`; fix findings in scope;
+- read `gentle-ai review mode status` to record whether review is on, and
+  never run `gentle-ai review mode enable` or `disable` (the user owns it); if
+  review mode is off, record that as evidence;
+- close its result with a `Risk:` line (tier and reason);
+- run the independent ODD verifier when a high-risk item fires (contracts,
+  authority/role wiring, ParamController policy, treasury paths, deploy flows
+  and indexer event compatibility are always high-risk);
 - return the complete structured skill result;
 - not push or create a PR.
+
+Native review and the ODD verifier are extra evidence. They never replace the
+separate-session completeness audit below.
 
 Inspect the returned result. Do not merely trust its summary.
 
@@ -158,6 +212,8 @@ implementer). Require it to read and execute
 
 Supply only verifiable artifacts:
 - issue snapshot;
+- for `spec-backed` work, the ODD document: `artifactStore`, `artifactId`
+  (Engram topic) and `artifactPath` (file);
 - implementation operation key;
 - base commit;
 - result commit;
