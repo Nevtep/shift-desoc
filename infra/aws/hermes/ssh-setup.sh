@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# SSH into the Hermes host through SSM (no inbound port 22).
-# Authorizes your public key for ec2-user (sudo) on the instance and adds a
-# `shift-hermes` entry to ~/.ssh/config. Re-run after the instance is replaced.
+# SSH into the Hermes host through SSM (no inbound port 22): adds a
+# `shift-hermes` entry to ~/.ssh/config for your Linux user on the host.
 #
-# Usage: ssh-setup.sh [path/to/key.pub]   (default: first of ~/.ssh/id_ed25519.pub,
-#                                          ~/.ssh/id_rsa.pub, ~/.ssh/*.pub)
+# Operators (personal account created by an admin with add-operator.sh):
+#   ssh-setup.sh --user <name> [path/to/key.pub]
+# Admin bootstrap (authorizes the key for ec2-user via SSM RunCommand):
+#   ssh-setup.sh [path/to/key.pub]
+# Default key: first of ~/.ssh/id_ed25519.pub, ~/.ssh/id_rsa.pub, ~/.ssh/*.pub
 source "$(dirname "$0")/common.sh"
 
+SSH_USER=ec2-user
+if [[ "${1:-}" == "--user" ]]; then
+  SSH_USER="${2:?usage: ssh-setup.sh --user <name> [key.pub]}"
+  shift 2
+fi
 PUBKEY="${1:-}"
 if [[ -z "$PUBKEY" ]]; then
   for candidate in ~/.ssh/id_ed25519.pub ~/.ssh/id_rsa.pub ~/.ssh/*.pub; do
@@ -21,6 +28,7 @@ INSTANCE_ID="$(stack_output InstanceId)"
 key_line="$(head -n1 "$PUBKEY")"
 [[ "$key_line" =~ ^(ssh-|ecdsa-) ]] || { echo "$PUBKEY does not look like an SSH public key" >&2; exit 1; }
 
+if [[ "$SSH_USER" == ec2-user ]]; then
 # Idempotently append the key to ec2-user's authorized_keys.
 remote_cmd="$(cat <<EOF
 set -euo pipefail
@@ -38,6 +46,7 @@ id="$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-Run
 aws ssm wait command-executed --command-id "$id" --instance-id "$INSTANCE_ID"
 aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" \
   --query StandardOutputContent --output text
+fi
 
 # ~/.ssh/config entry (replaced if present).
 mkdir -p ~/.ssh && chmod 700 ~/.ssh
@@ -50,7 +59,7 @@ cat >> "$tmp" <<EOF
 $begin
 Host shift-hermes
   HostName $INSTANCE_ID
-  User ec2-user
+  User $SSH_USER
   IdentityFile $PRIVKEY
   IdentitiesOnly yes
   ServerAliveInterval 30
@@ -60,5 +69,5 @@ EOF
 mv "$tmp" ~/.ssh/config
 
 echo
-echo "Ready: ssh shift-hermes"
-echo "  sudo shift-hermes ps|logs -f|exec -u hermes gateway bash"
+echo "Ready: ssh shift-hermes   (as $SSH_USER)"
+echo "  sudo shift-hermes ps | logs -f gateway | exec -u hermes gateway bash"

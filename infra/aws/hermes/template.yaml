@@ -298,6 +298,50 @@ Resources:
       VolumeId: !Ref DataVolume
       Device: /dev/sdf
 
+  # --- Human operators: SSH/SSM into this instance only ---
+  # Add a person with: aws iam add-user-to-group --group-name <OperatorsGroup> --user-name <user>
+  # then infra/aws/hermes/add-operator.sh <name> <their key.pub> for the Linux account.
+  OperatorsGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      Policies:
+        - PolicyName: shift-hermes-operator
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: StartSessionsOnHermesHost
+                Effect: Allow
+                Action: ssm:StartSession
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Instance}"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartSSHSession"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartPortForwardingSession"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-StartInteractiveCommand"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/SSM-SessionManagerRunShell"
+              - Sid: ManageOwnSessions
+                Effect: Allow
+                Action: [ssm:TerminateSession, ssm:ResumeSession]
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:session/${!aws:username}-*"
+                  - !Sub "arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:session/${!aws:userid}-*"
+              - Sid: ReadStackForHelperScripts
+                Effect: Allow
+                Action: cloudformation:DescribeStacks
+                Resource: !Ref AWS::StackId
+              - Sid: ReadDashboardCredentials
+                Effect: Allow
+                Action: ssm:GetParameter
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${ParameterPath}/HERMES_DASHBOARD_USERNAME"
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter${ParameterPath}/HERMES_DASHBOARD_PASSWORD"
+              - Sid: DecryptDashboardCredentials
+                Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
+
   # --- Daily snapshots of the data volume (7 retained) ---
   SnapshotRole:
     Type: AWS::IAM::Role
@@ -334,6 +378,8 @@ Outputs:
     Value: !Ref DataVolume
   Region:
     Value: !Ref AWS::Region
+  OperatorsGroupName:
+    Value: !Ref OperatorsGroup
   ShellCommand:
     Value: !Sub "aws ssm start-session --region ${AWS::Region} --target ${Instance}"
   DashboardTunnelCommand:
