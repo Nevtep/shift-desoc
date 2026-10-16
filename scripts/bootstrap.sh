@@ -243,18 +243,19 @@ hermes kanban init || true
 echo "Verifying Hermes workflow skills from repo-managed source..."
 # `hermes skills inspect` queries remote registries (and exits 0 on a miss),
 # so check the locally loaded skill set instead. COLUMNS avoids truncation.
+# Development skills come from the main checkout, content skills from the
+# image; verify exactly what those trees contain, and only warn about skills
+# the runtime expects but main does not have yet (e.g. before a skills PR
+# merges) so a deploy never fails on a skill that lives on another branch.
 loaded="$(COLUMNS=250 hermes skills list --source local --enabled-only 2>/dev/null)"
-for skill in \
-  shift-autonomous-development \
-  shift-runtime-tools \
-  shift-learning-governance \
-  shift-pr-review-convergence \
-  shift-post-merge-learning \
-  escarlet-mcp-content \
-  shift-social-content
-do
-  grep -qw -- "$skill" <<<"$loaded" || { echo "ERROR: Hermes skill not loaded: $skill" >&2; exit 1; }
+for dir in "$REPO_DIR"/hermes-bootstrap/skills/*/ "$BOOTSTRAP"/content-skills/*/; do
+  [[ -f "$dir/SKILL.md" ]] || continue
+  skill="$(basename "$dir")"
+  grep -qw -- "$skill" <<<"$loaded" || { echo "ERROR: Hermes skill present but not loaded: $skill" >&2; exit 1; }
   echo "  ok $skill"
+done
+for skill in shift-autonomous-development shift-runtime-tools shift-learning-governance shift-post-merge-learning; do
+  grep -qw -- "$skill" <<<"$loaded" || echo "WARNING: skill $skill is not in main yet; cron jobs that need it work once it merges." >&2
 done
 
 echo

@@ -41,4 +41,12 @@ if [[ ${#new_numbers[@]} -eq 0 ]]; then
   echo "- (none)"
 else
   printf '%s\n' "${new_numbers[@]}" >> "$SEEN"
+  # Sync the main checkout before the agent session starts: Hermes loads the
+  # development skills from it, so a merged skills PR is live for this run.
+  repo_dir="${SHIFT_REPO_DIR:-/workspace/shift}"
+  if [[ -d "$repo_dir/.git" ]] && [[ -z "$(git -C "$repo_dir" status --porcelain 2>/dev/null)" ]]; then
+    git -C "$repo_dir" fetch -q origin --prune 2>/dev/null \
+      && git -C "$repo_dir" switch -q main 2>/dev/null \
+      && git -C "$repo_dir" reset -q --hard origin/main 2>/dev/null || true
+  fi
 fi

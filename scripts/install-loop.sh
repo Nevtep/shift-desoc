@@ -77,14 +77,25 @@ upsert() {
   printf '%s' "$id"
 }
 
+loaded_skills="$(COLUMNS=250 hermes skills list --source local --enabled-only 2>/dev/null || true)"
+skill_args() { # emit --skill <name> for each loaded skill; warn for the rest
+  local out=()
+  for s in "$@"; do
+    if grep -qw -- "$s" <<<"$loaded_skills"; then out+=(--skill "$s")
+    else echo "WARNING: skill $s not loaded yet (not in main?); attach it by re-running install-loop.sh after it merges." >&2; fi
+  done
+  printf '%s\n' "${out[@]}"
+}
+
 model_args=()
 [[ -n "${SHIFT_DEV_LOOP_MODEL:-}" ]] && model_args=(--model "$SHIFT_DEV_LOOP_MODEL" --provider "${SHIFT_DEV_LOOP_PROVIDER:-openrouter}")
 
+mapfile -t dev_skills < <(skill_args shift-autonomous-development shift-runtime-tools shift-learning-governance)
+mapfile -t watch_skills < <(skill_args shift-post-merge-learning shift-learning-governance shift-runtime-tools)
 dev_id="$(upsert "Shift autonomous development loop" "$DEV_SCHEDULE" shift-dev-monitor.sh "$DEV_PROMPT" \
-  --skill shift-autonomous-development --skill shift-runtime-tools --skill shift-learning-governance \
-  "${model_args[@]}" | tail -c 12)"
+  "${dev_skills[@]}" "${model_args[@]}" | tail -c 12)"
 watch_id="$(upsert "Shift merge watcher" "$WATCH_SCHEDULE" shift-merge-watch.sh "$WATCH_PROMPT" \
-  --skill shift-post-merge-learning --skill shift-learning-governance --skill shift-runtime-tools | tail -c 12)"
+  "${watch_skills[@]}" | tail -c 12)"
 
 cat > "$STATE_DIR/jobs.env" <<EOF
 DEV_LOOP_JOB_ID=$dev_id
