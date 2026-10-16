@@ -9,6 +9,18 @@ skills:
     # Content skills: shipped in the image from the deployed git ref.
     - /opt/shift-hermes/bootstrap/content-skills
 
+# Agent terminal: run with the hermes user's real HOME (/opt/data), where gh,
+# git, Claude Code, gentle-ai and Engram are configured. `profile` would use
+# /opt/data/home and lose all of that. Hermes strips secret-looking variables
+# from terminal subprocesses; these are the ones the workflows need.
+terminal:
+  home_mode: real
+  env_passthrough:
+    - GH_TOKEN
+    - GITHUB_TOKEN
+    - CLAUDE_CODE_OAUTH_TOKEN
+    - ANTHROPIC_API_KEY
+
 mcp_servers:
   linear:
     url: https://mcp.linear.app/mcp

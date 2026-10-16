@@ -72,6 +72,22 @@ write_secret ANTHROPIC_API_KEY "${ANTHROPIC_API_KEY:-}"
 write_secret CLAUDE_CODE_OAUTH_TOKEN "${CLAUDE_CODE_OAUTH_TOKEN:-}"
 write_secret ESCARLET_MCP_URL "${ESCARLET_MCP_URL:-}"
 write_secret ESCARLET_MCP_TOKEN "${ESCARLET_MCP_TOKEN:-}"
+write_secret TELEGRAM_BOT_TOKEN "${TELEGRAM_BOT_TOKEN:-}"
+write_secret TELEGRAM_ALLOWED_USERS "${TELEGRAM_ALLOWED_USERS:-}"
+write_secret TELEGRAM_HOME_CHANNEL "${TELEGRAM_HOME_CHANNEL:-}"
+
+# One-time migration: terminal sessions used to run with HOME=/opt/data/home
+# (terminal.home_mode: profile), so Engram memories the agent saved there are
+# merged into the main store at /opt/data/.engram; the old store is kept
+# renamed as a backup.
+if [[ -d "$HERMES_HOME/home/.engram" && ! -e "$HERMES_HOME/.shift-engram-home-migrated" ]]; then
+  export_file="$(mktemp "$HERMES_HOME/engram-home-export.XXXXXX.json")"
+  HOME="$HERMES_HOME/home" engram export "$export_file"
+  HOME="$HERMES_HOME" engram import "$export_file"
+  mv "$HERMES_HOME/home/.engram" "$HERMES_HOME/home/.engram.migrated-$(date -u +%Y%m%d)"
+  rm -f "$export_file"
+  touch "$HERMES_HOME/.shift-engram-home-migrated"
+fi
 
 # Clone once into the persistent workspace volume.
 if [[ ! -d "$REPO_DIR/.git" ]]; then

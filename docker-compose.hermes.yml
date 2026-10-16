@@ -37,6 +37,12 @@ x-shift-env: &shift-env
   SHIFT_CONTENT_CHANNELS: ${SHIFT_CONTENT_CHANNELS:-instagram}
   SHIFT_CONTENT_AUTOPUBLISH: ${SHIFT_CONTENT_AUTOPUBLISH:-false}
 
+  # Telegram gateway. Only the listed numeric user IDs may talk to the agent;
+  # the home channel receives cron job reports.
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_ALLOWED_USERS: ${TELEGRAM_ALLOWED_USERS:-}
+  TELEGRAM_HOME_CHANNEL: ${TELEGRAM_HOME_CHANNEL:-}
+
   TZ: ${TZ:-America/Argentina/Cordoba}
 
 services:

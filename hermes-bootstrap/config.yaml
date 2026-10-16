@@ -8,7 +8,7 @@ model:
 terminal:
   backend: local
   cwd: /workspace/shift
-  home_mode: profile
+  home_mode: real
 
 skills:
   external_dirs:
