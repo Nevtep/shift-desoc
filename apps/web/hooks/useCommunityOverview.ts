@@ -20,6 +20,8 @@ import type {
 } from "../lib/community-overview/types";
 import { ZERO_ADDRESS } from "../lib/community-overview/constants";
 import type { Abi } from "viem";
+import { evaluateAccessInspection, type AccessReadResults } from "../lib/community-overview/access-inspection";
+import { readAccessResults } from "../lib/community-overview/access-reads";
 
 export type OverviewGovernanceParams = {
   debateWindow: bigint;
@@ -182,6 +184,8 @@ export function useCommunityOverview(communityId: number) {
   const [params, setParams] = useState<OverviewRawParameters | null>(null);
   const [paramsError, setParamsError] = useState(false);
   const [paramsLoading, setParamsLoading] = useState(false);
+  const [accessReads, setAccessReads] = useState<AccessReadResults | null>(null);
+  const [accessLoading, setAccessLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +212,32 @@ export function useCommunityOverview(communityId: number) {
       }
 
       if (!cancelled) setBytecodes(next);
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [modules, publicClient]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (!modules?.accessManager || !modules.timelock || !publicClient.raw) {
+        setAccessReads(null);
+        setAccessLoading(false);
+        return;
+      }
+      setAccessLoading(true);
+      try {
+        const reads = await readAccessResults(publicClient, modules);
+        if (!cancelled) setAccessReads(reads);
+      } catch {
+        if (!cancelled) setAccessReads(null);
+      } finally {
+        if (!cancelled) setAccessLoading(false);
+      }
     };
 
     void run();
@@ -294,6 +324,7 @@ export function useCommunityOverview(communityId: number) {
   }, [communityId, modules?.paramController, publicClient]);
 
   const moduleItems = useMemo(() => buildModuleSummaryItems(modules, bytecodes), [modules, bytecodes]);
+  const accessInspection = useMemo(() => evaluateAccessInspection(modules, accessReads), [modules, accessReads]);
   const parameterItems = useMemo(() => buildParameterSummaryItems(params), [params]);
 
   const newestTimestamp = useMemo(() => {
@@ -320,6 +351,8 @@ export function useCommunityOverview(communityId: number) {
     header,
     moduleItems,
     parameterItems,
+    accessInspection,
+    accessLoading,
     modulesLoading,
     paramsLoading,
     paramsError,

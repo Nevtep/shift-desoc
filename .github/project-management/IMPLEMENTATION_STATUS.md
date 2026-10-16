@@ -229,6 +229,14 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 
 ---
 
+## 2026-10-16 Tactical Update (SHI-16 Overview Role & Access Inspection)
+
+- Added a read-only "Role & access verification" section to the community overview (`apps/web/components/communities/overview/access-summary.tsx`), fed by chain-only AccessManager reads (`apps/web/lib/community-overview/access-reads.ts`) and a fail-closed evaluator (`access-inspection.ts`) that mirrors the selector-role checks in `apps/web/scripts/verify-access-wiring.mjs` (parity enforced by unit test), including the timelock ADMIN-role signal.
+- Signals are `verified|mismatch|unavailable`; any failed read, missing module address, or missing AccessManager/timelock yields `unavailable`, never `verified`. The section does not depend on the indexer, so it stays authoritative when indexer health degrades.
+- No contract, mutation, or indexer changes. Deployer/bootstrap-coordinator admin checks from `scripts/verify-handoff-admin-role.ts` are not surfaced (deployment-file inputs are not available in the browser).
+
+---
+
 ## 2026-03-25 Tactical Update (Community Overview Dashboard)
 
 - Implemented Manager overview hub at `apps/web/app/communities/[communityId]/page.tsx` with strict `/communities/<id>` route scoping and no legacy `?communityId=` link leakage.
