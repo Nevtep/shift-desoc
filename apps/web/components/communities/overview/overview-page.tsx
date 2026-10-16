@@ -3,6 +3,7 @@
 import { ModuleSummary } from "./module-summary";
 import { OverviewHeader } from "./overview-header";
 import { OverviewState } from "./overview-state";
+import { AccessSummary } from "./access-summary";
 import { ParameterSummary } from "./parameter-summary";
 import { useCommunityOverview } from "../../../hooks/useCommunityOverview";
 import { useCommunityOverviewActivity } from "../../../hooks/useCommunityOverviewActivity";
@@ -30,6 +31,8 @@ export function CommunityOverviewPage({ communityId }: { communityId: number }) 
         <ModuleSummary items={overview.moduleItems} />
         <ParameterSummary items={overview.parameterItems} />
       </div>
+
+      <AccessSummary inspection={overview.accessInspection} loading={overview.accessLoading} />
 
       <ActivityPreviews panels={activity.panels} />
     </main>

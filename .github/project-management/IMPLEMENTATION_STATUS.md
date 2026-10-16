@@ -229,6 +229,15 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 
 ---
 
+## 2026-10-16 Tactical Update (SHI-16 Overview Role & Access Inspection)
+
+- Added a read-only "Role & access verification" section to the community overview (`apps/web/components/communities/overview/access-summary.tsx`), fed by chain-only AccessManager reads (`apps/web/lib/community-overview/access-reads.ts`) and a fail-closed evaluator (`access-inspection.ts`) that mirrors the selector-role checks in `apps/web/scripts/verify-access-wiring.mjs` (parity enforced by unit test), including the timelock ADMIN-role signal.
+- Signals are `verified|mismatch|unavailable`; any failed read, missing module address, or missing AccessManager/timelock yields `unavailable`, never `verified`. The section does not depend on the indexer, so it stays authoritative when indexer health degrades.
+- Role-holder visibility (informational, never affects the overall signal): the section lists the AccessManager and Timelock addresses with the timelock ADMIN-holder signal, and reports `hasRole(ADMIN, wallet)` for the connected wallet as the browser-available stand-in for the staging admin/deployer. The BootstrapCoordinator holder is shown as an explicit `not checked` because no browser-available address source exists (the script reads it from the deployment file); a disconnected wallet is also `not checked`, and failed or stale wallet reads are `unavailable`.
+- No contract, mutation, or indexer changes. The deployer/bootstrap checks from `scripts/verify-handoff-admin-role.ts` remain limited by the missing deployment-file inputs in the browser, as described above.
+
+---
+
 ## 2026-03-25 Tactical Update (Community Overview Dashboard)
 
 - Implemented Manager overview hub at `apps/web/app/communities/[communityId]/page.tsx` with strict `/communities/<id>` route scoping and no legacy `?communityId=` link leakage.
