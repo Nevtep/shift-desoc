@@ -53,6 +53,39 @@ with open(config_path, "w") as fh:
 PY
 touch "$SEED_MARKER"
 
+# Hermes profiles (created with `hermes profile create`, e.g. for other models)
+# copy config.yaml at creation time and are never updated by Hermes afterwards.
+# Re-assert the repo-managed keys in each of them too, otherwise a cron job that
+# runs under a profile gets terminal.home_mode=profile (HOME under the profile
+# dir, so gh/git/Claude Code look unauthenticated) and loses the skill dirs and
+# MCP servers.
+for profile_cfg in "$HERMES_HOME"/profiles/*/config.yaml; do
+  [[ -f "$profile_cfg" ]] || continue
+  /opt/hermes/.venv/bin/python - "$profile_cfg" "$BOOTSTRAP/managed-keys.yaml" <<'PY'
+import sys, yaml
+from hermes_cli.config import DEFAULT_CONFIG
+
+config_path, managed_path = sys.argv[1], sys.argv[2]
+with open(config_path) as fh:
+    config = yaml.safe_load(fh) or {}
+with open(managed_path) as fh:
+    managed = yaml.safe_load(fh) or {}
+
+def merge(dst, src):
+    for key, value in src.items():
+        if isinstance(value, dict) and isinstance(dst.get(key), dict):
+            merge(dst[key], value)
+        else:
+            dst[key] = value
+
+merge(config, managed)
+config.setdefault("_config_version", DEFAULT_CONFIG.get("_config_version"))
+with open(config_path, "w") as fh:
+    yaml.safe_dump(config, fh, sort_keys=False)
+print(f"managed keys applied to {config_path}")
+PY
+done
+
 # Secrets are supplied through Compose and copied into Hermes' persistent env.
 touch "$HERMES_HOME/.env"
 chmod 600 "$HERMES_HOME/.env"
