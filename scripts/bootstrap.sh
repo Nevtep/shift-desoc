@@ -148,8 +148,20 @@ if [[ ! -d "$REPO_DIR/.git" ]]; then
 fi
 
 cd "$REPO_DIR"
-git config --global user.name "Shift Hermes Agent"
-git config --global user.email "shift-hermes-agent@users.noreply.github.com"
+# Commit identity = the GitHub account behind GITHUB_TOKEN (a dedicated machine
+# user), using its noreply address so commits are attributed to that account.
+# This keeps the agent's PRs authored by the bot, so a human can be the
+# required reviewer, and satisfies the "no unattributed changes" branch rule.
+if [[ -n "${GH_TOKEN:-}" ]] && bot_json="$(env -u GH_TOKEN -u GITHUB_TOKEN GH_TOKEN="$GH_TOKEN" gh api user 2>/dev/null)"; then
+  bot_login="$(jq -r .login <<<"$bot_json")"
+  bot_id="$(jq -r .id <<<"$bot_json")"
+  git config --global user.name "$bot_login"
+  git config --global user.email "${bot_id}+${bot_login}@users.noreply.github.com"
+  echo "git identity: $bot_login <${bot_id}+${bot_login}@users.noreply.github.com>"
+else
+  git config --global user.name "Shift Hermes Agent"
+  git config --global user.email "shift-hermes-agent@users.noreply.github.com"
+fi
 git config --global --add safe.directory "$REPO_DIR"
 # Let git push over HTTPS with GH_TOKEN (only the publication stage pushes).
 # Hermes hard-blocks GH_TOKEN/GITHUB_TOKEN from the agent's terminal (they
