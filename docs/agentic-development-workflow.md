@@ -140,11 +140,10 @@ Minimal required labels and statuses:
 
 ### Labels
 
-- `workflow:needs-spec`
-- `workflow:agent-ready`
-- phase labels already used in the repo
-- `type:feature` or `type:improvement`
-- area and domain labels where relevant
+- type: `Feature`, `Improvement` or `Bug`
+- readiness: `workflow:agent-ready` (small, directly implementable), `workflow:needs-spec` (medium/large, ODD feature document first) or `workflow:backlog` (not yet refined)
+- `domain:contracts` on anything that changes Solidity; other `domain:*` labels where relevant
+- roadmap phases are project milestones, not labels (`phase:*`, `area:*` and `type:*` labels are retired)
 
 ### Status expectations
 

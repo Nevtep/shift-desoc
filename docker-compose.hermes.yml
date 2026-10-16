@@ -97,6 +97,11 @@ services:
       # One autonomous cycle at a time.
       HERMES_CRON_MAX_PARALLEL: "1"
 
+      # Hermes' own write_file/patch tools are limited to these roots (the
+      # image defaults to /opt/data only). The supervisor writes ODD feature
+      # documents and worktree files under /workspace/shift.
+      HERMES_WRITE_SAFE_ROOT: /opt/data:/workspace
+
       # Dashboard as Hermes' supervised side-process. A non-loopback bind
       # requires an auth provider (the image fails closed otherwise), so the
       # bundled basic-auth provider is configured. The host only publishes the

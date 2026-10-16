@@ -4,7 +4,7 @@ description: "Trigger: Linear backlog readiness, execution queue, workable Shift
 license: Apache-2.0
 metadata:
   author: GitHub Copilot
-  version: "1.1"
+  version: "1.2"
 ---
 
 ## Activation Contract
@@ -16,19 +16,23 @@ Do not use it for one issue already selected for refinement, ODD planning, imple
 ## Hard Rules
 
 - Required capabilities: Linear read, Git read, GitHub PR/check read, Engram read, and repo status-doc read. If any needed capability is unavailable, return `blocked` with evidence.
+- Scope: the Linear project **Shift Manager** (team SHI) is the product backlog this skill ranks. The **Automation** project holds agent-workflow design issues and is out of scope unless the supervisor explicitly asks for it; never put its issues in `recommendedQueue`.
 - Do not modify Linear, GitHub, Engram, branches, repository files, specs, PRs, comments, or labels while running the analysis; Engram access is read-only.
 - Read relevant open issues: status, priority, labels, parent/children, blockers/dependencies, comments, acceptance criteria, linked specs (ODD feature documents `odd/tasks/<feature-name>.md` and their Engram mirrors), linked PRs, timestamps, and recent changes.
 - Check overlapping open PRs and code reality only for candidate verification; do not exhaustively audit the repo per issue.
 - Assign exactly one classification per issue: `ready_direct`, `ready_spec_backed`, `needs_spec`, `needs_refinement`, `blocked`, `in_progress_or_pr_open`, `done_or_obsolete`, or `needs_human`.
 - Never let high Linear priority override incompleteness, blockers, open PRs, unresolved decisions, umbrella scope, or missing spec approval.
 - Do not invent dependencies, treat historical docs above code, use unapproved specs as implementation authorization, recommend conflicting issues in parallel, or hide uncertainty.
+- The unit of work is a **Feature issue**: one contract capability delivered as a vertical slice (contract calls → indexer projection/endpoints → Manager route or wizard → QA check). A Feature that has sub-issues is one unit; its sub-issues are tasks and are never classified or queued on their own.
+- A `Feature` or `Improvement` without a `QA: how to test` section (an admin-runnable check on Base Sepolia) is `needs_refinement`, whatever its workflow label says.
+- Issues labelled `domain:contracts` change Solidity. Classify them normally but set `details.contractScope: true` on their queue entry so the supervisor can apply its contract gate.
 
 ## Decision Gates
 
 | Issue evidence | Classification / next skill |
 | --- | --- |
 | Concrete, verifiable, unblocked, no pending architecture/ODD-document need, one-PR scope, no PR conflict | `ready_direct` / `linear-implement-agent-ready` |
-| `workflow:agent-ready`, approved/localizable ODD feature document, criteria and validations sufficient, dependencies resolved, no PR | `ready_spec_backed` / `linear-implement-agent-ready` |
+| An implementation-ready ODD feature document exists for the issue (repo file `odd/tasks/shi-<n>-*.md` or Engram mirror `odd/shi-<n>-*/tasks`, no open questions), criteria and validations sufficient, dependencies resolved, no PR — whether the label is `workflow:agent-ready` or still `workflow:needs-spec` | `ready_spec_backed` / `linear-implement-agent-ready` |
 | Concrete but design, contract, data, permission, UX, or cross-surface behavior is unresolved | `needs_spec` / `linear-odd-from-issue` |
 | Umbrella, multiple seams, too broad, or incomplete criteria | `needs_refinement` / `linear-issue-refiner` |
 | Dependency, blocker, unavailable infra, active conflicting PR, or explicit blocked status | `blocked` |
@@ -42,8 +46,8 @@ Do not use it for one issue already selected for refinement, ODD planning, imple
 2. Capture Linear snapshot identity, relevant open issues, statuses, workflow labels, priorities, dependencies, comments, specs, and linked PRs.
 3. Capture Git main commit and read open GitHub PR/check state that may overlap candidates.
 4. Classify every analyzed issue once, recording evidence and uncertainty.
-5. Rank executable work by readiness/blocking first, then Linear priority, estimated complexity (`xs|s|m|l|xl|unknown`), risk, dependency depth, parallel conflict risk, value/urgency, and confidence.
-6. Build `recommendedQueue` up to the configurable candidate limit; `recommendedQueue.length` must not exceed `details.candidateLimit`. Prefer small `ready_direct`, then small/medium `ready_spec_backed`, other low-risk direct work, spec creation for important concrete issues, then refinement. Keep blocked/human items outside the executable queue unless explicitly requested.
+5. Rank executable work in this order: (a) readiness/blocking — only unblocked candidates whose dependencies are Done; (b) project milestone — the lowest open phase first (milestones are the roadmap; a Phase 4 feature never outranks an open Phase 1 feature); (c) Linear priority (Urgent > High > Medium > Low; `No priority` sorts last); (d) dependency depth and parallel-conflict risk; (e) confidence. Estimated complexity (`xs|s|m|l|xl|unknown`) is a **gate, not a sort key**: exclude `xl` (send it to `needs_refinement`), and prefer a smaller candidate over a larger one only when milestone and priority tie.
+6. Build `recommendedQueue` up to the configurable candidate limit; `recommendedQueue.length` must not exceed `details.candidateLimit`. `ready_direct` and `ready_spec_backed` rank equally — the ODD document is part of delivering a medium/large feature, not a reason to prefer a smaller one. A `needs_spec` Feature that wins on milestone and priority stays at the top of the queue with `recommendedSkill: linear-odd-from-issue`; the supervisor decides whether to produce the document and continue in the same cycle. Refinement candidates come last. Keep blocked/human items outside the executable queue unless explicitly requested.
 7. Report reanalysis triggers: main merge or advance, PR opened/closed, issue created, status/dependency/priority/spec/comment changed, or other requirement-altering update.
 
 ## Output Contract

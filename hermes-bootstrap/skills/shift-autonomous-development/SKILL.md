@@ -115,13 +115,23 @@ claude -p "<lane prompt>" \
 
 Load and execute `linear-development-readiness` in strict read-only mode.
 
-Reason over its structured result. Select only from `recommendedQueue`.
-Prefer a small, low-risk `ready_direct` issue, then a small/medium
-`ready_spec_backed` issue. Do not select:
+Reason over its structured result. Select only from `recommendedQueue`, and
+take the **top-ranked Feature** (lowest open milestone, then highest Linear
+priority): the goal of a cycle is one finished, admin-testable feature, not
+the smallest possible PR. `ready_direct` and `ready_spec_backed` are equally
+eligible. If the top candidate is `needs_spec`, run `linear-odd-from-issue`
+first (ODD feature document + Engram mirror, committed on the issue branch),
+then continue into spec-backed implementation in the same cycle; stop after
+the document only if the budget or a blocker says so, and report it.
+
+Do not select:
 - blocked or needs-human work;
 - issues with open PRs;
-- umbrellas;
-- contract issues while `SHIFT_ALLOW_CONTRACT_ISSUES=false`;
+- sub-issues of a Feature (they are tasks of their parent) or any issue
+  without a `QA: how to test` section;
+- issues labelled `domain:contracts` (or flagged `contractScope: true`) while
+  `SHIFT_ALLOW_CONTRACT_ISSUES=false`;
+- `xl` work (send it back as `needs_refinement`);
 - work whose readiness confidence is inadequate.
 
 Before acting, re-read the selected Linear issue and current repository evidence.
@@ -136,7 +146,7 @@ classification name:
 | `recommendedSkill` | Typical classification | Action |
 | --- | --- | --- |
 | `linear-implement-agent-ready` | `ready_direct`, `ready_spec_backed` | Go to "Prepare isolated worktree" and implement in the item's `executionMode` (`direct` or `spec-backed`). |
-| `linear-odd-from-issue` | `needs_spec` | Run the planning lane below, then stop the cycle. |
+| `linear-odd-from-issue` | `needs_spec` | Run the planning lane below; if the document is implementation-ready, continue to "Prepare isolated worktree" in `spec-backed` mode in the same cycle, otherwise stop. |
 | `linear-issue-refiner` | `needs_refinement` | Out of scope for this cycle; surface it for a human. |
 | `none`, `human` | other | Do not act. |
 
@@ -152,9 +162,13 @@ feature document `odd/tasks/<feature-name>.md` and the Engram mirror under topic
 topic) and `details.artifactPath` (the file). If `details.implementationReady`
 is false or `openQuestions` is non-empty, stop and surface them for a human.
 
-Implementation of that issue is a later cycle, once it is `ready_spec_backed`.
-Then pass `artifactStore`, `artifactId` and `artifactPath` to both the
-implementer and the auditor.
+When `details.implementationReady` is true and there are no open questions,
+continue in this cycle: prepare the worktree, and run the implementer in
+`spec-backed` mode passing `artifactStore`, `artifactId` and `artifactPath`
+(the implementer commits the document with the first work unit). Pass the same
+three fields to the auditor. Stop after the document only when the cycle budget
+is exhausted or a blocker appears, and say so in the report; the Engram mirror
+lets a later cycle resume as `ready_spec_backed` without re-planning.
 
 ## Prepare isolated worktree
 

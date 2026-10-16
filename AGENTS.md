@@ -18,7 +18,7 @@ Source-of-truth hierarchy for planning and delivery:
 - Linear is the backlog and prioritization system.
 - Repo-local skill `.github/skills/linear-development-readiness/SKILL.md` is the read-only workflow for ranking open Shift issues and selecting the next safe execution queue without mutating Linear.
 - Selected Linear issues are planned through ODD before implementation: small tasks go inline with no artifacts; large tasks (including every `workflow:needs-spec` issue) get an ODD feature document.
-- Repo-local skill `.github/skills/linear-issue-refiner/SKILL.md` is the focused workflow for splitting one broad Shift Linear issue into evidence-backed child issues.
+- Repo-local skill `.github/skills/linear-issue-refiner/SKILL.md` is the focused workflow for reshaping one broad Shift Linear issue into evidence-backed vertical Feature issues (see "Backlog Shape").
 - Repo-local skill `.github/skills/linear-odd-from-issue/SKILL.md` is the focused workflow for turning one concrete `workflow:needs-spec` Linear issue into a repo-grounded ODD feature document `odd/tasks/<feature-name>.md` plus its Engram mirror.
 - Repo-local skill `.github/skills/linear-implement-agent-ready/SKILL.md` is the focused workflow for implementing one concrete Linear issue through branch, code changes, validation, and audit handoff; PR creation waits for an independent completeness audit in a separate session/thread.
 - Repo-local skill `.github/skills/linear-implementation-completeness-audit/SKILL.md` is the read-only, separate-session workflow for auditing implementation completeness against Linear/ODD document/result/diff/code/tests before PR publication.
@@ -29,6 +29,13 @@ Source-of-truth hierarchy for planning and delivery:
 - New work should follow ODD + RDD rather than repo-local SpecKit flows or the retired gentle SDD flow.
 - SpecKit artifacts in `.specify/`, `.github/prompts/speckit.*`, `.github/agents/speckit.*`, and related playbooks are legacy/reference only unless a task explicitly requires historical context.
 - Future audit targets must be grounded in real repo architecture and implemented module groups. Do not invent new vertical taxonomy from product vision alone.
+
+## Backlog Shape (Linear project "Shift Manager")
+
+- Milestones are the roadmap phases (Phase 0 → 6). Agents work the lowest open phase first; within a phase, Linear priority ranks the work. Every open issue has a milestone and a priority.
+- **One issue = one testable feature.** A `Feature` is one contract capability delivered as a vertical slice: contract calls → indexer projection/endpoints → Manager route or wizard → a `QA: how to test (Base Sepolia)` section an admin can run. Projections, read models, schemas and hooks are tasks inside the Feature that needs them (ODD `T#` items), never issues of their own. `Improvement` adjusts an existing feature; `Bug` is a defect.
+- Labels: type (`Feature` | `Improvement` | `Bug`), readiness (`workflow:agent-ready` small and directly implementable | `workflow:needs-spec` medium/large, ODD document first | `workflow:backlog` not yet refined), and `domain:contracts` for anything that changes Solidity (skipped by the autonomous loop unless `SHIFT_ALLOW_CONTRACT_ISSUES=true`). `type:*`, `area:*` and `phase:*` are retired.
+- Delivery is one Feature per branch and PR (`feat/SHI-XXX/...` or `imp/SHI-XXX/...`), implemented as work-unit commits from the ODD document when one exists. Issues are not bundled into one PR; a PR that is too small to be a feature means the issue was split wrong — fix the issue, not the PR policy.
 
 ## ODD Feature Documents
 
