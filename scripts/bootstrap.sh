@@ -168,7 +168,22 @@ git config --global --add safe.directory "$REPO_DIR"
 # double as model-provider credentials), so the login is persisted to
 # ~/.config/gh/hosts.yml instead; re-done every boot so token rotation applies.
 if [[ -n "${GH_TOKEN:-}" ]]; then
-  printf '%s\n' "$GH_TOKEN" | env -u GH_TOKEN -u GITHUB_TOKEN gh auth login --hostname github.com --git-protocol https --with-token
+  # Written directly instead of `gh auth login --with-token`: that command
+  # insists on the read:org scope for classic tokens, which the agent does not
+  # need (fine-grained tokens skip the check, classic ones do not).
+  gh_login="${bot_login:-$(env -u GH_TOKEN -u GITHUB_TOKEN GH_TOKEN="$GH_TOKEN" gh api user --jq .login)}"
+  mkdir -p "$HOME/.config/gh"
+  umask 077
+  cat > "$HOME/.config/gh/hosts.yml" <<YAML
+github.com:
+    users:
+        ${gh_login}:
+            oauth_token: ${GH_TOKEN}
+    git_protocol: https
+    oauth_token: ${GH_TOKEN}
+    user: ${gh_login}
+YAML
+  chmod 600 "$HOME/.config/gh/hosts.yml"
   env -u GH_TOKEN -u GITHUB_TOKEN gh auth setup-git
   env -u GH_TOKEN -u GITHUB_TOKEN gh auth status --hostname github.com >/dev/null
 else
