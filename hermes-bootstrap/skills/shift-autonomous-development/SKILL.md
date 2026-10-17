@@ -97,6 +97,12 @@ claude -p "<lane prompt>" \
 
 ## Mandatory preflight
 
+0. If the cron MONITOR block says `PREFLIGHT=STOP`, reply exactly `[SILENT]`
+   and do nothing else: the guard already decided this cycle must wait.
+   Otherwise take the cycle lock so the guard keeps other runs out:
+   `mkdir -p /opt/data/shift && date -u +%FT%TZ > /opt/data/shift/dev-loop.lock`.
+   Release it (`rm -f /opt/data/shift/dev-loop.lock`) as the very last action
+   of the cycle, on every exit path.
 1. `cd /workspace/shift`.
 2. Read `AGENTS.md`.
 3. Recover relevant Hermes memory and Engram context.
@@ -115,13 +121,23 @@ claude -p "<lane prompt>" \
 
 Load and execute `linear-development-readiness` in strict read-only mode.
 
-Reason over its structured result. Select only from `recommendedQueue`.
-Prefer a small, low-risk `ready_direct` issue, then a small/medium
-`ready_spec_backed` issue. Do not select:
+Reason over its structured result. Select only from `recommendedQueue`, and
+take the **top-ranked Feature** (lowest open milestone, then highest Linear
+priority): the goal of a cycle is one finished, admin-testable feature, not
+the smallest possible PR. `ready_direct` and `ready_spec_backed` are equally
+eligible. If the top candidate is `needs_spec`, run `linear-odd-from-issue`
+first (ODD feature document + Engram mirror, committed on the issue branch),
+then continue into spec-backed implementation in the same cycle; stop after
+the document only if the budget or a blocker says so, and report it.
+
+Do not select:
 - blocked or needs-human work;
 - issues with open PRs;
-- umbrellas;
-- contract issues while `SHIFT_ALLOW_CONTRACT_ISSUES=false`;
+- sub-issues of a Feature (they are tasks of their parent) or any issue
+  without a `QA: how to test` section;
+- issues labelled `domain:contracts` (or flagged `contractScope: true`) while
+  `SHIFT_ALLOW_CONTRACT_ISSUES=false`;
+- `xl` work (send it back as `needs_refinement`);
 - work whose readiness confidence is inadequate.
 
 Before acting, re-read the selected Linear issue and current repository evidence.
@@ -136,7 +152,7 @@ classification name:
 | `recommendedSkill` | Typical classification | Action |
 | --- | --- | --- |
 | `linear-implement-agent-ready` | `ready_direct`, `ready_spec_backed` | Go to "Prepare isolated worktree" and implement in the item's `executionMode` (`direct` or `spec-backed`). |
-| `linear-odd-from-issue` | `needs_spec` | Run the planning lane below, then stop the cycle. |
+| `linear-odd-from-issue` | `needs_spec` | Run the planning lane below; if the document is implementation-ready, continue to "Prepare isolated worktree" in `spec-backed` mode in the same cycle, otherwise stop. |
 | `linear-issue-refiner` | `needs_refinement` | Out of scope for this cycle; surface it for a human. |
 | `none`, `human` | other | Do not act. |
 
@@ -152,9 +168,13 @@ feature document `odd/tasks/<feature-name>.md` and the Engram mirror under topic
 topic) and `details.artifactPath` (the file). If `details.implementationReady`
 is false or `openQuestions` is non-empty, stop and surface them for a human.
 
-Implementation of that issue is a later cycle, once it is `ready_spec_backed`.
-Then pass `artifactStore`, `artifactId` and `artifactPath` to both the
-implementer and the auditor.
+When `details.implementationReady` is true and there are no open questions,
+continue in this cycle: prepare the worktree, and run the implementer in
+`spec-backed` mode passing `artifactStore`, `artifactId` and `artifactPath`
+(the implementer commits the document with the first work unit). Pass the same
+three fields to the auditor. Stop after the document only when the cycle budget
+is exhausted or a blocker appears, and say so in the report; the Engram mirror
+lets a later cycle resume as `ready_spec_backed` without re-planning.
 
 ## Prepare isolated worktree
 
@@ -180,7 +200,9 @@ repo file and the Engram mirror in sync.
 
 The implementer must:
 - recover Engram;
-- re-read Linear;
+- re-read Linear, treating the issue's `QA: how to test` section as part of
+  the acceptance criteria (the auditor checks it; an implementation that
+  satisfies the bullet-point criteria but not the QA steps is incomplete);
 - implement narrowly, test-first;
 - include tests and required status-document synchronization;
 - create work-unit commits;
@@ -284,5 +306,9 @@ A cycle is complete when one of these is true:
 - a human decision is required;
 - a non-recoverable capability failure blocks work.
 
-Never continue into another issue within the same cycle. The recurring cron job
-will re-evaluate after merges and changes.
+Never continue into another issue within the same cycle. Release the cycle
+lock (`rm -f /opt/data/shift/dev-loop.lock`) as the last action. The next
+cycle starts from the daily schedule or from the merge watcher: when a PR
+merges, `shift-post-merge-learning` syncs the checkout, learns from the
+review and the post-audit fixes, and triggers this job again, so do not
+re-analyse already merged PRs here.

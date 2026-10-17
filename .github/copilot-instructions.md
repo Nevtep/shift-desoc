@@ -19,6 +19,18 @@ Shift should be treated as **self-hostable DAO infrastructure**. The protocol is
 
 ---
 
+## Code Review Guidance (Copilot code review)
+
+Most PRs here are written by an autonomous agent and audited by another one, so the review's job is to catch what both missed, not to restyle. Review once per PR (the ruleset reviews on open; re-reviews are requested explicitly).
+
+Report only findings that change behaviour or correctness:
+- cross-file contract consistency: a skill, schema, prompt, script or config that another file depends on (e.g. `.github/skills/**`, `hermes-bootstrap/**`, result schemas, `AGENTS.md`) now disagrees with it;
+- authority and truthfulness: anything that could show an operator a capability or status the chain/AccessManager does not actually grant, or that bypasses fail-closed paths;
+- contract semantics, events and indexer compatibility; deploy/role wiring; secret handling;
+- tests that do not exercise the change they claim to cover.
+
+Do not comment on wording, formatting, naming, voseo/tuteo, or alternatives that are equivalent. Prefer one precise comment with the file:line it conflicts with over several speculative ones. If evidence is not in the diff or the referenced files, say so instead of assuming.
+
 ## 0) Current Status (Source-of-Truth Snapshot: Dec 2025, Verify Before Use)
 
 - Stage: Verify against current deployment/status docs before making operational claims. Treat Base Sepolia evidence as staging/test evidence unless current deployment artifacts prove otherwise.

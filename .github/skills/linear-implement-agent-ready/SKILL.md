@@ -18,7 +18,7 @@ Do not use it for umbrellas, unresolved smart-contract architecture decisions, P
 - Required capability: Linear read access, git, package/test tooling, and Engram. If unavailable, return blocked with evidence.
 - Before code changes, identify `executionMode`, verify the branch belongs to the issue, verify an isolated worktree, recover Engram, confirm no other process owns the worktree, and re-check dependencies.
 - `direct`: issue is concrete, unblocked, has verifiable criteria, and is explicitly authorized for implementation without a spec.
-- `spec-backed`: issue is `workflow:agent-ready`, has an approved/localizable ODD feature document from `linear-odd-from-issue` (`odd/tasks/<feature-name>.md` matching its Engram mirror `odd/<feature-name>/tasks`), has no blocking questions, and dependencies are resolved.
+- `spec-backed`: issue is labelled `workflow:agent-ready`, or `workflow:needs-spec` with an implementation-ready ODD feature document (the readiness skill classifies both as `ready_spec_backed`; the document, not the label, is the gate); the document comes from `linear-odd-from-issue` (`odd/tasks/<feature-name>.md` matching its Engram mirror `odd/<feature-name>/tasks`), has no open questions and `implementationReady: true`, and dependencies are resolved.
 - `remediation`: inputs include issue, audited commit, audit result, partial/missing criteria, scope limits, and existing worktree/branch; do not reinterpret the whole issue or expand scope.
 
 ## Hard Rules
