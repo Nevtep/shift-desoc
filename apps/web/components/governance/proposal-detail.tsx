@@ -5,6 +5,7 @@ import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi
 import { Check, Copy } from "lucide-react";
 
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
+import { CommunityScopeRedirect } from "../routing/community-scope-redirect";
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { useIndexerHealth } from "../../hooks/useIndexerHealth";
 import { useIpfsDocument } from "../../hooks/useIpfsDocument";
@@ -121,6 +122,7 @@ export function ProposalDetail({ proposalId, expectedCommunityId }: ProposalDeta
 
   return (
     <div className="space-y-8">
+      {typeof expectedCommunityId !== "number" ? <CommunityScopeRedirect href={correctedHref} /> : null}
       {mismatch ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {t.proposalMismatch

@@ -35,3 +35,13 @@ describe("ProposalList", () => {
     expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
   });
 });
+
+describe("ProposalList global route links", () => {
+  it("links items to the community-scoped detail page when no base path is given", async () => {
+    renderWithProviders(<ProposalList />);
+    await screen.findByText(/Proposal 100/i);
+    const link = screen.getAllByRole("link").find((a) => a.getAttribute("href")?.endsWith("/proposals/100"));
+    expect(link).toBeDefined();
+    expect(link).toHaveAttribute("href", expect.stringMatching(/^\/communities\/\d+\/governance\/proposals\/100$/));
+  });
+});

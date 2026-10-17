@@ -145,6 +145,7 @@ export const DraftsQuery = /* GraphQL */ `
     ) {
       nodes: items {
         id
+        communityId
         requestId
         status
         latestVersionCid
