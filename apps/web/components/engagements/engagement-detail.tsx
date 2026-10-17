@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { formatDistanceToNow } from "date-fns";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
@@ -13,6 +14,7 @@ import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { communityProposalsPath } from "../../lib/governance/community-scoped-routes";
 import { useToast } from "../ui/toaster";
 
 export type EngagementDetailProps = {
@@ -74,7 +76,7 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             ) : null}
           </dl>
           <div className="mt-3 text-xs">
-            <Link className="underline" href={`/governance/proposals?engagementId=${engagement.id}`}>
+            <Link className="underline" href={`${communityProposalsPath(engagement.communityId)}?engagementId=${engagement.id}` as Route}>
               View related governance proposals
             </Link>
           </div>

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { DraftCreateModal } from "../../components/drafts/draft-create-modal";
 import { DraftList } from "../../components/drafts/draft-list";
+import { communityDraftsPath } from "../../lib/governance/community-scoped-routes";
 import { getI18n, LOCALE_COOKIE_KEY, sanitizeLocale } from "../../lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -32,6 +34,10 @@ export default async function DraftsPage({ searchParams }: PageProps) {
   if (rawCommunityId != null && `${rawCommunityId}`.trim() !== "") {
     const trimmed = `${rawCommunityId}`.trim();
     communityId = /^\d+$/.test(trimmed) ? trimmed : undefined;
+  }
+
+  if (communityId) {
+    redirect(communityDraftsPath(communityId));
   }
 
   return (

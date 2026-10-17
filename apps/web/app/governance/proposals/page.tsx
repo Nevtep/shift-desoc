@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { GovernanceTechnicalFooter } from "../../../components/layout/governance-technical-footer";
 import { ProposalList } from "../../../components/governance/proposal-list";
+import { communityProposalsPath } from "../../../lib/governance/community-scoped-routes";
 import { getI18n, LOCALE_COOKIE_KEY, sanitizeLocale } from "../../../lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,6 +32,10 @@ export default async function ProposalsPage({ searchParams }: PageProps) {
   const rawCommunityId = Array.isArray(communityIdParam) ? communityIdParam[0] : communityIdParam;
   const communityId =
     rawCommunityId && /^\d+$/.test(String(rawCommunityId).trim()) ? String(rawCommunityId).trim() : undefined;
+
+  if (communityId) {
+    redirect(communityProposalsPath(communityId));
+  }
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-10 sm:py-12">

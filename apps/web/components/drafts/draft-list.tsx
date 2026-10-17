@@ -8,6 +8,7 @@ import { useMemo } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { getI18n } from "../../lib/i18n";
+import { communityDraftDetailPath } from "../../lib/governance/community-scoped-routes";
 import { DraftsQuery, type DraftsQueryResult } from "../../lib/graphql/queries";
 
 export type DraftNode = {
@@ -18,6 +19,7 @@ export type DraftNode = {
   latestVersionCid?: string | null;
   escalatedProposalId?: string | null;
   updatedAt: string | number | null;
+  communityId?: number | string | null;
 };
 
 export type DraftListProps = {
@@ -154,7 +156,11 @@ function DraftListItem({
   };
 
   const updatedDate = parseDateValue(draft.updatedAt);
-  const resolvedDetailHref = detailHref ?? (detailHrefBuilder ? detailHrefBuilder(draft) : `/drafts/${draft.id}`);
+  const resolvedDetailHref = detailHref ?? (detailHrefBuilder
+    ? detailHrefBuilder(draft)
+    : draft.communityId
+      ? communityDraftDetailPath(draft.communityId, draft.id)
+      : `/drafts/${draft.id}`);
 
   return (
     <li>
