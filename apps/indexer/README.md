@@ -22,6 +22,23 @@ Ponder-based indexer for Shift contracts writing to Postgres and exposing GraphQ
 
 Startup fails fast when the required discovery env vars are missing/invalid.
 
+## RPC Requirements And Tuning
+
+The indexer needs an RPC that serves `eth_getLogs` over historical ranges. The public
+`sepolia.base.org` endpoint rejects every `eth_getLogs` (HTTP 413), so staging uses a provider URL
+(Infura Base Sepolia) in `RPC_BASE_SEPOLIA`.
+
+Ponder 0.7 first requests a whole historical interval in one `eth_getLogs` and only re-chunks when it
+recognises the provider's range error. `src/rpc/get-logs-range-limit.ts` rejects oversized ranges
+locally with a `Max range: N` error Ponder understands, so a months-long catchup is split into
+`N`-block requests instead of crashing.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PONDER_RPC_MAX_BLOCK_RANGE` | `10000` | Max blocks per `eth_getLogs` (Infura's limit). |
+| `PONDER_MAX_REQUESTS_PER_SECOND` | `50` | Ponder's RPC request rate cap. Do not lower it to protect the RPC: below ~20-50 req/s Ponder's historical step collapses to 25 blocks and the catchup never finishes. |
+| `PONDER_POLLING_INTERVAL_MS` | `4000` | Realtime head polling interval (Base produces a block every 2s). |
+
 ## Replay And Backfill
 
 1. Set `COMMUNITY_REGISTRY_START_BLOCK` to the desired replay boundary.
