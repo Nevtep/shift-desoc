@@ -82,8 +82,10 @@ exports and imports straight into the agent's Engram on the host (same
 idempotent import; other local projects are never sent). Commit `.engram/`
 afterwards anyway so future bootstraps and teammates have it.
 
-Hermes pins engram 1.20.0 (`docker/Dockerfile.hermes`); it imports chunks
-exported by engram 3.x (verified with 3.4.0), so local engram can be newer.
+Hermes runs the engram version pinned by `ENGRAM_VERSION` (`docker/Dockerfile.hermes`,
+overridable through SSM). Keep local engram at that version or older: chunks
+are forward-compatible (engram 1.20.0 imported chunks exported by 3.4.0), but
+a chunk from a newer local engram is not guaranteed to import.
 
 ## Operators (SSH with sudo)
 

@@ -4,9 +4,9 @@
 #   hermes-bootstrap/tests/engram-import.test.sh
 #
 # By default `engram` is a stub that records where it ran and what it saw.
-# Set ENGRAM_BIN to a real engram binary (e.g. the 1.20.0 release pinned in
-# docker/Dockerfile.hermes) to also run the end-to-end import case against a
-# real, throwaway Engram store.
+# Set ENGRAM_BIN to a real engram binary (e.g. the release pinned by
+# ENGRAM_VERSION in docker/Dockerfile.hermes) to also run the end-to-end
+# import case against a real, throwaway Engram store.
 set -euo pipefail
 SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/../scripts" && pwd)"
 WORK="$(mktemp -d)"
