@@ -1,0 +1,176 @@
+{
+  "contractName": "CommerceLayerFactory",
+  "sourceName": "contracts/modules/factories/CommerceLayerFactory.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "InvalidInput",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "commerceDisputes",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "marketplace",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "housingManager",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "projectFactory",
+          "type": "address"
+        }
+      ],
+      "name": "CommerceLayerDeployed",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "accessManager",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "stablecoin",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "revenueRouter",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "commerceDisputesCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "marketplaceCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "housingManagerCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "projectFactoryCreationCode",
+          "type": "bytes"
+        }
+      ],
+      "name": "deployLayer",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "commerceDisputes",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "marketplace",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "housingManager",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "projectFactory",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct CommerceLayerFactory.Deployment",
+          "name": "deployment",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "lastDeploymentByCaller",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "commerceDisputes",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "marketplace",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "housingManager",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "projectFactory",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608080604052346100165761065d908161001b8239f35b5f80fdfe60808060405260049081361015610014575f80fd5b5f3560e01c90816364996a7714610474575063b79a9d5614610034575f80fd5b3461047057610100366003190112610470576024356001600160a01b038116810361047057604435916001600160a01b038316830361047057606435916001600160a01b03831683036104705760843567ffffffffffffffff8111610470576100a090369084016104f1565b93909160a43567ffffffffffffffff8111610470576100c290369086016104f1565b9660c43567ffffffffffffffff8111610470576100e290369088016104f1565b92909460e43567ffffffffffffffff8111610470576101049036908a016104f1565b9a90976040519a8b67ffffffffffffffff608082818101109201111761045d5760808c016040525f8c525f60208d01525f60408d01525f60608d01528a3515610421576001600160a01b03881615610410576001600160a01b03861615610410576001600160a01b0384161561041057604080516001600160a01b038a1660208201528c35818301529081529067ffffffffffffffff60608301908111908311176103fd57606082016040526001600160a01b03926101c492919061051f565b1691828b526040519260018060a01b0388166020850152604084015260018060a01b0316606083015288356080830152608082528160a081011067ffffffffffffffff60a0840111176103ea5760a082016040526001600160a01b039261022c92919061051f565b1660208801526040519260018060a01b0316602084015260018060a01b0316604083015284356060830152606082526080820182811067ffffffffffffffff8211176103d7576040526001600160a01b039261028992919061051f565b1660408401526040519382356020860152602085526040850185811067ffffffffffffffff8211176103c4576040526080946001600160a01b03926102ce929061051f565b166060838101918252335f8181526020818152604091829020875181546001600160a01b03199081166001600160a01b039283169081178455848b015160018501805484169185169182179055868c015160028601805485169186169182179055995160039095018054909316949093169384179091558451908152928301529181019490945291830191909152913591907f437b1483e128e187a629d3dbb88199195b8bc480bc8618e9a564ca768326f24b90608090a36040805182516001600160a01b0390811682526020808501518216908301528383015181169282019290925260609283015190911691810191909152f35b604184634e487b7160e01b5f525260245ffd5b604186634e487b7160e01b5f525260245ffd5b604189634e487b7160e01b5f525260245ffd5b60418c634e487b7160e01b5f525260245ffd5b60405163d92e233d60e01b81528b90fd5b60405163d647364f60e01b81526020818d0152601460248201527318dbdb5b5d5b9a5d1e5259081c995c5d5a5c995960621b6044820152606490fd5b60418b634e487b7160e01b5f525260245ffd5b5f80fd5b8234610470576020366003190112610470576001600160a01b03903581811690819003610470575f90815260208181526040918290208054600182015460028301546003909301549186166001600160a01b0390811688529086168116938701939093529084168216928501929092529116166060820152608090f35b9181601f840112156104705782359167ffffffffffffffff8311610470576020838186019501011161047057565b909160405180916020948086840195863782015f86820152815191865f5b84811061061057505050015f8582015203808252603f601f19910116810181811067ffffffffffffffff8211176105fc57806040528151156105c7575051905ff0906001600160a01b03821615610592575090565b6064906040519063d647364f60e01b82526004820152600d60248201526c18dc99585d194819985a5b1959609a1b6044820152fd5b63d647364f60e01b815260048101849052600f60248201526e656d70747920696e697420636f646560881b6044820152606490fd5b634e487b7160e01b5f52604160045260245ffd5b82810182015184820183015286955088910161053d56fea2646970667358221220275ac62ac34ff28ed4e4f2fd8fea0f59e1b1d5a16e620dfab27a7d7131ad7ade64736f6c63430008180033"
+}

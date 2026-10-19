@@ -1,0 +1,139 @@
+{
+  "contractName": "CoordinationLayerFactory",
+  "sourceName": "contracts/modules/factories/CoordinationLayerFactory.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "InvalidInput",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "requestHub",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "draftsManager",
+          "type": "address"
+        }
+      ],
+      "name": "CoordinationLayerDeployed",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "communityRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "valuableActionRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "governor",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "accessManager",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "requestHubCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "draftsManagerCreationCode",
+          "type": "bytes"
+        }
+      ],
+      "name": "deployLayer",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "requestHub",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "draftsManager",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct CoordinationLayerFactory.Deployment",
+          "name": "deployment",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "lastDeploymentByCaller",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "requestHub",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "draftsManager",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60808060405234610016576104ba908161001b8239f35b5f80fdfe6080806040526004361015610012575f80fd5b5f3560e01c90816364996a77146102f157506397efd38914610032575f80fd5b346102ed5760e03660031901126102ed576024356001600160a01b03811690036102ed576044356001600160a01b03811690036102ed576064356001600160a01b03811681036102ed57608435906001600160a01b03821682036102ed5760a43567ffffffffffffffff81116102ed576100b090369060040161034e565b9160c43567ffffffffffffffff81116102ed576100d190369060040161034e565b9490926040519485604081011067ffffffffffffffff60408801111761028a57604086016040525f86525f6020870152600435156102b0576024356001600160a01b03161561029e576044356001600160a01b03161561029e576001600160a01b0384161561029e576001600160a01b0383161561029e57604080516001600160a01b036024358116602083015260443516818301529081526101879161017960608361037c565b6001600160a01b039361039e565b168452604080516001600160a01b03602435811660208301529384169181019190915291166060820152600435608080830191909152815260a081019080821067ffffffffffffffff83111761028a576040946101ed92865260018060a01b039361039e565b166020828101918252335f818152808352859020845181546001600160a01b039182166001600160a01b03199182168117845595516001909301805493909216921682179055855193845291830191909152600435917fa7bf0045756a05243dc2ee98f90d8cabe0fae669ba4238589e478f7cbd7be92e90604090a3815181516001600160a01b0390811682526020928301511691810191909152f35b634e487b7160e01b5f52604160045260245ffd5b60405163d92e233d60e01b8152600490fd5b60405163d647364f60e01b815260206004820152601460248201527318dbdb5b5d5b9a5d1e5259081c995c5d5a5c995960621b6044820152606490fd5b5f80fd5b346102ed5760203660031901126102ed576001600160a01b03600435818116908190036102ed575f908152602081815260409182902080546001909101549084166001600160a01b03908116865293169092169183019190915290f35b9181601f840112156102ed5782359167ffffffffffffffff83116102ed57602083818601950101116102ed57565b90601f8019910116810190811067ffffffffffffffff82111761028a57604052565b9060405192839160209481869283830196873781015f838201528351905f945b82861061046857506103dc9450015f8382015203808452018261037c565b8051156104305751905ff0906001600160a01b038216156103fb575090565b6064906040519063d647364f60e01b82526004820152600d60248201526c18dc99585d194819985a5b1959609a1b6044820152fd5b60405163d647364f60e01b815260048101849052600f60248201526e656d70747920696e697420636f646560881b6044820152606490fd5b92509290938181840101518282860101520192869285926103be56fea26469706673582212207b6b338b7d0e42c3800e8ab1ebe58278f9534f7fe20bffc6fd33e32d6674c0e764736f6c63430008180033"
+}

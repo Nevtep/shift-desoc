@@ -1,0 +1,395 @@
+{
+  "contractName": "CountingMultiChoice",
+  "sourceName": "contracts/core/CountingMultiChoice.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_governor",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "options",
+          "type": "uint8"
+        }
+      ],
+      "name": "MultiChoiceEnabled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "ProposalCanceled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "voter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256[]",
+          "name": "weights",
+          "type": "uint256[]"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "totalWeight",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "VoteCastMulti",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "cancelProposal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "voter",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "weight",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "weights",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "castVoteMulti",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "options",
+          "type": "uint8"
+        }
+      ],
+      "name": "enableMulti",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getAllOptionVotes",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "votes",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "optionIndex",
+          "type": "uint256"
+        }
+      ],
+      "name": "getOptionVotes",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "voter",
+          "type": "address"
+        }
+      ],
+      "name": "getVoterWeights",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "getWinningOption",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "winningOption",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "winningVotes",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "governor",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "isMultiEnabled",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "numOptionsOf",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "optionTotals",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "voterWeight",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "weights",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "previewVoteDistribution",
+      "outputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "actualWeights",
+          "type": "uint256[]"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "proposalId",
+          "type": "uint256"
+        }
+      ],
+      "name": "proposalVotes",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "againstVotes",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "forVotes",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "abstainVotes",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "weights",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "validateVoteDistribution",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "valid",
+          "type": "bool"
+        },
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080346100cc57601f61106d38819003918201601f19168301916001600160401b038311848410176100d0578084926020946040528339810103126100cc57516001600160a01b038116908190036100cc578015610079575f80546001600160a01b031916919091179055604051610f8890816100e58239f35b60405162461bcd60e51b815260206004820152602560248201527f436f756e74696e674d756c746943686f6963653a20696e76616c696420676f7660448201526432b93737b960d91b6064820152608490fd5b5f80fd5b634e487b7160e01b5f52604160045260245ffdfe6080806040526004361015610012575f80fd5b5f3560e01c9081630c340a2414610c405750806316c500cd14610bd55780632091150d146107965780632c2e8c9214610767578063544ffc9c1461072657806354710b0f146106f6578063732958fa1461066d57806378bbd8fa146105da578063a62868701461055e578063a6d62c35146104ca578063d004cb7f14610450578063e0a8f6f5146103bd578063e7ea088f146103175763f009f709146100b6575f80fd5b3461031357604036600319011261031357600435602490813560ff8116809103610313576100ee60018060a01b035f54163314610ec4565b600281106102ba57600a811161026857815f526020906002825260ff60405f2054166102195761011d81610dc3565b6040519467ffffffffffffffff919060808701838111888210176102055760405260026001976001815286810186815260408201905f825260608301958652895f5283895260405f20925115159060ff61ff008554925160081b1692169061ffff1916171782555160018201550191519081519384116101f2575084906101a48484610d49565b01905f52835f205f5b8381106101e157867fe74ada30335f0c11679040e95ddf795a4ffe5b451d389854523b1cb5adb03a6b8787604051908152a2005b8251828201559185019187016101ad565b634e487b7160e01b5f9081526041600452fd5b50634e487b7160e01b5f9081526041600452fd5b608482856040519162461bcd60e51b83526004830152808201527f436f756e74696e674d756c746943686f6963653a20616c726561647920656e61604482015263189b195960e21b6064820152fd5b60405162461bcd60e51b8152602060048201526025818501527f436f756e74696e674d756c746943686f6963653a20746f6f206d616e79206f7060448201526474696f6e7360d81b6064820152608490fd5b60405162461bcd60e51b815260206004820152602c818501527f436f756e74696e674d756c746943686f6963653a206e656564206174206c656160448201526b73742032206f7074696f6e7360a01b6064820152608490fd5b5f80fd5b346103135760403660031901126103135760043560243590805f52600260205260ff60405f205460081c1682101561036c575f526001602052600360405f2001905f52602052602060405f2054604051908152f35b60405162461bcd60e51b815260206004820152602360248201527f436f756e74696e674d756c746943686f6963653a20696e76616c6964206f707460448201526234b7b760e91b6064820152608490fd5b34610313576020366003190112610313576004356103e560018060a01b035f54163314610ec4565b805f52600260205260405f205f815560026001915f6001820155018054905f815581610433575b837f789cf55be980739dad1d0699b93b58e806b51c9d96619bfa8fe0a28abaa7b30c5f80a2005b5f5260205f20908101905b8181101561040c575f8155820161043e565b34610313576020806003193601126103135760043590815f52600260205260ff60405f205460081c169061048382610dc3565b925f5b83811061049f576040518061049b8782610c62565b0390f35b600190825f52818452600360405f2001815f52845260405f20546104c38288610df5565b5201610486565b34610313576020806003193601126103135760043567ffffffffffffffff8111610313576104ff610505913690600401610cb3565b90610e09565b9060405192839115158252604060208301528251908160408401525f935b828510610545575050606092505f838284010152601f80199101168101030190f35b8481018201518686016060015293810193859350610523565b346103135760208060031936011261031357600435805f52600260205260ff60405f205460081c16915f905f925f5b8581106105a4576040858582519182526020820152f35b815f5260018352600360405f2001815f52835260405f20548481116105cd575b5060010161058d565b90945092508360016105c4565b34610313576040366003190112610313576105f3610c9d565b6004355f5260016020916001602052600560405f20019060018060a01b03165f5260205260405f20916040519182602085549182815201945f5260205f20925f905b8282106106585761049b8661064c818a0382610d00565b60405191829182610c62565b84548752958601959383019390830190610635565b346103135760403660031901126103135760043560243567ffffffffffffffff8111610313576106a1903690600401610cb3565b916106ab83610dc3565b925f5b8181106106c3576040518061049b8782610c62565b80670de0b6b3a76400006106e46106dd6001948689610d8e565b3586610d22565b046106ef8288610df5565b52016106ae565b34610313576020366003190112610313576004355f526002602052602060ff60405f205460081c16604051908152f35b34610313576020366003190112610313576004355f526001602052606060405f20805490600260018201549101549060405192835260208301526040820152f35b34610313576020366003190112610313576004355f526002602052602060ff60405f2054166040519015158152f35b346103135760a0366003190112610313576107af610c9d565b60643567ffffffffffffffff8111610313576107cf903690600401610cb3565b67ffffffffffffffff60849392933511610313573660236084350112156103135767ffffffffffffffff60843560040135116103135736602460843560040135608435010111610313576004355f52600260205260405f2091825460ff811615610b7a5760081c60ff168203610b21576004355f52600160205260405f209260018060a01b0382165f526004840160205260ff60405f205416610ad1576108768386610f1b565b93670de0b6b3a76400008511610a755760018060a01b0383165f526004810160205260405f20600160ff198254161790556005810160205260405f2067ffffffffffffffff8511610a61576108cb8582610d49565b86905f5260205f20905f5b868110610a4d575050505f5b8481106109b45750506001016108fb6044358254610d9e565b905560405160608082528101839052916001600160fb1b038111610313576020947f748baf300519ad5a9bf95a5fa2ac86104d261425d507ff9a26f610311980c99f9160051b809160808601378301916044358685015260808484030160408501526084356004013560808401526084356004013560246084350160a08501375f60a0608435600401358501015260018060a01b03169260a08160043594601f19601f60843560040135011601030190a3604051908152f35b6109bf818689610d8e565b356109cd575b6001016108e2565b670de0b6b3a76400006109ed6109e483888b610d8e565b35604435610d22565b0490805f526003830160205260405f20610a08838254610d9e565b90556002840154811015610a3957600191600285015f52610a308260205f2001918254610d9e565b905590506109c5565b634e487b7160e01b5f52603260045260245ffd5b6001906020833593019281850155016108d6565b634e487b7160e01b5f52604160045260245ffd5b60405162461bcd60e51b815260206004820152602e60248201527f436f756e74696e674d756c746943686f6963653a20746f74616c20776569676860448201526d747320657863656564203130302560901b6064820152608490fd5b60405162461bcd60e51b815260206004820152602260248201527f436f756e74696e674d756c746943686f6963653a20616c726561647920766f74604482015261195960f21b6064820152608490fd5b60405162461bcd60e51b815260206004820152602b60248201527f436f756e74696e674d756c746943686f6963653a20696e76616c69642077656960448201526a0ced0e8e640d8cadccee8d60ab1b6064820152608490fd5b60405162461bcd60e51b815260206004820152602d60248201527f436f756e74696e674d756c746943686f6963653a206d756c74692d63686f696360448201526c19481b9bdd08195b98589b1959609a1b6064820152608490fd5b3461031357602080600319360112610313576004355f526002602052600260405f2001906040519081602084549182815201935f5260205f20915f905b828210610c295761049b8561064c81890382610d00565b835486529485019460019384019390910190610c12565b34610313575f366003190112610313575f546001600160a01b03168152602090f35b60209060206040818301928281528551809452019301915f5b828110610c89575050505090565b835185529381019392810192600101610c7b565b602435906001600160a01b038216820361031357565b9181601f840112156103135782359167ffffffffffffffff8311610313576020808501948460051b01011161031357565b6040810190811067ffffffffffffffff821117610a6157604052565b90601f8019910116810190811067ffffffffffffffff821117610a6157604052565b81810292918115918404141715610d3557565b634e487b7160e01b5f52601160045260245ffd5b90680100000000000000008111610a6157815491818155828210610d6c57505050565b5f5260205f2091820191015b818110610d83575050565b5f8155600101610d78565b9190811015610a395760051b0190565b91908201809211610d3557565b67ffffffffffffffff8111610a615760051b60200190565b90610dcd82610dab565b610dda6040519182610d00565b8281528092610deb601f1991610dab565b0190602036910137565b8051821015610a395760209160051b010190565b90610e1391610f1b565b670de0b6b3a76400008111610e935715610e5857600190604051610e3681610ce4565b60128152712b30b634b2103234b9ba3934b13aba34b7b760711b602082015290565b5f90604051610e6681610ce4565b601981527f4d75737420616c6c6f6361746520736f6d652077656967687400000000000000602082015290565b505f90604051610ea281610ce4565b6012815271546f74616c2065786365656473203130302560701b602082015290565b15610ecb57565b60405162461bcd60e51b815260206004820152602260248201527f436f756e74696e674d756c746943686f6963653a206f6e6c7920676f7665726e60448201526137b960f11b6064820152608490fd5b91905f925f915b808310610f2e57505050565b909193610f49600191610f42878587610d8e565b3590610d9e565b94019190610f2256fea26469706673582212205803af159e426147591b78e84b94d8226281ae99c43964eefb09ad513266b68e64736f6c63430008180033"
+}
