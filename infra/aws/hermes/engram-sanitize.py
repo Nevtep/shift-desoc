@@ -48,6 +48,10 @@ DETECTORS = [
 ]
 
 
+# The only manifest fields `engram sync --import` needs per chunk.
+MANIFEST_CHUNK_FIELDS = ("id", "created_by", "created_at", "sessions", "memories", "prompts")
+
+
 def redact(value):
     return value if len(value) <= 12 else f"{value[:4]}…{value[-2:]} ({len(value)} chars)"
 
@@ -155,11 +159,18 @@ def main():
         print("Nothing new to send: every local chunk was already pushed to Hermes.")
         return 3
 
+    # The output directory must be new: a finding deletes it, so it can never
+    # be allowed to hold anything this run did not write.
+    try:
+        os.makedirs(args.out)
+    except FileExistsError:
+        print(f"--out {args.out} already exists; pass a new directory", file=sys.stderr)
+        return 1
     out_engram = os.path.join(args.out, ".engram")
     out_chunks = os.path.join(out_engram, "chunks")
     out_decoded = os.path.join(args.out, "decoded")
-    os.makedirs(out_chunks, exist_ok=True)
-    os.makedirs(out_decoded, exist_ok=True)
+    os.makedirs(out_chunks)
+    os.makedirs(out_decoded)
 
     findings, summary, chunks_out = [], [], []
     for c in todo:
@@ -186,22 +197,44 @@ def main():
         obs = [o for r in clean for o in r.get("observations") or []]
         muts = sum(len(r.get("mutations") or []) for r in clean)
         summary.append((cid, obs, muts, c.get("prompts", 0)))
-        chunks_out.append(dict(c, prompts=0))
+        chunks_out.append(dict({k: c[k] for k in MANIFEST_CHUNK_FIELDS if k in c}, prompts=0))
+
+    # Manifest and config travel too: rebuild them from known fields only and
+    # scan them like the chunks (both scans, decoded copy included).
+    out_manifest = {"version": manifest.get("version", 2), "chunks": chunks_out}
+    cfg_path = os.path.join(args.src, "config.json")
+    out_config = None
+    if os.path.exists(cfg_path):
+        try:
+            cfg = json.load(open(cfg_path))
+        except ValueError as e:
+            print(f"cannot read config.json: {e}", file=sys.stderr)
+            shutil.rmtree(args.out, ignore_errors=True)
+            return 1
+        out_config = {"project_name": cfg.get("project_name", "")}
+    raw_meta = {"manifest": manifest, "config": json.load(open(cfg_path)) if out_config is not None else {}}
+    for name, sample in scan(list(string_values(raw_meta))):
+        findings.append(("metadata", name, sample))
+    meta_values = list(string_values({"manifest": out_manifest, "config": out_config or {}}))
+    with open(os.path.join(out_decoded, "metadata.json"), "w", encoding="utf-8") as f:
+        json.dump({"manifest": out_manifest, "config": out_config}, f, ensure_ascii=False, indent=2)
+    with open(os.path.join(out_decoded, "metadata.values.txt"), "w", encoding="utf-8") as f:
+        f.write("\n".join(meta_values) + "\n")
 
     if findings:
         print("Possible secrets in the payload; nothing will be sent:", file=sys.stderr)
         for cid, name, sample in findings:
-            print(f"  chunk {cid}: {name}: {sample}", file=sys.stderr)
+            where = "manifest/config" if cid == "metadata" else f"chunk {cid}"
+            print(f"  {where}: {name}: {sample}", file=sys.stderr)
         print("Remove them from local Engram (engram delete <id> --hard), discard the affected local "
               "chunk (engram-sanitize.py --src .engram --discard <chunk>), export again, and re-run.",
               file=sys.stderr)
         shutil.rmtree(args.out, ignore_errors=True)
         return 2
 
-    json.dump(dict(manifest, chunks=chunks_out), open(os.path.join(out_engram, "manifest.json"), "w"), indent=2)
-    cfg = os.path.join(args.src, "config.json")
-    if os.path.exists(cfg):
-        shutil.copy(cfg, os.path.join(out_engram, "config.json"))
+    json.dump(out_manifest, open(os.path.join(out_engram, "manifest.json"), "w"), indent=2)
+    if out_config is not None:
+        json.dump(out_config, open(os.path.join(out_engram, "config.json"), "w"), indent=2)
 
     for cid, obs, muts, dropped in summary:
         print(f"chunk {cid}: {len(obs)} observation(s), {muts} relation mutation(s), "

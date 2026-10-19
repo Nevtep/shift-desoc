@@ -17,9 +17,9 @@ chmod 700 "$HERMES_HOME" "$HOME" || true
 # operator own the file.
 SEED_MARKER="$HERMES_HOME/.shift-config-seeded"
 touch "$HERMES_HOME/config.yaml"
-if [[ ! -f "$HERMES_HOME/SOUL.md" ]]; then
-  cp "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md"
-fi
+# SOUL.md is seeded once and then owned by Hermes/the operator; only its
+# repo-managed rules block is kept current on existing volumes.
+bash "$BOOTSTRAP/scripts/shift-soul-managed-rules.sh" "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md"
 
 # Re-assert repo-managed keys (skills dirs, MCP servers, cron limits) on every
 # bootstrap so reviewed changes reach existing volumes, and stamp the config
