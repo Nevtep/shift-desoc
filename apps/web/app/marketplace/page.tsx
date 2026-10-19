@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 
@@ -63,7 +63,7 @@ export default async function MarketplacePage() {
               {t.offersBody}
             </p>
             {offersCapability.enabled ? (
-              <Link className="btn-ghost" href={offersCapability.href}>
+              <Link className="btn-ghost" href={offersCapability.href as Route}>
                 {t.offersTitle}
               </Link>
             ) : (
@@ -87,7 +87,7 @@ export default async function MarketplacePage() {
               {t.housingBody}
             </p>
             {housingCapability.enabled ? (
-              <Link className="btn-ghost" href={housingCapability.href}>
+              <Link className="btn-ghost" href={housingCapability.href as Route}>
                 {t.housingTitle}
               </Link>
             ) : (

@@ -1,0 +1,181 @@
+{
+  "contractName": "GovernanceLayerFactory",
+  "sourceName": "contracts/modules/factories/GovernanceLayerFactory.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "InvalidInput",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "membershipToken",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "timelock",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "governor",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "countingMultiChoice",
+          "type": "address"
+        }
+      ],
+      "name": "GovernanceLayerDeployed",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "communityName",
+          "type": "string"
+        },
+        {
+          "internalType": "address",
+          "name": "accessManager",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "executionDelay",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "timelockAdmin",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "membershipTokenCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "timelockCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "governorCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "countingMultiChoiceCreationCode",
+          "type": "bytes"
+        }
+      ],
+      "name": "deployLayer",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "membershipToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "timelock",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "governor",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "countingMultiChoice",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct GovernanceLayerFactory.Deployment",
+          "name": "deployment",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "lastDeploymentByCaller",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "membershipToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "timelock",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "governor",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "countingMultiChoice",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60808060405234610016576108b2908161001b8239f35b5f80fdfe60806040526004361015610011575f80fd5b5f3560e01c8063569cb26f146100b1576364996a771461002f575f80fd5b346100ad5760203660031901126100ad576001600160a01b03600435818116908190036100ad575f908152602081815260409182902080546001820154600283015460039093015485516001600160a01b03938816841681529187168316948201949094529185168116938201939093529216166060820152608090f35b5f80fd5b346100ad576101203660031901126100ad5760243567ffffffffffffffff81116100ad576100e39036906004016105a3565b90604435906001600160a01b03821682036100ad57608435926001600160a01b03841684036100ad5760a43567ffffffffffffffff81116100ad5761012c9036906004016105a3565b60c49491943567ffffffffffffffff81116100ad5761014f9036906004016105a3565b95909160e43567ffffffffffffffff81116100ad576101729036906004016105a3565b9790956101043567ffffffffffffffff81116100ad576101969036906004016105a3565b909a9098906101006040525f608081905260a081905260c081905260e05260043515610566578215610527576001600160a01b03881615610515576001600160a01b038116156105155763ffffffff606435116104cf57610350956102df61029a610324976102d16102d19761027f602b6102126004356106c9565b9961024f6025604051809d64734d454d2d60d81b602083015261023e815180926020868601910161062b565b8101038d600582019052018c610609565b83604051948592602084013781016a0204d656d626572736869760ac1b602082015203600b810184520182610609565b8d6102ad6040519586936080602086015260a085019061064c565b601f199a8b85830301604086015261064c565b60043560608401526001600160a01b03909116608083015203878101845283610609565b6001600160a01b03936107b6565b16608052604051906102f0826105d1565b5f8252610334604051610302816105d1565b5f815260405197889460643560208701526080604087015260a0860190610671565b9085858303016060860152610671565b6001600160a01b03909116608083015203908101845283610609565b1660a05260808051604080516001600160a01b039283166020820152939091169083015260643563ffffffff16606080840191909152825281019067ffffffffffffffff8211818310176104bb576103d5946103b69260405260018060a01b03936107b6565b169081604060800152604051916020830152602082526102d1826105ed565b1660e0819052335f81815260208181526040918290206080805182546001600160a01b039182166001600160a01b03199182168117855560a0516001860180549185169184168217905560c051600287018054918616918516821790556003909601805494909a16939092168317909855855197885293870193909352928501526060840152600435927ff764f950483ab4943706c6832e0b41163f902b6680a96d1905c24ccda7c4acb29190a360408051608080516001600160a01b03908116835260a0518116602084015260c05181169383019390935260e0519092166060820152f35b634e487b7160e01b5f52604160045260245ffd5b60405163d647364f60e01b815260206004820152601d60248201527f657865637574696f6e44656c617920657863656564732075696e7433320000006044820152606490fd5b60405163d92e233d60e01b8152600490fd5b60405163d647364f60e01b815260206004820152601660248201527518dbdb5b5d5b9a5d1e53985b59481c995c5d5a5c995960521b6044820152606490fd5b60405163d647364f60e01b815260206004820152601460248201527318dbdb5b5d5b9a5d1e5259081c995c5d5a5c995960621b6044820152606490fd5b9181601f840112156100ad5782359167ffffffffffffffff83116100ad57602083818601950101116100ad57565b6020810190811067ffffffffffffffff8211176104bb57604052565b6040810190811067ffffffffffffffff8211176104bb57604052565b90601f8019910116810190811067ffffffffffffffff8211176104bb57604052565b5f5b83811061063c5750505f910152565b818101518382015260200161062d565b906020916106658151809281855285808601910161062b565b601f01601f1916010190565b9081518082526020808093019301915f5b828110610690575050505090565b83516001600160a01b031685529381019392810192600101610682565b67ffffffffffffffff81116104bb57601f01601f191660200190565b8015610798575f81805b61078157506106e1816106ad565b906106ef6040519283610609565b808252601f196106fe826106ad565b013660208401375b8092801561077a575f198201918211610766578193600a92603090848406820180921161076657855111156107525760f81b6001600160f81b0319165f1a908401601f01530491610706565b634e487b7160e01b5f52603260045260245ffd5b634e487b7160e01b5f52601160045260245ffd5b5050905090565b905f198114610766576001600a91019104806106d3565b506040516107a5816105ed565b60018152600360fc1b602082015290565b906107f06107e460405180936020968793828593848601998a378401918383015f815281519485920161062b565b01038084520182610609565b8051156108445751905ff0906001600160a01b0382161561080f575090565b6064906040519063d647364f60e01b82526004820152600d60248201526c18dc99585d194819985a5b1959609a1b6044820152fd5b60405163d647364f60e01b815260048101849052600f60248201526e656d70747920696e697420636f646560881b6044820152606490fdfea264697066735822122062ec460526961fc3c54e2b5d5269ca379059cd4a2186a653d43f4f6309f89c0264736f6c63430008180033"
+}
