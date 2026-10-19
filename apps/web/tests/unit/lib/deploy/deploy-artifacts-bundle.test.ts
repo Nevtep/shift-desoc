@@ -45,6 +45,20 @@ describe("deploy artifacts bundle", () => {
     expect(source).not.toMatch(/artifacts\/contracts\//);
   });
 
+  it("bundles exactly the contracts the executor imports", () => {
+    const source = fs.readFileSync(executorPath, "utf8");
+    const imported = [...source.matchAll(/import\("\.\/bundled-contracts\/([A-Za-z0-9_]+)\.json"\)/g)].map(
+      (match) => match[1]
+    );
+    const bundled = fs
+      .readdirSync(bundleDir)
+      .filter((file) => file.endsWith(".json"))
+      .map((file) => path.basename(file, ".json"));
+
+    expect([...imported].sort()).toEqual([...EXPECTED_CONTRACTS].sort());
+    expect(bundled.sort()).toEqual([...EXPECTED_CONTRACTS].sort());
+  });
+
   it.each(EXPECTED_CONTRACTS)("bundles abi and creation code for %s", (name) => {
     const file = path.join(bundleDir, `${name}.json`);
     expect(fs.existsSync(file)).toBe(true);

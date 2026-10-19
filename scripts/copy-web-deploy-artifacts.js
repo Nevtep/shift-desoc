@@ -62,6 +62,20 @@ const drifted = [];
 
 if (!check) fs.mkdirSync(destDir, { recursive: true });
 
+// Anything in the bundle that SOURCES does not produce is stale: the check fails
+// on it and a write removes it, so the directory always mirrors SOURCES exactly.
+const expectedFiles = new Set(rendered.map(({ contractName }) => `${contractName}.json`));
+const staleFiles = fs.existsSync(destDir)
+  ? fs.readdirSync(destDir).filter((file) => file.endsWith(".json") && !expectedFiles.has(file))
+  : [];
+for (const file of staleFiles) {
+  if (check) {
+    drifted.push(`${path.basename(file, ".json")} (not in SOURCES)`);
+  } else {
+    fs.unlinkSync(path.join(destDir, file));
+  }
+}
+
 for (const { contractName, content } of rendered) {
   const to = path.join(destDir, `${contractName}.json`);
   if (check) {
