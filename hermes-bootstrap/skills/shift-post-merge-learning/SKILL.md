@@ -28,7 +28,16 @@ cd /workspace/shift
 git fetch origin --prune
 git switch main && git reset --hard origin/main
 git worktree prune
+/opt/data/scripts/shift-engram-import.sh /workspace/shift
 ```
+
+`shift-engram-import.sh` imports the Engram chunks merged into `.engram/`
+(teammates share learnings by committing them) from a temp copy, so the
+checkout stays pristine. It is idempotent: already-imported chunks are
+skipped. The merge watcher already ran it after its own sync; running it
+again here covers a tick where the watcher could not sync. If it prints
+`ENGRAM_IMPORT=ERROR`, include its output in the report but continue: the
+learning steps do not depend on it. Report how many chunks were imported.
 
 For every merged PR whose head branch is `feat/SHI-*` or `imp/SHI-*`:
 remove its worktree (`git worktree remove --force .worktrees/<ISSUE_ID>` if
