@@ -59,6 +59,7 @@ run_sync() { # <answer> -> exit code in $rc
     spawn bash $env(SCRIPT)
     expect {
       "Send these learnings to Hermes?" { send "$env(ANSWER)\r"; exp_continue }
+      timeout { send_user "\nTIMEOUT waiting for sync-engram.sh\n"; exit 124 }
       eof
     }
     catch wait result
@@ -68,13 +69,25 @@ run_sync() { # <answer> -> exit code in $rc
   set -e
 }
 
-# Stdin is never accepted as the confirmation, even when it says yes.
+# Stdin is never accepted as the confirmation, even when it says yes: the
+# script gets "y" on a pipe while its own pseudo-terminal answers nothing and
+# then closes, so the run must abort. (It never touches the caller's terminal.)
 rm -f "$WORK/ssh-called"
 set +e
-printf 'y\n' | PATH="$WORK/bin:$PATH" bash "$REPO/infra/aws/hermes/sync-engram.sh" >"$WORK/stdin.log" 2>&1
+PATH="$WORK/bin:$PATH" SCRIPT="$REPO/infra/aws/hermes/sync-engram.sh" expect -c '
+  set timeout 60
+  spawn bash -c "printf \"y\\n\" | bash \"$env(SCRIPT)\""
+  expect {
+    "Send these learnings to Hermes?" { send "\004" }
+    timeout { send_user "\nTIMEOUT\n"; exit 124 }
+  }
+  expect eof
+  catch wait result
+  exit [lindex $result 3]
+' >"$WORK/stdin.log" 2>&1 </dev/null
 rc=$?
 set -e
-check "piped yes without a terminal is refused" test "$rc" -ne 0
+check "piped yes is not taken as the confirmation" test "$rc" -ne 0 -a "$rc" -ne 124
 check "piped yes never calls ssh" test ! -e "$WORK/ssh-called"
 check "no override variable is honoured" bash -c "! grep -q SYNC_ENGRAM_TTY '$REPO/infra/aws/hermes/sync-engram.sh'"
 
