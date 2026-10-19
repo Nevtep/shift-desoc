@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import { cookies } from "next/headers";
 
 import { getManagerCapabilityMetadata } from "../../lib/community-overview/availability";
@@ -55,7 +55,7 @@ export default async function HousingPage() {
 
       <section className="flex flex-wrap gap-3">
         {reservationsCapability.enabled ? (
-          <Link className="btn-primary" href={reservationsCapability.href}>
+          <Link className="btn-primary" href={reservationsCapability.href as Route}>
             {t.ctaReservations}
           </Link>
         ) : (
