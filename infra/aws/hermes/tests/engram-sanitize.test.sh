@@ -95,7 +95,24 @@ echo eeee5555 > "$WORK/e/pushed"
 set +e; python3 "$SANITIZE" --src "$WORK/e/.engram" --out "$WORK/e-out" --pushed "$WORK/e/pushed" >"$WORK/e.log" 2>&1; rc=$?; set -e
 check "nothing new exits 3" test "$rc" -eq 3
 
-# 5. Optional end-to-end: the sanitized bundle imports with no prompts.
+# 5. gitleaks (when installed) with the bundle config: Engram's own relation ids
+#    are not flagged, a real-looking key still is.
+if command -v gitleaks >/dev/null; then
+  GL_CONFIG="$HERE/engram-gitleaks.toml"
+  mkdir -p "$WORK/gl-ok" "$WORK/gl-bad"
+  printf '{"mutations":[{"entity":"relation","entity_key":"rel-f08931f2509fff87","op":"upsert"}]}\n' >"$WORK/gl-ok/c.jsonl"
+  printf '{"observations":[{"content":"token ghp_8fK2mQ9xLp4ZrT6vW1yB3nC7dE5gH0jA2sUi"}]}\n' >"$WORK/gl-bad/c.jsonl"
+  check "gitleaks config exists" test -f "$GL_CONFIG"
+  check "gitleaks config loads" bash -c "gitleaks detect --no-git --no-banner --config '$GL_CONFIG' --source '$WORK/gl-ok' >/dev/null 2>&1"
+  check "gitleaks ignores Engram relation ids" \
+    gitleaks detect --no-git --no-banner --config "$GL_CONFIG" --source "$WORK/gl-ok" --exit-code 1
+  check "gitleaks still flags a GitHub token" \
+    bash -c "! gitleaks detect --no-git --no-banner --config '$GL_CONFIG' --source '$WORK/gl-bad' --exit-code 1 >/dev/null 2>&1"
+else
+  echo "skip - gitleaks checks (gitleaks not installed)"
+fi
+
+# 6. Optional end-to-end: the sanitized bundle imports with no prompts.
 if [[ -n "${ENGRAM_BIN:-}" ]]; then
   mkdir -p "$WORK/home"
   if ! (cd "$WORK/a-out" && HOME="$WORK/home" "$ENGRAM_BIN" sync --import >"$WORK/import.log" 2>&1); then
