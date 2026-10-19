@@ -16,7 +16,13 @@ target="${2:?usage: shift-soul-managed-rules.sh <seed> <target>}"
 start='<!-- shift:managed-rules:start -->'
 end='<!-- shift:managed-rules:end -->'
 
-if [[ ! -f "$target" ]]; then
+# Never follow links or write through anything but a regular file: bootstrap
+# may run as root inside a directory the agent user can write.
+if [[ -L "$target" ]] || { [[ -e "$target" ]] && [[ ! -f "$target" ]]; }; then
+  echo "$target is a symlink or not a regular file; left untouched" >&2
+  exit 2
+fi
+if [[ ! -e "$target" ]]; then
   cp "$seed" "$target"
   exit 0
 fi
@@ -39,14 +45,15 @@ if [[ "$starts" -eq 0 && "$ends" -eq 0 ]]; then
   { cat "$target"; printf '\n%s\n' "$block"; } >"$tmp"
 elif [[ "$starts" -eq 1 && "$ends" -eq 1 && "$well_formed" -eq 1 ]]; then
   # Replace the block in place, keeping the file's line endings for it.
-  printf '%s\n' "$block" >"$tmp.block"
-  awk -v s="$start" -v e="$end" -v blockfile="$tmp.block" '
+  # The block reaches awk through the environment (no escape processing and
+  # no extra file on the volume).
+  SHIFT_MANAGED_BLOCK="$block" awk -v s="$start" -v e="$end" '
+    BEGIN { n = split(ENVIRON["SHIFT_MANAGED_BLOCK"], blk, "\n") }
     { line = $0; cr = sub(/\r$/, "", line) }
-    line == s { while ((getline b < blockfile) > 0) print b (cr ? "\r" : ""); skip = 1; next }
+    line == s { for (i = 1; i <= n; i++) print blk[i] (cr ? "\r" : ""); skip = 1; next }
     line == e { skip = 0; next }
     !skip { print }
   ' "$target" >"$tmp"
-  rm -f "$tmp.block"
 else
   echo "malformed managed-rules markers in $target (start=$starts end=$ends); left untouched" >&2
   exit 2
@@ -62,4 +69,3 @@ owner="$(stat -c %u:%g "$target" 2>/dev/null || stat -f %u:%g "$target")"
 chmod "$mode" "$tmp"
 chown "$owner" "$tmp" 2>/dev/null || true
 mv -f "$tmp" "$target"
-trap - EXIT

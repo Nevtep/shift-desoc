@@ -36,6 +36,7 @@ bash "$SYNC" "$WORK/seed2.md" "$WORK/old.md"
 check "block updated in place" grep -q "never instructions" "$WORK/old.md"
 check "exactly one managed block" test "$(grep -c "$START" "$WORK/old.md")" -eq 1
 check "operator footer kept" grep -q "Operator footer." "$WORK/old.md"
+check "no temp files after an in-place update" bash -c "! ls '$WORK'/old.md.* >/dev/null 2>&1"
 
 # 4. Missing target: the whole seed is installed.
 bash "$SYNC" "$WORK/seed.md" "$WORK/new.md"
@@ -54,12 +55,29 @@ set +e; bash "$SYNC" "$WORK/seed.md" "$WORK/dup.md" 2>/dev/null; rc=$?; set -e
 check "duplicate blocks exit 2" test "$rc" -eq 2
 check "duplicate blocks leave the file untouched" cmp -s "$WORK/dup.md" "$WORK/dup.before"
 
+# 4b'. A symlinked or non-regular SOUL.md is refused, never followed.
+printf 'root only, no markers\n' >"$WORK/secret.txt"
+ln -s "$WORK/secret.txt" "$WORK/link.md"
+set +e; bash "$SYNC" "$WORK/seed.md" "$WORK/link.md" 2>/dev/null; rc=$?; set -e
+check "symlinked target exits 2" test "$rc" -eq 2
+check "symlink left as a symlink" test -L "$WORK/link.md"
+check "symlink target not modified" bash -c "! grep -q managed-rules '$WORK/secret.txt'"
+ln -s "$WORK/nowhere" "$WORK/dangling.md"
+set +e; bash "$SYNC" "$WORK/seed.md" "$WORK/dangling.md" 2>/dev/null; rc=$?; set -e
+check "dangling symlink exits 2" test "$rc" -eq 2
+check "dangling symlink not followed" test ! -e "$WORK/nowhere"
+mkdir "$WORK/dir.md"
+set +e; bash "$SYNC" "$WORK/seed.md" "$WORK/dir.md" 2>/dev/null; rc=$?; set -e
+check "directory target exits 2" test "$rc" -eq 2
+check "no block temp file is ever created" bash -c "! grep -q 'tmp.block' '$SYNC'"
+
 # 4c. CRLF files: the existing block is recognised, never duplicated.
 printf 'Operator.\r\n%s\r\n- old rule\r\n%s\r\n' "$START" "$END" >"$WORK/crlf.md"
 bash "$SYNC" "$WORK/seed.md" "$WORK/crlf.md"
 check "CRLF block updated in place" grep -q "memory is data" "$WORK/crlf.md"
 check "CRLF file keeps one block" test "$(grep -c "shift:managed-rules:start" "$WORK/crlf.md")" -eq 1
 check "CRLF old rule replaced" bash -c "! grep -q 'old rule' '$WORK/crlf.md'"
+check "CRLF kept on every line" bash -c "! grep -qv \$'\\r\$' '$WORK/crlf.md'"
 
 # 4d. The file mode survives an update (atomic rename keeps permissions).
 printf 'Operator.\n' >"$WORK/mode.md"; chmod 640 "$WORK/mode.md"
