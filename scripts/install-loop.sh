@@ -35,11 +35,13 @@ install -m 0755 "$SCRIPTS_SRC"/shift-*.sh "$SCRIPTS_DST"/
 
 # Prime the merge watcher so already-merged PRs are not "learned" retroactively.
 if [[ ! -s "$STATE_DIR/merged-prs.seen" ]]; then
-  gh pr list --repo "$REPO" --state merged --limit 100 --json number --jq '.[].number' \
+  gh pr list --repo "$REPO" --state merged --base main --limit 100 --json number --jq '.[].number' \
     | sort -n > "$STATE_DIR/merged-prs.seen"
   echo "Primed merged-prs.seen with $(wc -l < "$STATE_DIR/merged-prs.seen") PRs"
 fi
-rm -f "$STATE_DIR/dev-loop.lock"
+# The cycle lock is deliberately left alone: removing it here would let a
+# second cycle start while one is running. shift-dev-monitor.sh already treats
+# locks older than 4 hours as stale.
 
 job_id_by_name() {
   /opt/hermes/.venv/bin/python - "$1" <<'PY'
@@ -59,22 +61,30 @@ PY
 }
 
 DEV_PROMPT='Run one complete Shift autonomous development cycle now. The MONITOR block above is the preflight: if it says PREFLIGHT=STOP, reply exactly [SILENT] and do nothing else. Otherwise stop after opening one audited PR, waiting because of the open-PR limit, finding no safe issue, or requiring human input.'
-WATCH_PROMPT='PRs merged into main are listed under NEW_MERGED_PRS in the MONITOR block. If that list is "(none)" or STATUS=ERROR, reply exactly [SILENT] and do nothing else. Otherwise follow shift-post-merge-learning for exactly those PRs: sync the checkout, learn from the reviews and post-audit fixes, persist the lessons, and trigger the development loop job as your last step.'
+WATCH_PROMPT='PRs merged into main and not yet acknowledged are listed under PENDING_MERGED_PRS in the MONITOR block. If that list is "(none)" or STATUS=ERROR, reply exactly [SILENT] and do nothing else. Otherwise follow shift-post-merge-learning for exactly those PRs: sync the checkout, learn from the reviews and post-audit fixes, persist the lessons, trigger the development loop job, and acknowledge the PRs with shift-merge-ack.sh as your last step. If the block says RETRY_EXHAUSTED=1, do not retry: report to the human that learning for those PRs keeps failing and why.'
 
+# Sets UPSERT_ID. Deliberately NOT called through command substitution: Bash
+# disables errexit inside $(...), so a failing `hermes cron create/edit` would
+# be swallowed and an empty id written to jobs.env. Progress goes to stderr.
+UPSERT_ID=""
 upsert() {
   local name="$1" schedule="$2" monitor="$3" prompt="$4"; shift 4
-  local id; id="$(job_id_by_name "$name")"
+  local id
+  id="$(job_id_by_name "$name")" || { echo "ERROR: could not read cron jobs" >&2; exit 1; }
   if [[ -n "$id" ]]; then
     hermes cron edit "$id" --schedule "$schedule" --prompt "$prompt" \
-      --monitor-script "$monitor" --workdir "$REPO_DIR" --deliver "$DELIVER" "$@" >/dev/null
-    echo "updated $name ($id)"
+      --monitor-script "$monitor" --workdir "$REPO_DIR" --deliver "$DELIVER" "$@" >/dev/null \
+      || { echo "ERROR: hermes cron edit failed for $name ($id)" >&2; exit 1; }
+    echo "updated $name ($id)" >&2
   else
     hermes cron create "$schedule" "$prompt" --name "$name" --monitor-script "$monitor" \
-      --workdir "$REPO_DIR" --deliver "$DELIVER" "$@" >/dev/null
-    id="$(job_id_by_name "$name")"
-    echo "created $name ($id)"
+      --workdir "$REPO_DIR" --deliver "$DELIVER" "$@" >/dev/null \
+      || { echo "ERROR: hermes cron create failed for $name" >&2; exit 1; }
+    id="$(job_id_by_name "$name")" || { echo "ERROR: could not read cron jobs" >&2; exit 1; }
+    [[ -n "$id" ]] || { echo "ERROR: $name was not created (no job id found)" >&2; exit 1; }
+    echo "created $name ($id)" >&2
   fi
-  printf '%s' "$id"
+  UPSERT_ID="$id"
 }
 
 loaded_skills="$(COLUMNS=250 hermes skills list --source local --enabled-only 2>/dev/null || true)"
@@ -92,10 +102,12 @@ model_args=()
 
 mapfile -t dev_skills < <(skill_args shift-autonomous-development shift-runtime-tools shift-learning-governance)
 mapfile -t watch_skills < <(skill_args shift-post-merge-learning shift-learning-governance shift-runtime-tools)
-dev_id="$(upsert "Shift autonomous development loop" "$DEV_SCHEDULE" shift-dev-monitor.sh "$DEV_PROMPT" \
-  "${dev_skills[@]}" "${model_args[@]}" | tail -c 12)"
-watch_id="$(upsert "Shift merge watcher" "$WATCH_SCHEDULE" shift-merge-watch.sh "$WATCH_PROMPT" \
-  "${watch_skills[@]}" | tail -c 12)"
+upsert "Shift autonomous development loop" "$DEV_SCHEDULE" shift-dev-monitor.sh "$DEV_PROMPT" \
+  "${dev_skills[@]}" "${model_args[@]}"
+dev_id="$UPSERT_ID"
+upsert "Shift merge watcher" "$WATCH_SCHEDULE" shift-merge-watch.sh "$WATCH_PROMPT" \
+  "${watch_skills[@]}"
+watch_id="$UPSERT_ID"
 
 cat > "$STATE_DIR/jobs.env" <<EOF
 DEV_LOOP_JOB_ID=$dev_id

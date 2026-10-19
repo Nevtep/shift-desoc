@@ -12,8 +12,14 @@ metadata:
 # Post-merge learning
 
 Triggered by the "Shift merge watcher" cron job. Its monitor output lists the
-PRs merged since the last hand-over under `NEW_MERGED_PRS:`. Work only on
-those. If the list is `(none)`, reply exactly `[SILENT]` and do nothing else.
+merged PRs not yet acknowledged under `PENDING_MERGED_PRS:`. Work only on
+those. If the list is `(none)` or `STATUS=ERROR`, reply exactly `[SILENT]` and
+do nothing else.
+
+A PR stays pending until you acknowledge it (step 4), so an interrupted run is
+retried automatically (`RETRY_ROUND=<n>` advances hourly). If the output says
+`RETRY_EXHAUSTED=1`, do not start another attempt: report that learning for
+those PRs keeps failing, with the last error you can find, and stop.
 
 ## 1. Sync the runtime
 
@@ -80,6 +86,17 @@ nohup hermes cron run --accept-hooks "$DEV_LOOP_JOB_ID" >/opt/data/shift/dev-loo
 
 The loop has its own preflight (open-PR limit, auth, lock), so triggering it
 is always safe; it will stop by itself when it must wait.
+
+## 4. Acknowledge
+
+Only after steps 1-3 succeeded for a PR (lessons persisted, dev loop
+triggered), acknowledge it so the watcher stops handing it over:
+
+```bash
+/opt/data/scripts/shift-merge-ack.sh <pr-number> [<pr-number>...]
+```
+
+If any step failed, do not acknowledge that PR: it will be retried.
 
 ## Report
 
