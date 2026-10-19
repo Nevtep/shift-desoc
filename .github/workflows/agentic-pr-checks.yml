@@ -110,43 +110,46 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Compile Hardhat artifacts for web tests
+      - name: Compile Hardhat artifacts
         run: pnpm hh:compile
 
-      - name: Verify web-required Hardhat artifacts
-        run: |
-          test -s artifacts/contracts/modules/factories/GovernanceLayerFactory.sol/GovernanceLayerFactory.json
-          test -s artifacts/contracts/modules/factories/VerificationLayerFactory.sol/VerificationLayerFactory.json
-          test -s artifacts/contracts/modules/factories/EconomicLayerFactory.sol/EconomicLayerFactory.json
-          test -s artifacts/contracts/modules/factories/CommerceLayerFactory.sol/CommerceLayerFactory.json
-          test -s artifacts/contracts/modules/factories/CoordinationLayerFactory.sol/CoordinationLayerFactory.json
-          test -s artifacts/contracts/tokens/MembershipTokenERC20Votes.sol/MembershipTokenERC20Votes.json
-          test -s artifacts/contracts/core/ShiftTimelockController.sol/ShiftTimelockController.json
-          test -s artifacts/contracts/core/ShiftGovernor.sol/ShiftGovernor.json
-          test -s artifacts/contracts/core/CountingMultiChoice.sol/CountingMultiChoice.json
-          test -s artifacts/contracts/tokens/VerifierPowerToken1155.sol/VerifierPowerToken1155.json
-          test -s artifacts/contracts/modules/VerifierElection.sol/VerifierElection.json
-          test -s artifacts/contracts/modules/VerifierManager.sol/VerifierManager.json
-          test -s artifacts/contracts/modules/ValuableActionRegistry.sol/ValuableActionRegistry.json
-          test -s artifacts/contracts/modules/ValuableActionSBT.sol/ValuableActionSBT.json
-          test -s artifacts/contracts/modules/Engagements.sol/Engagements.json
-          test -s artifacts/contracts/modules/PositionManager.sol/PositionManager.json
-          test -s artifacts/contracts/modules/CredentialManager.sol/CredentialManager.json
-          test -s artifacts/contracts/modules/CohortRegistry.sol/CohortRegistry.json
-          test -s artifacts/contracts/modules/InvestmentCohortManager.sol/InvestmentCohortManager.json
-          test -s artifacts/contracts/modules/RevenueRouter.sol/RevenueRouter.json
-          test -s artifacts/contracts/tokens/CommunityToken.sol/CommunityToken.json
-          test -s artifacts/contracts/modules/TreasuryAdapter.sol/TreasuryAdapter.json
-          test -s artifacts/contracts/modules/CommerceDisputes.sol/CommerceDisputes.json
-          test -s artifacts/contracts/modules/Marketplace.sol/Marketplace.json
-          test -s artifacts/contracts/modules/HousingManager.sol/HousingManager.json
-          test -s artifacts/contracts/modules/ProjectFactory.sol/ProjectFactory.json
-          test -s artifacts/contracts/modules/RequestHub.sol/RequestHub.json
-          test -s artifacts/contracts/modules/DraftsManager.sol/DraftsManager.json
-          test -s artifacts/contracts/core/ShiftAccessManager.sol/ShiftAccessManager.json
+      - name: Verify bundled deploy-wizard contracts match Hardhat output
+        run: node scripts/copy-web-deploy-artifacts.js --check
 
       - name: Run web unit tests
         run: pnpm --filter @shift/web test:unit
+
+  web-build:
+    name: Web build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        # actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Setup pnpm
+        # pnpm/action-setup@v4
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 9.15.9
+          run_install: false
+
+      - name: Setup Node
+        # actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Deliberately no hh:compile: Vercel and Railway build from a clean clone,
+      # so this job must too.
+      - name: Build Manager
+        run: pnpm --filter @shift/web build
 
   indexer-unit:
     name: Indexer unit tests
