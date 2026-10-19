@@ -15,16 +15,9 @@ source "$(dirname "$0")/common.sh"
 OPERATORS_PATH="${OPERATORS_PATH:-/shift/hermes-operators}"
 INSTANCE_ID="$(stack_output InstanceId)"
 
-run_remote() {
-  local id
-  id="$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript \
-    --comment "shift-hermes operator" \
-    --parameters "$(jq -n --arg c "$1" '{commands:[$c]}')" \
-    --query Command.CommandId --output text)"
-  aws ssm wait command-executed --command-id "$id" --instance-id "$INSTANCE_ID" || true
-  aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" \
-    --query '[Status,StandardOutputContent,StandardErrorContent]' --output text
-}
+# Fails (non-zero, with the remote status and stderr) unless the remote
+# script finished with status Success; see ssm_run in common.sh.
+run_remote() { ssm_run "shift-hermes operator" "$1"; }
 
 valid_name() { [[ "$1" =~ ^[a-z][a-z0-9_-]{1,30}$ && "$1" != ec2-user && "$1" != root ]]; }
 
@@ -58,7 +51,20 @@ case "${1:-}" in
     name="${2:?usage: add-operator.sh --remove <name>}"
     valid_name "$name" || { echo "invalid name: $name" >&2; exit 1; }
     run_remote "set -e; rm -f /etc/sudoers.d/90-shift-operator-$name; if id -u $name >/dev/null 2>&1; then usermod -L -s /sbin/nologin $name; gpasswd -d $name docker || true; : > /home/$name/.ssh/authorized_keys; fi; echo removed $name"
-    aws ssm delete-parameter --name "$OPERATORS_PATH/$name" 2>/dev/null || true
+    # Only reached when the remote lock succeeded (set -e). A missing parameter
+    # is fine; any other failure (AccessDenied, expired credentials, network)
+    # must not leave the key behind silently, because `--reapply` would restore
+    # the removed operator's access from it.
+    if ! delete_out="$(aws ssm delete-parameter --name "$OPERATORS_PATH/$name" 2>&1)"; then
+      if grep -q 'ParameterNotFound' <<<"$delete_out"; then
+        echo "no stored key at $OPERATORS_PATH/$name (nothing to forget)"
+      else
+        echo "ERROR: account locked, but the stored key at $OPERATORS_PATH/$name could NOT be deleted:" >&2
+        echo "$delete_out" >&2
+        echo "Fix the error and re-run: add-operator.sh --remove $name" >&2
+        exit 1
+      fi
+    fi
     ;;
   ""|-h|--help)
     sed -n '2,15p' "$0"; exit 1 ;;

@@ -24,28 +24,26 @@ fi
 PRIVKEY="${PUBKEY%.pub}"
 [[ -f "$PRIVKEY" ]] || { echo "Private key $PRIVKEY not found next to $PUBKEY" >&2; exit 1; }
 
-INSTANCE_ID="$(stack_output InstanceId)"
 key_line="$(head -n1 "$PUBKEY")"
-[[ "$key_line" =~ ^(ssh-|ecdsa-) ]] || { echo "$PUBKEY does not look like an SSH public key" >&2; exit 1; }
+[[ "$key_line" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-[a-z0-9-]+|sk-[a-z0-9@.-]+)\ [A-Za-z0-9+/=]+ ]] \
+  || { echo "$PUBKEY does not look like an SSH public key" >&2; exit 1; }
+INSTANCE_ID="$(stack_output InstanceId)"
 
 if [[ "$SSH_USER" == ec2-user ]]; then
-# Idempotently append the key to ec2-user's authorized_keys.
-remote_cmd="$(cat <<EOF
+# Idempotently append the key to ec2-user's authorized_keys. The key (whose
+# comment is free text) travels base64-encoded so it is never interpolated
+# into the remote shell script. Fails if the remote step does not succeed.
+key_b64="$(printf '%s' "$key_line" | base64 | tr -d '\n')"
+ssm_run "shift-hermes ssh key" "$(cat <<EOF
 set -euo pipefail
 install -d -m 700 -o ec2-user -g ec2-user /home/ec2-user/.ssh
 f=/home/ec2-user/.ssh/authorized_keys
 touch "\$f"; chown ec2-user:ec2-user "\$f"; chmod 600 "\$f"
-grep -qxF '$key_line' "\$f" || echo '$key_line' >> "\$f"
+k="\$(echo '$key_b64' | base64 -d)"
+grep -qxF -- "\$k" "\$f" || printf '%s\n' "\$k" >> "\$f"
 echo authorized
 EOF
 )"
-id="$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript \
-  --comment "shift-hermes ssh key" \
-  --parameters "$(jq -n --arg c "$remote_cmd" '{commands:[$c]}')" \
-  --query Command.CommandId --output text)"
-aws ssm wait command-executed --command-id "$id" --instance-id "$INSTANCE_ID"
-aws ssm get-command-invocation --command-id "$id" --instance-id "$INSTANCE_ID" \
-  --query StandardOutputContent --output text
 fi
 
 # ~/.ssh/config entry (replaced if present).
