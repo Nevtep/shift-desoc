@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  '@ponder/core@0.7.17':
+    hash: 3h3i6ag3w2x6twauuoquy4cjju
+    path: patches/@ponder__core@0.7.17.patch
   follow-redirects@1.15.11:
     hash: shxjl7ok57hln5xlmnauscskmy
     path: patches/follow-redirects@1.15.11.patch
@@ -58,7 +61,7 @@ importers:
     dependencies:
       '@ponder/core':
         specifier: ^0.7.17
-        version: 0.7.17(@opentelemetry/api@1.9.0)(@types/node@22.19.1)(@types/react@19.2.4)(bufferutil@4.0.9)(hono@4.11.1)(terser@5.44.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.43.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)
+        version: 0.7.17(patch_hash=3h3i6ag3w2x6twauuoquy4cjju)(@opentelemetry/api@1.9.0)(@types/node@22.19.1)(@types/react@19.2.4)(bufferutil@4.0.9)(hono@4.11.1)(terser@5.44.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.43.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)
       hono:
         specifier: ^4.5.0
         version: 4.11.1
@@ -13327,7 +13330,7 @@ snapshots:
       '@pnpm/network.ca-file': 1.0.2
       config-chain: 1.1.13
 
-  '@ponder/core@0.7.17(@opentelemetry/api@1.9.0)(@types/node@22.19.1)(@types/react@19.2.4)(bufferutil@4.0.9)(hono@4.11.1)(terser@5.44.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.43.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)':
+  '@ponder/core@0.7.17(patch_hash=3h3i6ag3w2x6twauuoquy4cjju)(@opentelemetry/api@1.9.0)(@types/node@22.19.1)(@types/react@19.2.4)(bufferutil@4.0.9)(hono@4.11.1)(terser@5.44.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.43.1(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))(zod@3.25.76)':
     dependencies:
       '@babel/code-frame': 7.27.1
       '@commander-js/extra-typings': 12.1.0(commander@12.1.0)

@@ -7,6 +7,7 @@ dotenv.config({ path: path.join(__dirname, "../../.env") });
 import { createConfig } from "@ponder/core";
 import { http, type Abi, type AbiEvent } from "viem";
 import { validateStartupEnv } from "./src/discovery/startup-env";
+import { parseRpcTuning, withGetLogsRangeLimit } from "./src/rpc/get-logs-range-limit";
 
 const network = (process.env.PONDER_NETWORK ?? "base_sepolia") as "base" | "base_sepolia";
 const validated = validateStartupEnv({
@@ -58,15 +59,29 @@ if (!hasExpectedRequestHubEvent) {
 
 console.log(`Using CommunityRegistry ${communityRegistryAddress} at start block ${startBlock}`);
 
+const rpcTuning = parseRpcTuning(process.env);
+// Consumed by the @ponder/core historical-sync patch, which runs in this same process.
+process.env.PONDER_HISTORICAL_MIN_BLOCK_RANGE = String(rpcTuning.historicalMinBlockRange);
+console.log(
+  `RPC tuning: eth_getLogs max ${rpcTuning.maxBlockRange} blocks, ${rpcTuning.maxRequestsPerSecond} req/s, polling ${rpcTuning.pollingInterval}ms, historical step floor ${rpcTuning.historicalMinBlockRange} blocks`
+);
+
 export default createConfig({
   networks: {
     base: {
       chainId: 8453,
-      transport: http(process.env.RPC_BASE ?? "https://mainnet.base.org"),
+      transport: withGetLogsRangeLimit(http(process.env.RPC_BASE ?? "https://mainnet.base.org"), rpcTuning.maxBlockRange),
+      maxRequestsPerSecond: rpcTuning.maxRequestsPerSecond,
+      pollingInterval: rpcTuning.pollingInterval,
     },
     base_sepolia: {
       chainId: 84532,
-      transport: http(process.env.RPC_BASE_SEPOLIA ?? "https://sepolia.base.org"),
+      transport: withGetLogsRangeLimit(
+        http(process.env.RPC_BASE_SEPOLIA ?? "https://sepolia.base.org"),
+        rpcTuning.maxBlockRange
+      ),
+      maxRequestsPerSecond: rpcTuning.maxRequestsPerSecond,
+      pollingInterval: rpcTuning.pollingInterval,
     },
   },
   database: {
