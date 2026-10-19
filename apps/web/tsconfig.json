@@ -23,6 +23,7 @@
     ],
     "allowJs": true,
     "noEmit": true,
+    "declaration": false,
     "incremental": true,
     "isolatedModules": true,
     "plugins": [
