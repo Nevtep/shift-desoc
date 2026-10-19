@@ -25,6 +25,7 @@ function boundRole(m: CommunityModules, args: readonly unknown[]): bigint {
 
 const state = vi.hoisted(() => ({
   modules: null as unknown,
+  modulesLoading: false,
   readContract: null as unknown as (a: any) => Promise<unknown>,
   indexerState: "synced" as string
 }));
@@ -34,7 +35,7 @@ vi.mock("wagmi", () => ({
   useChainId: () => 84532
 }));
 vi.mock("../../../hooks/useCommunityModules", () => ({
-  useCommunityModules: () => ({ modules: state.modules, isLoading: false })
+  useCommunityModules: () => ({ modules: state.modules, isLoading: state.modulesLoading })
 }));
 const client = vi.hoisted(() => ({
   raw: {},
@@ -51,6 +52,29 @@ import { useCommunityOverview } from "../../../hooks/useCommunityOverview";
 describe("useCommunityOverview access reads", () => {
   beforeEach(() => {
     state.indexerState = "synced";
+    state.modulesLoading = false;
+  });
+
+  it("is checking, never verified, while a new community's modules are still loading", async () => {
+    const m = buildModules(1, 2);
+    state.modules = m;
+    state.readContract = async (a: any) => {
+      if (a.functionName === "ADMIN_ROLE") return 0n;
+      if (a.functionName === "hasRole") return [a.args[1] === m.timelock, 0];
+      if (a.functionName === "getTargetFunctionRole") return boundRole(m, a.args);
+      throw new Error("params unavailable");
+    };
+    const { result, rerender } = renderHook(({ id }) => useCommunityOverview(id), { initialProps: { id: 1 } });
+    await waitFor(() => expect(result.current.accessLoading).toBe(false));
+    expect(result.current.accessInspection.overall).toBe("pass");
+
+    // Switch community: the modules lookup is pending and the previous (identical) modules
+    // object is still what the module hook would hand out if it did not drop it. Reads taken
+    // for community 1 must not be reused for community 2.
+    state.modulesLoading = true;
+    rerender({ id: 2 });
+    expect(result.current.accessLoading).toBe(true);
+    expect(result.current.accessInspection.overall).not.toBe("pass");
   });
 
   it("never exposes the previous modules' reads while new modules are being read", async () => {

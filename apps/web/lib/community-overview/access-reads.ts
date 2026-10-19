@@ -9,7 +9,7 @@ import { ACCESS_WIRING_CHECKS, moduleKeyForTarget, type AccessReadResults } from
 
 const ABI = accessManagerArtifact.abi as Abi;
 
-type ReadClient = Pick<CachedPublicClient, "readContract">;
+type ReadClient = Pick<CachedPublicClient, "readContract" | "getBytecode">;
 
 async function safeBigint(read: () => Promise<unknown>): Promise<bigint | null> {
   try {
@@ -21,8 +21,24 @@ async function safeBigint(read: () => Promise<unknown>): Promise<bigint | null> 
 }
 
 /**
+ * True only with positive evidence that `address` holds contract code. An EOA, an
+ * empty account, a failed lookup or malformed data all count as "no code": the
+ * AccessManager returns its default ADMIN role for unset selectors of ANY address,
+ * so a nonzero module address without code would otherwise pass every check.
+ */
+async function hasContractCode(client: ReadClient, address: Address): Promise<boolean> {
+  try {
+    const code = await client.getBytecode({ address });
+    return typeof code === "string" && code.length > 2 && code !== "0x";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Chain-only reads mirroring verify-access-wiring.mjs. Any failed or malformed read
- * becomes null so callers fail closed. Independent of the indexer.
+ * becomes null so callers fail closed. A target only counts when it also has
+ * contract code from the same module snapshot. Independent of the indexer.
  */
 export async function readAccessResults(
   client: ReadClient,
@@ -38,10 +54,20 @@ export async function readAccessResults(
   );
 
   const functionRoles: AccessReadResults["functionRoles"] = {};
+  const codeByAddress = new Map<string, Promise<boolean>>();
+  const targetHasCode = (address: Address) => {
+    const key = address.toLowerCase();
+    let pending = codeByAddress.get(key);
+    if (!pending) {
+      pending = hasContractCode(client, address);
+      codeByAddress.set(key, pending);
+    }
+    return pending;
+  };
   await Promise.all(
     ACCESS_WIRING_CHECKS.map(async (check, index) => {
       const target = modules[moduleKeyForTarget(check.targetKey)];
-      if (!target || target.toLowerCase() === ZERO_ADDRESS) {
+      if (!target || target.toLowerCase() === ZERO_ADDRESS || !(await targetHasCode(target))) {
         functionRoles[index] = null;
         return;
       }

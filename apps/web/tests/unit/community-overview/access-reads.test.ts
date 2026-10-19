@@ -15,7 +15,15 @@ function modules(): CommunityModules {
   return m as CommunityModules;
 }
 
-function healthyClient(overrides: { fail?: (fn: string, args: readonly unknown[]) => boolean } = {}) {
+function healthyClient(
+  overrides: {
+    fail?: (fn: string, args: readonly unknown[]) => boolean;
+    /** Addresses with no contract code (getBytecode returns "0x", like an EOA). */
+    noCode?: readonly string[];
+    /** Make the bytecode lookup itself fail (RPC error) for these addresses. */
+    codeLookupFails?: readonly string[];
+  } = {}
+) {
   const bySelector = new Map<string, bigint>();
   const m = modules();
   for (const c of ACCESS_WIRING_CHECKS) {
@@ -25,6 +33,10 @@ function healthyClient(overrides: { fail?: (fn: string, args: readonly unknown[]
   const calls: string[] = [];
   return {
     calls,
+    getBytecode: async ({ address }: { address: string }) => {
+      if (overrides.codeLookupFails?.includes(address)) throw new Error("rpc down");
+      return overrides.noCode?.includes(address) ? "0x" : "0x6080604052";
+    },
     readContract: async ({ functionName, args = [] }: { functionName: string; args?: readonly unknown[] }) => {
       calls.push(functionName);
       if (overrides.fail?.(functionName, args)) throw new Error("rpc down");
@@ -64,6 +76,26 @@ describe("readAccessResults", () => {
     const reads = await readAccessResults(client as any, m);
     const idx = ACCESS_WIRING_CHECKS.findIndex((c) => c.targetKey === "marketplace");
     expect(reads?.functionRoles[idx]).toBeNull();
+  });
+
+  it("does not pass a nonzero module address that has no contract code", async () => {
+    // CommunityRegistry accepts any nonzero address as a module, and the AccessManager answers its
+    // default ADMIN role for unset selectors of ANY address, so reads alone would "verify" an EOA.
+    const m = modules();
+    const eoa = m.marketplace as string;
+    const reads = await readAccessResults(healthyClient({ noCode: [eoa] }) as any, m);
+    const marketplaceRows = ACCESS_WIRING_CHECKS.map((c, i) => [c, i] as const).filter(([c]) => c.targetKey === "marketplace");
+    expect(marketplaceRows.length).toBeGreaterThan(0);
+    for (const [, index] of marketplaceRows) expect(reads?.functionRoles[index]).toBeNull();
+    // Everything else is healthy and the Timelock holds ADMIN, yet the verdict must not pass.
+    expect(evaluateAccessInspection(m, reads).overall).toBe("unavailable");
+  });
+
+  it("treats a failed bytecode lookup as no evidence of code", async () => {
+    const m = modules();
+    const target = m.housingManager as string;
+    const reads = await readAccessResults(healthyClient({ codeLookupFails: [target] }) as any, m);
+    expect(evaluateAccessInspection(m, reads).overall).toBe("unavailable");
   });
 
   it("returns null without access manager or timelock and makes no calls", async () => {
