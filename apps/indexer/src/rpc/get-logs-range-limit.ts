@@ -4,37 +4,47 @@ export type RpcTuning = {
   maxBlockRange: number;
   maxRequestsPerSecond: number;
   pollingInterval: number;
+  historicalMinBlockRange: number;
 };
 
 type TuningEnv = Record<string, string | undefined> & {
   PONDER_RPC_MAX_BLOCK_RANGE?: string;
   PONDER_MAX_REQUESTS_PER_SECOND?: string;
   PONDER_POLLING_INTERVAL_MS?: string;
+  PONDER_HISTORICAL_MIN_BLOCK_RANGE?: string;
 };
 
-// Defaults sized for Infura Base Sepolia, which caps eth_getLogs at 10,000 blocks.
-// Do not lower maxRequestsPerSecond to "protect" the RPC: Ponder 0.7 sizes each historical
-// step to take ~1s and issues ~one eth_getLogs per source per step (~15 for Shift), so below
-// roughly 20-50 req/s every step runs long, the step shrinks to its 25-block floor, and the
-// catchup never finishes. Throughput must come from the RPC plan instead.
-const DEFAULT_TUNING: RpcTuning = {
+// Defaults sized for Infura Base Sepolia, which caps eth_getLogs at 10,000 blocks. Size
+// maxRequestsPerSecond to the provider plan; historical speed comes from the step floor below.
+const DEFAULT_TUNING: Omit<RpcTuning, "historicalMinBlockRange"> = {
   maxBlockRange: 10_000,
   maxRequestsPerSecond: 50,
   pollingInterval: 4_000,
 };
 
-function parsePositiveInt(raw: string | undefined, name: string, fallback: number, min = 1): number {
+function parsePositiveInt(
+  raw: string | undefined,
+  name: string,
+  fallback: number,
+  min = 1,
+  max = Number.MAX_SAFE_INTEGER
+): number {
   if (raw === undefined || raw.trim() === "") return fallback;
   const value = Number(raw);
-  if (!Number.isInteger(value) || value < min) {
-    throw new Error(`Invalid ${name}: expected an integer >= ${min}, got "${raw}"`);
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`Invalid ${name}: expected an integer between ${min} and ${max}, got "${raw}"`);
   }
   return value;
 }
 
 export function parseRpcTuning(env: TuningEnv): RpcTuning {
+  const maxBlockRange = parsePositiveInt(
+    env.PONDER_RPC_MAX_BLOCK_RANGE,
+    "PONDER_RPC_MAX_BLOCK_RANGE",
+    DEFAULT_TUNING.maxBlockRange
+  );
   return {
-    maxBlockRange: parsePositiveInt(env.PONDER_RPC_MAX_BLOCK_RANGE, "PONDER_RPC_MAX_BLOCK_RANGE", DEFAULT_TUNING.maxBlockRange),
+    maxBlockRange,
     maxRequestsPerSecond: parsePositiveInt(
       env.PONDER_MAX_REQUESTS_PER_SECOND,
       "PONDER_MAX_REQUESTS_PER_SECOND",
@@ -46,6 +56,18 @@ export function parseRpcTuning(env: TuningEnv): RpcTuning {
       "PONDER_POLLING_INTERVAL_MS",
       DEFAULT_TUNING.pollingInterval,
       100
+    ),
+    // Read by the @ponder/core patch (patches/@ponder__core@0.7.17.patch). Ponder sizes each
+    // historical step to take ~1s with a 25-block floor; against a ~1s-latency RPC every step
+    // takes seconds, so the step pins at 25 blocks and a months-long catchup takes hundreds of
+    // hours. Defaulting the floor to one getLogs chunk keeps steps at ~maxBlockRange blocks.
+    // Ponder caps steps at 100,000 blocks.
+    historicalMinBlockRange: parsePositiveInt(
+      env.PONDER_HISTORICAL_MIN_BLOCK_RANGE,
+      "PONDER_HISTORICAL_MIN_BLOCK_RANGE",
+      maxBlockRange - 1,
+      1,
+      100_000
     ),
   };
 }

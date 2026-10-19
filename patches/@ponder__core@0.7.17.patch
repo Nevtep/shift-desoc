@@ -1,0 +1,26 @@
+diff --git a/dist/bin/ponder.js b/dist/bin/ponder.js
+index d6e36bb62caed3671c9ef48a3b38bec47b3d0663..f0d5f89a031ccac7d91d743efffc1fad3d181a4c 100755
+--- a/dist/bin/ponder.js
++++ b/dist/bin/ponder.js
+@@ -9789,7 +9789,11 @@ async function* localHistoricalSyncGenerator({
+       )} cached`
+     });
+   }
+-  let estimateRange = 25;
++  // Shift patch: Ponder sizes each historical step to take ~1s with a 25-block floor. Against a
++  // ~1s-latency RPC (Infura) every step takes several seconds, so the step pins at 25 blocks and a
++  // months-long catchup takes hundreds of hours. PONDER_HISTORICAL_MIN_BLOCK_RANGE raises the floor.
++  const historicalMinBlockRange = Number.parseInt(process.env.PONDER_HISTORICAL_MIN_BLOCK_RANGE ?? "", 10) > 0 ? Math.min(Number.parseInt(process.env.PONDER_HISTORICAL_MIN_BLOCK_RANGE, 10), 1e5) : 25;
++  let estimateRange = historicalMinBlockRange;
+   let fromBlock = hexToNumber8(syncProgress.start.number);
+   if (syncProgress.current !== void 0 && (syncProgress.cached === void 0 || hexToNumber8(syncProgress.current.number) > hexToNumber8(syncProgress.cached.number))) {
+     fromBlock = hexToNumber8(syncProgress.current.number) + 1;
+@@ -9838,7 +9842,7 @@ async function* localHistoricalSyncGenerator({
+       );
+       estimateRange = Math.min(
+         Math.max(
+-          25,
++          historicalMinBlockRange,
+           Math.round(1e3 * (interval[1] - interval[0]) / duration)
+         ),
+         estimateRange * 2,

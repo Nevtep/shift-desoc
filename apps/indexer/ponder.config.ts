@@ -60,8 +60,10 @@ if (!hasExpectedRequestHubEvent) {
 console.log(`Using CommunityRegistry ${communityRegistryAddress} at start block ${startBlock}`);
 
 const rpcTuning = parseRpcTuning(process.env);
+// Consumed by the @ponder/core historical-sync patch, which runs in this same process.
+process.env.PONDER_HISTORICAL_MIN_BLOCK_RANGE = String(rpcTuning.historicalMinBlockRange);
 console.log(
-  `RPC tuning: eth_getLogs max ${rpcTuning.maxBlockRange} blocks, ${rpcTuning.maxRequestsPerSecond} req/s, polling ${rpcTuning.pollingInterval}ms`
+  `RPC tuning: eth_getLogs max ${rpcTuning.maxBlockRange} blocks, ${rpcTuning.maxRequestsPerSecond} req/s, polling ${rpcTuning.pollingInterval}ms, historical step floor ${rpcTuning.historicalMinBlockRange} blocks`
 );
 
 export default createConfig({

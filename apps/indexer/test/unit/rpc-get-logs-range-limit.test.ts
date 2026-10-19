@@ -48,14 +48,22 @@ test("rpc-get-logs-range-limit: forwards other methods and non-hex getLogs untou
 });
 
 test("rpc-get-logs-range-limit: parses tuning env with throughput-safe defaults", () => {
-  expect(parseRpcTuning({})).toEqual({ maxBlockRange: 10_000, maxRequestsPerSecond: 50, pollingInterval: 4_000 });
+  // The historical step floor defaults to one getLogs chunk (span maxBlockRange - 1).
+  expect(parseRpcTuning({})).toEqual({
+    maxBlockRange: 10_000,
+    maxRequestsPerSecond: 50,
+    pollingInterval: 4_000,
+    historicalMinBlockRange: 9_999,
+  });
   expect(
     parseRpcTuning({
       PONDER_RPC_MAX_BLOCK_RANGE: "2000",
       PONDER_MAX_REQUESTS_PER_SECOND: "5",
       PONDER_POLLING_INTERVAL_MS: "8000",
+      PONDER_HISTORICAL_MIN_BLOCK_RANGE: "500",
     })
-  ).toEqual({ maxBlockRange: 2_000, maxRequestsPerSecond: 5, pollingInterval: 8_000 });
+  ).toEqual({ maxBlockRange: 2_000, maxRequestsPerSecond: 5, pollingInterval: 8_000, historicalMinBlockRange: 500 });
+  expect(parseRpcTuning({ PONDER_RPC_MAX_BLOCK_RANGE: "2000" }).historicalMinBlockRange).toBe(1_999);
 });
 
 test("rpc-get-logs-range-limit: fails fast on invalid tuning env", () => {
@@ -64,4 +72,7 @@ test("rpc-get-logs-range-limit: fails fast on invalid tuning env", () => {
     "Invalid PONDER_MAX_REQUESTS_PER_SECOND"
   );
   expect(() => parseRpcTuning({ PONDER_POLLING_INTERVAL_MS: "50" })).toThrow("Invalid PONDER_POLLING_INTERVAL_MS");
+  expect(() => parseRpcTuning({ PONDER_HISTORICAL_MIN_BLOCK_RANGE: "200000" })).toThrow(
+    "Invalid PONDER_HISTORICAL_MIN_BLOCK_RANGE"
+  );
 });
