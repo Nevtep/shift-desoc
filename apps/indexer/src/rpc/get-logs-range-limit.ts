@@ -14,11 +14,12 @@ type TuningEnv = Record<string, string | undefined> & {
   PONDER_HISTORICAL_MIN_BLOCK_RANGE?: string;
 };
 
-// Defaults sized for Infura Base Sepolia, which caps eth_getLogs at 10,000 blocks. Size
-// maxRequestsPerSecond to the provider plan; historical speed comes from the step floor below.
+// Defaults sized for Infura Base Sepolia on the Developer plan: eth_getLogs is capped at
+// 10,000 blocks and costs 255 credits, so 4,000 credits/s allows ~15 requests/s. Historical
+// speed comes from the step floor below, not from the request rate.
 const DEFAULT_TUNING: Omit<RpcTuning, "historicalMinBlockRange"> = {
   maxBlockRange: 10_000,
-  maxRequestsPerSecond: 50,
+  maxRequestsPerSecond: 15,
   pollingInterval: 4_000,
 };
 

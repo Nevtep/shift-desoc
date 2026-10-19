@@ -40,7 +40,7 @@ tier's 3M. Staging runs on Infura Developer.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PONDER_RPC_MAX_BLOCK_RANGE` | `10000` | Max blocks per `eth_getLogs` (Infura's limit). |
-| `PONDER_MAX_REQUESTS_PER_SECOND` | `50` | Ponder's RPC request rate cap. Size it to the provider plan (Infura Developer: 4,000 credits/s ÷ 255 per `eth_getLogs` ≈ 15). |
+| `PONDER_MAX_REQUESTS_PER_SECOND` | `15` | Ponder's RPC request rate cap, sized to the provider plan (Infura Developer: 4,000 credits/s ÷ 255 per `eth_getLogs` ≈ 15). |
 | `PONDER_POLLING_INTERVAL_MS` | `4000` | Realtime head polling interval (Base produces a block every 2s). |
 | `PONDER_HISTORICAL_MIN_BLOCK_RANGE` | `PONDER_RPC_MAX_BLOCK_RANGE - 1` | Floor for Ponder's historical step size, applied by `patches/@ponder__core@0.7.17.patch`. Ponder targets ~1s per step with a 25-block floor; with a ~1s-latency RPC that pins steps at 25 blocks (hundreds of hours for a months-long gap). Measured on Infura Base Sepolia: ~1,400 blocks/s with the floor at 9,999. |
 

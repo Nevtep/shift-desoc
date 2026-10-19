@@ -1,4 +1,8 @@
-import { custom } from "viem";
+import fs from "node:fs";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
+import { custom, hexToBigInt, toHex } from "viem";
 import { expect, test, vi } from "vitest";
 
 import { parseRpcTuning, withGetLogsRangeLimit } from "../../src/rpc/get-logs-range-limit";
@@ -6,6 +10,11 @@ import { parseRpcTuning, withGetLogsRangeLimit } from "../../src/rpc/get-logs-ra
 // Pattern @ponder/utils getLogsRetryHelper matches (JSON.stringify(error)) to re-chunk
 // eth_getLogs into ranges of N blocks without retrying the oversized request.
 const PONDER_MAX_RANGE_PATTERN = /Max range: (\d+)/;
+
+// @ponder/utils is a dependency of @ponder/core, not of this package; resolve it next to the
+// installed (patched) @ponder/core so the tests exercise the exact versions Ponder runs with.
+const ponderCoreDir = fs.realpathSync(path.resolve(__dirname, "../../node_modules/@ponder/core"));
+const ponderUtilsEntry = path.join(ponderCoreDir, "..", "utils", "dist", "index.js");
 
 function makeTransport(maxBlockRange: number) {
   const request = vi.fn(async () => []);
@@ -27,6 +36,42 @@ test("rpc-get-logs-range-limit: rejects an oversized eth_getLogs locally with a 
   expect(JSON.stringify(error)).toMatch(PONDER_MAX_RANGE_PATTERN);
   expect(JSON.stringify(error).match(PONDER_MAX_RANGE_PATTERN)?.[1]).toBe("10000");
   expect(request).not.toHaveBeenCalled();
+});
+
+test("rpc-get-logs-range-limit: Ponder's getLogsRetryHelper re-chunks the rejection into ranges the wrapper forwards", async () => {
+  const { getLogsRetryHelper } = (await import(pathToFileURL(ponderUtilsEntry).href)) as {
+    getLogsRetryHelper: (args: { params: unknown[]; error: unknown }) => {
+      shouldRetry: boolean;
+      isSuggestedRange?: boolean;
+      ranges?: { fromBlock: `0x${string}`; toBlock: `0x${string}` }[];
+    };
+  };
+  const { request, transport } = makeTransport(10_000);
+  const params = [{ address: "0x1", fromBlock: toHex(39_963_602n), toBlock: toHex(40_000_000n) }];
+
+  const error = await transport.request({ method: "eth_getLogs", params }).catch((e: unknown) => e);
+  const retry = getLogsRetryHelper({ params, error });
+
+  expect(retry.shouldRetry).toBe(true);
+  expect(retry.isSuggestedRange).toBe(true);
+  const ranges = retry.ranges ?? [];
+  for (const range of ranges) {
+    await transport.request({ method: "eth_getLogs", params: [{ ...params[0], ...range }] });
+  }
+  // Every chunk reached the network, and together they cover the interval with no gaps.
+  expect(request).toHaveBeenCalledTimes(ranges.length);
+  expect(ranges.length).toBe(4);
+  expect(hexToBigInt(ranges[0].fromBlock)).toBe(39_963_602n);
+  expect(hexToBigInt(ranges[ranges.length - 1].toBlock)).toBe(40_000_000n);
+  for (let i = 1; i < ranges.length; i++) {
+    expect(hexToBigInt(ranges[i].fromBlock)).toBe(hexToBigInt(ranges[i - 1].toBlock) + 1n);
+  }
+});
+
+test("rpc-get-logs-range-limit: the installed @ponder/core carries the historical step floor patch", () => {
+  const ponderBin = fs.readFileSync(path.join(ponderCoreDir, "dist", "bin", "ponder.js"), "utf8");
+  expect(ponderBin).toContain("process.env.PONDER_HISTORICAL_MIN_BLOCK_RANGE");
+  expect(ponderBin).not.toContain("let estimateRange = 25;");
 });
 
 test("rpc-get-logs-range-limit: forwards eth_getLogs within the limit", async () => {
@@ -51,7 +96,7 @@ test("rpc-get-logs-range-limit: parses tuning env with throughput-safe defaults"
   // The historical step floor defaults to one getLogs chunk (span maxBlockRange - 1).
   expect(parseRpcTuning({})).toEqual({
     maxBlockRange: 10_000,
-    maxRequestsPerSecond: 50,
+    maxRequestsPerSecond: 15,
     pollingInterval: 4_000,
     historicalMinBlockRange: 9_999,
   });
