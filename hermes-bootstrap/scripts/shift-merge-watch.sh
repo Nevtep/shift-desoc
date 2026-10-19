@@ -76,7 +76,8 @@ if [[ -d "$repo_dir/.git" ]] && [[ -z "$(git -C "$repo_dir" status --porcelain 2
   if git -C "$repo_dir" fetch -q origin --prune 2>/dev/null \
     && git -C "$repo_dir" switch -q main 2>/dev/null \
     && git -C "$repo_dir" reset -q --hard origin/main 2>/dev/null; then
-    bash "$(dirname "${BASH_SOURCE[0]}")/shift-engram-import.sh" "$repo_dir" \
-      >"$STATE_DIR/engram-import.log" 2>&1 || true
+    import_script="$(dirname "${BASH_SOURCE[0]}")/shift-engram-import.sh"
+    [[ -f "$import_script" ]] || import_script="${HERMES_HOME:-/opt/data}/scripts/shift-engram-import.sh"
+    bash "$import_script" "$repo_dir" >"$STATE_DIR/engram-import.log" 2>&1 || true
   fi
 fi

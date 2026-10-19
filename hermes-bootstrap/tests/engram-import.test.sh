@@ -91,9 +91,11 @@ out="$(PATH="$STUB_BIN:$PATH" bash "$SCRIPTS/shift-engram-import.sh" "$repo")"
 check "no manifest is skipped" grep -q '^ENGRAM_IMPORT=SKIPPED' <<<"$out"
 check "no manifest does not call engram" test ! -e "$ENGRAM_STUB_LOG"
 
-# 3. engram missing: fails with a clear status.
+# 3. engram missing: fails with a clear status. The script needs no external
+# command before its engram check, so an empty PATH is deterministic.
 repo="$WORK/repo1"
-if out="$(PATH="/usr/bin:/bin" bash "$SCRIPTS/shift-engram-import.sh" "$repo" 2>&1)"; then
+mkdir -p "$WORK/empty-bin"
+if out="$(PATH="$WORK/empty-bin" /bin/bash "$SCRIPTS/shift-engram-import.sh" "$repo" 2>&1)"; then
   fail "missing engram fails"
 else
   check "missing engram fails with ENGRAM_IMPORT=ERROR" grep -q '^ENGRAM_IMPORT=ERROR' <<<"$out"
@@ -150,6 +152,15 @@ out3="$(env PATH="$WORK/fail-bin:$STUB_BIN:$PATH" HOME="$WORK/home" SHIFT_STATE_
   SHIFT_REPO_DIR="$agent" bash "$SCRIPTS/shift-merge-watch.sh")"
 check "failing import keeps the monitor output" test "$out1" = "$out3"
 check "failing import is logged" grep -q '^ENGRAM_IMPORT=ERROR' "$WORK/state/engram-import.log"
+
+# The watcher finds the import in $HERMES_HOME/scripts when it runs without
+# its sibling (e.g. launched from a copy).
+mkdir -p "$WORK/lone" "$WORK/hermes-home/scripts"
+cp "$SCRIPTS/shift-merge-watch.sh" "$WORK/lone/"
+cp "$SCRIPTS/shift-engram-import.sh" "$WORK/hermes-home/scripts/"
+rm -f "$WORK/state/engram-import.log"
+env "${watch_env[@]}" HERMES_HOME="$WORK/hermes-home" bash "$WORK/lone/shift-merge-watch.sh" >/dev/null
+check "watcher falls back to \$HERMES_HOME/scripts" grep -q '^ENGRAM_IMPORT=OK$' "$WORK/state/engram-import.log"
 
 # --- optional: real engram end to end ---------------------------------------
 
