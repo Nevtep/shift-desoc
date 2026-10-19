@@ -37,6 +37,11 @@ DETECTORS = [
     ("rpc-url-with-key", re.compile(r"(?:infura\.io/v3|alchemy\.com/v2|quiknode\.pro)/[A-Za-z0-9_-]{16,}")),
     ("url-with-credentials", re.compile(r"\b[a-z][a-z0-9+.-]*://[^\s:/@\"'<>]+:[^\s@/\"'<>]+@[^\s\"'<>]+")),
     ("hex-private-key", re.compile(r"\b0x[a-fA-F0-9]{64}\b")),
+    # A bare 64-hex value, unless it is labelled as a sha256 digest.
+    ("bare-hex-key", re.compile(r"(?<![0-9a-fA-Fx:])(?<!sha256:)[a-fA-F0-9]{64}(?![0-9a-fA-F])")),
+    ("seed-phrase", re.compile(
+        r"(?i)\b(?:mnemonic|seed(?:\s+phrase)?|recovery\s+phrase|secret\s+recovery)\b\W{0,5}"
+        r"(?:[a-z]{3,8}\s+){11,23}[a-z]{3,8}\b")),
     ("assignment-of-secret", re.compile(
         r"(?i)\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|private[_-]?key|jwt|mnemonic)\b"
         r"\s*[:=]\s*[\"']?[A-Za-z0-9/+_\-.]{12,}")),
@@ -47,11 +52,30 @@ def redact(value):
     return value if len(value) <= 12 else f"{value[:4]}…{value[-2:]} ({len(value)} chars)"
 
 
-def scan(text):
+def string_values(value):
+    """Every string in a decoded record, with JSON-encoded strings (mutation
+    payloads) expanded, so detectors see raw text rather than escaped JSON."""
+    if isinstance(value, dict):
+        for v in value.values():
+            yield from string_values(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from string_values(v)
+    elif isinstance(value, str):
+        yield value
+        if value[:1] in "{[":
+            try:
+                yield from string_values(json.loads(value))
+            except ValueError:
+                pass
+
+
+def scan(values):
     findings = []
-    for name, rx in DETECTORS:
-        for m in rx.finditer(text):
-            findings.append((name, redact(m.group(0))))
+    for text in values:
+        for name, rx in DETECTORS:
+            for m in rx.finditer(text):
+                findings.append((name, redact(m.group(0))))
     return findings
 
 
@@ -66,18 +90,56 @@ def sanitize_record(rec):
         sessions.append(s)
     if "sessions" in rec:
         rec["sessions"] = sessions
-    mutations = [m for m in rec.get("mutations") or [] if m.get("entity") != "prompt"]
+    mutations = []
+    for m in rec.get("mutations") or []:
+        if m.get("entity") == "prompt":
+            continue
+        if m.get("entity") == "session" and isinstance(m.get("payload"), str):
+            try:
+                payload = json.loads(m["payload"])
+            except ValueError:
+                payload = None
+            if isinstance(payload, dict) and "directory" in payload:
+                payload["directory"] = ""
+                m = dict(m, payload=json.dumps(payload, ensure_ascii=False))
+        mutations.append(m)
     if "mutations" in rec:
         rec["mutations"] = mutations
     return rec
 
 
+def discard(src, cid):
+    path = os.path.join(src, "manifest.json")
+    try:
+        manifest = json.load(open(path))
+    except (OSError, ValueError) as e:
+        print(f"cannot read manifest: {e}", file=sys.stderr)
+        return 1
+    before = len(manifest.get("chunks", []))
+    manifest["chunks"] = [c for c in manifest.get("chunks", []) if c.get("id") != cid]
+    chunk = os.path.join(src, "chunks", f"{cid}.jsonl.gz")
+    if before == len(manifest["chunks"]) and not os.path.exists(chunk):
+        print(f"chunk {cid} not found", file=sys.stderr)
+        return 1
+    json.dump(manifest, open(path, "w"), indent=2)
+    if os.path.exists(chunk):
+        os.remove(chunk)
+    print(f"Discarded local chunk {cid} (it was never sent).")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--src", required=True, help="local .engram directory")
-    ap.add_argument("--out", required=True, help="output directory (created)")
+    ap.add_argument("--out", help="output directory (created)")
     ap.add_argument("--pushed", help="file listing chunk ids already sent (one per line)")
+    ap.add_argument("--discard", metavar="CHUNK_ID",
+                    help="delete a local chunk and its manifest entry (e.g. one that was flagged), then exit")
     args = ap.parse_args()
+    if args.discard:
+        return discard(args.src, args.discard)
+    if not args.out:
+        ap.error("--out is required unless --discard is used")
 
     try:
         manifest = json.load(open(os.path.join(args.src, "manifest.json")))
@@ -110,13 +172,17 @@ def main():
             return 1
         clean = [sanitize_record(json.loads(l)) for l in lines if l.strip()]
         text = "\n".join(json.dumps(r, ensure_ascii=False) for r in clean) + "\n"
-        # Scan exactly what would be sent: every field of every record type.
-        for name, sample in scan(text):
+        values = [v for r in clean for v in string_values(r)]
+        # Scan exactly what would be sent: every string of every record type.
+        for name, sample in scan(values):
             findings.append((cid, name, sample))
         with gzip.open(os.path.join(out_chunks, f"{cid}.jsonl.gz"), "wt", encoding="utf-8") as f:
             f.write(text)
         with open(os.path.join(out_decoded, f"{cid}.jsonl"), "w", encoding="utf-8") as f:
             f.write(text)
+        # Raw string values too, so gitleaks rules see unescaped text.
+        with open(os.path.join(out_decoded, f"{cid}.values.txt"), "w", encoding="utf-8") as f:
+            f.write("\n".join(values) + "\n")
         obs = [o for r in clean for o in r.get("observations") or []]
         muts = sum(len(r.get("mutations") or []) for r in clean)
         summary.append((cid, obs, muts, c.get("prompts", 0)))
@@ -126,8 +192,9 @@ def main():
         print("Possible secrets in the payload; nothing will be sent:", file=sys.stderr)
         for cid, name, sample in findings:
             print(f"  chunk {cid}: {name}: {sample}", file=sys.stderr)
-        print("Remove them from local Engram (engram delete <id> --hard), delete the affected local "
-              "chunk and its manifest entry, export again, and re-run.", file=sys.stderr)
+        print("Remove them from local Engram (engram delete <id> --hard), discard the affected local "
+              "chunk (engram-sanitize.py --src .engram --discard <chunk>), export again, and re-run.",
+              file=sys.stderr)
         shutil.rmtree(args.out, ignore_errors=True)
         return 2
 

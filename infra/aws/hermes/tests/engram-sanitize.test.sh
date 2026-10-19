@@ -37,6 +37,9 @@ rec = {
   "prompts": [{"id": 1, "sync_id": "prompt-1", "session_id": "s1", "content": prompt,
                "project": "shift-desoc", "created_at": "2026-10-19 10:00:00"}],
 }
+import os
+if os.environ.get("MUTATIONS"):
+    rec["mutations"] = json.loads(os.environ["MUTATIONS"])
 with gzip.open(f"{d}/.engram/chunks/{cid}.jsonl.gz", "wt") as f:
     f.write(json.dumps(rec) + "\n")
 json.dump({"version": 2, "chunks": [{"id": cid, "created_by": "someone",
@@ -83,6 +86,29 @@ for secret in "AKIAABCDEFGHIJKLMNOP" "-----BEGIN OPENSSH PRIVATE KEY-----" \
   rm -rf "$WORK/c" "$WORK/c-out"
 done
 
+# 2b. Shapes that hide from a scan of the JSON text or need context.
+mn="abandon ability able about above absent absorb abstract absurd abuse access accident"
+for content in 'password: "Zx9Qw3Er7Ty1Ui5Op2As8"' "deployer key $(printf 'b%.0s' {1..64})" "mnemonic: $mn"; do
+  make_store "$WORK/q" qqqq0000 "$content" "fine"
+  set +e; python3 "$SANITIZE" --src "$WORK/q/.engram" --out "$WORK/q-out" >"$WORK/q.log" 2>&1; rc=$?; set -e
+  check "blocks ${content:0:24}…" test "$rc" -eq 2
+  rm -rf "$WORK/q" "$WORK/q-out"
+done
+make_store "$WORK/h" hhhh0000 "review target sha256:$(printf 'c%.0s' {1..64}) approved" "fine"
+set +e; python3 "$SANITIZE" --src "$WORK/h/.engram" --out "$WORK/h-out" >"$WORK/h.log" 2>&1; rc=$?; set -e
+check "sha256:<hex> digests are not flagged" test "$rc" -eq 0
+
+# 2c. Mutations: prompt mutations dropped, session paths blanked, relations kept.
+MUTATIONS='[{"entity":"prompt","entity_key":"prompt-9","op":"upsert","payload":"{\"content\":\"secret prompt text\"}"},
+ {"entity":"session","entity_key":"s1","op":"upsert","payload":"{\"id\":\"s1\",\"directory\":\"/Users/someone/Code/shift\"}"},
+ {"entity":"relation","entity_key":"rel-f08931f2509fff87","op":"upsert","payload":"{\"source_id\":\"obs-1\"}"}]' \
+  make_store "$WORK/m" mmmm0000 "learning" "p"
+set +e; python3 "$SANITIZE" --src "$WORK/m/.engram" --out "$WORK/m-out" >"$WORK/m.log" 2>&1; rc=$?; set -e
+check "chunk with mutations exits 0" test "$rc" -eq 0
+check "prompt mutation dropped" payload_lacks "$WORK/m-out" "secret prompt text"
+check "session mutation directory blanked" payload_lacks "$WORK/m-out" "/Users/someone"
+check "relation mutation kept" payload_has "$WORK/m-out" "rel-f08931f2509fff87"
+
 # 3. A secret only in a prompt is dropped with the prompt, not shipped.
 make_store "$WORK/d" dddd4444 "harmless learning" "here is my key AKIAABCDEFGHIJKLMNOP"
 set +e; python3 "$SANITIZE" --src "$WORK/d/.engram" --out "$WORK/d-out" >"$WORK/d.log" 2>&1; rc=$?; set -e
@@ -94,6 +120,14 @@ make_store "$WORK/e" eeee5555 "learning" "p"
 echo eeee5555 > "$WORK/e/pushed"
 set +e; python3 "$SANITIZE" --src "$WORK/e/.engram" --out "$WORK/e-out" --pushed "$WORK/e/pushed" >"$WORK/e.log" 2>&1; rc=$?; set -e
 check "nothing new exits 3" test "$rc" -eq 3
+
+# 4b. A flagged chunk can be discarded locally so later syncs are not blocked.
+make_store "$WORK/x" xxxx0000 "leak AKIAABCDEFGHIJKLMNOP" "p"
+python3 "$SANITIZE" --src "$WORK/x/.engram" --discard xxxx0000 >"$WORK/x.log" 2>&1
+check "discard removes the chunk file" test ! -e "$WORK/x/.engram/chunks/xxxx0000.jsonl.gz"
+check "discard removes the manifest entry" bash -c "! grep -q xxxx0000 '$WORK/x/.engram/manifest.json'"
+set +e; python3 "$SANITIZE" --src "$WORK/x/.engram" --out "$WORK/x-out" >"$WORK/x2.log" 2>&1; rc=$?; set -e
+check "after discard nothing is left to send" test "$rc" -eq 3
 
 # 5. gitleaks (when installed) with the bundle config: Engram's own relation ids
 #    are not flagged, a real-looking key still is.

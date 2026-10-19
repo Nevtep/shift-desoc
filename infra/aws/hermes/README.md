@@ -69,8 +69,15 @@ payload scanned for credentials), scans it again with gitleaks, shows what will
 be sent, asks for confirmation, and imports it over SSM-tunnelled SSH. Sent
 chunk ids are kept in `.engram/.pushed-to-hermes` (local only). Requires
 `engram` (same version as `ENGRAM_VERSION`), `python3`, `gitleaks` and operator
-SSH access. Tests: `bash infra/aws/hermes/tests/engram-sanitize.test.sh`
-(set `ENGRAM_BIN` for the real-import case).
+SSH access.
+
+If a chunk is flagged, remove the memory locally (`engram delete <id> --hard`),
+discard that never-sent chunk so it stops blocking later syncs
+(`python3 infra/aws/hermes/engram-sanitize.py --src .engram --discard <chunk>`),
+and run the sync again.
+
+Tests: `bash infra/aws/hermes/tests/engram-sanitize.test.sh` (set `ENGRAM_BIN`
+for the real-import case) and `bash infra/aws/hermes/tests/sync-engram.test.sh`.
 
 ## Operators (SSH with sudo)
 
