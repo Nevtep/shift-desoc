@@ -246,6 +246,12 @@ Resources:
             src="$DATA_DIR/src"
             [[ -d "$src/.git" ]] || git clone "$REPO_URL" "$src"
             git -C "$src" fetch --prune origin
+            # A deployed branch may have been deleted after its PR merged
+            # (delete_branch_on_merge): fall back to main in that case.
+            if ! git -C "$src" rev-parse --verify -q "origin/$ref" >/dev/null && ! git -C "$src" rev-parse --verify -q "$ref^{commit}" >/dev/null; then
+              echo "ref $ref no longer exists; deploying main instead"
+              ref=main
+            fi
             git -C "$src" checkout --force --detach "origin/$ref" 2>/dev/null || git -C "$src" checkout --force --detach "$ref"
             sed -i "s|^GIT_REF=.*|GIT_REF=$ref|" /etc/shift-hermes.conf
             /usr/local/bin/shift-hermes-sync-env

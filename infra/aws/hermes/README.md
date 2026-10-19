@@ -36,6 +36,7 @@ infra/aws/hermes/connect.sh dashboard   # http://127.0.0.1:9119
 infra/aws/hermes/connect.sh shell       # host shell; `sudo shift-hermes ps|logs|...`
 ssh shift-hermes                        # after ssh-setup.sh (see Operators)
 infra/aws/hermes/update.sh [git-ref]    # pull, re-sync secrets, rebuild, restart
+                                        # (a deleted ref falls back to main)
 ```
 
 Inside the container, finish the one-time steps from `README-HERMES-RUNTIME.md`

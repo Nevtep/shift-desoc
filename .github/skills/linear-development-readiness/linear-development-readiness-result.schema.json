@@ -168,6 +168,10 @@
         "dependencyDepth": { "type": "integer", "minimum": 0 },
         "parallelConflictRisk": { "$ref": "#/$defs/risk" },
         "valueOrUrgency": { "type": "string", "minLength": 1 },
+        "contractScope": {
+          "type": "boolean",
+          "description": "True when the issue changes Solidity (label domain:contracts); the supervisor skips such items while SHIFT_ALLOW_CONTRACT_ISSUES=false."
+        },
         "blockedBy": {
           "type": "array",
           "items": { "type": "string" }
