@@ -68,16 +68,9 @@ fi
 
 # Sync the main checkout before the agent session starts: Hermes loads the
 # development skills from it, so a merged skills PR is live for this run.
-# Then import any Engram chunks merged into .engram/ (idempotent). Its output
-# goes to a log, never stdout, so the monitor output stays stable; a failed
-# import never blocks the hand-over (the learning skill re-runs it).
 repo_dir="${SHIFT_REPO_DIR:-/workspace/shift}"
 if [[ -d "$repo_dir/.git" ]] && [[ -z "$(git -C "$repo_dir" status --porcelain 2>/dev/null)" ]]; then
-  if git -C "$repo_dir" fetch -q origin --prune 2>/dev/null \
+  git -C "$repo_dir" fetch -q origin --prune 2>/dev/null \
     && git -C "$repo_dir" switch -q main 2>/dev/null \
-    && git -C "$repo_dir" reset -q --hard origin/main 2>/dev/null; then
-    import_script="$(dirname "${BASH_SOURCE[0]}")/shift-engram-import.sh"
-    [[ -f "$import_script" ]] || import_script="${HERMES_HOME:-/opt/data}/scripts/shift-engram-import.sh"
-    bash "$import_script" "$repo_dir" >"$STATE_DIR/engram-import.log" 2>&1 || true
-  fi
+    && git -C "$repo_dir" reset -q --hard origin/main 2>/dev/null || true
 fi

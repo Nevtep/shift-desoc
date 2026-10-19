@@ -62,7 +62,7 @@ Creates or updates two jobs (idempotent, ids written to `/opt/data/shift/jobs.en
 | Job | Schedule | Monitor script (no LLM) | Agent runs when |
 | --- | --- | --- | --- |
 | Shift autonomous development loop | daily 06:00 | `shift-dev-monitor.sh`: gh auth, Linear key, cycle lock, open agent PRs `< SHIFT_MAX_OPEN_PRS`, `origin/main` | guard says GO and the day or `origin/main` changed; repeated STOP costs nothing |
-| Shift merge watcher | every 5 min | `shift-merge-watch.sh`: PRs merged into `main` and not yet acknowledged; it also syncs the checkout and imports merged Engram chunks (`shift-engram-import.sh`, log in `/opt/data/shift/engram-import.log`) (a PR stays pending until the learning skill runs `shift-merge-ack.sh`; retried hourly, 6 rounds max) | a PR merged → `shift-post-merge-learning` (sync checkout, import merged `.engram/` chunks, prune worktrees, learn from reviews and post-audit fixes, persist to memory/Engram) → triggers the dev loop |
+| Shift merge watcher | every 5 min | `shift-merge-watch.sh`: PRs merged into `main` and not yet acknowledged (a PR stays pending until the learning skill runs `shift-merge-ack.sh`; retried hourly, 6 rounds max) | a PR merged → `shift-post-merge-learning` (sync checkout, prune worktrees, learn from reviews and post-audit fixes, persist to memory/Engram) → triggers the dev loop |
 
 So the human loop is: review → merge on GitHub → within 5 minutes Hermes
 learns from the merge and starts the next feature, which stops by itself when

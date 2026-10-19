@@ -202,9 +202,10 @@ if [[ -n "$(git status --porcelain)" ]]; then
   git stash push --include-untracked -m "$stash_msg"
 fi
 git reset --hard origin/main
-echo "Importing Git-synced Engram memories..."
-# From a temp copy (the checkout stays pristine); skipped without a manifest.
-bash "$BOOTSTRAP/scripts/shift-engram-import.sh" "$REPO_DIR"
+if [[ -f .engram/manifest.json ]]; then
+  echo "Importing Git-synced Engram memories..."
+  engram sync --import
+fi
 mkdir -p .worktrees
 
 grep -qxF '.worktrees/' .gitignore || {

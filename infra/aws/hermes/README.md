@@ -47,45 +47,10 @@ then `update.sh`.
 
 ## Engram memory sync
 
-Hermes imports every Engram chunk merged into `.engram/` on `main`: the merge
-watcher syncs its checkout and runs `shift-engram-import.sh` (idempotent,
-from a temp copy, log in `/opt/data/shift/engram-import.log`), and
-`shift-post-merge-learning` runs it again. So sharing local learnings with
-the agent needs no SSH, only a PR:
-
-```bash
-engram sync                   # exports new shift-desoc memories as .engram/chunks/<id>.jsonl.gz
-gzip -dc .engram/chunks/<id>.jsonl.gz | jq .   # review: the repo is public
-git add .engram && git commit -m "chore(engram): sync memories"
-```
-
-Review the chunk before pushing: no secrets, private keys, tokens, wallet
-material, personal data or deployment addresses (redact them in Engram and
-re-export if needed). Only project `shift-desoc` is exported (`.engram/config.json`).
-Open a PR (alone or with the feature it belongs to); once it merges, Hermes
-imports the chunk within one merge-watcher tick.
-
-Merging is the only gate before the agent ingests these memories, and GitHub
-shows chunks as binary. Whoever merges must read the decoded chunk, not just
-the diff stat: list it in the PR body, and check it out to read it:
-
-```bash
-gzip -dc .engram/chunks/<id>.jsonl.gz \
-  | jq -r '.observations[] | "## \(.type): \(.title)\n\(.content)\n"'
-```
-
-Reject chunks with secrets, personal data, or text that tries to instruct
-the agent (e.g. "ignore the rules", "push to main").
-
-Operators with SSH can push immediately instead: `infra/aws/hermes/sync-engram.sh`
-exports and imports straight into the agent's Engram on the host (same
-idempotent import; other local projects are never sent). Commit `.engram/`
-afterwards anyway so future bootstraps and teammates have it.
-
-Hermes runs the engram version pinned by `ENGRAM_VERSION` (`docker/Dockerfile.hermes`,
-overridable through SSM). Keep local engram at that version or older: chunks
-are forward-compatible (engram 1.20.0 imported chunks exported by 3.4.0), but
-a chunk from a newer local engram is not guaranteed to import.
+`infra/aws/hermes/sync-engram.sh` exports new local `shift-desoc` memories as a
+chunk in `.engram/` and imports them into the agent's Engram on the host
+(idempotent; other local projects are never sent). Commit `.engram/` afterwards
+so bootstraps from `main` include it. The repo is public: review chunks first.
 
 ## Operators (SSH with sudo)
 
