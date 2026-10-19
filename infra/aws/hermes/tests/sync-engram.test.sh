@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Tests for infra/aws/hermes/sync-engram.sh with stubbed engram, gitleaks and
 # ssh: nothing is recorded as sent unless the confirmed import succeeded.
+# The script only reads its confirmation from a real terminal, so each run goes
+# through `expect` on a pseudo-terminal (skipped when expect is missing).
 #
 #   bash infra/aws/hermes/tests/sync-engram.test.sh
 set -euo pipefail
+command -v expect >/dev/null || { echo "skip - sync-engram tests (expect not installed)"; exit 0; }
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
@@ -49,14 +52,31 @@ chmod +x "$WORK/bin/"*
 
 pushed="$REPO/.engram/.pushed-to-hermes"
 run_sync() { # <answer> -> exit code in $rc
-  printf '%s\n' "$1" >"$WORK/tty"
   rm -f "$WORK/ssh-called"
   set +e
-  PATH="$WORK/bin:$PATH" SYNC_ENGRAM_TTY="$WORK/tty" bash "$REPO/infra/aws/hermes/sync-engram.sh" \
-    >"$WORK/out.log" 2>&1 </dev/null
+  PATH="$WORK/bin:$PATH" ANSWER="$1" SCRIPT="$REPO/infra/aws/hermes/sync-engram.sh" expect -c '
+    set timeout 60
+    spawn bash $env(SCRIPT)
+    expect {
+      "Send these learnings to Hermes?" { send "$env(ANSWER)\r"; exp_continue }
+      eof
+    }
+    catch wait result
+    exit [lindex $result 3]
+  ' >"$WORK/out.log" 2>&1 </dev/null
   rc=$?
   set -e
 }
+
+# Stdin is never accepted as the confirmation, even when it says yes.
+rm -f "$WORK/ssh-called"
+set +e
+printf 'y\n' | PATH="$WORK/bin:$PATH" bash "$REPO/infra/aws/hermes/sync-engram.sh" >"$WORK/stdin.log" 2>&1
+rc=$?
+set -e
+check "piped yes without a terminal is refused" test "$rc" -ne 0
+check "piped yes never calls ssh" test ! -e "$WORK/ssh-called"
+check "no override variable is honoured" bash -c "! grep -q SYNC_ENGRAM_TTY '$REPO/infra/aws/hermes/sync-engram.sh'"
 
 run_sync n
 check "declining exits non-zero" test "$rc" -ne 0
@@ -66,10 +86,12 @@ check "declining records nothing" test ! -s "$pushed"
 GITLEAKS_RC=1 run_sync y
 check "gitleaks finding exits non-zero" test "$rc" -ne 0
 check "gitleaks finding never calls ssh" test ! -e "$WORK/ssh-called"
+check "gitleaks finding is what stopped it" grep -q "gitleaks flagged the payload" "$WORK/out.log"
 check "gitleaks finding records nothing" test ! -s "$pushed"
 
 SSH_RC=1 run_sync y
 check "failed import exits non-zero" test "$rc" -ne 0
+check "failed import did reach ssh" test -e "$WORK/ssh-called"
 check "failed import records nothing" test ! -s "$pushed"
 
 run_sync y

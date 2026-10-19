@@ -38,7 +38,7 @@ DETECTORS = [
     ("url-with-credentials", re.compile(r"\b[a-z][a-z0-9+.-]*://[^\s:/@\"'<>]+:[^\s@/\"'<>]+@[^\s\"'<>]+")),
     ("hex-private-key", re.compile(r"\b0x[a-fA-F0-9]{64}\b")),
     # A bare 64-hex value, unless it is labelled as a sha256 digest.
-    ("bare-hex-key", re.compile(r"(?<![0-9a-fA-Fx:])(?<!sha256:)[a-fA-F0-9]{64}(?![0-9a-fA-F])")),
+    ("bare-hex-key", re.compile(r"(?<![0-9a-fA-Fx])(?<!sha256:)[a-fA-F0-9]{64}(?![0-9a-fA-F])")),
     ("seed-phrase", re.compile(
         r"(?i)\b(?:mnemonic|seed(?:\s+phrase)?|recovery\s+phrase|secret\s+recovery)\b\W{0,5}"
         r"(?:[a-z]{3,8}\s+){11,23}[a-z]{3,8}\b")),

@@ -88,7 +88,8 @@ done
 
 # 2b. Shapes that hide from a scan of the JSON text or need context.
 mn="abandon ability able about above absent absorb abstract absurd abuse access accident"
-for content in 'password: "Zx9Qw3Er7Ty1Ui5Op2As8"' "deployer key $(printf 'b%.0s' {1..64})" "mnemonic: $mn"; do
+for content in 'password: "Zx9Qw3Er7Ty1Ui5Op2As8"' "deployer key $(printf 'b%.0s' {1..64})" \
+               "deployer:$(printf 'd%.0s' {1..64})" "mnemonic: $mn"; do
   make_store "$WORK/q" qqqq0000 "$content" "fine"
   set +e; python3 "$SANITIZE" --src "$WORK/q/.engram" --out "$WORK/q-out" >"$WORK/q.log" 2>&1; rc=$?; set -e
   check "blocks ${content:0:24}…" test "$rc" -eq 2

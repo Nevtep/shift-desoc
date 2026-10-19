@@ -33,10 +33,8 @@ for tool in engram python3 gitleaks; do
     exit 1
   }
 done
-# The answer is read from the terminal, never from stdin. SYNC_ENGRAM_TTY only
-# lets the tests point it at a file; it is not a way to skip confirming.
-tty_in="${SYNC_ENGRAM_TTY:-/dev/tty}"
-[[ -r "$tty_in" ]] || { echo "sync-engram.sh needs an interactive terminal to confirm" >&2; exit 1; }
+# The answer is read from the terminal only, never from stdin or a file.
+[[ -r /dev/tty ]] || { echo "sync-engram.sh needs an interactive terminal to confirm" >&2; exit 1; }
 
 # Capture the export first so a failed `engram sync` stops the script; the
 # filter (which may legitimately match nothing) only runs on its output.
@@ -64,7 +62,7 @@ echo "gitleaks: no leaks found in the decoded payload."
 
 echo
 answer=""
-read -r -p "Send these learnings to Hermes? [y/N] " answer <"$tty_in" || true
+read -r -p "Send these learnings to Hermes? [y/N] " answer </dev/tty || true
 [[ "$answer" =~ ^[yY]$ ]] || { echo "Aborted; nothing was sent."; exit 1; }
 
 COPYFILE_DISABLE=1 tar --no-xattrs -czf - -C "$work/bundle" .engram \
