@@ -19,7 +19,10 @@ SEED_MARKER="$HERMES_HOME/.shift-config-seeded"
 touch "$HERMES_HOME/config.yaml"
 # SOUL.md is seeded once and then owned by Hermes/the operator; only its
 # repo-managed rules block is kept current on existing volumes.
-bash "$BOOTSTRAP/scripts/shift-soul-managed-rules.sh" "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md"
+# Malformed markers leave the file untouched and only warn: a hand-edited
+# SOUL.md must never stop the agent from booting.
+bash "$BOOTSTRAP/scripts/shift-soul-managed-rules.sh" "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md" \
+  || echo "WARNING: SOUL.md managed rules not applied; fix its shift:managed-rules markers by hand." >&2
 
 # Re-assert repo-managed keys (skills dirs, MCP servers, cron limits) on every
 # bootstrap so reviewed changes reach existing volumes, and stamp the config

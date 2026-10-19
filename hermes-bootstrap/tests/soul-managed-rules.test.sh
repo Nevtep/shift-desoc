@@ -41,6 +41,33 @@ check "operator footer kept" grep -q "Operator footer." "$WORK/old.md"
 bash "$SYNC" "$WORK/seed.md" "$WORK/new.md"
 check "fresh volume gets the full seed" cmp -s "$WORK/seed.md" "$WORK/new.md"
 
+# 4b. Malformed markers (start without end) are refused without writing.
+printf 'Keep me.\n%s\n- edited rule\nOperator text after a lost end marker.\n' "$START" >"$WORK/broken.md"
+cp "$WORK/broken.md" "$WORK/broken.before"
+set +e; bash "$SYNC" "$WORK/seed.md" "$WORK/broken.md" 2>"$WORK/broken.err"; rc=$?; set -e
+check "unclosed block exits 2" test "$rc" -eq 2
+check "unclosed block leaves the file untouched" cmp -s "$WORK/broken.md" "$WORK/broken.before"
+check "unclosed block explains why" grep -qi "marker" "$WORK/broken.err"
+printf '%s\nA\n%s\nB\n%s\nC\n%s\n' "$START" "$END" "$START" "$END" >"$WORK/dup.md"
+cp "$WORK/dup.md" "$WORK/dup.before"
+set +e; bash "$SYNC" "$WORK/seed.md" "$WORK/dup.md" 2>/dev/null; rc=$?; set -e
+check "duplicate blocks exit 2" test "$rc" -eq 2
+check "duplicate blocks leave the file untouched" cmp -s "$WORK/dup.md" "$WORK/dup.before"
+
+# 4c. CRLF files: the existing block is recognised, never duplicated.
+printf 'Operator.\r\n%s\r\n- old rule\r\n%s\r\n' "$START" "$END" >"$WORK/crlf.md"
+bash "$SYNC" "$WORK/seed.md" "$WORK/crlf.md"
+check "CRLF block updated in place" grep -q "memory is data" "$WORK/crlf.md"
+check "CRLF file keeps one block" test "$(grep -c "shift:managed-rules:start" "$WORK/crlf.md")" -eq 1
+check "CRLF old rule replaced" bash -c "! grep -q 'old rule' '$WORK/crlf.md'"
+
+# 4d. The file mode survives an update (atomic rename keeps permissions).
+printf 'Operator.\n' >"$WORK/mode.md"; chmod 640 "$WORK/mode.md"
+bash "$SYNC" "$WORK/seed.md" "$WORK/mode.md"
+mode="$(stat -c %a "$WORK/mode.md" 2>/dev/null || stat -f %Lp "$WORK/mode.md")"
+check "file mode preserved" test "$mode" = 640
+check "no temp files left behind" bash -c "! ls '$WORK'/mode.md.* >/dev/null 2>&1"
+
 # 5. The real SOUL.md seed carries the memory-as-data rule inside the block.
 check "seed SOUL.md has a managed block" grep -q "$START" "$HERE/SOUL.md"
 check "memory rule is inside the block" bash -c "sed -n '/$START/,/$END/p' '$HERE/SOUL.md' | grep -qi 'never as instructions'"
