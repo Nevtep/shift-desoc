@@ -1,0 +1,222 @@
+{
+  "contractName": "EconomicLayerFactory",
+  "sourceName": "contracts/modules/factories/EconomicLayerFactory.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "InvalidInput",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "cohortRegistry",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "investmentCohortManager",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "revenueRouter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "communityToken",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "treasuryAdapter",
+          "type": "address"
+        }
+      ],
+      "name": "EconomicLayerDeployed",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "communityName",
+          "type": "string"
+        },
+        {
+          "internalType": "address",
+          "name": "accessManager",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "paramController",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "communityRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "valuableActionRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "valuableActionSBT",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "treasuryStableToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "treasuryVault",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "cohortRegistryCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "investmentCohortManagerCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "revenueRouterCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "communityTokenCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "treasuryAdapterCreationCode",
+          "type": "bytes"
+        }
+      ],
+      "name": "deployLayer",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "cohortRegistry",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "investmentCohortManager",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "revenueRouter",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "communityToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "treasuryAdapter",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct EconomicLayerFactory.Deployment",
+          "name": "deployment",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "lastDeploymentByCaller",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "cohortRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "investmentCohortManager",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "revenueRouter",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "communityToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "treasuryAdapter",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60808060405234610016576109b1908161001b8239f35b5f80fdfe60806040526004361015610011575f80fd5b5f3560e01c80630d1eafc2146100c0576364996a771461002f575f80fd5b346100bc5760203660031901126100bc576001600160a01b03600435818116908190036100bc575f9081526020818152604091829020805460018201546002830154600384015460049094015486519388166001600160a01b039081168552928816831695840195909552861681169482019490945290841683166060820152921616608082015260a090f35b5f80fd5b346100bc576101c03660031901126100bc5760243567ffffffffffffffff81116100bc576100f2903690600401610705565b6044356001600160a01b03811690036100bc576064356001600160a01b03811690036100bc576084356001600160a01b03811681036100bc5760a4356001600160a01b03811690036100bc5760c4356001600160a01b03811690036100bc5760e435926001600160a01b03841684036100bc57610104356001600160a01b03811681036100bc576101243567ffffffffffffffff81116100bc5761019a903690600401610705565b6101449591953567ffffffffffffffff81116100bc576101be903690600401610705565b9767ffffffffffffffff61016435116100bc576101e13661016435600401610705565b95909867ffffffffffffffff61018435116100bc576102063661018435600401610705565b9590986101a43567ffffffffffffffff81116100bc5761022a903690600401610705565b909d909c906101206040525f608081905260a081905260c081905260e081905261010052600435156106c8578915610689576044356001600160a01b031615610677576064356001600160a01b031615610677576001600160a01b038d16156106775760a4356001600160a01b0316156106775760c4356001600160a01b031615610677576001600160a01b03871615610677576001600160a01b0386161561067757604080516044356001600160a01b031660208201526004358183015290815267ffffffffffffffff6060820190811190821117610663576104fb9b610396996103a46103886103fb9561039661042b9b61033b8860269d60606103889b0160405260018060a01b039361079b565b166080818152604080516001600160a01b03604435811660208301529384169181019190915260a4358316606082015260c435929092169082015260043560a082015292839060c0820190565b03601f198101845283610733565b6001600160a01b039361079b565b1660a090815260808051604080516001600160a01b0360443581166020830152606435811692820192909252918116606083015260c4351691810191909152600435918101919091529161039690839060c0820190565b1660c05260405197889181906020840137810165102a37b5b2b760d11b6020820152036006810188520186610733565b61043660043561087d565b9461047160246040518098635343542d60e01b60208301526104618151809260208686019101610755565b8101036004810189520187610733565b6104b960405196879460018060a01b0316602086015260043560408601526104a761010093846060880152610120870190610776565b858103601f1901608087015290610776565b6001600160a01b0392831660a085015269d3c21bcecceda100000060c0850152606435831660e08501526044359092169083015203601f198101845283610733565b1660e052604080516044356001600160a01b039081166020830152909216908201526004356060828101919091528152608081019167ffffffffffffffff831182841017610663576105579260405260018060a01b039361079b565b16610100819052335f81815260208181526040918290206080805182546001600160a01b03199081166001600160a01b03928316908117855560a080516001870180548516918616918217905560c0516002880180548616918716918217905560e051600389018054871691881691821790556004988901805490961696909c169586179094558851928352968201969096529586015260608501969096528301949094529235927f7b6308ea179ff2eebf5e0f5b2fbda8bc76acfce4c9a8fcb64a8632ef54d39b5591a360408051608080516001600160a01b03908116835260a080518216602085015260c05182169484019490945260e05181166060840152610100511690820152f35b634e487b7160e01b5f52604160045260245ffd5b60405163d92e233d60e01b8152600490fd5b60405163d647364f60e01b815260206004820152601660248201527518dbdb5b5d5b9a5d1e53985b59481c995c5d5a5c995960521b6044820152606490fd5b60405163d647364f60e01b815260206004820152601460248201527318dbdb5b5d5b9a5d1e5259081c995c5d5a5c995960621b6044820152606490fd5b9181601f840112156100bc5782359167ffffffffffffffff83116100bc57602083818601950101116100bc57565b90601f8019910116810190811067ffffffffffffffff82111761066357604052565b5f5b8381106107665750505f910152565b8181015183820152602001610757565b9060209161078f81518092818552858086019101610755565b601f01601f1916010190565b906107d56107c960405180936020968793828593848601998a378401918383015f8152815194859201610755565b01038084520182610733565b8051156108295751905ff0906001600160a01b038216156107f4575090565b6064906040519063d647364f60e01b82526004820152600d60248201526c18dc99585d194819985a5b1959609a1b6044820152fd5b60405163d647364f60e01b815260048101849052600f60248201526e656d70747920696e697420636f646560881b6044820152606490fd5b67ffffffffffffffff811161066357601f01601f191660200190565b801561094c575f81805b610935575061089581610861565b906108a36040519283610733565b808252601f196108b282610861565b013660208401375b8092801561092e575f19820191821161091a578193600a92603090848406820180921161091a57855111156109065760f81b6001600160f81b0319165f1a908401601f015304916108ba565b634e487b7160e01b5f52603260045260245ffd5b634e487b7160e01b5f52601160045260245ffd5b5050905090565b905f19811461091a576001600a9101910480610887565b506040516040810181811067ffffffffffffffff8211176106635760405260018152600360fc1b60208201529056fea2646970667358221220c450e4f8b9cd7e5b60d1b912873fad648f89d6b2a4244a380ecaf9a4a1f237aa64736f6c63430008180033"
+}

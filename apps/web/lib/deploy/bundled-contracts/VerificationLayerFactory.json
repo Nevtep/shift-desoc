@@ -1,0 +1,275 @@
+{
+  "contractName": "VerificationLayerFactory",
+  "sourceName": "contracts/modules/factories/VerificationLayerFactory.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        }
+      ],
+      "name": "InvalidInput",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "verifierPowerToken",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "verifierElection",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "verifierManager",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "valuableActionRegistry",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "valuableActionSBT",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "engagements",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "positionManager",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "credentialManager",
+          "type": "address"
+        }
+      ],
+      "name": "VerificationLayerDeployed",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "communityId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "accessManager",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "communityRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "timelock",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "paramController",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "membershipToken",
+          "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "vptMetadataURI",
+          "type": "string"
+        },
+        {
+          "internalType": "bytes",
+          "name": "verifierPowerTokenCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "verifierElectionCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "verifierManagerCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "valuableActionRegistryCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "valuableActionSBTCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "engagementsCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "positionManagerCreationCode",
+          "type": "bytes"
+        },
+        {
+          "internalType": "bytes",
+          "name": "credentialManagerCreationCode",
+          "type": "bytes"
+        }
+      ],
+      "name": "deployLayer",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "verifierPowerToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "verifierElection",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "verifierManager",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "valuableActionRegistry",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "valuableActionSBT",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "engagements",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "positionManager",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "credentialManager",
+              "type": "address"
+            }
+          ],
+          "internalType": "struct VerificationLayerFactory.Deployment",
+          "name": "deployment",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "lastDeploymentByCaller",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "verifierPowerToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "verifierElection",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "verifierManager",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "valuableActionRegistry",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "valuableActionSBT",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "engagements",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "positionManager",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "credentialManager",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080806040523461001657610963908161001b8239f35b5f80fdfe60c06040526004361015610011575f80fd5b5f3560e01c806337af18d9146100b2576364996a771461002f575f80fd5b346100ae5760203660031901126100ae576001600160a01b03600435818116908190036100ae575f525f60205260405f20906100aa81835416918060018501541693816002820154169180600383015416816004840154169082600585015416926007816006870154169501541694604051988998896107db565b0390f35b5f80fd5b346100ae576101e03660031901126100ae576024356001600160a01b03811690036100ae576044356001600160a01b03811690036100ae576064356001600160a01b03811690036100ae576084356001600160a01b03811690036100ae5760a4356001600160a01b03811681036100ae5760c4356001600160401b0381116100ae576101429036906004016107ae565b919060e4356001600160401b0381116100ae576101639036906004016107ae565b60a052610104356001600160401b0381116100ae576101869036906004016107ae565b610124949194356001600160401b0381116100ae576101a99036906004016107ae565b610144356001600160401b0381116100ae576101c99036906004016107ae565b916001600160401b0361016435116100ae576101eb36610164356004016107ae565b939094610184356001600160401b0381116100ae5761020e9036906004016107ae565b6080529a6101a4356001600160401b0381116100ae576102329036906004016107ae565b98909a6101c4356001600160401b0381116100ae576102559036906004016107ae565b909f909d906101c06040525f60c081905260e08190526101008190526101208190526101408190526101608190526101808190526101a05260043515610771576024356001600160a01b03161561075f576044356001600160a01b03161561075f576064356001600160a01b03161561075f576084356001600160a01b03161561075f576001600160a01b038d161561075f5761033e60a061034f9383604051948592600180861b0360243516602085015260606040850152816080850152848401375f8382840101526004356060830152601f80199101168101036080810184520182610826565b60a0516001600160a01b0393610847565b16948560c0526040519560018060a01b0360243516602088015260408701526004356060870152606086528560808101106001600160401b0360808801111761074b57608086016040526104659561041c936104009361040e926001600160a01b03926103bc9290610847565b1660e0819052604080516001600160a01b036024358116602083015292831691810191909152608435919091166060820152600435608082015292839060a0820190565b03601f198101845283610826565b6001600160a01b0393610847565b1661010052604080516001600160a01b036024358116602083015260443581169282019290925260643591909116606082015260043560808201529061040e8260a08101610400565b1661012052604080516024356001600160a01b03166020820152600435818301529081526001600160401b03606082019081119082111761074b57606081016040526001600160a01b03926104ba9290610847565b166101408190526101205161010051604080516024356001600160a01b039081166020830152938416918101919091529082166060820152608081019290925290921660a083015260043560c08381019190915282526001600160401b0360e083019081119083111761074b5760e082016040526080516105df95610595936001600160a01b039261054b92610847565b16610160526101205161014051604080516001600160a01b0360243581166020830152938416918101919091529116606082015260043560808201529061040e8260a08101610400565b16610180526101205161014051604080516001600160a01b0360243581166020830152938416918101919091529116606082015260043560808201529061040e8260a08101610400565b166101a0819052335f818152602081905260409081902060c05181546001600160a01b039182166001600160a01b03199182168117845560e05160018501805491851691841682179055610100516002860180549186169185168217905561012051600387018054918716918616821790556101405160048089018054928916928816831790556101605160058a018054918a16918916821790556101805160068b018054918b16918a16821790556007909a01805499909d16989097168817909b5597519935997fd481fb7ff4ecc8bd9d14b40bfbc75fb58b10c682dffde10afd684c0c367868e898909788976106e19790969195909492939291896107db565b0390a36040805160c080516001600160a01b03908116835260e080518216602085015261010080518316958501959095526101205182166060850152610140518216608085015261016051821660a0850152610180518216928401929092526101a0511690820152f35b634e487b7160e01b5f52604160045260245ffd5b60405163d92e233d60e01b8152600490fd5b60405163d647364f60e01b815260206004820152601460248201527318dbdb5b5d5b9a5d1e5259081c995c5d5a5c995960621b6044820152606490fd5b9181601f840112156100ae578235916001600160401b0383116100ae57602083818601950101116100ae57565b6001600160a01b039182168152918116602083015291821660408201529181166060830152918216608082015291811660a083015291821660c0820152911660e08201526101000190565b90601f801991011681019081106001600160401b0382111761074b57604052565b9060405192839160209481869283830196873781015f838201528351905f945b82861061091157506108859450015f83820152038084520182610826565b8051156108d95751905ff0906001600160a01b038216156108a4575090565b6064906040519063d647364f60e01b82526004820152600d60248201526c18dc99585d194819985a5b1959609a1b6044820152fd5b60405163d647364f60e01b815260048101849052600f60248201526e656d70747920696e697420636f646560881b6044820152606490fd5b925092909381818401015182828601015201928692859261086756fea26469706673582212208c97cca9dba0ab32a5b16352325cbe3be111eb1495a9c0c4d0639ce1eef4c88164736f6c63430008180033"
+}
