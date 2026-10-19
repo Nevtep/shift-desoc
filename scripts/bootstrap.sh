@@ -202,10 +202,9 @@ if [[ -n "$(git status --porcelain)" ]]; then
   git stash push --include-untracked -m "$stash_msg"
 fi
 git reset --hard origin/main
-if [[ -f .engram/manifest.json ]]; then
-  echo "Importing Git-synced Engram memories..."
-  engram sync --import
-fi
+# Engram memories are not imported from the repository: Hermes owns its store
+# in $HERMES_HOME/.engram and learns from merges itself; local learnings arrive
+# only through infra/aws/hermes/sync-engram.sh (sanitized, over SSM).
 mkdir -p .worktrees
 
 grep -qxF '.worktrees/' .gitignore || {
