@@ -91,7 +91,13 @@ function mapModules(raw: unknown): CommunityModules | null {
 
 export function useCommunityModules({ communityId, chainId, enabled = true }: HookParams) {
   const publicClient = useCachedPublicClient();
-  const [modules, setModules] = useState<CommunityModules | null>(null);
+  // Modules are stored with the (chain, community) they were read for and only
+  // exposed while that still matches. Otherwise, after switching community the
+  // previous community's modules object would stay visible during the new
+  // lookup, and consumers could attach stale on-chain reads to the wrong context.
+  const requestKey = `${chainId ?? "none"}:${communityId ?? "none"}`;
+  const [loaded, setLoaded] = useState<{ key: string; modules: CommunityModules | null }>({ key: "", modules: null });
+  const modules = loaded.key === requestKey ? loaded.modules : null;
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -112,7 +118,7 @@ export function useCommunityModules({ communityId, chainId, enabled = true }: Ho
     const canQuery = Boolean(enabled && communityRegistry && validCommunityId && publicClient.raw);
 
     if (!canQuery) {
-      setModules(null);
+      setLoaded({ key: requestKey, modules: null });
       setIsLoading(false);
       setIsFetching(false);
       setIsError(false);
@@ -135,10 +141,10 @@ export function useCommunityModules({ communityId, chainId, enabled = true }: Ho
         }, 20_000);
 
         if (cancelled) return;
-        setModules(mapModules(data));
+        setLoaded({ key: requestKey, modules: mapModules(data) });
       } catch (readError) {
         if (cancelled) return;
-        setModules(null);
+        setLoaded({ key: requestKey, modules: null });
         setIsError(true);
         setError(readError instanceof Error ? readError : new Error(String(readError)));
       } finally {
@@ -153,7 +159,7 @@ export function useCommunityModules({ communityId, chainId, enabled = true }: Ho
     return () => {
       cancelled = true;
     };
-  }, [communityId, communityRegistry, enabled, publicClient, validCommunityId]);
+  }, [communityId, communityRegistry, enabled, publicClient, requestKey, validCommunityId]);
 
   return {
     modules,
