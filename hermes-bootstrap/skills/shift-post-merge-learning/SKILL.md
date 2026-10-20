@@ -60,11 +60,26 @@ Then classify, following `shift-learning-governance`:
 - Non-product PRs (devops, workflow, skills): just note what changed in the
   runtime or skills; no product lesson.
 
-Persist:
-- concise lessons in Hermes memory (one entry per lesson, tagged with the PR
-  and issue);
-- project/technical lessons in Engram (project `shift-desoc`, type
-  `decision`, `bugfix` or `discovery`, with file paths and the PR number);
+Persist lessons in **Engram**, the only store for per-PR lessons. Use the CLI
+(there is no Engram tool in Hermes; the binary is on PATH in cron runs), one
+observation per lesson, with the PR and issue in the title:
+
+```bash
+HOME=/opt/data engram save "Lesson PR#<n>/<SHI-x>: <short title>" "<what, why, file paths, what the audit should have demanded>" \
+  --type decision --project shift-desoc   # or bugfix / discovery
+HOME=/opt/data engram search "PR#<n>" --project shift-desoc --limit 5   # confirm it was saved
+```
+
+If `engram save` or the search fails, report it and do not acknowledge the PR.
+
+Hermes memory (the `memory` tool) is **not** a lesson log: it is small, shared
+by every job (the social content job keeps its published topics there) and
+injected into every session. Add to it only a short runtime fact that every
+future session needs, and only if it fits. Never remove, shorten or replace
+entries you did not write in this run to make room; if the memory is full,
+leave it as it is and say so in the report.
+
+Also:
 - when a lesson recurs (same pattern in two or more PRs) or is high-confidence,
   open a **separate** skill-improvement proposal as `shift-learning-governance`
   prescribes — never edit skills silently, never mix it with product work.
@@ -81,16 +96,22 @@ starts while the backlog is fresh:
 
 ```bash
 source /opt/data/shift/jobs.env   # DEV_LOOP_JOB_ID
-nohup hermes cron run --accept-hooks "$DEV_LOOP_JOB_ID" >/opt/data/shift/dev-loop-trigger.log 2>&1 &
+nohup /opt/hermes/.venv/bin/hermes cron run --accept-hooks "$DEV_LOOP_JOB_ID" >/opt/data/shift/dev-loop-trigger.log 2>&1 &
+sleep 5; grep -q "Triggered job" /opt/data/shift/dev-loop-trigger.log && echo triggered
 ```
+
+`hermes` is not on the terminal PATH in every runtime, so always use the
+absolute path. The trigger is confirmed only when the log contains
+`Triggered job`; otherwise report the log and do not acknowledge.
 
 The loop has its own preflight (open-PR limit, auth, lock), so triggering it
 is always safe; it will stop by itself when it must wait.
 
 ## 4. Acknowledge
 
-Only after steps 1-3 succeeded for a PR (lessons persisted, dev loop
-triggered), acknowledge it so the watcher stops handing it over:
+Only after steps 1-3 succeeded for a PR (lessons saved and found in Engram,
+dev loop trigger confirmed in its log), acknowledge it so the watcher stops
+handing it over:
 
 ```bash
 /opt/data/scripts/shift-merge-ack.sh <pr-number> [<pr-number>...]
@@ -100,6 +121,6 @@ If any step failed, do not acknowledge that PR: it will be retried.
 
 ## Report
 
-List per PR: lessons persisted (memory + Engram ids), rejected findings,
+List per PR: lessons persisted (Engram ids), rejected findings,
 human fixes found, Linear state, and whether the dev loop was triggered. Keep
 it short; it is delivered to Telegram.

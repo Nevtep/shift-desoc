@@ -37,3 +37,9 @@ image_gen:
 
 cron:
   max_parallel_jobs: 1
+
+# Hermes memory is shared by every job and injected into every session. Per-PR
+# lessons live in Engram (shift-post-merge-learning); this budget only has to
+# hold runtime facts plus the content jobs' state, which overflowed 2200 chars.
+memory:
+  memory_char_limit: 4000
