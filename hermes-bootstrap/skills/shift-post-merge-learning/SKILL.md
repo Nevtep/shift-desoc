@@ -132,25 +132,31 @@ starts while the backlog is fresh:
 source /opt/data/shift/jobs.env   # DEV_LOOP_JOB_ID
 hermes=/opt/hermes/.venv/bin/hermes
 log=/opt/data/shift/dev-loop-trigger.log
-newest() { "$hermes" cron runs "$DEV_LOOP_JOB_ID" --limit 1 2>/dev/null | head -n 1; }
-before="$(newest | awk '{print $1}')"
-PYTHONUNBUFFERED=1 nohup "$hermes" cron run --accept-hooks "$DEV_LOOP_JOB_ID" >"$log" 2>&1 &
-pid=$!
+newest() { "$hermes" cron runs "$DEV_LOOP_JOB_ID" --limit 1 2>&1 | head -n 1; }
+before_line="$(newest)"
 triggered=""
-for _ in $(seq 1 60); do
-  alive=1; kill -0 "$pid" 2>/dev/null || alive=0
-  read -r eid status _ source _ <<<"$(newest)"
-  if [[ -n "$eid" && "$eid" != "$before" && "$source" == "source=direct" ]]; then
-    [[ "$status" =~ ^(claimed|running|completed)$ ]] && triggered="$eid"
-    break
-  fi
-  (( alive )) || break
-  sleep 1
-done
-if [[ -n "$triggered" ]]; then
-  echo "dev loop triggered: execution $triggered"
+if [[ "$before_line" != "No cron execution attempts recorded." && ! "$before_line" =~ ^[0-9a-f]+[[:space:]] ]]; then
+  echo "dev loop not triggered: cannot read the cron ledger: $before_line"
 else
-  echo "dev loop not triggered"; cat "$log"
+  before="${before_line%% *}"
+  PYTHONUNBUFFERED=1 nohup "$hermes" cron run --accept-hooks "$DEV_LOOP_JOB_ID" >"$log" 2>&1 &
+  pid=$!
+  deadline=$((SECONDS + 60))
+  while (( SECONDS < deadline )); do
+    alive=1; kill -0 "$pid" 2>/dev/null || alive=0
+    read -r eid status _ source _ <<<"$(newest)"
+    if [[ -n "$eid" && "$eid" != "$before" && "$source" == "source=direct" ]]; then
+      [[ "$status" =~ ^(claimed|running|completed)$ ]] && triggered="$eid"
+      break
+    fi
+    (( alive )) || break
+    sleep 1
+  done
+  if [[ -n "$triggered" ]]; then
+    echo "dev loop triggered: execution $triggered"
+  else
+    echo "dev loop not triggered"; cat "$log"
+  fi
 fi
 ```
 
@@ -160,10 +166,16 @@ absolute path. `hermes cron run` runs the job synchronously and prints
 when nothing ran (for example when the scheduler is already firing the job), so
 that banner proves nothing. Before the agent starts, a manual run records an
 execution of the job with `source=direct` in the cron ledger, which
-`hermes cron runs` lists newest first. The trigger is confirmed only when such
-an execution, newer than the one listed before the trigger, appears within that
-minute as `claimed`, `running` or `completed`. The run keeps going in the
-background after that. Otherwise report the output and do not acknowledge: the
+`hermes cron runs` lists newest first. The ledger must be readable before the
+trigger (a row, or "No cron execution attempts recorded."), otherwise nothing is
+triggered, so an older run can never count. The trigger is confirmed only when
+an execution newer than that one appears within 60 seconds as `claimed`,
+`running` or `completed`. The run keeps going in the
+background after that. This relies on the dev-loop job delivering to a platform
+the gateway sends to directly (Telegram or local today): a job delivering to a
+relay-fronted platform is forwarded to the gateway and runs as
+`source=builtin`, so it would never be confirmed and the PR would be reported
+instead of acknowledged. Otherwise report the output and do not acknowledge: the
 next watcher run retries, and the loop's lock keeps a second trigger harmless.
 
 The loop has its own preflight (open-PR limit, auth, lock), so triggering it

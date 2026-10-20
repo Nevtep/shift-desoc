@@ -53,7 +53,9 @@ check "a full memory is reported, not pruned" has "$SKILL" 'memory is full'
 # The dev-loop trigger does not depend on hermes being on PATH, and the PR is
 # acknowledged only after the trigger is confirmed.
 check "trigger uses the absolute hermes path" sec_has "$SKILL" "3. Hand over to the development loop" 'hermes=/opt/hermes/\.venv/bin/hermes .*"\$hermes" cron run'
-check "trigger is confirmed with a bounded poll" sec_has "$SKILL" "3. Hand over to the development loop" 'for [a-z_]+ in \$\(seq 1 60\)'
+check "trigger is confirmed within a 60 s deadline" sec_has "$SKILL" "3. Hand over to the development loop" 'deadline=\$\(\(SECONDS \+ 60\)\).*while \(\( SECONDS < deadline \)\)'
+check "the ledger must be readable before triggering" sec_has "$SKILL" "3. Hand over to the development loop" 'cannot read the cron ledger'
+check "the relay-fronted delivery precondition is stated" sec_has "$SKILL" "3. Hand over to the development loop" 'relay-fronted'
 check "trigger output is unbuffered" sec_has "$SKILL" "3. Hand over to the development loop" 'PYTHONUNBUFFERED=1 (nohup )?"\$hermes" cron run'
 check "trigger is confirmed by a new manual execution of the dev-loop job" sec_has "$SKILL" "3. Hand over to the development loop" 'cron runs "\$DEV_LOOP_JOB_ID" --limit 1'
 check "only a source=direct execution newer than the baseline counts" sec_has "$SKILL" "3. Hand over to the development loop" '"\$eid" != "\$before" && "\$source" == "source=direct"'
