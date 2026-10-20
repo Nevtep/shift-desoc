@@ -11,6 +11,11 @@ BOOTSTRAP=/opt/shift-hermes/bootstrap
 mkdir -p "$HERMES_HOME" "$HOME" "$HERMES_HOME/skills" /workspace
 chmod 700 "$HERMES_HOME" "$HOME" || true
 
+# The agent terminal PATH includes $HERMES_HOME/bin but not the Hermes venv, so
+# skills and cron runs can call `hermes` (e.g. to trigger the dev loop).
+mkdir -p "$HERMES_HOME/bin"
+ln -sfn /opt/hermes/.venv/bin/hermes "$HERMES_HOME/bin/hermes"
+
 # Seed configuration once. The image's stage2 hook has already written a
 # default config.yaml by now, so a marker (not file existence) decides whether
 # the Shift baseline still has to be merged in. Afterwards Hermes and the

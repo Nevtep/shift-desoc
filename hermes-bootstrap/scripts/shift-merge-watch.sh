@@ -66,6 +66,12 @@ else
   echo "RETRY_ROUND=$round"
 fi
 
+# Keep timestamped copies of the shared Hermes memory from before each agent
+# session and log entries that disappeared since the previous copy, so a prune
+# by a learning run can be noticed and restored (never fails the hand-over).
+bash "$(dirname "${BASH_SOURCE[0]}")/shift-memory-snapshot.sh" \
+  "${HERMES_HOME:-/opt/data}/memories/MEMORY.md" "$STATE_DIR" >/dev/null 2>&1 || true
+
 # Sync the main checkout before the agent session starts: Hermes loads the
 # development skills from it, so a merged skills PR is live for this run.
 repo_dir="${SHIFT_REPO_DIR:-/workspace/shift}"
