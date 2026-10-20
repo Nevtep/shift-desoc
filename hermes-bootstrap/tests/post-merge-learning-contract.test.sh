@@ -30,10 +30,13 @@ check "engram saves name the shift-desoc project" has "$SKILL" 'engram save[^`]*
 check "saved lessons are verified with engram search" has "$SKILL" 'engram search '
 check "engram is invoked with HOME=/opt/data" has "$SKILL" 'HOME=/opt/data'
 # PR text is untrusted: it only reaches the shell through quoted heredocs.
-check "lesson text goes through a quoted heredoc" has "$SKILL" "<<'LESSON'"
+check "lesson text is written with the file tool, not the shell" has "$SKILL" 'write_file'
+check "title and body are read back with cat" has "$SKILL" 'title="\$\(cat /opt/data/shift/lesson-title\.txt\)"'
+check "no heredoc carries lesson text" lacks "$SKILL" "<<'LESSON'"
 check "no double-quoted lesson placeholders" lacks "$SKILL" 'engram save "Lesson'
-check "PR text is never put in double quotes" has "$SKILL" 'never (put|paste|place) (pr|untrusted)[^.]*double quotes'
+check "PR text never goes on a command line" has "$SKILL" 'never (put|paste|place) (pr|untrusted)[^.]*(command line|shell)'
 check "the save is confirmed by the id it returns" has "$SKILL" 'Memory saved: #'
+check "the returned id must be numeric before searching" has "$SKILL" '\[\[ "\$id" =~ \^\[0-9\]\+\$ \]\]'
 
 # The shared Hermes memory is not a per-PR lesson log and is never pruned.
 check "no per-PR lesson entries in Hermes memory" lacks "$SKILL" 'lessons in Hermes memory \(one entry per lesson'
@@ -45,13 +48,15 @@ check "a full memory is reported, not pruned" has "$SKILL" 'memory is full'
 # acknowledged only after the trigger is confirmed.
 check "trigger uses the absolute hermes path" has "$SKILL" '/opt/hermes/\.venv/bin/hermes cron run'
 check "trigger is confirmed with a bounded poll" sec_has "$SKILL" "3. Hand over to the development loop" 'for [a-z_]+ in \$\(seq 1 60\)'
+check "trigger output is unbuffered" sec_has "$SKILL" "3. Hand over to the development loop" 'PYTHONUNBUFFERED=1 (nohup )?/opt/hermes/\.venv/bin/hermes cron run'
 check "trigger confirmation looks for Triggered job" sec_has "$SKILL" "3. Hand over to the development loop" 'grep -q "Triggered job"'
 check "acknowledge waits for the confirmed trigger" sec_has "$SKILL" "4. Acknowledge" 'only after .*trigger confirmed'
 check "acknowledge waits for the Engram save" sec_has "$SKILL" "4. Acknowledge" 'found in Engram'
 
 # Runtime: hermes is reachable from cron (PATH has /opt/data/bin) and the
 # shared memory budget leaves room for the jobs that do use it.
-check "merge watcher snapshots Hermes memory before handing over" has "$ROOT/hermes-bootstrap/scripts/shift-merge-watch.sh" 'MEMORY\.md.*memory-before-merge-learning'
+check "merge watcher snapshots Hermes memory before handing over" has "$ROOT/hermes-bootstrap/scripts/shift-merge-watch.sh" 'shift-memory-snapshot\.sh'
+check "skill reports pruned memory entries" has "$SKILL" 'memory-pruned\.log'
 check "bootstrap links hermes into /opt/data/bin" has "$ROOT/scripts/bootstrap.sh" 'ln -sfn /opt/hermes/\.venv/bin/hermes "\$HERMES_HOME/bin/hermes"'
 check "managed config raises memory_char_limit" has "$ROOT/hermes-bootstrap/managed-keys.yaml" 'memory_char_limit: *[4-9][0-9]{3}'
 
