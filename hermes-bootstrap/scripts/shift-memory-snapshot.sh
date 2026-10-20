@@ -14,34 +14,48 @@ keep=10
 [[ -f "$mem" && ! -L "$mem" ]] || exit 0
 
 snapdir="$state/memory-snapshots"
+log="$state/memory-pruned.log"
+# The state dir is writable by the agent: never write, append or delete
+# through a link planted there.
+[[ -L "$snapdir" || -L "$log" ]] && exit 0
 mkdir -p "$snapdir" || exit 0
-last="$(ls -1 "$snapdir"/MEMORY-*.md 2>/dev/null | sort | tail -n 1)"
+[[ -d "$snapdir" && ! -L "$snapdir" ]] || exit 0
+shopt -s nullglob
+snaps=("$snapdir"/MEMORY-*.md)   # glob order is sorted; stamps are fixed-width
+last=""
+for (( i = ${#snaps[@]} - 1; i >= 0; i-- )); do
+  [[ -f "${snaps[i]}" && ! -L "${snaps[i]}" ]] && { last="${snaps[i]}"; break; }
+done
 
 if [[ -n "$last" ]]; then
   cmp -s "$last" "$mem" && exit 0
   # Entries are separated by a line holding only "§". Report every entry of
-  # the previous copy that is not present verbatim any more.
-  removed="$(awk '
-    function flush(arr, i) { if (cur != "") arr[cur] = 1; cur = "" }
-    FNR == 1 { if (NR != 1) flush(prev); else cur = "" }
-    $0 == "§" { if (NR == FNR) flush(prev); else flush(now); next }
+  # the previous copy that is not present verbatim any more. Files are told
+  # apart by name, so an empty previous copy is handled too.
+  removed="$(awk -v first="$last" '
+    function flush(arr) { if (cur != "") arr[cur] = 1; cur = "" }
+    FNR == 1 && FILENAME != first { flush(prev) }
+    $0 == "§" { if (FILENAME == first) flush(prev); else flush(now); next }
     { cur = (cur == "" ? $0 : cur "\n" $0) }
-    END { flush(now); for (e in prev) if (!(e in now)) printf "%s\n---\n", e }
+    END { if (FILENAME == first) flush(prev); else flush(now); for (e in prev) if (!(e in now)) printf "%s\n---\n", e }
   ' "$last" "$mem")"
   if [[ -n "$removed" ]]; then
     {
       echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ): entries removed or rewritten since $(basename "$last")"
       printf '%s\n' "$removed"
-    } >>"$state/memory-pruned.log"
+    } >>"$log"
   fi
 fi
 
 stamp="${SHIFT_SNAPSHOT_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
-cp -p "$mem" "$snapdir/MEMORY-$stamp.md" 2>/dev/null || exit 0
-total="$(ls -1 "$snapdir"/MEMORY-*.md 2>/dev/null | wc -l | tr -d ' ')"
-if (( total > keep )); then
-  ls -1 "$snapdir"/MEMORY-*.md | sort | head -n "$((total - keep))" | while IFS= read -r old; do
-    rm -f -- "$old"
-  done
-fi
+dest="$snapdir/MEMORY-$stamp.md"
+[[ -e "$dest" || -L "$dest" ]] && exit 0
+# Copy to a fresh file created by mktemp (O_EXCL), then rename it into place.
+tmp="$(mktemp "$snapdir/.snapshot.XXXXXX")" || exit 0
+cat "$mem" >"$tmp" && mv -f "$tmp" "$dest" || { rm -f -- "$tmp"; exit 0; }
+
+snaps=("$snapdir"/MEMORY-*.md)
+for (( i = 0; i < ${#snaps[@]} - keep; i++ )); do
+  [[ -f "${snaps[i]}" && ! -L "${snaps[i]}" ]] && rm -f -- "${snaps[i]}"
+done
 exit 0

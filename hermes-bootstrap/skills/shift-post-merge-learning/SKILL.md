@@ -71,16 +71,27 @@ agent's credentials) and not in a heredoc (a line equal to the delimiter would
 end it early and run the rest). Write the title and the body with the
 `write_file` tool, which involves no shell, to `/opt/data/shift/lesson-title.txt`
 and `/opt/data/shift/lesson-body.txt`, then save them from those files (bash
-never re-expands the output of `$(cat ...)`):
+never re-expands the output of `$(cat ...)`). The files are removed as soon as
+they are read, so a skipped `write_file` can never save the previous lesson
+again, and a title must start with `Lesson PR#` (so it can never be read as an
+option):
 
 ```bash
 title="$(cat /opt/data/shift/lesson-title.txt)"   # e.g. Lesson PR#<n>/<SHI-x>: <short title>
 body="$(cat /opt/data/shift/lesson-body.txt)"     # what happened, why, file paths, what the audit should have demanded
-out="$(HOME=/opt/data engram save "$title" "$body" --type decision --project shift-desoc)"  # or bugfix / discovery
-echo "$out"   # expect: Memory saved: #<id> "<title>" (<type>)
-id="$(sed -n 's/^Memory saved: #\([0-9][0-9]*\).*/\1/p' <<<"$out")"
-[[ "$id" =~ ^[0-9]+$ ]] || { echo "engram save failed: $out"; false; }
-HOME=/opt/data engram search "$title" --project shift-desoc --limit 5 | grep -q "#$id " && echo "lesson #$id saved"
+rm -f /opt/data/shift/lesson-title.txt /opt/data/shift/lesson-body.txt
+if [[ "$title" != "Lesson PR#"* || -z "$body" ]]; then
+  echo "engram save skipped: lesson files missing or title does not start with Lesson PR#"
+else
+  out="$(HOME=/opt/data engram save "$title" "$body" --type decision --project shift-desoc)"  # or bugfix / discovery
+  echo "$out"   # expect: Memory saved: #<id> "<title>" (<type>)
+  id="$(sed -n 's/^Memory saved: #\([0-9][0-9]*\).*/\1/p' <<<"$out")"
+  if [[ "$id" =~ ^[0-9]+$ ]]; then
+    HOME=/opt/data engram search "$title" --project shift-desoc --limit 5 | grep -q "#$id " && echo "lesson #$id saved"
+  else
+    echo "engram save failed: $out"
+  fi
+fi
 ```
 
 The lesson counts as persisted only when the save printed `Memory saved: #<id>`
