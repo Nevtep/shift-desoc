@@ -21,7 +21,14 @@ touch "$HERMES_HOME/config.yaml"
 # repo-managed rules block is kept current on existing volumes.
 # Malformed markers leave the file untouched and only warn: a hand-edited
 # SOUL.md must never stop the agent from booting.
-bash "$BOOTSTRAP/scripts/shift-soul-managed-rules.sh" "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md" \
+# The image's entrypoint already drops to the hermes user; if bootstrap ever
+# runs as root, update the agent-owned file as its owner so no root process
+# reads or writes through the agent's directory.
+soul_update=(bash "$BOOTSTRAP/scripts/shift-soul-managed-rules.sh" "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md")
+if [[ "$(id -u)" -eq 0 ]] && id hermes >/dev/null 2>&1; then
+  soul_update=(runuser -u hermes -- "${soul_update[@]}")
+fi
+"${soul_update[@]}" \
   || echo "WARNING: SOUL.md managed rules not applied; fix its shift:managed-rules markers by hand." >&2
 
 # Re-assert repo-managed keys (skills dirs, MCP servers, cron limits) on every

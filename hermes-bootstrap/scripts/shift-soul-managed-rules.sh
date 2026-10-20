@@ -16,8 +16,8 @@ target="${2:?usage: shift-soul-managed-rules.sh <seed> <target>}"
 start='<!-- shift:managed-rules:start -->'
 end='<!-- shift:managed-rules:end -->'
 
-# Never follow links or write through anything but a regular file: bootstrap
-# may run as root inside a directory the agent user can write.
+# Never follow links or write through anything but a regular file (defence in
+# depth; bootstrap runs this as the file's owner).
 if [[ -L "$target" ]] || { [[ -e "$target" ]] && [[ ! -f "$target" ]]; }; then
   echo "$target is a symlink or not a regular file; left untouched" >&2
   exit 2
@@ -62,8 +62,7 @@ fi
 if cmp -s "$tmp" "$target"; then
   exit 0
 fi
-# Atomic replace that keeps the file's mode and owner (bootstrap may run as
-# root on a file owned by the agent user).
+# Atomic replace that keeps the file's mode and owner.
 mode="$(stat -c %a "$target" 2>/dev/null || stat -f %Lp "$target")"
 owner="$(stat -c %u:%g "$target" 2>/dev/null || stat -f %u:%g "$target")"
 chmod "$mode" "$tmp"
