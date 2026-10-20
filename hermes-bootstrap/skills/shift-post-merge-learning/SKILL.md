@@ -73,13 +73,14 @@ end it early and run the rest). Write the title and the body with the
 and `/opt/data/shift/lesson-body.txt`, then save them from those files (bash
 never re-expands the output of `$(cat ...)`). The files are removed as soon as
 they are read, so a skipped `write_file` can never save the previous lesson
-again, and a title must start with `Lesson PR#` (so it can never be read as an
-option):
+again. The title must start with `Lesson PR#` and a body starting with `-` gets
+a `Lesson:` line in front, so neither can be read as an engram option:
 
 ```bash
 title="$(cat /opt/data/shift/lesson-title.txt)"   # e.g. Lesson PR#<n>/<SHI-x>: <short title>
 body="$(cat /opt/data/shift/lesson-body.txt)"     # what happened, why, file paths, what the audit should have demanded
 rm -f /opt/data/shift/lesson-title.txt /opt/data/shift/lesson-body.txt
+[[ "$body" == -* ]] && body="Lesson:"$'\n'"$body"   # a leading "-" (markdown bullet) would be read as an option
 if [[ "$title" != "Lesson PR#"* || -z "$body" ]]; then
   echo "engram save skipped: lesson files missing or title does not start with Lesson PR#"
 else

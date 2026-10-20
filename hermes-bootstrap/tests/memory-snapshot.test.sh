@@ -59,6 +59,13 @@ printf 'One\n§\nTwo\n§\nThree' >"$WORK/m6.md"
 bash "$SNAP" "$WORK/m6.md" "$s6"
 check "empty previous snapshot reports nothing" test ! -s "$s6/memory-pruned.log"
 
+# 6b. A wiped memory reports every previous entry, including the last one.
+s6b="$WORK/s6b"; printf 'First\n§\nLast entry' >"$WORK/m6b.md"
+bash "$SNAP" "$WORK/m6b.md" "$s6b"; : >"$WORK/m6b.md"
+bash "$SNAP" "$WORK/m6b.md" "$s6b"
+check "wiped memory reports the first entry" grep -q '^First$' "$s6b/memory-pruned.log"
+check "wiped memory reports the last entry" grep -q '^Last entry$' "$s6b/memory-pruned.log"
+
 # 7. Links planted in the state dir are never written or deleted through.
 outside="$WORK/outside"; mkdir -p "$outside"
 printf 'keep me' >"$outside/MEMORY-x.md"

@@ -39,6 +39,8 @@ check "the save is confirmed by the id it returns" has "$SKILL" 'Memory saved: #
 check "the search runs only when the id is numeric" has "$SKILL" 'if \[\[ "\$id" =~ \^\[0-9\]\+\$ \]\]; then HOME=/opt/data engram search'
 check "lesson files are removed after they are read" has "$SKILL" 'rm -f /opt/data/shift/lesson-title\.txt /opt/data/shift/lesson-body\.txt'
 check "the title must start with Lesson PR# before saving" has "$SKILL" '"\$title" != "Lesson PR#"\*'
+check "a body starting with a dash is prefixed, not read as an option" has "$SKILL" '\[\[ "\$body" == -\* \]\] && body="Lesson:'
+check "a dash-leading body does not block the save" lacks "$SKILL" '\|\| "\$body" == -\*'
 check "the returned id must be numeric before searching" has "$SKILL" '\[\[ "\$id" =~ \^\[0-9\]\+\$ \]\]'
 
 # The shared Hermes memory is not a per-PR lesson log and is never pruned.

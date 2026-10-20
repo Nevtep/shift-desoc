@@ -31,13 +31,15 @@ if [[ -n "$last" ]]; then
   cmp -s "$last" "$mem" && exit 0
   # Entries are separated by a line holding only "§". Report every entry of
   # the previous copy that is not present verbatim any more. Files are told
-  # apart by name, so an empty previous copy is handled too.
+  # apart by name and the pending entry is flushed by the file of the last
+  # line read, so an empty previous copy or a wiped memory is handled too.
   removed="$(awk -v first="$last" '
     function flush(arr) { if (cur != "") arr[cur] = 1; cur = "" }
-    FNR == 1 && FILENAME != first { flush(prev) }
-    $0 == "§" { if (FILENAME == first) flush(prev); else flush(now); next }
+    { infirst = (FILENAME == first) }
+    FNR == 1 && !infirst { flush(prev) }
+    $0 == "§" { if (infirst) flush(prev); else flush(now); next }
     { cur = (cur == "" ? $0 : cur "\n" $0) }
-    END { if (FILENAME == first) flush(prev); else flush(now); for (e in prev) if (!(e in now)) printf "%s\n---\n", e }
+    END { if (infirst) flush(prev); else flush(now); for (e in prev) if (!(e in now)) printf "%s\n---\n", e }
   ' "$last" "$mem")"
   if [[ -n "$removed" ]]; then
     {
