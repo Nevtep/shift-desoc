@@ -27,6 +27,7 @@ cat >"$WORK/hermes" <<FAKE
 runs="$WORK/runs"
 if [[ "\$1 \$2" == "cron runs" ]]; then
   [[ -e "$WORK/ledger-down" ]] && { echo "database is locked" >&2; exit 1; }
+  echo "DeprecationWarning: harmless notice" >&2
   [[ -s "\$runs" ]] && tail -n 1 "\$runs" || echo "No cron execution attempts recorded."
   exit 0
 fi

@@ -132,8 +132,12 @@ starts while the backlog is fresh:
 source /opt/data/shift/jobs.env   # DEV_LOOP_JOB_ID
 hermes=/opt/hermes/.venv/bin/hermes
 log=/opt/data/shift/dev-loop-trigger.log
-newest() { "$hermes" cron runs "$DEV_LOOP_JOB_ID" --limit 1 2>&1 | head -n 1; }
-before_line="$(newest)"
+newest() { "$hermes" cron runs "$DEV_LOOP_JOB_ID" --limit 1 2>/dev/null | head -n 1; }
+if out="$("$hermes" cron runs "$DEV_LOOP_JOB_ID" --limit 1 2>/dev/null)"; then
+  before_line="$(head -n 1 <<<"$out")"
+else
+  before_line="hermes cron runs failed"
+fi
 triggered=""
 if [[ "$before_line" != "No cron execution attempts recorded." && ! "$before_line" =~ ^[0-9a-f]+[[:space:]] ]]; then
   echo "dev loop not triggered: cannot read the cron ledger: $before_line"
