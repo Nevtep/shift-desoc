@@ -66,6 +66,11 @@ else
   echo "RETRY_ROUND=$round"
 fi
 
+# Keep a copy of the shared Hermes memory from before the agent session, so an
+# entry removed or rewritten by the learning run can be detected and restored.
+[[ -f "${HERMES_HOME:-/opt/data}/memories/MEMORY.md" ]] \
+  && cp -p "${HERMES_HOME:-/opt/data}/memories/MEMORY.md" "$STATE_DIR/memory-before-merge-learning.md" 2>/dev/null || true
+
 # Sync the main checkout before the agent session starts: Hermes loads the
 # development skills from it, so a merged skills PR is live for this run.
 repo_dir="${SHIFT_REPO_DIR:-/workspace/shift}"
