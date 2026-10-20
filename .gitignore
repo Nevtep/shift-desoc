@@ -87,16 +87,11 @@ gas-report.txt
 **/gas-report.txt
 # Local AI runtime state
 .atl/
+# Engram memories are local-only: chunks carry verbatim prompts and local paths
+# and are gzipped (invisible to PR diffs and gitleaks). Share important local
+# learnings with Hermes via infra/aws/hermes/sync-engram.sh, never via git.
+# Only config.json (the project name Engram scopes memories to) is versioned.
 .engram/*
-!.engram/manifest.json
-!.engram/chunks/
-!.engram/chunks/**
 !.engram/config.json
-.engram/*.db
-.engram/*.db-*
-.engram/*.sqlite
-.engram/*.sqlite-*
-.engram/*.wal
-.engram/*.shm
 .agent-runs/
 .worktrees/

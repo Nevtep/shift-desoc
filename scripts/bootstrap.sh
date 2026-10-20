@@ -17,9 +17,19 @@ chmod 700 "$HERMES_HOME" "$HOME" || true
 # operator own the file.
 SEED_MARKER="$HERMES_HOME/.shift-config-seeded"
 touch "$HERMES_HOME/config.yaml"
-if [[ ! -f "$HERMES_HOME/SOUL.md" ]]; then
-  cp "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md"
+# SOUL.md is seeded once and then owned by Hermes/the operator; only its
+# repo-managed rules block is kept current on existing volumes.
+# Malformed markers leave the file untouched and only warn: a hand-edited
+# SOUL.md must never stop the agent from booting.
+# The image's entrypoint already drops to the hermes user; if bootstrap ever
+# runs as root, update the agent-owned file as its owner so no root process
+# reads or writes through the agent's directory.
+soul_update=(bash "$BOOTSTRAP/scripts/shift-soul-managed-rules.sh" "$BOOTSTRAP/SOUL.md" "$HERMES_HOME/SOUL.md")
+if [[ "$(id -u)" -eq 0 ]] && id hermes >/dev/null 2>&1; then
+  soul_update=(runuser -u hermes -- "${soul_update[@]}")
 fi
+"${soul_update[@]}" \
+  || echo "WARNING: SOUL.md managed rules not applied; fix its shift:managed-rules markers by hand." >&2
 
 # Re-assert repo-managed keys (skills dirs, MCP servers, cron limits) on every
 # bootstrap so reviewed changes reach existing volumes, and stamp the config
@@ -202,10 +212,9 @@ if [[ -n "$(git status --porcelain)" ]]; then
   git stash push --include-untracked -m "$stash_msg"
 fi
 git reset --hard origin/main
-if [[ -f .engram/manifest.json ]]; then
-  echo "Importing Git-synced Engram memories..."
-  engram sync --import
-fi
+# Engram memories are not imported from the repository: Hermes owns its store
+# in $HERMES_HOME/.engram and learns from merges itself; local learnings arrive
+# only through infra/aws/hermes/sync-engram.sh (sanitized, over SSM).
 mkdir -p .worktrees
 
 grep -qxF '.worktrees/' .gitignore || {

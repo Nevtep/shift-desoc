@@ -45,12 +45,39 @@ Inside the container, finish the one-time steps from `README-HERMES-RUNTIME.md`
 Rotate a secret: re-run `put-secrets.sh` (or `aws ssm put-parameter --overwrite`),
 then `update.sh`.
 
-## Engram memory sync
+## Engram memory
 
-`infra/aws/hermes/sync-engram.sh` exports new local `shift-desoc` memories as a
-chunk in `.engram/` and imports them into the agent's Engram on the host
-(idempotent; other local projects are never sent). Commit `.engram/` afterwards
-so bootstraps from `main` include it. The repo is public: review chunks first.
+Hermes owns its memory store (`/opt/data/.engram`, on the `hermes_data` volume)
+and learns from every merge itself (`shift-post-merge-learning`). Development
+happens mainly in its dev loop, so most learnings never leave the host.
+
+Memories **never go through git**: `.engram/` is gitignored except
+`config.json` (the project name). Chunks carry verbatim prompts and local
+paths, are gzipped (invisible to PR diffs and to the gitleaks pre-commit hook),
+would stay forever in public history, and importing them from `main` would let
+any merged PR write into the autonomous agent's memory.
+
+For an occasional, important learning from a local session, an operator runs:
+
+```bash
+bash infra/aws/hermes/sync-engram.sh
+```
+
+It exports new local `shift-desoc` memories, builds a bundle with
+`engram-sanitize.py` (prompts dropped, session paths blanked, the full decoded
+payload scanned for credentials), scans it again with gitleaks, shows what will
+be sent, asks for confirmation, and imports it over SSM-tunnelled SSH. Sent
+chunk ids are kept in `.engram/.pushed-to-hermes` (local only). Requires
+`engram` (same version as `ENGRAM_VERSION`), `python3`, `gitleaks` and operator
+SSH access.
+
+If a chunk is flagged, remove the memory locally (`engram delete <id> --hard`),
+discard that never-sent chunk so it stops blocking later syncs
+(`python3 infra/aws/hermes/engram-sanitize.py --src .engram --discard <chunk>`),
+and run the sync again.
+
+Tests: `bash infra/aws/hermes/tests/engram-sanitize.test.sh` (set `ENGRAM_BIN`
+for the real-import case) and `bash infra/aws/hermes/tests/sync-engram.test.sh`.
 
 ## Operators (SSH with sudo)
 

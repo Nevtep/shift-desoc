@@ -1,0 +1,13 @@
+# gitleaks config for the decoded Engram bundle that sync-engram.sh sends to
+# Hermes. It keeps every default rule and only allows Engram's own internal ids
+# (relation and observation sync ids such as "rel-f08931f2509fff87"), which the
+# default generic-api-key rule otherwise reports on every relation mutation.
+title = "shift engram bundle"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Engram internal sync ids"
+regexTarget = "secret"
+regexes = ['''^(?:rel|obs)-[0-9a-f]{16}$''']
