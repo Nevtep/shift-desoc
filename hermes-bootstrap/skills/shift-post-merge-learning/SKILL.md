@@ -130,21 +130,41 @@ starts while the backlog is fresh:
 
 ```bash
 source /opt/data/shift/jobs.env   # DEV_LOOP_JOB_ID
+hermes=/opt/hermes/.venv/bin/hermes
 log=/opt/data/shift/dev-loop-trigger.log
-PYTHONUNBUFFERED=1 nohup /opt/hermes/.venv/bin/hermes cron run --accept-hooks "$DEV_LOOP_JOB_ID" >"$log" 2>&1 &
+newest() { "$hermes" cron runs "$DEV_LOOP_JOB_ID" --limit 1 2>/dev/null | head -n 1; }
+before="$(newest | awk '{print $1}')"
+PYTHONUNBUFFERED=1 nohup "$hermes" cron run --accept-hooks "$DEV_LOOP_JOB_ID" >"$log" 2>&1 &
 pid=$!
+triggered=""
 for _ in $(seq 1 60); do
-  grep -q "Triggered job" "$log" && { echo triggered; break; }
-  kill -0 "$pid" 2>/dev/null || { grep -q "Triggered job" "$log" && echo triggered; break; }
+  alive=1; kill -0 "$pid" 2>/dev/null || alive=0
+  read -r eid status _ source _ <<<"$(newest)"
+  if [[ -n "$eid" && "$eid" != "$before" && "$source" == "source=direct" ]]; then
+    [[ "$status" =~ ^(claimed|running|completed)$ ]] && triggered="$eid"
+    break
+  fi
+  (( alive )) || break
   sleep 1
 done
+if [[ -n "$triggered" ]]; then
+  echo "dev loop triggered: execution $triggered"
+else
+  echo "dev loop not triggered"; cat "$log"
+fi
 ```
 
 `hermes` is not on the terminal PATH in every runtime, so always use the
-absolute path. The trigger is confirmed only when the log contains
-`Triggered job` within that minute; otherwise report the log and do not
-acknowledge (the next watcher run retries, and the loop's lock keeps a second
-trigger harmless).
+absolute path. `hermes cron run` runs the job synchronously and prints
+`Triggered job` only after the whole development cycle, and it prints it even
+when nothing ran (for example when the scheduler is already firing the job), so
+that banner proves nothing. Before the agent starts, a manual run records an
+execution of the job with `source=direct` in the cron ledger, which
+`hermes cron runs` lists newest first. The trigger is confirmed only when such
+an execution, newer than the one listed before the trigger, appears within that
+minute as `claimed`, `running` or `completed`. The run keeps going in the
+background after that. Otherwise report the output and do not acknowledge: the
+next watcher run retries, and the loop's lock keeps a second trigger harmless.
 
 The loop has its own preflight (open-PR limit, auth, lock), so triggering it
 is always safe; it will stop by itself when it must wait.
@@ -152,7 +172,7 @@ is always safe; it will stop by itself when it must wait.
 ## 4. Acknowledge
 
 Only after steps 1-3 succeeded for a PR (lessons saved and found in Engram,
-dev loop trigger confirmed in its log), acknowledge it so the watcher stops
+dev loop trigger confirmed by its new execution), acknowledge it so the watcher stops
 handing it over:
 
 ```bash

@@ -23,6 +23,7 @@ lacks() { ! flat "$1" | grep -qiE -- "$2"; }
 section() { awk -v h="## $2" 'index($0, h) == 1 {on = 1; print; next} on && /^## / {exit} on {print}' "$1" \
   | tr '\n' ' ' | sed -e 's/\\ */ /g' -e 's/  */ /g'; }
 sec_has() { section "$1" "$2" | grep -qiE -- "$3"; }
+sec_lacks() { ! section "$1" "$2" | grep -qiE -- "$3"; }
 
 # Lessons go to Engram through the CLI, with the project, and are verified.
 check "lessons are saved with the engram CLI" has "$SKILL" 'engram save '
@@ -51,10 +52,12 @@ check "a full memory is reported, not pruned" has "$SKILL" 'memory is full'
 
 # The dev-loop trigger does not depend on hermes being on PATH, and the PR is
 # acknowledged only after the trigger is confirmed.
-check "trigger uses the absolute hermes path" has "$SKILL" '/opt/hermes/\.venv/bin/hermes cron run'
+check "trigger uses the absolute hermes path" sec_has "$SKILL" "3. Hand over to the development loop" 'hermes=/opt/hermes/\.venv/bin/hermes .*"\$hermes" cron run'
 check "trigger is confirmed with a bounded poll" sec_has "$SKILL" "3. Hand over to the development loop" 'for [a-z_]+ in \$\(seq 1 60\)'
-check "trigger output is unbuffered" sec_has "$SKILL" "3. Hand over to the development loop" 'PYTHONUNBUFFERED=1 (nohup )?/opt/hermes/\.venv/bin/hermes cron run'
-check "trigger confirmation looks for Triggered job" sec_has "$SKILL" "3. Hand over to the development loop" 'grep -q "Triggered job"'
+check "trigger output is unbuffered" sec_has "$SKILL" "3. Hand over to the development loop" 'PYTHONUNBUFFERED=1 (nohup )?"\$hermes" cron run'
+check "trigger is confirmed by a new manual execution of the dev-loop job" sec_has "$SKILL" "3. Hand over to the development loop" 'cron runs "\$DEV_LOOP_JOB_ID" --limit 1'
+check "only a source=direct execution newer than the baseline counts" sec_has "$SKILL" "3. Hand over to the development loop" '"\$eid" != "\$before" && "\$source" == "source=direct"'
+check "the completion banner is not the confirmation" sec_lacks "$SKILL" "3. Hand over to the development loop" 'grep -q "Triggered job"'
 check "acknowledge waits for the confirmed trigger" sec_has "$SKILL" "4. Acknowledge" 'only after .*trigger confirmed'
 check "acknowledge waits for the Engram save" sec_has "$SKILL" "4. Acknowledge" 'found in Engram'
 
