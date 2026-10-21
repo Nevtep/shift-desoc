@@ -113,4 +113,31 @@ describe("access inspection", () => {
     reads.functionRoles[1] = null;
     expect(evaluateAccessInspection(modules, reads).overall).toBe("fail");
   });
+
+  describe("authority mode derivation", () => {
+    it("reports governance_managed when the timelock holds ADMIN", () => {
+      const modules = fullModules();
+      expect(evaluateAccessInspection(modules, healthyReads(modules)).authorityMode).toBe("governance_managed");
+    });
+
+    it("reports admin_managed when the timelock lacks ADMIN", () => {
+      const modules = fullModules();
+      const reads = healthyReads(modules);
+      reads.timelockHasRole = { "0": false };
+      expect(evaluateAccessInspection(modules, reads).authorityMode).toBe("admin_managed");
+    });
+
+    it("reports unavailable (never a guess) when the timelock ADMIN read failed", () => {
+      const modules = fullModules();
+      const reads = healthyReads(modules);
+      reads.timelockHasRole = { "0": null };
+      expect(evaluateAccessInspection(modules, reads).authorityMode).toBe("unavailable");
+      expect(evaluateAccessInspection(modules, null).authorityMode).toBe("unavailable");
+    });
+
+    it("reports unavailable when the timelock module is unset", () => {
+      const modules = { ...fullModules(), timelock: "0x0000000000000000000000000000000000000000" as const };
+      expect(evaluateAccessInspection(modules, healthyReads(modules)).authorityMode).toBe("unavailable");
+    });
+  });
 });
