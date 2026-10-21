@@ -7,7 +7,7 @@
 import type { CommunityDeploymentConfig } from "./config";
 import type { DeploymentWizardSession, PreflightAssessment, StepKey, VerificationSnapshot } from "./types";
 import type { StepExecutionResult } from "./step-executor-types";
-import { STEP_META } from "./wizard-machine";
+import { getStepMeta, STEP_META } from "./wizard-machine";
 
 const MOCK_DELAY_MS = 1800;
 const MOCK_COMMUNITY_ID = 99999;
@@ -55,7 +55,7 @@ export function createMockStepExecutor(): (
     }
 
     if (step === "FINALIZE_AUTHORITY_MODE") {
-      const expectedTxCount = STEP_META.FINALIZE_AUTHORITY_MODE.expectedTxCount;
+      const expectedTxCount = getStepMeta("FINALIZE_AUTHORITY_MODE", session.deploymentConfig?.authorityMode).expectedTxCount;
       const txHashes = Array.from({ length: expectedTxCount }, (_, i) =>
         fakeTxHash("FINALIZE_AUTHORITY_MODE", i)
       );

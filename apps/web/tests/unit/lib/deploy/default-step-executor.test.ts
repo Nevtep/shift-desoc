@@ -12,6 +12,7 @@ function makeSession() {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     communityId: 77,
+    deploymentConfig: { authorityMode: "governance_managed" },
     deploymentAddresses: {
       communityRegistry: "0x1000000000000000000000000000000000000001",
       paramController: "0x1000000000000000000000000000000000000002",

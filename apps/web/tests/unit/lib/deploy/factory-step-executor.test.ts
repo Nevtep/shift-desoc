@@ -12,6 +12,7 @@ function makeSession() {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     communityId: 77,
+    deploymentConfig: { authorityMode: "governance_managed" },
     deploymentAddresses: {
       communityRegistry: "0x1000000000000000000000000000000000000001",
       paramController: "0x1000000000000000000000000000000000000002",
@@ -512,6 +513,116 @@ describe("factory-step-executor strict staging guards", () => {
     expect(secondCall?.functionName).toBe("revokeRole");
     expect(secondCall?.args?.[1]).toBe("0x2000000000000000000000000000000000000002");
 
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+});
+
+describe("FINALIZE_AUTHORITY_MODE branches", () => {
+  const ACCESS_MANAGER = "0x1000000000000000000000000000000000000003";
+  const TIMELOCK = "0x1000000000000000000000000000000000000005";
+  const DEPLOYER = "0xabc1230000000000000000000000000000000000";
+  const COORDINATOR = "0x2000000000000000000000000000000000000002";
+
+  function sessionFor(mode?: string) {
+    const session = makeSession();
+    session.deploymentConfig = mode ? { authorityMode: mode } : undefined;
+    return session;
+  }
+
+  /** holders: lowercase address -> hasRole before revokes; revoked addresses flip to false. */
+  function setup(holders: Record<string, boolean>) {
+    const state = { ...holders };
+    const publicClient = {
+      getTransactionCount: vi.fn().mockResolvedValue(5n),
+      readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+        if (functionName === "ADMIN_ROLE") return 0n;
+        if (functionName === "authority") return ACCESS_MANAGER;
+        if (functionName === "hasRole") return [Boolean(state[String(args?.[1]).toLowerCase()]), 0];
+        return true;
+      }),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      estimateContractGas: vi.fn().mockResolvedValue(21000n),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" })
+    } as any;
+    const writeContractAsync = vi.fn(async (call: any) => {
+      const target = String(call.args[1]).toLowerCase();
+      if (call.functionName === "revokeRole") state[target] = false;
+      if (call.functionName === "grantRole") state[target] = true;
+      return `0x${(writeContractAsync.mock.calls.length).toString(16).padStart(64, "0")}`;
+    });
+    const executor = createFactoryDeployStepExecutor({
+      publicClient,
+      writeContractAsync: writeContractAsync as any,
+      connectedAddress: DEPLOYER
+    });
+    return { executor, writeContractAsync };
+  }
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = COORDINATOR;
+  });
+
+  it("admin_managed: never grants the timelock, keeps deployer ADMIN, revokes only the coordinator", async () => {
+    const { executor, writeContractAsync } = setup({
+      [DEPLOYER]: true,
+      [COORDINATOR]: true,
+      [TIMELOCK]: false
+    });
+    const result = await executor("FINALIZE_AUTHORITY_MODE", sessionFor("admin_managed"), makeContext());
+    expect(result.txHashes ?? []).toHaveLength(1);
+    const calls = writeContractAsync.mock.calls.map(([c]) => [c.functionName, String(c.args[1]).toLowerCase()]);
+    expect(calls).toEqual([["revokeRole", COORDINATOR]]);
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("admin_managed: sends no transactions when the coordinator no longer holds ADMIN", async () => {
+    const { executor, writeContractAsync } = setup({ [DEPLOYER]: true });
+    const result = await executor("FINALIZE_AUTHORITY_MODE", sessionFor("admin_managed"), makeContext());
+    expect(result.txHashes ?? []).toHaveLength(0);
+    expect(writeContractAsync).not.toHaveBeenCalled();
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("admin_managed: fails closed when the deployer lacks ADMIN", async () => {
+    const { executor } = setup({ [DEPLOYER]: false });
+    await expect(
+      executor("FINALIZE_AUTHORITY_MODE", sessionFor("admin_managed"), makeContext())
+    ).rejects.toThrow("Admin-managed finalization failed: deployer wallet does not hold admin role.");
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("admin_managed: fails closed when the timelock already holds ADMIN", async () => {
+    const { executor, writeContractAsync } = setup({ [DEPLOYER]: true, [TIMELOCK]: true });
+    await expect(
+      executor("FINALIZE_AUTHORITY_MODE", sessionFor("admin_managed"), makeContext())
+    ).rejects.toThrow("Admin-managed finalization failed: timelock holds admin role.");
+    expect(writeContractAsync).not.toHaveBeenCalled();
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("governance_managed: grants timelock, revokes coordinator then deployer (same calls as the legacy handoff)", async () => {
+    const { executor, writeContractAsync } = setup({
+      [DEPLOYER]: true,
+      [COORDINATOR]: true,
+      [TIMELOCK]: false
+    });
+    const result = await executor("FINALIZE_AUTHORITY_MODE", sessionFor("governance_managed"), makeContext());
+    expect(result.txHashes ?? []).toHaveLength(3);
+    const calls = writeContractAsync.mock.calls.map(([c]) => [c.functionName, String(c.args[1]).toLowerCase()]);
+    expect(calls).toEqual([
+      ["grantRole", TIMELOCK],
+      ["revokeRole", COORDINATOR],
+      ["revokeRole", DEPLOYER]
+    ]);
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
+  it("fails closed without sending transactions when no authority mode was persisted", async () => {
+    const { executor, writeContractAsync } = setup({ [DEPLOYER]: true });
+    await expect(executor("FINALIZE_AUTHORITY_MODE", sessionFor(undefined), makeContext())).rejects.toThrow(
+      "Cannot finalize authority without a selected authority mode."
+    );
+    expect(writeContractAsync).not.toHaveBeenCalled();
     delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
   });
 });
