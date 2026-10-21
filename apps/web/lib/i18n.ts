@@ -541,7 +541,12 @@ const dictionaries = {
     verification: {
       checking: "Verificando...",
       pass: "Correcto",
-      fail: "Fallo"
+      fail: "Fallo",
+      verifiedMode: "Modo de autoridad verificado",
+      adminManaged: "Administrado por admin",
+      governanceManaged: "Administrado por gobernanza",
+      positiveCheck: "Verificacion positiva",
+      negativeCheck: "Verificacion negativa"
     },
     governance: {
       metaHubTitle: "Gobernanza | Shift",
@@ -1208,7 +1213,12 @@ const dictionaries = {
     verification: {
       checking: "Checking...",
       pass: "Pass",
-      fail: "Fail"
+      fail: "Fail",
+      verifiedMode: "Verified authority mode",
+      adminManaged: "Admin-managed",
+      governanceManaged: "Governance-managed",
+      positiveCheck: "Positive check",
+      negativeCheck: "Negative check"
     },
     governance: {
       metaHubTitle: "Governance | Shift",

@@ -5,7 +5,7 @@
  */
 
 import type { CommunityDeploymentConfig } from "./config";
-import type { DeploymentWizardSession, PreflightAssessment, StepKey, VerificationSnapshot } from "./types";
+import type { AuthorityAdminHolders, AuthorityMode, DeploymentWizardSession, PreflightAssessment, StepKey, VerificationSnapshot } from "./types";
 import type { StepExecutionResult } from "./step-executor-types";
 import { getStepMeta, STEP_META } from "./wizard-machine";
 
@@ -100,4 +100,11 @@ export async function mockReadVerificationSnapshot(
     marketplaceActive: true,
     revenueTreasurySet: true
   };
+}
+
+/** Design-mode ADMIN holders consistent with the selected authority mode. */
+export function mockAuthorityHolders(mode: AuthorityMode): AuthorityAdminHolders {
+  return mode === "admin_managed"
+    ? { deployer: true, timelock: false, bootstrapCoordinator: false }
+    : { deployer: false, timelock: true, bootstrapCoordinator: false };
 }

@@ -362,6 +362,7 @@ export function DeployWizard({ options }: Props) {
               <div className="mt-8 flex w-full flex-col items-center gap-8">
                 <DeployVerificationResults
                   results={verificationResults}
+                  authorityMode={session?.deploymentConfig?.authorityMode}
                   isVerifying={
                     (session?.steps ?? []).some(
                       (s) => s.key === "VERIFY_DEPLOYMENT" && s.status === "running"
@@ -401,7 +402,10 @@ export function DeployWizard({ options }: Props) {
                 <h2 className="text-2xl font-semibold">{t.verification}</h2>
                 <p className="text-sm text-muted-foreground">{t.allChecksPassed}</p>
               </div>
-              <DeployVerificationResults results={verificationResults} />
+              <DeployVerificationResults
+                results={verificationResults}
+                authorityMode={session?.deploymentConfig?.authorityMode}
+              />
               <div className="space-y-4 text-center">
                 <p className="text-lg font-medium text-primary">{t.ready}</p>
                 <div className="flex flex-wrap justify-center gap-3">
@@ -465,7 +469,10 @@ export function DeployWizard({ options }: Props) {
             </>
           )}
           {!isDeploying && !isCompleted && verificationResults.length > 0 ? (
-            <DeployVerificationResults results={verificationResults} />
+            <DeployVerificationResults
+                results={verificationResults}
+                authorityMode={session?.deploymentConfig?.authorityMode}
+              />
           ) : null}
       </div>
     </div>

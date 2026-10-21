@@ -65,7 +65,8 @@ describe("useDeployWizard execution flow", () => {
               vaSbtManagerRegistry: true
             },
             marketplaceActive: true,
-            revenueTreasurySet: true
+            revenueTreasurySet: true,
+            authority: { deployer: false, timelock: true, bootstrapCoordinator: false }
           })
         }),
       { wrapper: TestWrapper }
@@ -170,7 +171,8 @@ describe("useDeployWizard execution flow", () => {
                 vaSbtManagerRegistry: verificationCallCount > 1
               },
               marketplaceActive: verificationCallCount > 1,
-              revenueTreasurySet: verificationCallCount > 1
+              revenueTreasurySet: verificationCallCount > 1,
+              authority: { deployer: false, timelock: verificationCallCount > 1, bootstrapCoordinator: false }
             };
           }
         }),
@@ -243,7 +245,8 @@ describe("useDeployWizard execution flow", () => {
               vaSbtManagerRegistry: true
             },
             marketplaceActive: true,
-            revenueTreasurySet: true
+            revenueTreasurySet: true,
+            authority: { deployer: false, timelock: true, bootstrapCoordinator: false }
           })
         }),
       { wrapper: TestWrapper }
