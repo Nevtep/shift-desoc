@@ -11,7 +11,8 @@ function validConfig() {
     communityMetadataUri: "",
     treasuryVault: "0x1111111111111111111111111111111111111111",
     treasuryStableToken: "0x2222222222222222222222222222222222222222",
-    supportedTokensCsv: "0x2222222222222222222222222222222222222222"
+    supportedTokensCsv: "0x2222222222222222222222222222222222222222",
+    authorityMode: "governance_managed" as const
   };
 }
 
@@ -38,7 +39,7 @@ describe("useDeployWizard execution flow", () => {
                 txHashes: ["0x2000000000000000000000000000000000000000000000000000000000000002"]
               };
             }
-            if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
+            if (step === "FINALIZE_AUTHORITY_MODE") {
               return {
                 txHashes: ["0x3000000000000000000000000000000000000000000000000000000000000003"]
               };
@@ -141,7 +142,7 @@ describe("useDeployWizard execution flow", () => {
                 txHashes: ["0x2000000000000000000000000000000000000000000000000000000000000002"]
               };
             }
-            if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
+            if (step === "FINALIZE_AUTHORITY_MODE") {
               return {
                 txHashes: ["0x3000000000000000000000000000000000000000000000000000000000000003"]
               };
@@ -216,7 +217,7 @@ describe("useDeployWizard execution flow", () => {
                 txHashes: ["0x2000000000000000000000000000000000000000000000000000000000000002"]
               };
             }
-            if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
+            if (step === "FINALIZE_AUTHORITY_MODE") {
               return {
                 txHashes: ["0x3000000000000000000000000000000000000000000000000000000000000003"]
               };

@@ -167,7 +167,7 @@ describe("factory-step-executor strict staging guards", () => {
     expect(writeContractAsync).toHaveBeenCalled();
   });
 
-  it("uses run-scoped addresses for HANDOFF_ADMIN_TO_TIMELOCK without static lookup", async () => {
+  it("uses run-scoped addresses for FINALIZE_AUTHORITY_MODE without static lookup", async () => {
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(1n),
       readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
@@ -190,13 +190,13 @@ describe("factory-step-executor strict staging guards", () => {
       connectedAddress: "0xabc1230000000000000000000000000000000000"
     });
 
-    const result = await executor("HANDOFF_ADMIN_TO_TIMELOCK", makeSession(), makeContext());
+    const result = await executor("FINALIZE_AUTHORITY_MODE", makeSession(), makeContext());
 
     expect(result.txHashes ?? []).toHaveLength(0);
     expect(writeContractAsync).not.toHaveBeenCalled();
   });
 
-  it("revokes bootstrap coordinator admin during HANDOFF_ADMIN_TO_TIMELOCK when configured", async () => {
+  it("revokes bootstrap coordinator admin during FINALIZE_AUTHORITY_MODE when configured", async () => {
     process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = "0x2000000000000000000000000000000000000002";
 
     let timelockHasRoleChecks = 0;
@@ -241,7 +241,7 @@ describe("factory-step-executor strict staging guards", () => {
       connectedAddress: "0xabc1230000000000000000000000000000000000"
     });
 
-    const result = await executor("HANDOFF_ADMIN_TO_TIMELOCK", makeSession(), makeContext());
+    const result = await executor("FINALIZE_AUTHORITY_MODE", makeSession(), makeContext());
 
     expect(result.txHashes ?? []).toHaveLength(3);
     expect(writeContractAsync).toHaveBeenCalledTimes(3);

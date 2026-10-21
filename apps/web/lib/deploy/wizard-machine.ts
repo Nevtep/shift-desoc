@@ -1,10 +1,10 @@
-import type { DeploymentStepState, DeploymentWizardSession, StepKey, StepStatus } from "./types";
+import type { AuthorityMode, DeploymentStepState, DeploymentWizardSession, StepKey, StepStatus } from "./types";
 
 export const WIZARD_STEP_ORDER: StepKey[] = [
   "PRECHECKS",
   "DEPLOY_STACK",
   "CONFIGURE_ACCESS_PERMISSIONS",
-  "HANDOFF_ADMIN_TO_TIMELOCK",
+  "FINALIZE_AUTHORITY_MODE",
   "VERIFY_DEPLOYMENT"
 ];
 
@@ -24,7 +24,7 @@ export const STEP_META: Record<StepKey, { name: string; purpose: string; expecte
     purpose: "Bootstrap registry wiring and apply access roles. Additional setup transactions may run if defaults are missing.",
     expectedTxCount: 2
   },
-  HANDOFF_ADMIN_TO_TIMELOCK: {
+  FINALIZE_AUTHORITY_MODE: {
     name: "Handoff Admin To Timelock",
     purpose: "Transfer admin authority from bootstrap wallet to timelock governance.",
     expectedTxCount: 2
@@ -36,16 +36,43 @@ export const STEP_META: Record<StepKey, { name: string; purpose: string; expecte
   }
 };
 
-export function createInitialSteps(): DeploymentStepState[] {
-  return WIZARD_STEP_ORDER.map((key) => ({
-    key,
-    name: STEP_META[key].name,
-    purpose: STEP_META[key].purpose,
-    status: "pending",
-    expectedTxCount: STEP_META[key].expectedTxCount,
-    confirmedTxCount: 0,
-    txHashes: []
-  }));
+const ADMIN_MANAGED_FINALIZE_META = {
+  name: "Keep Admin-Managed Authority",
+  purpose: "Keep the deployer as acting admin and revoke the deploy-time bootstrap coordinator.",
+  expectedTxCount: 0
+};
+
+/** Step metadata for a step; FINALIZE_AUTHORITY_MODE depends on the selected authority mode. */
+export function getStepMeta(key: StepKey, authorityMode?: AuthorityMode | ""): { name: string; purpose: string; expectedTxCount: number } {
+  if (key === "FINALIZE_AUTHORITY_MODE" && authorityMode === "admin_managed") return ADMIN_MANAGED_FINALIZE_META;
+  return STEP_META[key];
+}
+
+export function createInitialSteps(authorityMode?: AuthorityMode | ""): DeploymentStepState[] {
+  return WIZARD_STEP_ORDER.map((key) => {
+    const meta = getStepMeta(key, authorityMode);
+    return {
+      key,
+      name: meta.name,
+      purpose: meta.purpose,
+      status: "pending",
+      expectedTxCount: meta.expectedTxCount,
+      confirmedTxCount: 0,
+      txHashes: []
+    };
+  });
+}
+
+/** Re-labels the finalization step for the mode while preserving all progress fields. */
+export function applyAuthorityModeToSteps(
+  steps: DeploymentStepState[],
+  authorityMode: AuthorityMode | ""
+): DeploymentStepState[] {
+  return steps.map((step) => {
+    if (step.key !== "FINALIZE_AUTHORITY_MODE") return step;
+    const meta = getStepMeta(step.key, authorityMode);
+    return { ...step, name: meta.name, purpose: meta.purpose, expectedTxCount: meta.expectedTxCount };
+  });
 }
 
 export function createInitialSession(deployerAddress: `0x${string}`, chainId: number): DeploymentWizardSession {

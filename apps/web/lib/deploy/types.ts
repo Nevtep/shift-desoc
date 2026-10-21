@@ -1,9 +1,15 @@
+import type { CommunityDeploymentConfig } from "./config";
+
 export type StepKey =
   | "PRECHECKS"
   | "DEPLOY_STACK"
   | "CONFIGURE_ACCESS_PERMISSIONS"
-  | "HANDOFF_ADMIN_TO_TIMELOCK"
+  | "FINALIZE_AUTHORITY_MODE"
   | "VERIFY_DEPLOYMENT";
+
+export type AuthorityMode = "admin_managed" | "governance_managed";
+
+export const AUTHORITY_MODES: readonly AuthorityMode[] = ["admin_managed", "governance_managed"];
 
 export type StepStatus = "pending" | "running" | "succeeded" | "failed" | "skipped";
 
@@ -77,14 +83,7 @@ export type DeploymentWizardSession = {
   chainId: number;
   communityId?: number;
   deploymentAddresses?: DeploymentRunAddresses;
-  deploymentConfig?: {
-    communityName: string;
-    communityDescription: string;
-    communityMetadataUri: string;
-    treasuryVault: string;
-    treasuryStableToken: string;
-    supportedTokensCsv: string;
-  };
+  deploymentConfig?: CommunityDeploymentConfig;
   targetType: "pre-registration" | "registered";
   status: WizardStatus;
   createdAt: string;

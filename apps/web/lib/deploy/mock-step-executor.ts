@@ -54,10 +54,10 @@ export function createMockStepExecutor(): (
       return { txHashes };
     }
 
-    if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
-      const expectedTxCount = STEP_META.HANDOFF_ADMIN_TO_TIMELOCK.expectedTxCount;
+    if (step === "FINALIZE_AUTHORITY_MODE") {
+      const expectedTxCount = STEP_META.FINALIZE_AUTHORITY_MODE.expectedTxCount;
       const txHashes = Array.from({ length: expectedTxCount }, (_, i) =>
-        fakeTxHash("HANDOFF_ADMIN_TO_TIMELOCK", i)
+        fakeTxHash("FINALIZE_AUTHORITY_MODE", i)
       );
       return { txHashes };
     }

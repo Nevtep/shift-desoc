@@ -29,13 +29,13 @@ function TxItem({
     PRECHECKS: t.preflight,
     DEPLOY_STACK: t.deployLayers,
     CONFIGURE_ACCESS_PERMISSIONS: t.wireRegistry,
-    HANDOFF_ADMIN_TO_TIMELOCK: t.handoff,
+    FINALIZE_AUTHORITY_MODE: t.handoff,
     VERIFY_DEPLOYMENT: t.verify
   };
   const TX_LABELS: Record<string, string> = {
     DEPLOY_STACK: t.layerDeployment,
     CONFIGURE_ACCESS_PERMISSIONS: t.permissionWiring,
-    HANDOFF_ADMIN_TO_TIMELOCK: t.adminHandoff
+    FINALIZE_AUTHORITY_MODE: t.adminHandoff
   };
   const ACCESS_WIRING_LABELS = [t.bootstrapRegistry, t.applyWiring, t.postWiring];
   const HANDOFF_LABELS = [t.grantTimelock, t.revokeDeployer, t.revokeBootstrap];
@@ -46,7 +46,7 @@ function TxItem({
       ? TX_LABELS[stepKey] ?? t.transaction
       : stepKey === "CONFIGURE_ACCESS_PERMISSIONS"
         ? ACCESS_WIRING_LABELS[Math.min(index, ACCESS_WIRING_LABELS.length - 1)] ?? TX_LABELS[stepKey] ?? t.transaction
-        : stepKey === "HANDOFF_ADMIN_TO_TIMELOCK"
+        : stepKey === "FINALIZE_AUTHORITY_MODE"
           ? HANDOFF_LABELS[index] ?? TX_LABELS[stepKey] ?? t.transaction
       : TX_LABELS[stepKey] ?? t.transaction;
 
@@ -83,7 +83,7 @@ export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
     PRECHECKS: t.preflight,
     DEPLOY_STACK: t.deployLayers,
     CONFIGURE_ACCESS_PERMISSIONS: t.wireRegistry,
-    HANDOFF_ADMIN_TO_TIMELOCK: t.handoff,
+    FINALIZE_AUTHORITY_MODE: t.handoff,
     VERIFY_DEPLOYMENT: t.verify
   };
   const order = steps.length > 0 ? steps : WIZARD_STEP_ORDER.map((key) => ({

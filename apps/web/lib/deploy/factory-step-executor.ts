@@ -3243,7 +3243,7 @@ export function createFactoryDeployStepExecutor(params: {
             configureResult.deploymentAddresses ?? syntheticSession.deploymentAddresses ?? session.deploymentAddresses,
         };
       }
-      case "HANDOFF_ADMIN_TO_TIMELOCK":
+      case "FINALIZE_AUTHORITY_MODE":
         return executeHandoffAdminToTimelock(params, session, context);
       default:
         throw new Error(`Unknown deployment step: ${step}`);
