@@ -378,6 +378,7 @@ export function DeployWizard({ options }: Props) {
                 />
                 <DeployStepList
                   steps={session?.steps ?? []}
+                  authorityMode={session?.deploymentConfig?.authorityMode}
                   betweenTxListAndStepper={
                     (() => {
                       const latestHash = getLatestTxHash(session?.steps ?? []);
@@ -434,7 +435,7 @@ export function DeployWizard({ options }: Props) {
                   ) : null}
                 </div>
               </div>
-              <DeployStepList steps={session?.steps ?? []} />
+              <DeployStepList steps={session?.steps ?? []} authorityMode={session?.deploymentConfig?.authorityMode} />
             </div>
           ) : (
             <>
@@ -472,7 +473,7 @@ export function DeployWizard({ options }: Props) {
                   setWizardExpanded(false);
                 }}
               />
-              <DeployStepList steps={session?.steps ?? []} />
+              <DeployStepList steps={session?.steps ?? []} authorityMode={session?.deploymentConfig?.authorityMode} />
             </>
           )}
           {!isDeploying && !isCompleted && verificationResults.length > 0 ? (
