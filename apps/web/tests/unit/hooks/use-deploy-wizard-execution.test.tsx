@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { useDeployWizard } from "../../../hooks/useDeployWizard";
+import { applyAuthorityModeToSteps, createInitialSession, transitionStep } from "../../../lib/deploy/wizard-machine";
 import { mockWagmiHooks, TestWrapper } from "../utils";
 
 function validConfig() {
@@ -289,5 +290,73 @@ describe("useDeployWizard execution flow", () => {
 
     expect(executedSteps[0]).toBe("PRECHECKS");
     expect(result.current.session?.status).toBe("completed");
+  });
+
+  it("resumes FINALIZE_AUTHORITY_MODE with the persisted mode, ignoring a different mode in the form", async () => {
+    mockWagmiHooks({
+      connected: true,
+      address: "0xabc1230000000000000000000000000000000000",
+      chainId: 84532
+    });
+
+    const seen: Array<{ step: string; mode?: string; expected?: number }> = [];
+    const { result } = renderHook(
+      () =>
+        useDeployWizard({
+          stepExecutor: async (step, session) => {
+            seen.push({
+              step,
+              mode: session.deploymentConfig?.authorityMode,
+              expected: session.steps.find((s) => s.key === "FINALIZE_AUTHORITY_MODE")?.expectedTxCount
+            });
+            return {};
+          },
+          readVerificationSnapshot: async () => ({
+            communityId: 77,
+            modules: { valuableActionRegistryMatches: true },
+            vptInitialized: true,
+            roles: {
+              rrPositionManager: true,
+              verifierManagerCallerEngagements: true,
+              rrDistributor: true,
+              commerceDisputesCaller: true,
+              cohortRevenueRouter: true,
+              housingMarketplaceCaller: true,
+              cohortInvestmentRecorder: true,
+              vaIssuerRequestHub: true,
+              vaIssuerPositionManager: true,
+              vaIssuerInvestmentCohortManager: true,
+              vaIssuerCredentialManager: true,
+              membershipMinterEngagements: true,
+              vaSbtManagerRegistry: true
+            },
+            marketplaceActive: true,
+            revenueTreasurySet: true,
+            authority: { deployer: true, timelock: false, bootstrapCoordinator: false }
+          })
+        }),
+      { wrapper: TestWrapper }
+    );
+
+    // Interrupted after DEPLOY_STACK + CONFIGURE for an admin_managed run.
+    const interrupted = createInitialSession("0xabc1230000000000000000000000000000000000", 84532);
+    interrupted.communityId = 77;
+    interrupted.status = "failed";
+    interrupted.deploymentConfig = { ...validConfig(), authorityMode: "admin_managed" };
+    interrupted.steps = ["PRECHECKS", "DEPLOY_STACK", "CONFIGURE_ACCESS_PERMISSIONS"].reduce(
+      (steps, key) => transitionStep(steps, key as any, "succeeded"),
+      applyAuthorityModeToSteps(interrupted.steps, "admin_managed")
+    );
+
+    await act(async () => {
+      // The form now says governance_managed; the persisted mode must win.
+      await result.current.run({ ...validConfig(), authorityMode: "governance_managed" }, interrupted);
+    });
+
+    const finalize = seen.find((entry) => entry.step === "FINALIZE_AUTHORITY_MODE");
+    expect(finalize).toEqual({ step: "FINALIZE_AUTHORITY_MODE", mode: "admin_managed", expected: 0 });
+    expect(seen.map((e) => e.step)).not.toContain("DEPLOY_STACK");
+    expect(result.current.session?.status).toBe("completed");
+    expect(result.current.session?.deploymentConfig?.authorityMode).toBe("admin_managed");
   });
 });

@@ -40,6 +40,7 @@ import type {
   VerificationSnapshot
 } from "../lib/deploy/types";
 import {
+  applyAuthorityModeToSteps,
   createInitialSession,
   isCreatedState,
   nextRunnableStep,
@@ -233,12 +234,21 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     [chainId, options, publicClient]
   );
 
-  const run = useCallback(async (config: CommunityDeploymentConfig, resumeSession?: DeploymentWizardSession) => {
+  const run = useCallback(async (formConfig: CommunityDeploymentConfig, resumeSession?: DeploymentWizardSession) => {
     if (runInFlightRef.current) {
       setError("A deployment run is already in progress. Wait for it to finish.");
       log("Start deploy ignored: run already in progress");
       return;
     }
+
+    // A resumed compatible session keeps the authority mode it started with; the form cannot change it.
+    const persistedMode =
+      resumeSession && isSessionCompatibleWithCurrentWizard(resumeSession)
+        ? resumeSession.deploymentConfig?.authorityMode
+        : undefined;
+    const config: CommunityDeploymentConfig = persistedMode
+      ? { ...formConfig, authorityMode: persistedMode }
+      : formConfig;
 
     runInFlightRef.current = true;
     setIsRunning(true);
@@ -285,6 +295,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       let active: DeploymentWizardSession = {
         ...initial,
         deploymentConfig: { ...config },
+        steps: applyAuthorityModeToSteps(initial.steps, config.authorityMode),
         status: "in-progress",
         updatedAt: new Date().toISOString()
       };

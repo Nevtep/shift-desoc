@@ -54,7 +54,8 @@ function loadDraft(address?: `0x${string}`, chainId?: number): CommunityDeployme
   try {
     const raw = window.localStorage.getItem(`${FORM_DRAFT_STORAGE_KEY}:${chainId}:${address.toLowerCase()}`);
     if (!raw) return null;
-    return JSON.parse(raw) as CommunityDeploymentConfig;
+    // Drafts saved before authority mode existed lack it; default to "not chosen".
+    return { ...createDefaultDeploymentConfig(), ...(JSON.parse(raw) as Partial<CommunityDeploymentConfig>) };
   } catch {
     return null;
   }
@@ -177,10 +178,16 @@ export function DeployWizard({ options }: Props) {
         hasDeploymentConfig: Boolean(resumed.deploymentConfig)
       });
 
-      const resumeConfig = resumed.deploymentConfig ?? config;
+      // A recovered session may lack a persisted mode: fall back to the form's selection (persisted mode always wins in run()).
+      const resumeConfig = resumed.deploymentConfig
+        ? {
+            ...resumed.deploymentConfig,
+            authorityMode: resumed.deploymentConfig.authorityMode || config.authorityMode
+          }
+        : config;
       if (resumed.deploymentConfig) {
-        setConfig(resumed.deploymentConfig);
-        saveDraft(resumed.deploymentConfig, address, chainId);
+        setConfig(resumeConfig);
+        saveDraft(resumeConfig, address, chainId);
       }
 
       // Resume should continue execution from the first incomplete step.
