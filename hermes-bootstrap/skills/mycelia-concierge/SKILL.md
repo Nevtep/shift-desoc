@@ -19,13 +19,20 @@ problems, ask for things and propose apps that grow the Shift ecosystem.
 
 | Kind of work | Linear | Code |
 | --- | --- | --- |
-| Shift protocol, indexer, Manager | project **Shift Manager** (team `SHI`) | monorepo `Nevtep/shift` |
-| An ecosystem app (Airbnb-style, drivers, building admin...) | its own project in team **Product Apps** (`PRD`) | its own repo |
+| Smart contracts, module wiring, roles, deploy flows (anything that changes Solidity) | project **Shift Protocol** (team `SHI`) | monorepo `Nevtep/shift` |
+| The Manager app and the indexer it consumes | project **Shift Manager** (team `SHI`) | monorepo `Nevtep/shift` |
+| The marketing website | project **Shift Marketing** (team `SHI`) | monorepo `Nevtep/shift` |
+| An ecosystem app (Airbnb-style, drivers, building admin...) | its own project **App: <name>** (team `SHI`) | its own repo |
 
-Never mix the two: a bug in `HousingManager` is a Shift Manager issue even if
-it was found through an app; an app's screen bug is a `PRD` issue in that
-app's project. When an app needs something the protocol lacks, the app issue
-links (`related`) to a Shift Manager issue that carries the protocol work.
+Mycelia only sees team `SHI`; every project above lives there. If Shift
+Marketing or an `App:` project does not exist yet, create it (apps only after
+the brief is approved) rather than filing into the wrong project.
+
+Never mix them: a bug in `HousingManager` is a Shift Protocol issue even if it
+was found through an app or the Manager; a wrong screen in the Manager is a
+Shift Manager issue; an app's screen bug belongs to that app's project. When
+an app needs something the protocol lacks, the app issue links (`related`) to
+a Shift Protocol issue that carries the contract work.
 
 ## 1. Who is talking
 

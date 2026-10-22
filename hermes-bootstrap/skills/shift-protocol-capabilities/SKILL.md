@@ -44,7 +44,7 @@ Contracts are broadly implemented. Indexer and Manager coverage is uneven:
 governance, requests, drafts and engagements are the most complete;
 marketplace, housing, disputes, economy, treasury, credentials, positions and
 verifier admin mostly lack indexer projections and Manager UX (tracked as
-Phase 3–5 issues in Shift Manager). Network today is Base Sepolia with clean
+Phase 3–5 issues in Shift Manager and Shift Protocol). Network today is Base Sepolia with clean
 redeploys, no production deployment.
 
 ## Archetypes: how the user's ideas map

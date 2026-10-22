@@ -16,8 +16,9 @@ Applies to a product that already exists. A brand-new product is
 
 ## 1. Find the target
 
-Protocol/indexer/Manager → project **Shift Manager**. An ecosystem app → its
-project in team `PRD` (if it does not exist yet, this is an idea, not a
+Contract changes → **Shift Protocol**. Manager app and indexer → **Shift
+Manager**. Website → **Shift Marketing**. An ecosystem app → its **App: <name>**
+project (all in team `SHI`; if it does not exist yet, this is an idea, not a
 request: hand over to `shift-app-discovery`).
 
 ## 2. Shape it as one testable feature
@@ -58,7 +59,7 @@ Read `shift-protocol-capabilities`. For each part of the request, decide:
 Search for duplicates first; if one exists, comment on it. Otherwise create
 the issue with `Feature` or `Improvement`, a readiness label
 (`agent-ready` small and clear, `needs-spec` medium/large, `backlog` not yet
-refined), project, the milestone of the phase it belongs to (Shift Manager;
+refined), project, the milestone of the phase it belongs to (Shift Manager and Shift Protocol;
 phases 0–6 are the roadmap, lowest open phase first), and a priority the
 person agrees with. Description: outcome, why, acceptance criteria,
 QA section, out of scope, related issues. Use only existing labels.

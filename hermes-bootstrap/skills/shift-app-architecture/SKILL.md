@@ -1,6 +1,6 @@
 ---
 name: shift-app-architecture
-description: "Design the architecture of an approved ecosystem app on top of Shift: map it to protocol modules, separate on-chain truth from off-chain layers, find protocol gaps and raise them as Shift Manager issues, choose the stack with ADRs and M0 spikes, and get the architecture approved before any features, repo or code."
+description: "Design the architecture of an approved ecosystem app on top of Shift: map it to protocol modules, separate on-chain truth from off-chain layers, find protocol gaps and raise them as Shift Protocol issues, choose the stack with ADRs and M0 spikes, and get the architecture approved before any features, repo or code."
 license: Apache-2.0
 metadata:
   author: Shift
@@ -60,13 +60,13 @@ Write the document with these sections:
   wiring, first protocol call from the app.
 
 Feasibility, honestly: classify each element as supported today, needs
-protocol work (name the Shift Manager issue or propose one), needs a person,
+protocol work (name the Shift Protocol or Shift Manager issue, or propose one), needs a person,
 or out of reach now (propose the smaller version that proves the idea).
 
 ## 3. Raise protocol gaps where they belong
 
 Anything the app needs from the protocol that is missing becomes (or links
-to) an issue in **Shift Manager**, never in the app project: search
+to) an issue in **Shift Protocol** (contracts) or **Shift Manager** (Manager/indexer), never in the app project: search
 duplicates, reuse the Phase issue if one exists, label `domain:contracts`
 when Solidity changes (high-risk; skipped by the autonomous loop unless a
 human enables it). The app's issues relate to them; the app's milestone
@@ -92,7 +92,7 @@ an `AGENTS.md` that points to Shift's workflow (ODD + RDD) and invariants.
 Next, define the feature map: vertical features, milestones M0 Foundation,
 M1 MVP, M2+, each with acceptance criteria and a `QA: how to test` section
 (the same rules as `shift-feature-request`), created as issues in the app's
-`PRD` project only after the person approves the map.
+`App: <name>` project (team `SHI`) only after the person approves the map.
 
 ## Changing the architecture later
 

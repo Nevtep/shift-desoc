@@ -1,6 +1,6 @@
 ---
 name: shift-app-discovery
-description: "Turn a raw idea for an app that runs on the Shift protocol (rentals on cohousing, a driver community, building administration, any other) into a challenged and approved Product Brief, and register it as a Linear project in team Product Apps; no architecture or code before approval."
+description: "Turn a raw idea for an app that runs on the Shift protocol (rentals on cohousing, a driver community, building administration, any other) into a challenged and approved Product Brief, and register it as a Linear project in team SHI; no architecture or code before approval."
 license: Apache-2.0
 metadata:
   author: Shift
@@ -85,8 +85,8 @@ approved; record each approved version with its date.
 ## 5. Persist and hand over
 
 On explicit approval:
-1. Create (or update) a Linear project in team **Product Apps** (`PRD`)
-   named after the app, with the brief as its description and status
+1. Create (or update) a Linear project in team **Shift Desoc** (`SHI`) named
+   `App: <name>`, with the brief as its description and status
    `Backlog`. Do not create one before approval.
 2. Mirror the brief to Engram (`ecosystem/<slug>/brief`, type `decision`).
 3. Do **not** create a GitHub repo yet; that waits for the architecture and

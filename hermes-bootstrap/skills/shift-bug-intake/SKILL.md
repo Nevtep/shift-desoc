@@ -1,6 +1,6 @@
 ---
 name: shift-bug-intake
-description: "Handle bug reports sent in chat (Telegram or terminal): clarify, deduplicate, always record a Linear Bug in the right project (Shift Manager for the protocol, the app's PRD project for an app), and tell the person the issue id. Never changes code."
+description: "Handle bug reports sent in chat (Telegram or terminal): clarify, deduplicate, always record a Linear Bug in the right project (Shift Protocol for contracts, Shift Manager for the Manager/indexer, Shift Marketing for the website, the app's own project for an app), and tell the person the issue id. Never changes code."
 license: Apache-2.0
 metadata:
   author: Shift
@@ -42,7 +42,7 @@ prove a missing capability. Decide the layer:
 | Reverts, wrong state, wrong event, access/role/treasury/ParamController behavior | contract | label `domain:contracts`, **priority at least High**, mention it is high-risk; never propose a fix in chat |
 | Data missing/stale/wrong in Manager but chain is right | indexer | note the event/handler suspected |
 | UI, wizard, route, copy | Manager | |
-| An ecosystem app screen/flow | app | goes to that app's `PRD` project |
+| An ecosystem app screen/flow | app | goes to that app's `App: <name>` project |
 
 Security-looking reports (funds at risk, authority bypass, key exposure): do
 not detail them in a public GitHub issue or PR. Create the Linear issue as
@@ -58,9 +58,10 @@ operator to look at it now.
   invent labels. Readiness: `workflow:agent-ready` when the fix is clear and
   small, `workflow:needs-spec` when design is needed, `workflow:backlog` when
   you could not gather enough to refine it.
-- Project: protocol/indexer/Manager → **Shift Manager** with the milestone
-  of the phase the affected feature belongs to; app → that app's project in
-  team `PRD`.
+- Project (always team `SHI`): contract bugs → **Shift Protocol**;
+  Manager UI/wizards and indexer → **Shift Manager**; website → **Shift
+  Marketing**; an app → its **App: <name>** project. Set the milestone of the
+  phase the affected feature belongs to when the project has it.
 - Title: the observable problem ("Housing reservation refund shows 0 for
   partial cancellation"), not the guessed cause.
 - Description sections: `Reported by` (name, date, channel), `Steps to
