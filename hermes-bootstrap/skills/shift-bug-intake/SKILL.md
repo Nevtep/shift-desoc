@@ -20,7 +20,8 @@ the normal ODD/RDD flow (`shift-autonomous-development`).
 For each distinct problem in the message collect:
 - **Where**: Manager route, contract/module, indexer endpoint, or which app
   and screen. Ask for the PR or preview link if unclear
-  (`gh pr list --repo Nevtep/shift`).
+  (`gh pr list --repo "${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}"` for Shift;
+  for an app, resolve and query that app's own repository).
 - **Steps** to reproduce, **expected vs actual**, evidence (screenshots,
   error text, tx hash, network, wallet address, community id).
 - **Kind**: defect (does not do what was agreed) or change request (does
@@ -76,8 +77,12 @@ operator to look at it now.
 ## 4. Close the loop
 
 Reply per item with the Linear id and title right away, the priority you
-set and why, and when to expect work: the dev loop picks Urgent/High
-`workflow:agent-ready` bugs first in the next cycle; `needs-spec` ones get an
-ODD document first. Say plainly that you did not change any code. If the
+set and why, and what governs when work starts. Do not promise a next-cycle
+fix: the dev loop ranks Shift Manager and Shift Protocol issues by milestone
+(lowest open phase first) and only then by priority, so a High bug in a later
+phase can wait behind earlier-phase work; `domain:contracts` issues are
+skipped unless `SHIFT_ALLOW_CONTRACT_ISSUES=true`; `needs-spec` ones get an
+ODD document first; app bugs are outside this queue until that app has its
+own development flow. Say plainly that you did not change any code. If the
 person reports it is still broken after a fix, reopen the same issue with the
 new evidence instead of creating another.
