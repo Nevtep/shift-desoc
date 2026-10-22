@@ -313,6 +313,8 @@ Resources:
       ManagedPolicyArns:
         # Lets operators set their own console password on first sign-in.
         - arn:aws:iam::aws:policy/IAMUserChangePassword
+        # Lets operators get CLI credentials with `aws login` (signin OAuth2 flow).
+        - arn:aws:iam::aws:policy/SignInLocalDevelopmentAccess
       Policies:
         - PolicyName: shift-hermes-operator
           PolicyDocument:
