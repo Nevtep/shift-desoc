@@ -1,13 +1,14 @@
 "use client";
 
 import { Check, Loader2 } from "lucide-react";
-import type { DeploymentStepState } from "../../lib/deploy/types";
+import type { AuthorityMode, DeploymentStepState } from "../../lib/deploy/types";
 import { STEP_META, WIZARD_STEP_ORDER } from "../../lib/deploy/wizard-machine";
 import { getI18n } from "../../lib/i18n";
 
 type Props = {
   steps: DeploymentStepState[];
   betweenTxListAndStepper?: React.ReactNode;
+  authorityMode?: AuthorityMode | "";
 };
 
 function TxItem({
@@ -16,6 +17,7 @@ function TxItem({
   confirmed,
   isCurrent,
   stepKey,
+  authorityMode,
   t
 }: {
   index: number;
@@ -23,22 +25,25 @@ function TxItem({
   confirmed: number;
   isCurrent: boolean;
   stepKey: string;
+  authorityMode?: AuthorityMode | "";
   t: ReturnType<typeof getI18n>["deploySteps"];
 }) {
   const SHORT_LABELS: Record<string, string> = {
     PRECHECKS: t.preflight,
     DEPLOY_STACK: t.deployLayers,
     CONFIGURE_ACCESS_PERMISSIONS: t.wireRegistry,
-    HANDOFF_ADMIN_TO_TIMELOCK: t.handoff,
+    FINALIZE_AUTHORITY_MODE: t.handoff,
     VERIFY_DEPLOYMENT: t.verify
   };
   const TX_LABELS: Record<string, string> = {
     DEPLOY_STACK: t.layerDeployment,
     CONFIGURE_ACCESS_PERMISSIONS: t.permissionWiring,
-    HANDOFF_ADMIN_TO_TIMELOCK: t.adminHandoff
+    FINALIZE_AUTHORITY_MODE: t.adminHandoff
   };
   const ACCESS_WIRING_LABELS = [t.bootstrapRegistry, t.applyWiring, t.postWiring];
-  const HANDOFF_LABELS = [t.grantTimelock, t.revokeDeployer, t.revokeBootstrap];
+  // Admin-managed only revokes the bootstrap coordinator; Governance-managed grants, then revokes.
+  const HANDOFF_LABELS =
+    authorityMode === "admin_managed" ? [t.revokeBootstrap] : [t.grantTimelock, t.revokeDeployer, t.revokeBootstrap];
   const done = index < confirmed;
   const inProgress = isCurrent && index === confirmed;
   const baseLabel =
@@ -46,7 +51,7 @@ function TxItem({
       ? TX_LABELS[stepKey] ?? t.transaction
       : stepKey === "CONFIGURE_ACCESS_PERMISSIONS"
         ? ACCESS_WIRING_LABELS[Math.min(index, ACCESS_WIRING_LABELS.length - 1)] ?? TX_LABELS[stepKey] ?? t.transaction
-        : stepKey === "HANDOFF_ADMIN_TO_TIMELOCK"
+        : stepKey === "FINALIZE_AUTHORITY_MODE"
           ? HANDOFF_LABELS[index] ?? TX_LABELS[stepKey] ?? t.transaction
       : TX_LABELS[stepKey] ?? t.transaction;
 
@@ -77,13 +82,13 @@ function TxItem({
   );
 }
 
-export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
+export function DeployStepList({ steps, betweenTxListAndStepper, authorityMode }: Props) {
   const t = getI18n().deploySteps;
   const SHORT_LABELS: Record<string, string> = {
     PRECHECKS: t.preflight,
     DEPLOY_STACK: t.deployLayers,
     CONFIGURE_ACCESS_PERMISSIONS: t.wireRegistry,
-    HANDOFF_ADMIN_TO_TIMELOCK: t.handoff,
+    FINALIZE_AUTHORITY_MODE: t.handoff,
     VERIFY_DEPLOYMENT: t.verify
   };
   const order = steps.length > 0 ? steps : WIZARD_STEP_ORDER.map((key) => ({
@@ -127,6 +132,7 @@ export function DeployStepList({ steps, betweenTxListAndStepper }: Props) {
                 confirmed={currentStep.confirmedTxCount}
                 isCurrent={currentStep.status === "running"}
                 stepKey={currentStep.key}
+                authorityMode={authorityMode}
                 t={t}
               />
             ))}

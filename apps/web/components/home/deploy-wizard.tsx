@@ -54,7 +54,8 @@ function loadDraft(address?: `0x${string}`, chainId?: number): CommunityDeployme
   try {
     const raw = window.localStorage.getItem(`${FORM_DRAFT_STORAGE_KEY}:${chainId}:${address.toLowerCase()}`);
     if (!raw) return null;
-    return JSON.parse(raw) as CommunityDeploymentConfig;
+    // Drafts saved before authority mode existed lack it; default to "not chosen".
+    return { ...createDefaultDeploymentConfig(), ...(JSON.parse(raw) as Partial<CommunityDeploymentConfig>) };
   } catch {
     return null;
   }
@@ -177,10 +178,16 @@ export function DeployWizard({ options }: Props) {
         hasDeploymentConfig: Boolean(resumed.deploymentConfig)
       });
 
-      const resumeConfig = resumed.deploymentConfig ?? config;
+      // A recovered session may lack a persisted mode: fall back to the form's selection (persisted mode always wins in run()).
+      const resumeConfig = resumed.deploymentConfig
+        ? {
+            ...resumed.deploymentConfig,
+            authorityMode: resumed.deploymentConfig.authorityMode || config.authorityMode
+          }
+        : config;
       if (resumed.deploymentConfig) {
-        setConfig(resumed.deploymentConfig);
-        saveDraft(resumed.deploymentConfig, address, chainId);
+        setConfig(resumeConfig);
+        saveDraft(resumeConfig, address, chainId);
       }
 
       // Resume should continue execution from the first incomplete step.
@@ -362,6 +369,7 @@ export function DeployWizard({ options }: Props) {
               <div className="mt-8 flex w-full flex-col items-center gap-8">
                 <DeployVerificationResults
                   results={verificationResults}
+                  authorityMode={session?.deploymentConfig?.authorityMode}
                   isVerifying={
                     (session?.steps ?? []).some(
                       (s) => s.key === "VERIFY_DEPLOYMENT" && s.status === "running"
@@ -370,6 +378,7 @@ export function DeployWizard({ options }: Props) {
                 />
                 <DeployStepList
                   steps={session?.steps ?? []}
+                  authorityMode={session?.deploymentConfig?.authorityMode}
                   betweenTxListAndStepper={
                     (() => {
                       const latestHash = getLatestTxHash(session?.steps ?? []);
@@ -401,7 +410,10 @@ export function DeployWizard({ options }: Props) {
                 <h2 className="text-2xl font-semibold">{t.verification}</h2>
                 <p className="text-sm text-muted-foreground">{t.allChecksPassed}</p>
               </div>
-              <DeployVerificationResults results={verificationResults} />
+              <DeployVerificationResults
+                results={verificationResults}
+                authorityMode={session?.deploymentConfig?.authorityMode}
+              />
               <div className="space-y-4 text-center">
                 <p className="text-lg font-medium text-primary">{t.ready}</p>
                 <div className="flex flex-wrap justify-center gap-3">
@@ -423,7 +435,7 @@ export function DeployWizard({ options }: Props) {
                   ) : null}
                 </div>
               </div>
-              <DeployStepList steps={session?.steps ?? []} />
+              <DeployStepList steps={session?.steps ?? []} authorityMode={session?.deploymentConfig?.authorityMode} />
             </div>
           ) : (
             <>
@@ -461,11 +473,14 @@ export function DeployWizard({ options }: Props) {
                   setWizardExpanded(false);
                 }}
               />
-              <DeployStepList steps={session?.steps ?? []} />
+              <DeployStepList steps={session?.steps ?? []} authorityMode={session?.deploymentConfig?.authorityMode} />
             </>
           )}
           {!isDeploying && !isCompleted && verificationResults.length > 0 ? (
-            <DeployVerificationResults results={verificationResults} />
+            <DeployVerificationResults
+                results={verificationResults}
+                authorityMode={session?.deploymentConfig?.authorityMode}
+              />
           ) : null}
       </div>
     </div>

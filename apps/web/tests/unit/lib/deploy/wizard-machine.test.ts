@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyAuthorityModeToSteps,
   createInitialSession,
   createInitialSteps,
   firstIncompleteStep,
@@ -17,9 +18,29 @@ describe("wizard-machine", () => {
       "PRECHECKS",
       "DEPLOY_STACK",
       "CONFIGURE_ACCESS_PERMISSIONS",
-      "HANDOFF_ADMIN_TO_TIMELOCK",
+      "FINALIZE_AUTHORITY_MODE",
       "VERIFY_DEPLOYMENT"
     ]);
+  });
+
+  it("sizes FINALIZE_AUTHORITY_MODE for the selected authority mode", () => {
+    const find = (steps: ReturnType<typeof createInitialSteps>) =>
+      steps.find((s) => s.key === "FINALIZE_AUTHORITY_MODE")!;
+    const governance = find(createInitialSteps("governance_managed"));
+    const admin = find(createInitialSteps("admin_managed"));
+    expect(governance.expectedTxCount).toBe(2);
+    expect(governance.name).toBe("Handoff Admin To Timelock");
+    expect(admin.expectedTxCount).toBe(0);
+    expect(admin.name).toBe("Keep Admin-Managed Authority");
+    expect(find(createInitialSteps()).expectedTxCount).toBe(2);
+  });
+
+  it("re-applies the mode to existing steps without touching progress", () => {
+    let steps = createInitialSteps();
+    steps = transitionStep(steps, "PRECHECKS", "succeeded");
+    const next = applyAuthorityModeToSteps(steps, "admin_managed");
+    expect(next.find((s) => s.key === "PRECHECKS")?.status).toBe("succeeded");
+    expect(next.find((s) => s.key === "FINALIZE_AUTHORITY_MODE")?.expectedTxCount).toBe(0);
   });
 
   it("tracks tx confirmations per step", () => {
