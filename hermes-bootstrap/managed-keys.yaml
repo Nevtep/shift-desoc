@@ -43,3 +43,19 @@ cron:
 # hold runtime facts plus the content jobs' state, which overflowed 2200 chars.
 memory:
   memory_char_limit: 4000
+
+# Local voice (no external service, no cost): Spanish text-to-speech through
+# Piper and Spanish speech-to-text through faster-whisper. The command points
+# at the script bootstrap.sh installs under $HERMES_HOME/scripts (see
+# shift-voice-setup.sh). `voice_compatible` delivers Telegram voice bubbles.
+tts:
+  provider: piper-es
+  providers:
+    piper-es:
+      type: command
+      command: /opt/data/scripts/shift-piper-say.sh {input_path} {output_path}
+      output_format: ogg
+      voice_compatible: true
+      timeout: 90
+stt:
+  language: es
