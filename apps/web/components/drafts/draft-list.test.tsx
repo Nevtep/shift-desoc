@@ -47,4 +47,34 @@ describe("DraftList", () => {
     expect(await screen.findByText(/Updated unknown/i)).toBeInTheDocument();
     expect(screen.getByText(/Draft 10/i)).toBeInTheDocument();
   });
+
+  it("links to the community-scoped draft detail by default when the draft carries a community", async () => {
+    server.use(
+      graphql.query("Drafts", () =>
+        HttpResponse.json({
+          data: {
+            drafts: {
+              nodes: [
+                {
+                  id: "8:10",
+                  communityId: 8,
+                  requestId: "1",
+                  status: "FINALIZED",
+                  latestVersionCid: "c",
+                  escalatedProposalId: null,
+                  updatedAt: "1700000000"
+                }
+              ],
+              pageInfo: { endCursor: null, hasNextPage: false }
+            }
+          }
+        })
+      )
+    );
+
+    renderWithProviders(<DraftList />);
+
+    const link = (await screen.findByText(/Draft 10/i)).closest("a");
+    expect(link).toHaveAttribute("href", "/communities/8/coordination/drafts/8:10");
+  });
 });
