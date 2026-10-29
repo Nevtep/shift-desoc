@@ -17,6 +17,17 @@ describe("EngagementDetail", () => {
     expect(screen.getByText(/Juror Panel/i)).toBeInTheDocument();
   });
 
+  it("links related proposals to the community-scoped list", async () => {
+    mockWagmiHooks({ connected: true });
+    renderWithProviders(<EngagementDetail engagementId={fixtures.engagement.id} />);
+
+    const link = await screen.findByRole("link", { name: /View related governance proposals/i });
+    expect(link).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^\/communities\/\d+\/governance\/proposals\?engagementId=/)
+    );
+  });
+
   it("gates verification when disconnected", async () => {
     mockWagmiHooks({ connected: false });
     renderWithProviders(<EngagementDetail engagementId={fixtures.engagement.id} />);
