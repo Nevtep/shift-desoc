@@ -127,6 +127,16 @@ export const handlers = [
       }
     });
   }),
+  http.get(`${API_BASE}/communities/:communityId/engagements/readiness`, () =>
+    HttpResponse.json({
+      status: "healthy",
+      indexedBlock: "100",
+      chainHeadBlock: "101",
+      blockLag: "1",
+      indexedAt: new Date().toISOString(),
+      details: "Indexer is caught up with the chain head."
+    })
+  ),
   // Draft detail via REST API base
   http.get(`${API_BASE}/drafts/:draftId`, ({ params }) => {
     const draftId = String(params.draftId);

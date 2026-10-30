@@ -11,6 +11,13 @@ import {
   type EngagementJurorAssignment,
   type EngagementQueryResult
 } from "../../lib/graphql/queries";
+import { useEngagementChainState } from "../../hooks/useEngagementChainState";
+import { useEngagementReadiness } from "../../hooks/useEngagementReadiness";
+import {
+  reconcileEngagementProvenance,
+  type ChainEngagement,
+  type EngagementProvenance
+} from "../../lib/engagements/chain-state";
 import { EngagementReadinessBanner } from "./engagement-readiness-banner";
 import { engagementStatusLabel, isEngagementVotable } from "../../lib/engagements/engagement-status";
 import { parseEngagementRef } from "../../lib/engagements/engagement-id";
@@ -40,6 +47,22 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
   const { push } = useToast();
 
   const engagement = data?.engagement ?? null;
+  const { readiness, isLoading: isReadinessLoading } = useEngagementReadiness(ref?.communityId);
+  // Read the chain when the projection can't be trusted to be current: row missing, indexer not
+  // healthy, or the row is still PENDING (the only state that can be stale in a way that matters).
+  const needsChainRead =
+    Boolean(ref) &&
+    !isLoading &&
+    !isError &&
+    (!engagement ||
+      (!isReadinessLoading && readiness.status !== "healthy") ||
+      isEngagementVotable(engagement.status));
+  const { chain } = useEngagementChainState({
+    communityId: ref?.communityId ?? 0,
+    engagementId: ref?.engagementId ?? 0,
+    enabled: needsChainRead
+  });
+  const provenance = reconcileEngagementProvenance(engagement?.status, chain);
   const jurorAssignments = data?.jurors.items ?? [];
   const manifestCid = engagement?.evidenceManifestCid ?? undefined;
   const { data: manifest, isLoading: isManifestLoading, isError: isManifestError } = useIpfsDocument(
@@ -53,6 +76,15 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading engagement...</p>;
+  }
+
+  if (!isError && !engagement && chain) {
+    return (
+      <div className="space-y-6">
+        <EngagementReadinessBanner communityId={ref.communityId} />
+        <ChainEngagementCard engagementId={ref.engagementId} chain={chain} />
+      </div>
+    );
   }
 
   if (!isError && !engagement) {
@@ -90,6 +122,10 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             <MetadataItem label="Valuable Action" value={String(engagement.valuableActionId)} />
             <MetadataItem label="Participant" value={engagement.participant} />
             <MetadataItem label="Status" value={engagementStatusLabel(engagement.status)} />
+            {provenance === "chain-ahead" && chain ? (
+              <MetadataItem label="Chain status" value={engagementStatusLabel(chain.status)} />
+            ) : null}
+            <MetadataItem label="Source" value={PROVENANCE_LABELS[provenance]} />
             <MetadataItem
               label="Submitted"
               value={formatDistanceToNow(new Date(engagement.submittedAt), { addSuffix: true })}
@@ -279,6 +315,37 @@ function VerifyEngagementForm({
         {actionError ? <span className="text-xs text-destructive">{actionError}</span> : null}
       </div>
     </form>
+  );
+}
+
+const PROVENANCE_LABELS: Record<EngagementProvenance, string> = {
+  indexed: "Indexed",
+  "chain-only": "Chain (not yet indexed)",
+  "chain-ahead": "Chain-confirmed, indexer pending",
+  none: ""
+};
+
+function ChainEngagementCard({ engagementId, chain }: { engagementId: number; chain: ChainEngagement }) {
+  return (
+    <section className="card" aria-label="chain-engagement">
+      <h2 className="text-lg font-medium">Engagement {engagementId}</h2>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Source: {PROVENANCE_LABELS["chain-only"]}. Read directly from the Engagements contract; the indexer has not
+        projected this engagement yet.
+      </p>
+      <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
+        <MetadataItem label="Valuable Action" value={String(chain.valuableActionId)} />
+        <MetadataItem label="Participant" value={chain.participant} />
+        <MetadataItem label="Status" value={engagementStatusLabel(chain.status)} />
+        <MetadataItem label="Approvals" value={String(chain.approvals)} />
+        <MetadataItem label="Rejections" value={String(chain.rejections)} />
+        <MetadataItem
+          label="Verify deadline"
+          value={chain.verifyDeadline.getTime() ? chain.verifyDeadline.toISOString() : undefined}
+        />
+        <MetadataItem label="Jurors" value={chain.jurors.join(", ") || "None assigned yet"} />
+      </dl>
+    </section>
   );
 }
 

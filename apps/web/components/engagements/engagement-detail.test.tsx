@@ -13,7 +13,7 @@ describe("EngagementDetail", () => {
     renderWithProviders(<EngagementDetail engagementId={fixtures.engagement.id} />);
 
     expect(await screen.findByText(/Engagement 50/i)).toBeInTheDocument();
-    expect(screen.getByText(/Evidence/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Evidence" })).toBeInTheDocument();
     expect(screen.getByText(/Juror Panel/i)).toBeInTheDocument();
     expect(await screen.findByText(fixtures.engagement.participant)).toBeInTheDocument();
     expect(await screen.findByText(fixtures.engagementJurors[0].juror)).toBeInTheDocument();
