@@ -436,8 +436,8 @@ export type CommunityOverviewProposalsResult = {
 };
 
 export const EngagementsQuery = /* GraphQL */ `
-  query Engagements($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
-    engagements: claimss(
+  query Engagements($communityId: Int, $status: [String], $limit: Int = 20, $after: String) {
+    engagements: engagementss(
       where: { communityId: $communityId, status_in: $status }
       orderBy: "submittedAt"
       orderDirection: "desc"
@@ -446,9 +446,10 @@ export const EngagementsQuery = /* GraphQL */ `
     ) {
       nodes: items {
         id
+        engagementId
         communityId
         valuableActionId
-        claimant
+        participant
         status
         evidenceManifestCid
         submittedAt
@@ -462,11 +463,21 @@ export const EngagementsQuery = /* GraphQL */ `
   }
 `;
 
+// Indexer ids are text: "<communityId>:<engagementId>" (apps/indexer/src/index.ts).
 export type EngagementNode = {
-  communityId: number;
+  // Lifecycle evidence (SHI-19); null/absent until the indexer projects the related event.
+  approvalsCount?: number | null;
+  rejectionsCount?: number | null;
+  revokedBy?: string | null;
+  resolvedTxHash?: string | null;
+  lastEventName?: string | null;
+  lastEventTxHash?: string | null;
+  lastEventBlock?: string | null;
   id: string;
-  valuableActionId: string;
-  claimant: string;
+  engagementId: number;
+  communityId: number;
+  valuableActionId: number;
+  participant: string;
   status: string;
   evidenceManifestCid?: string | null;
   submittedAt: string;
@@ -484,17 +495,47 @@ export type EngagementsQueryResult = {
 };
 
 export const EngagementQuery = /* GraphQL */ `
-  query Engagement($id: Int!) {
-    engagement: claims(id: $id) {
+  query Engagement($id: String!, $communityId: Int!, $engagementId: Int!) {
+    engagement: engagements(id: $id) {
       id
+      engagementId
       communityId
       valuableActionId
-      claimant
+      participant
       status
       evidenceManifestCid
       submittedAt
       resolvedAt
-      jurorAssignments {
+      approvalsCount
+      rejectionsCount
+      revokedBy
+      resolvedTxHash
+      lastEventName
+      lastEventTxHash
+      lastEventBlock
+    }
+    appeals: engagementAppealss(
+      where: { communityId: $communityId, engagementId: $engagementId }
+      orderBy: "appealId"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        appealId
+        appellant
+        reason
+        status
+        submittedAt
+        txHash
+      }
+    }
+    jurors: jurorAssignmentss(
+      where: { communityId: $communityId, engagementId: $engagementId }
+      orderBy: "weight"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
         juror
         weight
         decision
@@ -504,23 +545,47 @@ export const EngagementQuery = /* GraphQL */ `
   }
 `;
 
+export type EngagementJurorAssignment = {
+  id: string;
+  juror: string;
+  weight?: string | null;
+  decision?: string | null;
+  decidedAt?: string | null;
+};
+
+export type EngagementAppeal = {
+  id: string;
+  appealId: number;
+  appellant: string;
+  reason: string;
+  status: string;
+  submittedAt: string;
+  txHash: string;
+};
+
 export type EngagementQueryResult = {
-  engagement: {
-    communityId: number;
-    id: string;
-    valuableActionId: string;
-    claimant: string;
-    status: string;
-    evidenceManifestCid?: string | null;
-    submittedAt: string;
-    resolvedAt?: string | null;
-    jurorAssignments?: {
-      juror: string;
-      weight: string;
-      decision?: string | null;
-      decidedAt?: string | null;
-    }[];
-  } | null;
+  engagement: EngagementNode | null;
+  jurors: { items: EngagementJurorAssignment[] };
+  appeals: { items: EngagementAppeal[] };
+};
+
+// Correlation rule (see apps/indexer/src/engagements/sbt-correlation.ts): SBT issued to the participant
+// in the EngagementResolved transaction of an APPROVED engagement.
+export const EngagementSbtsQuery = /* GraphQL */ `
+  query EngagementSbts($communityId: Int!, $subject: String!, $txHash: String!) {
+    sbts: engagementSbtss(where: { communityId: $communityId, subject: $subject, txHash: $txHash }) {
+      items {
+        id
+        tokenId
+        kind
+        txHash
+      }
+    }
+  }
+`;
+
+export type EngagementSbtsQueryResult = {
+  sbts: { items: { id: string; tokenId: number; kind: string; txHash: string }[] };
 };
 
 export const ValuableActionCatalogQuery = /* GraphQL */ `

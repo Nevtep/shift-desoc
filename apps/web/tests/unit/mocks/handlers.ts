@@ -119,9 +119,26 @@ export const handlers = [
   }),
   graphql.query("Engagement", ({ variables }) => {
     const id = String((variables as { id?: string } | undefined)?.id ?? "");
-    const match = id === fixtures.engagement.id ? fixtures.engagement : null;
-    return HttpResponse.json({ data: { engagement: match } });
+    const found = id === fixtures.engagement.id;
+    return HttpResponse.json({
+      data: {
+        engagement: found ? fixtures.engagement : null,
+        jurors: { items: found ? fixtures.engagementJurors : [] },
+        appeals: { items: [] }
+      }
+    });
   }),
+  graphql.query("EngagementSbts", () => HttpResponse.json({ data: { sbts: { items: [] } } })),
+  http.get(`${API_BASE}/communities/:communityId/engagements/readiness`, () =>
+    HttpResponse.json({
+      status: "healthy",
+      indexedBlock: "100",
+      chainHeadBlock: "101",
+      blockLag: "1",
+      indexedAt: new Date().toISOString(),
+      details: "Indexer is caught up with the chain head."
+    })
+  ),
   // Draft detail via REST API base
   http.get(`${API_BASE}/drafts/:draftId`, ({ params }) => {
     const draftId = String(params.draftId);

@@ -35,6 +35,10 @@ type Query {
   proposalVotess(where: proposalVotesFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): proposalVotesPage!
   engagements(id: String!): engagements
   engagementss(where: engagementsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementsPage!
+  engagementAppeals(id: String!): engagementAppeals
+  engagementAppealss(where: engagementAppealsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementAppealsPage!
+  engagementSbts(id: String!): engagementSbts
+  engagementSbtss(where: engagementSbtsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementSbtsPage!
   valuableActions(id: String!): valuableActions
   valuableActionss(where: valuableActionsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): valuableActionsPage!
   jurorAssignments(id: String!): jurorAssignments
@@ -823,6 +827,13 @@ type engagements {
   evidenceManifestCid: String
   submittedAt: String!
   resolvedAt: String
+  approvalsCount: Int
+  rejectionsCount: Int
+  revokedBy: String
+  resolvedTxHash: String
+  lastEventName: String
+  lastEventTxHash: String
+  lastEventBlock: BigInt
 }
 
 type engagementsPage {
@@ -918,6 +929,293 @@ input engagementsFilter {
   resolvedAt_ends_with: String
   resolvedAt_not_starts_with: String
   resolvedAt_not_ends_with: String
+  approvalsCount: Int
+  approvalsCount_not: Int
+  approvalsCount_in: [Int]
+  approvalsCount_not_in: [Int]
+  approvalsCount_gt: Int
+  approvalsCount_lt: Int
+  approvalsCount_gte: Int
+  approvalsCount_lte: Int
+  rejectionsCount: Int
+  rejectionsCount_not: Int
+  rejectionsCount_in: [Int]
+  rejectionsCount_not_in: [Int]
+  rejectionsCount_gt: Int
+  rejectionsCount_lt: Int
+  rejectionsCount_gte: Int
+  rejectionsCount_lte: Int
+  revokedBy: String
+  revokedBy_not: String
+  revokedBy_in: [String]
+  revokedBy_not_in: [String]
+  revokedBy_contains: String
+  revokedBy_not_contains: String
+  revokedBy_starts_with: String
+  revokedBy_ends_with: String
+  revokedBy_not_starts_with: String
+  revokedBy_not_ends_with: String
+  resolvedTxHash: String
+  resolvedTxHash_not: String
+  resolvedTxHash_in: [String]
+  resolvedTxHash_not_in: [String]
+  resolvedTxHash_contains: String
+  resolvedTxHash_not_contains: String
+  resolvedTxHash_starts_with: String
+  resolvedTxHash_ends_with: String
+  resolvedTxHash_not_starts_with: String
+  resolvedTxHash_not_ends_with: String
+  lastEventName: String
+  lastEventName_not: String
+  lastEventName_in: [String]
+  lastEventName_not_in: [String]
+  lastEventName_contains: String
+  lastEventName_not_contains: String
+  lastEventName_starts_with: String
+  lastEventName_ends_with: String
+  lastEventName_not_starts_with: String
+  lastEventName_not_ends_with: String
+  lastEventTxHash: String
+  lastEventTxHash_not: String
+  lastEventTxHash_in: [String]
+  lastEventTxHash_not_in: [String]
+  lastEventTxHash_contains: String
+  lastEventTxHash_not_contains: String
+  lastEventTxHash_starts_with: String
+  lastEventTxHash_ends_with: String
+  lastEventTxHash_not_starts_with: String
+  lastEventTxHash_not_ends_with: String
+  lastEventBlock: BigInt
+  lastEventBlock_not: BigInt
+  lastEventBlock_in: [BigInt]
+  lastEventBlock_not_in: [BigInt]
+  lastEventBlock_gt: BigInt
+  lastEventBlock_lt: BigInt
+  lastEventBlock_gte: BigInt
+  lastEventBlock_lte: BigInt
+}
+
+type engagementAppeals {
+  id: String!
+  appealId: Int!
+  communityId: Int!
+  engagementId: Int!
+  appellant: String!
+  reason: String!
+  status: String!
+  submittedAt: String!
+  resolvedAt: String
+  txHash: String!
+  blockNumber: BigInt!
+}
+
+type engagementAppealsPage {
+  items: [engagementAppeals!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input engagementAppealsFilter {
+  AND: [engagementAppealsFilter]
+  OR: [engagementAppealsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  appealId: Int
+  appealId_not: Int
+  appealId_in: [Int]
+  appealId_not_in: [Int]
+  appealId_gt: Int
+  appealId_lt: Int
+  appealId_gte: Int
+  appealId_lte: Int
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  engagementId: Int
+  engagementId_not: Int
+  engagementId_in: [Int]
+  engagementId_not_in: [Int]
+  engagementId_gt: Int
+  engagementId_lt: Int
+  engagementId_gte: Int
+  engagementId_lte: Int
+  appellant: String
+  appellant_not: String
+  appellant_in: [String]
+  appellant_not_in: [String]
+  appellant_contains: String
+  appellant_not_contains: String
+  appellant_starts_with: String
+  appellant_ends_with: String
+  appellant_not_starts_with: String
+  appellant_not_ends_with: String
+  reason: String
+  reason_not: String
+  reason_in: [String]
+  reason_not_in: [String]
+  reason_contains: String
+  reason_not_contains: String
+  reason_starts_with: String
+  reason_ends_with: String
+  reason_not_starts_with: String
+  reason_not_ends_with: String
+  status: String
+  status_not: String
+  status_in: [String]
+  status_not_in: [String]
+  status_contains: String
+  status_not_contains: String
+  status_starts_with: String
+  status_ends_with: String
+  status_not_starts_with: String
+  status_not_ends_with: String
+  submittedAt: String
+  submittedAt_not: String
+  submittedAt_in: [String]
+  submittedAt_not_in: [String]
+  submittedAt_contains: String
+  submittedAt_not_contains: String
+  submittedAt_starts_with: String
+  submittedAt_ends_with: String
+  submittedAt_not_starts_with: String
+  submittedAt_not_ends_with: String
+  resolvedAt: String
+  resolvedAt_not: String
+  resolvedAt_in: [String]
+  resolvedAt_not_in: [String]
+  resolvedAt_contains: String
+  resolvedAt_not_contains: String
+  resolvedAt_starts_with: String
+  resolvedAt_ends_with: String
+  resolvedAt_not_starts_with: String
+  resolvedAt_not_ends_with: String
+  txHash: String
+  txHash_not: String
+  txHash_in: [String]
+  txHash_not_in: [String]
+  txHash_contains: String
+  txHash_not_contains: String
+  txHash_starts_with: String
+  txHash_ends_with: String
+  txHash_not_starts_with: String
+  txHash_not_ends_with: String
+  blockNumber: BigInt
+  blockNumber_not: BigInt
+  blockNumber_in: [BigInt]
+  blockNumber_not_in: [BigInt]
+  blockNumber_gt: BigInt
+  blockNumber_lt: BigInt
+  blockNumber_gte: BigInt
+  blockNumber_lte: BigInt
+}
+
+type engagementSbts {
+  id: String!
+  tokenId: Int!
+  kind: String!
+  communityId: Int!
+  subject: String!
+  txHash: String!
+  blockNumber: BigInt!
+  issuedAt: String!
+}
+
+type engagementSbtsPage {
+  items: [engagementSbts!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input engagementSbtsFilter {
+  AND: [engagementSbtsFilter]
+  OR: [engagementSbtsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  tokenId: Int
+  tokenId_not: Int
+  tokenId_in: [Int]
+  tokenId_not_in: [Int]
+  tokenId_gt: Int
+  tokenId_lt: Int
+  tokenId_gte: Int
+  tokenId_lte: Int
+  kind: String
+  kind_not: String
+  kind_in: [String]
+  kind_not_in: [String]
+  kind_contains: String
+  kind_not_contains: String
+  kind_starts_with: String
+  kind_ends_with: String
+  kind_not_starts_with: String
+  kind_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  subject: String
+  subject_not: String
+  subject_in: [String]
+  subject_not_in: [String]
+  subject_contains: String
+  subject_not_contains: String
+  subject_starts_with: String
+  subject_ends_with: String
+  subject_not_starts_with: String
+  subject_not_ends_with: String
+  txHash: String
+  txHash_not: String
+  txHash_in: [String]
+  txHash_not_in: [String]
+  txHash_contains: String
+  txHash_not_contains: String
+  txHash_starts_with: String
+  txHash_ends_with: String
+  txHash_not_starts_with: String
+  txHash_not_ends_with: String
+  blockNumber: BigInt
+  blockNumber_not: BigInt
+  blockNumber_in: [BigInt]
+  blockNumber_not_in: [BigInt]
+  blockNumber_gt: BigInt
+  blockNumber_lt: BigInt
+  blockNumber_gte: BigInt
+  blockNumber_lte: BigInt
+  issuedAt: String
+  issuedAt_not: String
+  issuedAt_in: [String]
+  issuedAt_not_in: [String]
+  issuedAt_contains: String
+  issuedAt_not_contains: String
+  issuedAt_starts_with: String
+  issuedAt_ends_with: String
+  issuedAt_not_starts_with: String
+  issuedAt_not_ends_with: String
 }
 
 type valuableActions {

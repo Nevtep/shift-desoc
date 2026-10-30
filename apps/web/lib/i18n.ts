@@ -363,7 +363,15 @@ const dictionaries = {
       engagement: "Engagement",
       valuableAction: "Acción valiosa",
       submitted: "Enviado",
-      viewDetails: "Ver detalle"
+      viewDetails: "Ver detalle",
+      statusLabels: { PENDING: "Pendiente", APPROVED: "Aprobado", REJECTED: "Rechazado", REVOKED: "Revocado" },
+      readiness: {
+        label: "Preparación del indexador",
+        status: { healthy: "al día", lagging: "atrasado", unavailable: "no disponible" },
+        blocksBehind: "bloques de retraso",
+        healthyHint: "Las vistas indexadas reflejan la cadena.",
+        degradedHint: "El indexador puede ir detrás de la cadena; el estado en cadena puede ser más reciente que esta vista."
+      }
     },
     marketplacePage: {
       metaTitle: "Marketplace | Shift DeSoc",
@@ -1030,7 +1038,15 @@ const dictionaries = {
       engagement: "Engagement",
       valuableAction: "Valuable Action",
       submitted: "Submitted",
-      viewDetails: "View details"
+      viewDetails: "View details",
+      statusLabels: { PENDING: "Pending", APPROVED: "Approved", REJECTED: "Rejected", REVOKED: "Revoked" },
+      readiness: {
+        label: "Indexer readiness",
+        status: { healthy: "healthy", lagging: "lagging", unavailable: "unavailable" },
+        blocksBehind: "blocks behind",
+        healthyHint: "Indexed views reflect the chain.",
+        degradedHint: "The indexer may be behind the chain; on-chain state can be newer than this view."
+      }
     },
     marketplacePage: {
       metaTitle: "Marketplace | Shift DeSoc",
