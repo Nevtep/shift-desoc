@@ -28,7 +28,7 @@ test("abi-event-compatibility: ensures handler-referenced events exist in config
       ],
       ShiftGovernor: ["ProposalCreated", "MultiChoiceProposalCreated", "ProposalQueued", "ProposalExecuted", "VoteCast"],
       CountingMultiChoice: ["MultiChoiceEnabled", "ProposalCanceled", "VoteCastMulti"],
-      Engagements: ["EngagementSubmitted", "JurorsAssigned", "EngagementVerified", "EngagementResolved", "EngagementRevoked"],
+      Engagements: ["EngagementSubmitted", "JurorsAssigned", "EngagementVerified", "EngagementResolved", "EngagementRevoked", "AppealSubmitted", "AppealResolved"],
       VerifierManager: ["JurorsSelected"],
       ValuableActionRegistry: [
         "ValuableActionCreated",

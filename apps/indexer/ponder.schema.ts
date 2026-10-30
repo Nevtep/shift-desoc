@@ -108,6 +108,27 @@ export const engagements = schema.table("engagements", (t) => ({
   evidenceManifestCid: t.text(),
   submittedAt: t.timestamp({ withTimezone: true }).notNull(),
   resolvedAt: t.timestamp({ withTimezone: true }),
+  // Lifecycle evidence (SHI-19): vote tallies from EngagementResolved and the last on-chain event.
+  approvalsCount: t.integer(),
+  rejectionsCount: t.integer(),
+  revokedBy: t.text(),
+  lastEventName: t.text(),
+  lastEventTxHash: t.text(),
+  lastEventBlock: t.bigint(),
+}));
+
+export const engagementAppeals = schema.table("engagement_appeals", (t) => ({
+  id: t.text().primaryKey(),
+  appealId: t.integer().notNull(),
+  communityId: t.integer().notNull(),
+  engagementId: t.integer().notNull(),
+  appellant: t.text().notNull(),
+  reason: t.text().notNull(),
+  status: t.text().notNull(),
+  submittedAt: t.timestamp({ withTimezone: true }).notNull(),
+  resolvedAt: t.timestamp({ withTimezone: true }),
+  txHash: t.text().notNull(),
+  blockNumber: t.bigint().notNull(),
 }));
 
 export const valuableActions = schema.table("valuable_actions", (t) => ({

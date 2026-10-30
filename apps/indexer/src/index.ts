@@ -1,6 +1,7 @@
 import { and, count, desc, eq, graphql, max } from "@ponder/core";
 import {
   engagements,
+  engagementAppeals,
   valuableActions,
   comments,
   communities,
@@ -16,6 +17,13 @@ import {
   unmappedEmitterAlerts,
 } from "../ponder.schema";
 
+import {
+  projectAppealResolved,
+  projectAppealSubmitted,
+  projectEngagementResolved,
+  projectEngagementRevoked,
+  projectEngagementSubmitted,
+} from "./engagements/projection";
 import {
   deriveEngagementReadiness,
   fetchChainHeadBlock,
@@ -229,7 +237,19 @@ ponder.get("/engagements/:id", async (c) => {
     )
     .orderBy(desc(jurorAssignments.weight));
 
-  return c.json({ engagement: engagement[0], jurors });
+  // Additive: appeals for this engagement (SHI-19). Existing `engagement` and `jurors` are unchanged.
+  const appeals = await c.db
+    .select()
+    .from(engagementAppeals)
+    .where(
+      and(
+        eq(engagementAppeals.communityId, engagementRow.communityId),
+        eq(engagementAppeals.engagementId, engagementRow.engagementId)
+      )
+    )
+    .orderBy(desc(engagementAppeals.appealId));
+
+  return c.json({ engagement: engagement[0], jurors, appeals });
 });
 
 ponder.get("/communities/:communityId/valuable-actions", async (c) => {
@@ -1142,30 +1162,16 @@ ponder.on("Engagements:EngagementSubmitted", async ({ event, context }) => {
   const resolved = await resolveOrAlert(context, event, "Engagements");
   if (!resolved) return;
 
-  const engagementId = Number(event.args.engagementId);
-  const submittedAt = toDate(event.block.timestamp);
-  await context.db
-    .insert(engagements)
-    .values({
-      id: buildEngagementId(resolved.communityId, engagementId),
-      engagementId,
-      communityId: resolved.communityId,
-      valuableActionId: Number(event.args.typeId),
-      participant: event.args.participant,
-      status: engagementStatuses[0],
-      evidenceManifestCid: event.args.evidenceCID,
-      submittedAt,
-      resolvedAt: null,
-    })
-    .onConflictDoUpdate({
-      communityId: resolved.communityId,
-      valuableActionId: Number(event.args.typeId),
-      participant: event.args.participant,
-      status: engagementStatuses[0],
-      evidenceManifestCid: event.args.evidenceCID,
-      submittedAt,
-      resolvedAt: null,
-    });
+  const meta = getEventMeta(event);
+  await projectEngagementSubmitted(context.db, {
+    communityId: resolved.communityId,
+    engagementId: Number(event.args.engagementId),
+    valuableActionId: Number(event.args.typeId),
+    participant: event.args.participant,
+    evidenceManifestCid: event.args.evidenceCID,
+    submittedAt: toDate(event.block.timestamp),
+    evidence: { eventName: "EngagementSubmitted", txHash: meta.txHash, blockNumber: meta.blockNumber },
+  });
 });
 
 ponder.on("VerifierManager:JurorsSelected", async ({ event, context }) => {
@@ -1237,22 +1243,59 @@ ponder.on("Engagements:EngagementResolved", async ({ event, context }) => {
   const resolved = await resolveOrAlert(context, event, "Engagements");
   if (!resolved) return;
 
-  const status = engagementStatuses[Number(event.args.status)] ?? engagementStatuses[0];
-  const resolvedAt = toDate(event.block.timestamp);
-
-  await context.db
-    .update(engagements, { id: buildEngagementId(resolved.communityId, Number(event.args.engagementId)) })
-    .set({ status, resolvedAt });
+  const meta = getEventMeta(event);
+  await projectEngagementResolved(context.db, {
+    communityId: resolved.communityId,
+    engagementId: Number(event.args.engagementId),
+    statusIndex: Number(event.args.status),
+    finalApprovals: Number(event.args.finalApprovals),
+    finalRejections: Number(event.args.finalRejections),
+    resolvedAt: toDate(event.block.timestamp),
+    evidence: { eventName: "EngagementResolved", txHash: meta.txHash, blockNumber: meta.blockNumber },
+  });
 });
 
 ponder.on("Engagements:EngagementRevoked", async ({ event, context }) => {
   const resolved = await resolveOrAlert(context, event, "Engagements");
   if (!resolved) return;
 
-  const resolvedAt = toDate(event.block.timestamp);
-  await context.db
-    .update(engagements, { id: buildEngagementId(resolved.communityId, Number(event.args.engagementId)) })
-    .set({ status: engagementStatuses[3], resolvedAt });
+  const meta = getEventMeta(event);
+  await projectEngagementRevoked(context.db, {
+    communityId: resolved.communityId,
+    engagementId: Number(event.args.engagementId),
+    revoker: event.args.revoker,
+    resolvedAt: toDate(event.block.timestamp),
+    evidence: { eventName: "EngagementRevoked", txHash: meta.txHash, blockNumber: meta.blockNumber },
+  });
+});
+
+ponder.on("Engagements:AppealSubmitted", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "Engagements");
+  if (!resolved) return;
+
+  const meta = getEventMeta(event);
+  await projectAppealSubmitted(context.db, {
+    communityId: resolved.communityId,
+    appealId: Number(event.args.appealId),
+    engagementId: Number(event.args.engagementId),
+    appellant: event.args.appellant,
+    reason: event.args.reason,
+    submittedAt: toDate(event.block.timestamp),
+    evidence: { eventName: "AppealSubmitted", txHash: meta.txHash, blockNumber: meta.blockNumber },
+  });
+});
+
+// The contract declares AppealResolved but never emits it today; kept so the projection is ready.
+ponder.on("Engagements:AppealResolved", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "Engagements");
+  if (!resolved) return;
+
+  await projectAppealResolved(context.db, {
+    communityId: resolved.communityId,
+    appealId: Number(event.args.appealId),
+    statusIndex: Number(event.args.status),
+    resolvedAt: toDate(event.block.timestamp),
+  });
 });
 
 ponder.on("ValuableActionRegistry:ValuableActionCreated", async ({ event, context }) => {
