@@ -1,4 +1,4 @@
-import { and, count, desc, eq, graphql } from "@ponder/core";
+import { and, count, desc, eq, graphql, max } from "@ponder/core";
 import {
   engagements,
   valuableActions,
@@ -16,6 +16,11 @@ import {
   unmappedEmitterAlerts,
 } from "../ponder.schema";
 
+import {
+  deriveEngagementReadiness,
+  fetchChainHeadBlock,
+  fetchIndexedBlock,
+} from "./engagements/readiness";
 import { keccak256, toBytes, type Address } from "viem";
 import { ponder } from "@/generated";
 import { contractModuleKeyAllowlists } from "./discovery/module-key-allowlists";
@@ -301,6 +306,41 @@ ponder.get("/communities/:communityId/valuable-actions/readiness", async (c) => 
     indexedAt: head.updatedAt.toISOString(),
     details: status === "healthy" ? "Projection is up to date." : "Projection update appears delayed.",
   });
+});
+
+ponder.get("/communities/:communityId/engagements/readiness", async (c) => {
+  const communityId = Number(c.req.param("communityId"));
+  if (!Number.isFinite(communityId) || communityId <= 0) {
+    return c.json({ error: "invalid community id" }, 400);
+  }
+
+  const network = process.env.PONDER_NETWORK === "base" ? "base" : "base_sepolia";
+  const rpcUrl =
+    network === "base"
+      ? (process.env.RPC_BASE ?? "https://mainnet.base.org")
+      : (process.env.RPC_BASE_SEPOLIA ?? "https://sepolia.base.org");
+
+  const [engagementActivity, jurorActivity, indexedBlock, chainHeadBlock] = await Promise.all([
+    c.db
+      .select({ submittedAt: max(engagements.submittedAt), resolvedAt: max(engagements.resolvedAt) })
+      .from(engagements)
+      .where(eq(engagements.communityId, communityId)),
+    c.db
+      .select({ decidedAt: max(jurorAssignments.decidedAt) })
+      .from(jurorAssignments)
+      .where(eq(jurorAssignments.communityId, communityId)),
+    fetchIndexedBlock(new URL("/status", c.req.url).toString(), network),
+    fetchChainHeadBlock(rpcUrl),
+  ]);
+
+  const stamps = [
+    engagementActivity[0]?.submittedAt,
+    engagementActivity[0]?.resolvedAt,
+    jurorActivity[0]?.decidedAt,
+  ].filter((v): v is Date => v instanceof Date);
+  const latestActivityAt = stamps.length ? new Date(Math.max(...stamps.map((d) => d.getTime()))) : null;
+
+  return c.json(deriveEngagementReadiness({ indexedBlock, chainHeadBlock, latestActivityAt }));
 });
 
 ponder.get("/communities/:communityId/valuable-actions/:actionId/authority", async (c) => {
