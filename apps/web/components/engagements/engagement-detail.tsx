@@ -18,6 +18,7 @@ import {
   type ChainEngagement,
   type EngagementProvenance
 } from "../../lib/engagements/chain-state";
+import { EngagementLifecycle } from "./engagement-lifecycle";
 import { EngagementReadinessBanner } from "./engagement-readiness-banner";
 import { engagementStatusLabel, isEngagementVotable } from "../../lib/engagements/engagement-status";
 import { parseEngagementRef } from "../../lib/engagements/engagement-id";
@@ -144,6 +145,8 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
           </div>
         </div>
       </section>
+
+      <EngagementLifecycle engagement={engagement} appeals={data?.appeals?.items ?? []} />
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Evidence</h2>

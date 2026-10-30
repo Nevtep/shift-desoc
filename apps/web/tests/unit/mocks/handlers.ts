@@ -123,10 +123,12 @@ export const handlers = [
     return HttpResponse.json({
       data: {
         engagement: found ? fixtures.engagement : null,
-        jurors: { items: found ? fixtures.engagementJurors : [] }
+        jurors: { items: found ? fixtures.engagementJurors : [] },
+        appeals: { items: [] }
       }
     });
   }),
+  graphql.query("EngagementSbts", () => HttpResponse.json({ data: { sbts: { items: [] } } })),
   http.get(`${API_BASE}/communities/:communityId/engagements/readiness`, () =>
     HttpResponse.json({
       status: "healthy",
