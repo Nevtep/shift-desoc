@@ -3062,7 +3062,7 @@ async function executeConfigureAccessPermissions(
   return { txHashes };
 }
 
-async function executeHandoffAdminToTimelock(
+async function executeGovernanceManagedFinalization(
   params: {
     publicClient: PublicClient;
     writeContractAsync: WriteContractAsync;
@@ -3214,6 +3214,88 @@ async function executeHandoffAdminToTimelock(
   return { txHashes };
 }
 
+type FinalizeParams = {
+  publicClient: PublicClient;
+  writeContractAsync: WriteContractAsync;
+  connectedAddress?: `0x${string}`;
+};
+
+/**
+ * Admin-managed outcome: the deployer keeps ADMIN, the timelock must not hold it, and the
+ * deploy-time bootstrap coordinator loses it. Fails closed on any other end state.
+ */
+async function executeAdminManagedFinalization(
+  params: FinalizeParams,
+  session: DeploymentWizardSession,
+  context: DeployContext,
+): Promise<StepExecutionResult> {
+  const txHashes: `0x${string}`[] = [];
+  const { publicClient, writeContractAsync, connectedAddress } = params;
+  if (!session.communityId) {
+    throw new Error("Cannot finalize authority without a registered community ID.");
+  }
+
+  const runAddresses = requireRunScopedAddresses(session);
+  const accessManager = runAddresses.accessManager;
+  const timelock = runAddresses.timelock;
+  const deployer = connectedAddress ?? session.deployerAddress;
+
+  const adminRole = await readAccessManagerAdminRoleWithRetry(publicClient, accessManager).catch(() => {
+    throw new Error(
+      `Invalid AccessManager at ${accessManager}. The stored run address is stale, unavailable on RPC, or not a ShiftAccessManager. Re-run DEPLOY_STACK to refresh addresses.`
+    );
+  });
+
+  const hasAdmin = async (account: `0x${string}`) =>
+    ((await publicClient.readContract({
+      address: accessManager,
+      abi: SHIFT_ACCESS_MANAGER_ABI,
+      functionName: "hasRole",
+      args: [adminRole, account]
+    })) as readonly [boolean, number])[0];
+
+  if (await hasAdmin(timelock)) {
+    throw new Error("Admin-managed finalization failed: timelock holds admin role.");
+  }
+
+  const nonceCursor = await initializeNonceCursor(publicClient, connectedAddress);
+  let nextNonce = nonceCursor;
+  const consumeNonce = () => {
+    if (typeof nextNonce !== "bigint") return undefined;
+    const current = nextNonce;
+    nextNonce += 1n;
+    return current;
+  };
+
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress();
+  if (bootstrapCoordinator && (await hasAdmin(bootstrapCoordinator))) {
+    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
+      address: accessManager,
+      abi: SHIFT_ACCESS_MANAGER_ABI,
+      functionName: "revokeRole",
+      args: [adminRole, bootstrapCoordinator]
+    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+  }
+
+  if (!(await hasAdmin(deployer))) {
+    throw new Error("Admin-managed finalization failed: deployer wallet does not hold admin role.");
+  }
+
+  return { txHashes };
+}
+
+function executeFinalizeAuthorityMode(
+  params: FinalizeParams,
+  session: DeploymentWizardSession,
+  context: DeployContext,
+): Promise<StepExecutionResult> {
+  // Always the mode persisted with the session; never a default and never the other mode.
+  const mode = session.deploymentConfig?.authorityMode;
+  if (mode === "admin_managed") return executeAdminManagedFinalization(params, session, context);
+  if (mode === "governance_managed") return executeGovernanceManagedFinalization(params, session, context);
+  return Promise.reject(new Error("Cannot finalize authority without a selected authority mode."));
+}
+
 export function createFactoryDeployStepExecutor(params: {
   publicClient: PublicClient;
   writeContractAsync: WriteContractAsync;
@@ -3243,8 +3325,8 @@ export function createFactoryDeployStepExecutor(params: {
             configureResult.deploymentAddresses ?? syntheticSession.deploymentAddresses ?? session.deploymentAddresses,
         };
       }
-      case "HANDOFF_ADMIN_TO_TIMELOCK":
-        return executeHandoffAdminToTimelock(params, session, context);
+      case "FINALIZE_AUTHORITY_MODE":
+        return executeFinalizeAuthorityMode(params, session, context);
       default:
         throw new Error(`Unknown deployment step: ${step}`);
     }

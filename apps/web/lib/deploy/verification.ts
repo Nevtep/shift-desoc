@@ -1,4 +1,9 @@
-import type { VerificationCheckResult, VerificationCheckKey, VerificationSnapshot } from "./types";
+import type {
+  AuthorityMode,
+  VerificationCheckResult,
+  VerificationCheckKey,
+  VerificationSnapshot
+} from "./types";
 
 const CHECK_LABELS: Record<VerificationCheckKey, string> = {
   MODULE_WIRING_VALUABLE_ACTION_REGISTRY: "CommunityRegistry valuableActionRegistry module wiring",
@@ -18,12 +23,54 @@ const CHECK_LABELS: Record<VerificationCheckKey, string> = {
   ROLE_MEMBERSHIP_MINTER_ENGAGEMENTS: "Engagements has MEMBERSHIP_TOKEN_MINTER_ROLE",
   ROLE_VA_SBT_MANAGER_REGISTRY: "ValuableActionRegistry has VALUABLE_ACTION_SBT_MANAGER_ROLE",
   MARKETPLACE_COMMUNITY_ACTIVE: "Marketplace community is active",
-  REVENUE_ROUTER_TREASURY_SET: "RevenueRouter treasury is configured"
+  REVENUE_ROUTER_TREASURY_SET: "RevenueRouter treasury is configured",
+  AUTHORITY_DEPLOYER_ADMIN: "Deployer wallet ADMIN_ROLE",
+  AUTHORITY_TIMELOCK_ADMIN: "Timelock ADMIN_ROLE",
+  AUTHORITY_BOOTSTRAP_ADMIN: "Bootstrap coordinator ADMIN_ROLE"
 };
 
-export function evaluateVerificationSnapshot(snapshot: VerificationSnapshot): VerificationCheckResult[] {
-  // Mirror the check set and semantics defined in verify-community-deployment.ts.
+function authorityCheck(
+  key: "AUTHORITY_DEPLOYER_ADMIN" | "AUTHORITY_TIMELOCK_ADMIN" | "AUTHORITY_BOOTSTRAP_ADMIN",
+  holder: string,
+  holds: boolean | undefined,
+  shouldHold: boolean
+): VerificationCheckResult {
+  const polarity = shouldHold ? "positive" : "negative";
+  const label = `${holder} ${shouldHold ? "holds" : "does not hold"} ADMIN_ROLE`;
+  if (holds === undefined) {
+    return { key, label, polarity, passed: false, failureReason: `${holder} ADMIN_ROLE could not be read` };
+  }
+  const passed = holds === shouldHold;
+  return {
+    key,
+    label,
+    polarity,
+    passed,
+    failureReason: passed ? undefined : `${holder} ${holds ? "still holds" : "is missing"} ADMIN_ROLE`
+  };
+}
+
+function evaluateAuthorityChecks(
+  snapshot: VerificationSnapshot,
+  mode: AuthorityMode
+): VerificationCheckResult[] {
+  const authority = snapshot.authority;
+  const governance = mode === "governance_managed";
+  // No coordinator configured means nothing to hold ADMIN: the negative check holds trivially.
+  const coordinator = authority ? (authority.bootstrapCoordinator ?? false) : undefined;
   return [
+    authorityCheck("AUTHORITY_DEPLOYER_ADMIN", "Deployer", authority?.deployer, !governance),
+    authorityCheck("AUTHORITY_TIMELOCK_ADMIN", "Timelock", authority?.timelock, governance),
+    authorityCheck("AUTHORITY_BOOTSTRAP_ADMIN", "Bootstrap coordinator", coordinator, false)
+  ];
+}
+
+export function evaluateVerificationSnapshot(
+  snapshot: VerificationSnapshot,
+  authorityMode?: AuthorityMode
+): VerificationCheckResult[] {
+  // Mirror the check set and semantics defined in verify-community-deployment.ts.
+  const baseChecks: VerificationCheckResult[] = [
     {
       key: "MODULE_WIRING_VALUABLE_ACTION_REGISTRY",
       label: CHECK_LABELS.MODULE_WIRING_VALUABLE_ACTION_REGISTRY,
@@ -155,6 +202,7 @@ export function evaluateVerificationSnapshot(snapshot: VerificationSnapshot): Ve
       failureReason: snapshot.revenueTreasurySet ? undefined : "RevenueRouter treasury is not set"
     }
   ];
+  return authorityMode ? [...baseChecks, ...evaluateAuthorityChecks(snapshot, authorityMode)] : baseChecks;
 }
 
 export function allVerificationChecksPassed(results: VerificationCheckResult[]): boolean {

@@ -6,7 +6,7 @@ import communityRegistryArtifact from "../../abis/CommunityRegistry.json" assert
 import marketplaceArtifact from "../../abis/Marketplace.json" assert { type: "json" };
 import revenueRouterArtifact from "../../abis/RevenueRouter.json" assert { type: "json" };
 import verifierPowerTokenArtifact from "../../abis/VerifierPowerToken1155.json" assert { type: "json" };
-import type { DeploymentRunAddresses, VerificationSnapshot } from "./types";
+import type { AuthorityAdminHolders, DeploymentRunAddresses, VerificationSnapshot } from "./types";
 
 const communityRegistryAbi = communityRegistryArtifact.abi as Abi;
 const accessManagerAbi = accessManagerArtifact.abi as Abi;
@@ -37,11 +37,44 @@ const ROLES = {
   VERIFIER_MANAGER_CALLER_ROLE: 15n
 };
 
+/** OpenZeppelin AccessManager ADMIN_ROLE id. */
+const ADMIN_ROLE_ID = 0n;
+
+export type AuthorityProbeTargets = {
+  deployer: `0x${string}`;
+  timelock: `0x${string}`;
+  bootstrapCoordinator?: `0x${string}`;
+};
+
+/** Canonical ADMIN_ROLE holder probe shared by wizard verification (mirrors verify-handoff-admin-role.ts). */
+export async function readAuthorityAdminHolders(
+  publicClient: PublicClient,
+  accessManager: `0x${string}`,
+  targets: AuthorityProbeTargets
+): Promise<AuthorityAdminHolders> {
+  const hasAdmin = async (account: `0x${string}`): Promise<boolean> => {
+    const raw = await publicClient.readContract({
+      address: accessManager,
+      abi: accessManagerAbi,
+      functionName: "hasRole",
+      args: [ADMIN_ROLE_ID, account]
+    });
+    return Array.isArray(raw) ? Boolean(raw[0]) : Boolean(raw);
+  };
+  const [deployer, timelock, bootstrapCoordinator] = await Promise.all([
+    hasAdmin(targets.deployer),
+    hasAdmin(targets.timelock),
+    targets.bootstrapCoordinator ? hasAdmin(targets.bootstrapCoordinator) : Promise.resolve(undefined)
+  ]);
+  return { deployer, timelock, ...(bootstrapCoordinator === undefined ? {} : { bootstrapCoordinator }) };
+}
+
 export async function readVerificationSnapshot(
   publicClient: PublicClient,
   chainId: number,
   communityId: number,
-  deploymentAddresses?: DeploymentRunAddresses
+  deploymentAddresses?: DeploymentRunAddresses,
+  authorityProbe?: Omit<AuthorityProbeTargets, "timelock"> & { timelock?: `0x${string}` }
 ): Promise<VerificationSnapshot> {
   const communityRegistry = getContractAddress("communityRegistry", chainId);
   const modules = (await publicClient.readContract({
@@ -274,8 +307,18 @@ export async function readVerificationSnapshot(
   const communityActive = pickBool(communityActiveRaw);
   const treasury = typeof treasuryRaw === "string" ? treasuryRaw : "0x0000000000000000000000000000000000000000";
 
+  let authority: AuthorityAdminHolders | undefined;
+  if (authorityProbe) {
+    const timelock = authorityProbe.timelock ?? deploymentAddresses?.timelock;
+    if (!timelock) {
+      throw new Error("Missing timelock address (run-scoped) for authority-mode verification.");
+    }
+    authority = await readAuthorityAdminHolders(publicClient, accessManager, { ...authorityProbe, timelock });
+  }
+
   return {
     communityId,
+    ...(authority ? { authority } : {}),
     modules: {
       valuableActionRegistryMatches:
         valuableActionRegistry.toLowerCase() !== "0x0000000000000000000000000000000000000000"

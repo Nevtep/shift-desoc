@@ -269,6 +269,13 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 
 ## 2026-03-09 Tactical Update (Staging Deployment Policy)
 
+## 2026-10-21 Tactical Update (SHI-101 Authority Mode Contract)
+
+- Single contract of record for the Manager deploy wizard: `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> FINALIZE_AUTHORITY_MODE -> VERIFY_DEPLOYMENT`, replacing `HANDOFF_ADMIN_TO_TIMELOCK`.
+- Admin-managed: deployer keeps ADMIN, timelock does not hold ADMIN, bootstrap coordinator ADMIN revoked.
+- Governance-managed: timelock holds ADMIN, deployer and bootstrap coordinator do not.
+- `VERIFY_DEPLOYMENT` asserts the selected mode with positive and negative ADMIN-holder checks; the community overview derives the mode from the same on-chain probes. Table of expected holders: `docs/EN/Layers.md`. No contract or indexer change.
+
 ## 2026-03-16 Tactical Update (Blocking Defect Logged: Wizard Static Address Reuse)
 
 - Recorded branch-blocking defect `BUG-2026-03-16-DEPLOY-WIZARD-STATIC-ADDR` across feature artifacts (`spec.md`, `plan.md`, `research.md`, `quickstart.md`, `tasks.md`).
@@ -294,6 +301,7 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 
 - Completed deploy wizard state-machine contract alignment to the required five-step flow:
   `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> HANDOFF_ADMIN_TO_TIMELOCK -> VERIFY_DEPLOYMENT`.
+  (Historical: superseded by `FINALIZE_AUTHORITY_MODE` in the 2026-10-21 update below.)
 - Split runtime execution responsibilities in `apps/web/lib/deploy/default-step-executor.ts` across access-configuration and explicit admin handoff phases.
 - Hardened clean-slate staging behavior in `apps/web/hooks/useDeployWizard.ts` by rejecting incompatible resume sessions and forcing fresh starts from `PRECHECKS`.
 - Added staging-policy test coverage:
