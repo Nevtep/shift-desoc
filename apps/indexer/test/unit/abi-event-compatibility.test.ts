@@ -30,6 +30,7 @@ test("abi-event-compatibility: ensures handler-referenced events exist in config
       CountingMultiChoice: ["MultiChoiceEnabled", "ProposalCanceled", "VoteCastMulti"],
       Engagements: ["EngagementSubmitted", "JurorsAssigned", "EngagementVerified", "EngagementResolved", "EngagementRevoked", "AppealSubmitted", "AppealResolved"],
       VerifierManager: ["JurorsSelected"],
+      ValuableActionSBT: ["TokenIssued"],
       ValuableActionRegistry: [
         "ValuableActionCreated",
         "ValuableActionUpdated",

@@ -37,6 +37,8 @@ type Query {
   engagementss(where: engagementsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementsPage!
   engagementAppeals(id: String!): engagementAppeals
   engagementAppealss(where: engagementAppealsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementAppealsPage!
+  engagementSbts(id: String!): engagementSbts
+  engagementSbtss(where: engagementSbtsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): engagementSbtsPage!
   valuableActions(id: String!): valuableActions
   valuableActionss(where: valuableActionsFilter, orderBy: String, orderDirection: String, before: String, after: String, limit: Int): valuableActionsPage!
   jurorAssignments(id: String!): jurorAssignments
@@ -828,6 +830,7 @@ type engagements {
   approvalsCount: Int
   rejectionsCount: Int
   revokedBy: String
+  resolvedTxHash: String
   lastEventName: String
   lastEventTxHash: String
   lastEventBlock: BigInt
@@ -952,6 +955,16 @@ input engagementsFilter {
   revokedBy_ends_with: String
   revokedBy_not_starts_with: String
   revokedBy_not_ends_with: String
+  resolvedTxHash: String
+  resolvedTxHash_not: String
+  resolvedTxHash_in: [String]
+  resolvedTxHash_not_in: [String]
+  resolvedTxHash_contains: String
+  resolvedTxHash_not_contains: String
+  resolvedTxHash_starts_with: String
+  resolvedTxHash_ends_with: String
+  resolvedTxHash_not_starts_with: String
+  resolvedTxHash_not_ends_with: String
   lastEventName: String
   lastEventName_not: String
   lastEventName_in: [String]
@@ -1107,6 +1120,102 @@ input engagementAppealsFilter {
   blockNumber_lt: BigInt
   blockNumber_gte: BigInt
   blockNumber_lte: BigInt
+}
+
+type engagementSbts {
+  id: String!
+  tokenId: Int!
+  kind: String!
+  communityId: Int!
+  subject: String!
+  txHash: String!
+  blockNumber: BigInt!
+  issuedAt: String!
+}
+
+type engagementSbtsPage {
+  items: [engagementSbts!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input engagementSbtsFilter {
+  AND: [engagementSbtsFilter]
+  OR: [engagementSbtsFilter]
+  id: String
+  id_not: String
+  id_in: [String]
+  id_not_in: [String]
+  id_contains: String
+  id_not_contains: String
+  id_starts_with: String
+  id_ends_with: String
+  id_not_starts_with: String
+  id_not_ends_with: String
+  tokenId: Int
+  tokenId_not: Int
+  tokenId_in: [Int]
+  tokenId_not_in: [Int]
+  tokenId_gt: Int
+  tokenId_lt: Int
+  tokenId_gte: Int
+  tokenId_lte: Int
+  kind: String
+  kind_not: String
+  kind_in: [String]
+  kind_not_in: [String]
+  kind_contains: String
+  kind_not_contains: String
+  kind_starts_with: String
+  kind_ends_with: String
+  kind_not_starts_with: String
+  kind_not_ends_with: String
+  communityId: Int
+  communityId_not: Int
+  communityId_in: [Int]
+  communityId_not_in: [Int]
+  communityId_gt: Int
+  communityId_lt: Int
+  communityId_gte: Int
+  communityId_lte: Int
+  subject: String
+  subject_not: String
+  subject_in: [String]
+  subject_not_in: [String]
+  subject_contains: String
+  subject_not_contains: String
+  subject_starts_with: String
+  subject_ends_with: String
+  subject_not_starts_with: String
+  subject_not_ends_with: String
+  txHash: String
+  txHash_not: String
+  txHash_in: [String]
+  txHash_not_in: [String]
+  txHash_contains: String
+  txHash_not_contains: String
+  txHash_starts_with: String
+  txHash_ends_with: String
+  txHash_not_starts_with: String
+  txHash_not_ends_with: String
+  blockNumber: BigInt
+  blockNumber_not: BigInt
+  blockNumber_in: [BigInt]
+  blockNumber_not_in: [BigInt]
+  blockNumber_gt: BigInt
+  blockNumber_lt: BigInt
+  blockNumber_gte: BigInt
+  blockNumber_lte: BigInt
+  issuedAt: String
+  issuedAt_not: String
+  issuedAt_in: [String]
+  issuedAt_not_in: [String]
+  issuedAt_contains: String
+  issuedAt_not_contains: String
+  issuedAt_starts_with: String
+  issuedAt_ends_with: String
+  issuedAt_not_starts_with: String
+  issuedAt_not_ends_with: String
 }
 
 type valuableActions {

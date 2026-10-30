@@ -46,6 +46,7 @@ export async function projectEngagementSubmitted(db: Db, input: SubmittedInput) 
     approvalsCount: null,
     rejectionsCount: null,
     revokedBy: null,
+    resolvedTxHash: null,
     ...evidenceColumns(input.evidence),
   };
   await db
@@ -76,6 +77,7 @@ export async function projectEngagementResolved(db: Db, input: ResolvedInput) {
       resolvedAt: input.resolvedAt,
       approvalsCount: input.finalApprovals,
       rejectionsCount: input.finalRejections,
+      resolvedTxHash: input.evidence.txHash,
       ...evidenceColumns(input.evidence),
     });
 }

@@ -2,6 +2,7 @@ import { and, count, desc, eq, graphql, max } from "@ponder/core";
 import {
   engagements,
   engagementAppeals,
+  engagementSbts,
   valuableActions,
   comments,
   communities,
@@ -17,6 +18,8 @@ import {
   unmappedEmitterAlerts,
 } from "../ponder.schema";
 
+import { projectTokenIssued } from "./engagements/sbt-projection";
+import { correlateEngagementSbts } from "./engagements/sbt-correlation";
 import {
   projectAppealResolved,
   projectAppealSubmitted,
@@ -249,7 +252,18 @@ ponder.get("/engagements/:id", async (c) => {
     )
     .orderBy(desc(engagementAppeals.appealId));
 
-  return c.json({ engagement: engagement[0], jurors, appeals });
+  const sbtCandidates = await c.db
+    .select()
+    .from(engagementSbts)
+    .where(
+      and(
+        eq(engagementSbts.communityId, engagementRow.communityId),
+        eq(engagementSbts.subject, engagementRow.participant)
+      )
+    );
+  const sbts = correlateEngagementSbts(engagementRow, sbtCandidates);
+
+  return c.json({ engagement: engagement[0], jurors, appeals, sbts });
 });
 
 ponder.get("/communities/:communityId/valuable-actions", async (c) => {
@@ -1282,6 +1296,24 @@ ponder.on("Engagements:AppealSubmitted", async ({ event, context }) => {
     reason: event.args.reason,
     submittedAt: toDate(event.block.timestamp),
     evidence: { eventName: "AppealSubmitted", txHash: meta.txHash, blockNumber: meta.blockNumber },
+  });
+});
+
+ponder.on("ValuableActionSBT:TokenIssued", async ({ event, context }) => {
+  const resolved = await resolveOrAlert(context, event, "ValuableActionSBT");
+  if (!resolved) return;
+  // The event carries its own communityId; only project tokens that agree with emitter attribution.
+  if (Number(event.args.communityId) !== resolved.communityId) return;
+
+  const meta = getEventMeta(event);
+  await projectTokenIssued(context.db, {
+    communityId: resolved.communityId,
+    tokenId: Number(event.args.tokenId),
+    kind: Number(event.args.kind),
+    subject: event.args.subject,
+    issuedAt: toDate(event.block.timestamp),
+    txHash: meta.txHash,
+    blockNumber: meta.blockNumber,
   });
 });
 

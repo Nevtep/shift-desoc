@@ -102,6 +102,7 @@ export default createConfig({
     Engagements: makeFactoryContract("Engagements.json"),
     VerifierManager: makeFactoryContract("VerifierManager.json"),
     ValuableActionRegistry: makeFactoryContract("ValuableActionRegistry.json"),
+    ValuableActionSBT: makeFactoryContract("ValuableActionSBT.json"),
     RevenueRouter: makeFactoryContract("RevenueRouter.json"),
     TreasuryAdapter: makeFactoryContract("TreasuryAdapter.json"),
     CohortRegistry: makeFactoryContract("CohortRegistry.json"),
