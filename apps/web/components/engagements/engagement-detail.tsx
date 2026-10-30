@@ -11,6 +11,7 @@ import {
   type EngagementJurorAssignment,
   type EngagementQueryResult
 } from "../../lib/graphql/queries";
+import { EngagementReadinessBanner } from "./engagement-readiness-banner";
 import { engagementStatusLabel, isEngagementVotable } from "../../lib/engagements/engagement-status";
 import { parseEngagementRef } from "../../lib/engagements/engagement-id";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
@@ -56,9 +57,12 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
 
   if (!isError && !engagement) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Engagement {ref.engagementId} is not indexed yet. It will appear once the indexer catches up.
-      </p>
+      <div className="space-y-3">
+        <EngagementReadinessBanner communityId={ref.communityId} />
+        <p className="text-sm text-muted-foreground">
+          Engagement {ref.engagementId} is not indexed yet. It will appear once the indexer catches up.
+        </p>
+      </div>
     );
   }
 
@@ -78,6 +82,7 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
 
   return (
     <div className="space-y-8">
+      <EngagementReadinessBanner communityId={ref.communityId} />
       <section className="space-y-3">
         <div className="card">
           <h2 className="text-lg font-medium">Metadata</h2>

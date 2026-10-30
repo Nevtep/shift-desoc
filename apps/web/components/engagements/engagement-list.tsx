@@ -7,6 +7,7 @@ import { ArrowRight, BadgeCheck } from "lucide-react";
 import { useMemo } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
+import { EngagementReadinessBanner } from "./engagement-readiness-banner";
 import { engagementPath } from "../../lib/engagements/engagement-id";
 import { engagementStatusLabel } from "../../lib/engagements/engagement-status";
 import { getI18n } from "../../lib/i18n";
@@ -28,9 +29,12 @@ export function EngagementList({ communityId }: EngagementListProps) {
 
   const engagements = useMemo(() => data?.engagements.nodes ?? [], [data]);
 
+  const banner = <EngagementReadinessBanner communityId={variables?.communityId} />;
+
   if (isLoading) {
     return (
       <div className="space-y-3">
+        {banner}
         <p className="text-sm text-muted-foreground">{t.loading}</p>
         <ListSkeleton />
       </div>
@@ -39,6 +43,7 @@ export function EngagementList({ communityId }: EngagementListProps) {
   if (isError)
     return (
       <div className="card-tight space-y-3 border-destructive/25">
+        {banner}
         <StatusMessage message={t.loadFailed} tone="error" />
         <button type="button" className="btn-ghost cursor-pointer text-sm" onClick={() => void refetch()}>
           {t.retry}
@@ -47,18 +52,24 @@ export function EngagementList({ communityId }: EngagementListProps) {
     );
   if (!engagements.length) {
     return (
-      <div className="card-tight border-dashed border-primary/25 text-center">
-        <p className="text-sm text-muted-foreground">{t.empty}</p>
+      <div className="space-y-3">
+        {banner}
+        <div className="card-tight border-dashed border-primary/25 text-center">
+          <p className="text-sm text-muted-foreground">{t.empty}</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-      {engagements.map((engagement) => (
-        <EngagementListItem key={engagement.id} engagement={engagement} />
-      ))}
-    </ul>
+    <div className="space-y-4">
+      {banner}
+      <ul className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {engagements.map((engagement) => (
+          <EngagementListItem key={engagement.id} engagement={engagement} />
+        ))}
+      </ul>
+    </div>
   );
 }
 

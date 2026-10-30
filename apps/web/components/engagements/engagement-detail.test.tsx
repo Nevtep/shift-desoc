@@ -62,7 +62,7 @@ describe("EngagementDetail", () => {
   });
 
   describe("verify gating by indexer status", () => {
-    const juror = fixtures.engagementJurors[0].juror;
+    const juror = fixtures.engagementJurors[0].juror as `0x${string}`;
 
     function useStatus(status: string) {
       server.use(
