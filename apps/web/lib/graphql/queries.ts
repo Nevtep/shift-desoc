@@ -436,8 +436,8 @@ export type CommunityOverviewProposalsResult = {
 };
 
 export const EngagementsQuery = /* GraphQL */ `
-  query Engagements($communityId: Int, $status: [String!], $limit: Int = 20, $after: String) {
-    engagements: claimss(
+  query Engagements($communityId: Int, $status: [String], $limit: Int = 20, $after: String) {
+    engagements: engagementss(
       where: { communityId: $communityId, status_in: $status }
       orderBy: "submittedAt"
       orderDirection: "desc"
@@ -446,9 +446,10 @@ export const EngagementsQuery = /* GraphQL */ `
     ) {
       nodes: items {
         id
+        engagementId
         communityId
         valuableActionId
-        claimant
+        participant
         status
         evidenceManifestCid
         submittedAt
@@ -462,11 +463,13 @@ export const EngagementsQuery = /* GraphQL */ `
   }
 `;
 
+// Indexer ids are text: "<communityId>:<engagementId>" (apps/indexer/src/index.ts).
 export type EngagementNode = {
-  communityId: number;
   id: string;
-  valuableActionId: string;
-  claimant: string;
+  engagementId: number;
+  communityId: number;
+  valuableActionId: number;
+  participant: string;
   status: string;
   evidenceManifestCid?: string | null;
   submittedAt: string;
@@ -484,17 +487,25 @@ export type EngagementsQueryResult = {
 };
 
 export const EngagementQuery = /* GraphQL */ `
-  query Engagement($id: Int!) {
-    engagement: claims(id: $id) {
+  query Engagement($id: String!, $communityId: Int!, $engagementId: Int!) {
+    engagement: engagements(id: $id) {
       id
+      engagementId
       communityId
       valuableActionId
-      claimant
+      participant
       status
       evidenceManifestCid
       submittedAt
       resolvedAt
-      jurorAssignments {
+    }
+    jurors: jurorAssignmentss(
+      where: { communityId: $communityId, engagementId: $engagementId }
+      orderBy: "weight"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
         juror
         weight
         decision
@@ -504,23 +515,17 @@ export const EngagementQuery = /* GraphQL */ `
   }
 `;
 
+export type EngagementJurorAssignment = {
+  id: string;
+  juror: string;
+  weight?: string | null;
+  decision?: string | null;
+  decidedAt?: string | null;
+};
+
 export type EngagementQueryResult = {
-  engagement: {
-    communityId: number;
-    id: string;
-    valuableActionId: string;
-    claimant: string;
-    status: string;
-    evidenceManifestCid?: string | null;
-    submittedAt: string;
-    resolvedAt?: string | null;
-    jurorAssignments?: {
-      juror: string;
-      weight: string;
-      decision?: string | null;
-      decidedAt?: string | null;
-    }[];
-  } | null;
+  engagement: EngagementNode | null;
+  jurors: { items: EngagementJurorAssignment[] };
 };
 
 export const ValuableActionCatalogQuery = /* GraphQL */ `

@@ -8,8 +8,10 @@ import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { useIpfsDocument, type IpfsDocumentResponse } from "../../hooks/useIpfsDocument";
 import {
   EngagementQuery,
+  type EngagementJurorAssignment,
   type EngagementQueryResult
 } from "../../lib/graphql/queries";
+import { parseEngagementRef } from "../../lib/engagements/engagement-id";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
 import { useMemo, useState } from "react";
@@ -22,23 +24,41 @@ export type EngagementDetailProps = {
 };
 
 export function EngagementDetail({ engagementId }: EngagementDetailProps) {
-  const { data, isLoading, isError, refetch } = useGraphQLQuery<EngagementQueryResult, { id: string }>(
-    ["engagement", engagementId],
+  const ref = useMemo(() => parseEngagementRef(engagementId), [engagementId]);
+  const { data, isLoading, isError, refetch } = useGraphQLQuery<
+    EngagementQueryResult,
+    { id: string; communityId: number; engagementId: number }
+  >(
+    ["engagement", ref?.id ?? engagementId],
     EngagementQuery,
-    { id: engagementId }
+    ref ? { id: ref.id, communityId: ref.communityId, engagementId: ref.engagementId } : undefined,
+    { enabled: Boolean(ref) }
   );
 
   const { push } = useToast();
 
   const engagement = data?.engagement ?? null;
+  const jurorAssignments = data?.jurors.items ?? [];
   const manifestCid = engagement?.evidenceManifestCid ?? undefined;
   const { data: manifest, isLoading: isManifestLoading, isError: isManifestError } = useIpfsDocument(
     manifestCid,
     Boolean(manifestCid)
   );
 
+  if (!ref) {
+    return <p className="text-sm text-destructive">{engagementId} is not a valid engagement id (expected communityId:engagementId).</p>;
+  }
+
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Loading engagement...</p>;
+  }
+
+  if (!isError && !engagement) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Engagement {ref.engagementId} is not indexed yet. It will appear once the indexer catches up.
+      </p>
+    );
   }
 
   if (isError || !engagement) {
@@ -61,8 +81,8 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
         <div className="card">
           <h2 className="text-lg font-medium">Metadata</h2>
           <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
-            <MetadataItem label="Valuable Action" value={engagement.valuableActionId} />
-            <MetadataItem label="Participant" value={engagement.claimant} />
+            <MetadataItem label="Valuable Action" value={String(engagement.valuableActionId)} />
+            <MetadataItem label="Participant" value={engagement.participant} />
             <MetadataItem label="Status" value={engagement.status} />
             <MetadataItem
               label="Submitted"
@@ -76,7 +96,7 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
             ) : null}
           </dl>
           <div className="mt-3 text-xs">
-            <Link className="underline" href={`${communityProposalsPath(engagement.communityId)}?engagementId=${engagement.id}` as Route}>
+            <Link className="underline" href={`${communityProposalsPath(engagement.communityId)}?engagementId=${engagement.engagementId}` as Route}>
               View related governance proposals
             </Link>
           </div>
@@ -100,16 +120,16 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
 
       <section className="space-y-3">
         <VerifyEngagementForm
-          engagementId={engagement.id}
+          engagementId={engagement.engagementId}
           communityId={engagement.communityId}
           engagementStatus={engagement.status}
-          assignments={engagement.jurorAssignments ?? []}
+          assignments={jurorAssignments}
         />
       </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Juror Panel</h2>
-        {(engagement.jurorAssignments ?? []).length ? (
+        {jurorAssignments.length ? (
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
@@ -120,8 +140,8 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
               </tr>
             </thead>
             <tbody>
-              {(engagement.jurorAssignments ?? []).map((assignment) => (
-                <tr key={`${assignment.juror}-${assignment.decision ?? "pending"}`} className="border-t border-border">
+              {jurorAssignments.map((assignment) => (
+                <tr key={assignment.id} className="border-t border-border">
                   <td className="py-2 align-top font-medium">{assignment.juror}</td>
                   <td className="py-2 align-top text-muted-foreground">{assignment.weight}</td>
                   <td className="py-2 align-top text-muted-foreground">{assignment.decision ?? "Pending"}</td>
@@ -142,7 +162,7 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
   );
 }
 
-type JurorAssignment = NonNullable<NonNullable<EngagementQueryResult["engagement"]>["jurorAssignments"]>[number];
+type JurorAssignment = EngagementJurorAssignment;
 
 function VerifyEngagementForm({
   engagementId,
@@ -150,7 +170,7 @@ function VerifyEngagementForm({
   engagementStatus,
   assignments
 }: {
-  engagementId: string;
+  engagementId: number;
   communityId: number;
   engagementStatus: string;
   assignments: JurorAssignment[];

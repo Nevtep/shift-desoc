@@ -15,6 +15,23 @@ describe("EngagementDetail", () => {
     expect(await screen.findByText(/Engagement 50/i)).toBeInTheDocument();
     expect(screen.getByText(/Evidence/i)).toBeInTheDocument();
     expect(screen.getByText(/Juror Panel/i)).toBeInTheDocument();
+    expect(await screen.findByText(fixtures.engagement.participant)).toBeInTheDocument();
+    expect(await screen.findByText(fixtures.engagementJurors[0].juror)).toBeInTheDocument();
+  });
+
+  it("shows a not-indexed-yet state when the projection has no row", async () => {
+    mockWagmiHooks({ connected: true });
+    renderWithProviders(<EngagementDetail engagementId="84532:999" />);
+
+    expect(await screen.findByText(/not indexed yet/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Failed to load engagement/i)).not.toBeInTheDocument();
+  });
+
+  it("rejects ids that are not the composite community:engagement id", async () => {
+    mockWagmiHooks({ connected: true });
+    renderWithProviders(<EngagementDetail engagementId="50" />);
+
+    expect(await screen.findByText(/not a valid engagement id/i)).toBeInTheDocument();
   });
 
   it("links related proposals to the community-scoped list", async () => {
@@ -55,7 +72,7 @@ describe("EngagementDetail", () => {
 
     server.use(graphql.query("Engagement", () => HttpResponse.json({ errors: [{ message: "nope" }] })));
 
-    renderWithProviders(<EngagementDetail engagementId="404" />);
+    renderWithProviders(<EngagementDetail engagementId="84532:404" />);
 
     expect(await screen.findAllByText(/Failed to load engagement/i)).not.toHaveLength(0);
 
