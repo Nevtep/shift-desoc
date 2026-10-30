@@ -363,7 +363,8 @@ const dictionaries = {
       engagement: "Engagement",
       valuableAction: "Acción valiosa",
       submitted: "Enviado",
-      viewDetails: "Ver detalle"
+      viewDetails: "Ver detalle",
+      statusLabels: { PENDING: "Pendiente", APPROVED: "Aprobado", REJECTED: "Rechazado", REVOKED: "Revocado" }
     },
     marketplacePage: {
       metaTitle: "Marketplace | Shift DeSoc",
@@ -1030,7 +1031,8 @@ const dictionaries = {
       engagement: "Engagement",
       valuableAction: "Valuable Action",
       submitted: "Submitted",
-      viewDetails: "View details"
+      viewDetails: "View details",
+      statusLabels: { PENDING: "Pending", APPROVED: "Approved", REJECTED: "Rejected", REVOKED: "Revoked" }
     },
     marketplacePage: {
       metaTitle: "Marketplace | Shift DeSoc",

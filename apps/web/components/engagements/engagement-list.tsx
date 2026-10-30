@@ -8,6 +8,7 @@ import { useMemo } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
 import { engagementPath } from "../../lib/engagements/engagement-id";
+import { engagementStatusLabel } from "../../lib/engagements/engagement-status";
 import { getI18n } from "../../lib/i18n";
 import { EngagementsQuery, type EngagementNode, type EngagementsQueryResult } from "../../lib/graphql/queries";
 
@@ -85,7 +86,7 @@ function EngagementListItem({ engagement }: { engagement: EngagementNode }) {
             </div>
           </div>
           <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-foreground ring-1 ring-border">
-            {engagement.status}
+            {engagementStatusLabel(engagement.status)}
           </span>
         </div>
 

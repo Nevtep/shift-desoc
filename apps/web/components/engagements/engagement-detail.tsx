@@ -11,6 +11,7 @@ import {
   type EngagementJurorAssignment,
   type EngagementQueryResult
 } from "../../lib/graphql/queries";
+import { engagementStatusLabel, isEngagementVotable } from "../../lib/engagements/engagement-status";
 import { parseEngagementRef } from "../../lib/engagements/engagement-id";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
@@ -83,7 +84,7 @@ export function EngagementDetail({ engagementId }: EngagementDetailProps) {
           <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
             <MetadataItem label="Valuable Action" value={String(engagement.valuableActionId)} />
             <MetadataItem label="Participant" value={engagement.participant} />
-            <MetadataItem label="Status" value={engagement.status} />
+            <MetadataItem label="Status" value={engagementStatusLabel(engagement.status)} />
             <MetadataItem
               label="Submitted"
               value={formatDistanceToNow(new Date(engagement.submittedAt), { addSuffix: true })}
@@ -192,7 +193,7 @@ function VerifyEngagementForm({
   }, [address, assignments]);
 
   const alreadyDecided = Boolean(jurorAssignment?.decision);
-  const isEligible = isConnected && Boolean(jurorAssignment) && !alreadyDecided && engagementStatus !== "Resolved";
+  const isEligible = isConnected && Boolean(jurorAssignment) && !alreadyDecided && isEngagementVotable(engagementStatus);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
