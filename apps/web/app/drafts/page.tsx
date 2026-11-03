@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -37,7 +37,7 @@ export default async function DraftsPage({ searchParams }: PageProps) {
   }
 
   if (communityId) {
-    redirect(communityDraftsPath(communityId));
+    redirect(communityDraftsPath(communityId) as Route);
   }
 
   return (
