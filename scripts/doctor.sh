@@ -50,6 +50,8 @@ else
 fi
 check main-clean bash -c "cd '$REPO' && test -z \"\$(git status --porcelain)\""
 check cron hermes cron status
+check voice-piper bash -c "test -x \"\$HERMES_HOME/scripts/shift-piper-say.sh\" && printf 'Hola' >/tmp/shift-doctor-tts.txt && \"\$HERMES_HOME/scripts/shift-piper-say.sh\" /tmp/shift-doctor-tts.txt /tmp/shift-doctor-tts.wav && test -s /tmp/shift-doctor-tts.wav; rc=\$?; rm -f /tmp/shift-doctor-tts.*; exit \$rc"
+check voice-stt bash -c "PYTHONPATH=\"\$HERMES_HOME/lazy-packages\" /opt/hermes/.venv/bin/python -c 'import av, faster_whisper; assert int(av.__version__.split(\".\")[0]) < 17'"
 
 echo
 if [[ "$fail" -eq 0 ]]; then
