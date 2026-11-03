@@ -31,7 +31,9 @@ setup_piper() {
   if [[ -x "$PIPER_DIR/.venv/bin/python" && "$(cat "$marker" 2>/dev/null)" == "$PIPER_VERSION" ]]; then
     :   # venv and pinned piper-tts already in place
   else
-    rm -rf "$PIPER_DIR/.venv"
+    # Drop the marker together with the venv: if the reinstall below fails, a
+    # leftover marker would make the next boot treat the broken venv as done.
+    rm -rf "$PIPER_DIR/.venv" "$marker"
     mkdir -p "$PIPER_DIR"
     local venv_args=()
     [[ -x "$HERMES_PY" ]] && venv_args=(--python "$HERMES_PY")
@@ -48,6 +50,15 @@ setup_piper() {
 
 setup_stt() {
   [[ -x "$HERMES_PY" ]] || return 0
+  # Prepare the target with Hermes' own helper first: it wipes packages built
+  # for another Python ABI and re-stamps the directory. Without that, the next
+  # Hermes lazy install would see a stale stamp and delete the repaired pin.
+  PYTHONPATH="${SHIFT_HERMES_SRC:-/opt/hermes}" "$HERMES_PY" -c '
+import sys
+from pathlib import Path
+from tools.lazy_deps import _ensure_target_ready
+err = _ensure_target_ready(Path(sys.argv[1]))
+sys.exit(1 if err else 0)' "$LAZY_DIR" || return 1
   if PYTHONPATH="$LAZY_DIR" "$HERMES_PY" -c \
     'import av, faster_whisper; assert int(av.__version__.split(".")[0]) < 17' \
     >/dev/null 2>&1; then

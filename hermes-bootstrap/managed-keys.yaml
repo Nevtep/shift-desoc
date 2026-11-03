@@ -53,9 +53,14 @@ tts:
   providers:
     piper-es:
       type: command
-      command: /opt/data/scripts/shift-piper-say.sh {input_path} {output_path}
+      # Profiles run with HERMES_HOME=/opt/data/profiles/<name>; pin the one
+      # shared Piper install so their voice replies find it.
+      command: SHIFT_PIPER_DIR=/opt/data/piper /opt/data/scripts/shift-piper-say.sh {input_path} {output_path}
       output_format: ogg
       voice_compatible: true
       timeout: 90
+# Pin local transcription: an existing cloud selection (e.g. openai) would
+# otherwise keep sending voice notes to an external service.
 stt:
+  provider: local
   language: es

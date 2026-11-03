@@ -89,9 +89,54 @@ check "ogg goes through libopus" grep -q "libopus" "$LOG"
 check "ogg output exists"        test -s "$WORK/out.ogg"
 check "no temp wav left behind"  bash -c "! ls '${TMPDIR:-/tmp}'/shift-piper.*.wav >/dev/null 2>&1"
 
+# 4b. Profiles run with HERMES_HOME=<root>/profiles/<name>: the managed command
+#     pins the shared Piper dir, and the script must honour it from there.
+PROFILE_HOME="$WORK/profile-home"; mkdir -p "$PROFILE_HOME"
+HERMES_HOME="$PROFILE_HOME" SHIFT_PIPER_DIR="$WORK/home/piper" bash "$SAY" "$WORK/in.txt" "$WORK/profile.wav"
+check "profile run uses the shared Piper dir" grep -q RIFFstub "$WORK/profile.wav"
+
+# 4c. A stale version marker must not survive a failed rebuild, or the next
+#     boot would consider the broken venv installed.
+mkdir -p "$WORK/pipfail"
+cat >"$WORK/pipfail/uv" <<'STUB'
+#!/usr/bin/env bash
+if [[ "$1" == "venv" ]]; then dir="${@: -1}"; mkdir -p "$dir/bin"; printf '#!/usr/bin/env bash\nexit 0\n' >"$dir/bin/python"; chmod +x "$dir/bin/python"; exit 0; fi
+exit 1   # `uv pip install` fails (offline)
+STUB
+chmod +x "$WORK/pipfail/uv"
+rm -rf "$HERMES_HOME/piper"; mkdir -p "$HERMES_HOME/piper"
+printf '1.8.0\n' >"$HERMES_HOME/piper/.piper-tts-version"   # marker matches, interpreter missing
+PATH="$WORK/pipfail:$PATH" bash "$SETUP" 2>/dev/null
+check "failed rebuild clears the stale marker" test ! -f "$HERMES_HOME/piper/.piper-tts-version"
+bash "$SETUP"   # recover with working stubs
+check "next boot repairs the install" test "$(cat "$HERMES_HOME/piper/.piper-tts-version")" = "1.8.0"
+
+# 4d. STT repair: the lazy-packages target is re-stamped through Hermes' own
+#     helper BEFORE installing, so a later lazy install does not wipe the pin.
+STT_LOG="$WORK/stt.log"; : >"$STT_LOG"
+cat >"$WORK/fakepy" <<STUB
+#!/usr/bin/env bash
+echo "py \$*" >>"$STT_LOG"
+[[ "\$*" == *"_ensure_target_ready"* ]] && exit 0
+[[ "\$*" == *"import av"* ]] && exit 1     # PyAV pin missing -> repair path
+exit 0
+STUB
+chmod +x "$WORK/fakepy"
+cat >"$WORK/bin/uv-stt" <<STUB
+STUB
+rm -f "$WORK/bin/uv-stt"
+: >"$LOG"
+SHIFT_VOICE_SKIP_STT= SHIFT_HERMES_PYTHON="$WORK/fakepy" bash "$SETUP"
+check "target prepared with the Hermes helper" grep -q "_ensure_target_ready" "$STT_LOG"
+check "pin installed into lazy-packages"       grep -q "uv pip install .*--target .*lazy-packages.*av>=11,<17" "$LOG"
+helper_line=$(grep -n "_ensure_target_ready" "$STT_LOG" | head -1 | cut -d: -f1)
+check "helper ran before the import check"     test "$helper_line" -lt "$(grep -n 'import av' "$STT_LOG" | head -1 | cut -d: -f1)"
+
 # 5. Repo-managed config wires Hermes to the installed script.
 check "tts provider is the command provider" grep -q "provider: piper-es" "$MANAGED"
-check "command points at installed script"   grep -q 'command: .*scripts/shift-piper-say.sh {input_path} {output_path}' "$MANAGED"
+check "command points at installed script"   grep -q 'scripts/shift-piper-say.sh {input_path} {output_path}' "$MANAGED"
+check "command pins the shared Piper dir"    grep -q 'command: SHIFT_PIPER_DIR=/opt/data/piper /opt/data/scripts/shift-piper-say.sh' "$MANAGED"
+check "stt provider is pinned to local"      grep -q "provider: local" "$MANAGED"
 check "voice-bubble delivery enabled"        grep -q "voice_compatible: true" "$MANAGED"
 check "stt language is Spanish"              grep -q "language: es" "$MANAGED"
 
