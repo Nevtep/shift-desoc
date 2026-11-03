@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { EngagementList } from "./engagement-list";
 import { server } from "../../tests/unit/server";
+import { fixtures } from "../../tests/unit/mocks/fixtures";
 import { renderWithProviders } from "../../tests/unit/utils";
 
 describe("EngagementList", () => {
@@ -12,6 +13,30 @@ describe("EngagementList", () => {
 
     expect(await screen.findByText(/Engagement 50/i)).toBeInTheDocument();
     expect(screen.getByText(/Pending/i)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["PENDING", "Pending"],
+    ["APPROVED", "Approved"],
+    ["REJECTED", "Rejected"],
+    ["REVOKED", "Revoked"]
+  ])("labels %s from the indexer vocabulary", async (status, label) => {
+    server.use(
+      graphql.query("Engagements", () =>
+        HttpResponse.json({
+          data: {
+            engagements: {
+              nodes: [{ ...fixtures.engagement, status }],
+              pageInfo: { endCursor: null, hasNextPage: false }
+            }
+          }
+        })
+      )
+    );
+
+    renderWithProviders(<EngagementList />);
+
+    expect(await screen.findByText(label)).toBeInTheDocument();
   });
 
   it("shows empty state", async () => {

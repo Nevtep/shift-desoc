@@ -2,11 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useAccount, useChainId, useWriteContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWriteContract } from "wagmi";
 
 import { COMMUNITY_MODULE_ABIS, useCommunityModules } from "../../hooks/useCommunityModules";
+import { extractSubmittedEngagementId } from "../../lib/engagements/submit-receipt";
+import { EngagementSubmissionTracker } from "./engagement-submission-tracker";
 
-export function EngagementSubmitForm() {
+type SubmitFormProps = {
+  /** Overrides for the post-submit indexer polling (tests). */
+  indexerPollIntervalMs?: number;
+  indexerTimeoutMs?: number;
+};
+
+export function EngagementSubmitForm({ indexerPollIntervalMs, indexerTimeoutMs }: SubmitFormProps = {}) {
   const router = useRouter();
   const chainId = useChainId();
   const { address, status } = useAccount();
@@ -18,7 +26,13 @@ export function EngagementSubmitForm() {
   const [description, setDescription] = useState("");
   const [evidenceLinks, setEvidenceLinks] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [submission, setSubmission] = useState<{
+    txHash: string;
+    communityId: number;
+    engagementId: number | null;
+  } | null>(null);
+  const publicClient = usePublicClient();
 
   const isConnected = status === "connected";
   const disabled = !isConnected || isPending || isUploading;
@@ -33,19 +47,20 @@ export function EngagementSubmitForm() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSuccessMessage(null);
+    setFormError(null);
+    setSubmission(null);
 
     const typeIdNum = Number(typeId);
     if (!Number.isFinite(communityIdNum) || communityIdNum <= 0) {
-      alert("Enter a valid community ID");
+      setFormError("Enter a valid community ID");
       return;
     }
     if (!Number.isFinite(typeIdNum) || typeIdNum <= 0) {
-      alert("Enter a valid valuable action ID");
+      setFormError("Enter a valid valuable action ID");
       return;
     }
     if (!title.trim() || !description.trim()) {
-      alert("Title and description are required");
+      setFormError("Title and description are required");
       return;
     }
 
@@ -87,21 +102,30 @@ export function EngagementSubmitForm() {
       const contractAddress = engagementsAddress;
       const abi = COMMUNITY_MODULE_ABIS.engagements;
 
-      await writeContractAsync({
+      const txHash = await writeContractAsync({
         address: contractAddress,
         abi,
         functionName: "submit",
         args: [BigInt(typeIdNum), uploadJson.cid]
       });
 
-      setSuccessMessage("Engagement submitted. It will appear after the indexer updates.");
+      // Only claim "confirmed" once the chain has the receipt; the id comes from the emitted event.
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash: txHash });
+      if (receipt && receipt.status !== "success") {
+        throw new Error("The submit transaction reverted on-chain.");
+      }
+      setSubmission({
+        txHash,
+        communityId: communityIdNum,
+        engagementId: receipt ? extractSubmittedEngagementId(receipt.logs, abi, contractAddress) : null
+      });
       setTitle("");
       setDescription("");
       setEvidenceLinks("");
       router.refresh();
     } catch (err) {
       console.error(err);
-      alert(err instanceof Error ? err.message : "Failed to submit engagement");
+      setFormError(err instanceof Error ? err.message : "Failed to submit engagement");
     } finally {
       setIsUploading(false);
     }
@@ -178,8 +202,19 @@ export function EngagementSubmitForm() {
         </button>
         {!isConnected ? <span className="text-xs text-destructive">Connect a wallet to submit.</span> : null}
         {error ? <span className="text-xs text-destructive">{error.message ?? "Transaction failed"}</span> : null}
-        {successMessage ? <span className="text-xs text-emerald-600">{successMessage}</span> : null}
+        {formError ? (
+          <span role="alert" className="text-xs text-destructive">
+            {formError}
+          </span>
+        ) : null}
       </div>
+      {submission ? (
+        <EngagementSubmissionTracker
+          {...submission}
+          pollIntervalMs={indexerPollIntervalMs}
+          timeoutMs={indexerTimeoutMs}
+        />
+      ) : null}
     </form>
   );
 }
