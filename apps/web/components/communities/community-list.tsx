@@ -119,7 +119,9 @@ export function CommunityList() {
   const { data, isLoading, isError, refetch } = useGraphQLQuery<CommunitiesQueryResult, { limit?: number }>(
     ["communities", { limit: 20 }],
     CommunitiesQuery,
-    { limit: 20 }
+    { limit: 20 },
+    // The error card has an explicit Retry; automatic retries would extend the wait past the deadline.
+    { retry: false }
   );
 
   const communities = useMemo(() => data?.communities.nodes ?? [], [data]);
