@@ -113,17 +113,13 @@ export function DeployWizard({ options }: Props) {
     session != null &&
     (session.status === "in-progress" || session.status === "preflight-blocked" || session.status === "failed");
   const showFullScreen = !isCompleted || !completedDismissed;
+  // Knowing whether this wallet already created communities is a convenience hint, never a
+  // precondition for creating one (SHI-138): the entry point renders as soon as the wallet is connected.
   const showHomeView =
     status === "connected" &&
-    !isLoadingMyCommunities &&
     !isDeploying &&
     !isCompleted &&
     (!wizardExpanded || wizardClosed);
-  const showLoadingCheck =
-    status === "connected" &&
-    isLoadingMyCommunities &&
-    !isDeploying &&
-    !isCompleted;
 
   useEffect(() => {
     const draft = loadDraft(address, chainId);
@@ -276,22 +272,15 @@ export function DeployWizard({ options }: Props) {
     );
   }
 
-  if (showLoadingCheck) {
-    return (
-      <section className="card-tight space-y-3">
-        <p className="text-sm font-medium">{t.checkingTitle}</p>
-        <p className="text-sm text-muted-foreground">{t.checkingBody}</p>
-      </section>
-    );
-  }
-
   if (showHomeView) {
     return (
       <section className="flex flex-col items-center space-y-3 text-center">
         <p className="max-w-xl text-sm text-muted-foreground">
-          {hasCommunities
-            ? t.hasCommunities
-            : t.noCommunities}
+          {isLoadingMyCommunities
+            ? t.checkingTitle
+            : hasCommunities
+              ? t.hasCommunities
+              : t.noCommunities}
         </p>
         <p className="max-w-xl text-sm font-medium text-primary">{t.connectedHint}</p>
         <button
