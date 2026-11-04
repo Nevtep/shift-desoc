@@ -23,7 +23,8 @@ Set `AWS_PROFILE` / `AWS_REGION` as needed (default region: `us-east-1`).
 ## Deploy
 
 ```bash
-infra/aws/hermes/put-secrets.sh            # uploads .env.hermes; generates dashboard creds
+infra/aws/hermes/put-secrets.sh --dry-run  # shows what would change, writes nothing
+infra/aws/hermes/put-secrets.sh            # writes only new/changed keys; generates dashboard creds
 infra/aws/hermes/deploy.sh devops/hermes-aws   # git ref to run; default main
 infra/aws/hermes/connect.sh logs           # watch first boot (~10-15 min)
 ```
