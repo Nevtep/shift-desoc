@@ -10,6 +10,9 @@ ARG CLAUDE_CODE_VERSION=2.1.294
 ARG PNPM_VERSION=9.15.9
 ARG ENGRAM_VERSION=3.4.0
 ARG GENTLE_AI_VERSION=4.2.0
+# Same stable line the CI Foundry toolchain resolves; forge fetches solc 0.8.24
+# (foundry.toml) on first use into the agent's home.
+ARG FOUNDRY_VERSION=1.9.0
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -65,6 +68,25 @@ RUN set -eux; \
     cd /; rm -rf "${work}"; \
     gentle-ai --version; \
     engram version
+
+# Foundry (forge, cast, anvil, chisel) so the agent can run `pnpm forge:test`
+# like CI does. Pinned release, verified against the published sha256.
+RUN set -eux; \
+    architecture="$(dpkg --print-architecture)"; \
+    case "${architecture}" in \
+      arm64|amd64) asset_arch="${architecture}" ;; \
+      *) echo "Unsupported architecture: ${architecture}" >&2; exit 1 ;; \
+    esac; \
+    work="$(mktemp -d)"; \
+    cd "${work}"; \
+    asset="foundry_v${FOUNDRY_VERSION}_linux_${asset_arch}.tar.gz"; \
+    base="https://github.com/foundry-rs/foundry/releases/download/v${FOUNDRY_VERSION}"; \
+    curl -fsSLO "${base}/${asset}"; \
+    curl -fsSLO "${base}/${asset%.tar.gz}.sha256"; \
+    sha256sum -c "${asset%.tar.gz}.sha256"; \
+    tar -xzf "${asset}" -C /usr/local/bin forge cast anvil chisel; \
+    cd /; rm -rf "${work}"; \
+    forge --version
 
 COPY hermes-bootstrap /opt/shift-hermes/bootstrap
 COPY scripts/bootstrap.sh /opt/shift-hermes/scripts/bootstrap.sh

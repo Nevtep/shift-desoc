@@ -43,6 +43,13 @@ pnpm install --frozen-lockfile
 gentle-ai skill-registry refresh --cwd "$PWD" --quiet
 ```
 
+Contract tests (`pnpm forge:test`) also need the pinned Foundry libraries, which are
+untracked (`/lib/` is gitignored), so every fresh worktree must run them once:
+
+```bash
+bash scripts/ci/install-foundry-dependencies.sh
+```
+
 Commit only declared files:
 
 ```bash

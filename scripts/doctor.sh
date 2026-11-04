@@ -22,6 +22,7 @@ check claude-auth bash -c "test -n \"\${ANTHROPIC_API_KEY:-}\${CLAUDE_CODE_OAUTH
 check claude-linear-mcp bash -c "out=\$(claude mcp list 2>/dev/null); grep -q linear <<<\"\$out\""
 check gentle gentle-ai --version
 check engram engram version
+check foundry forge --version
 check github gh repo view "${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}"
 check repo test -d "$REPO/.git"
 check agents test -f "$REPO/AGENTS.md"
