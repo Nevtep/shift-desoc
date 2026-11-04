@@ -29,6 +29,14 @@ Authority modes:
 - `Admin-managed`: the deployer keeps the admin surface after deploy to make staging validation and QA practical without repeatedly routing privileged operations through Governor -> Timelock.
 - `Governance-managed`: the deployer hands admin control to Timelock, preserving the canonical Governor -> Timelock execution path.
 
+Expected ADMIN_ROLE holders after `FINALIZE_AUTHORITY_MODE` (verified by `VERIFY_DEPLOYMENT` with explicit positive and negative checks):
+
+| Holder | `Admin-managed` | `Governance-managed` |
+| --- | --- | --- |
+| Deployer (staging admin) | holds ADMIN (positive) | does NOT hold ADMIN (negative) |
+| Timelock | does NOT hold ADMIN (negative) | holds ADMIN (positive) |
+| Bootstrap coordinator | does NOT hold ADMIN (negative; deploy-time helper, revoked in both modes) | does NOT hold ADMIN (negative) |
+
 Step semantics are strict in staging:
 - `DEPLOY_STACK` deploys per-community bytecode only (governance, verification, economic, commerce, coordination) via shared layer factories.
 - `CONFIGURE_ACCESS_PERMISSIONS` performs `registerCommunity`, ParamController policy writes, `setModuleAddresses`, and role/permission wiring.

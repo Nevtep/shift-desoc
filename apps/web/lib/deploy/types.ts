@@ -1,9 +1,15 @@
+import type { CommunityDeploymentConfig } from "./config";
+
 export type StepKey =
   | "PRECHECKS"
   | "DEPLOY_STACK"
   | "CONFIGURE_ACCESS_PERMISSIONS"
-  | "HANDOFF_ADMIN_TO_TIMELOCK"
+  | "FINALIZE_AUTHORITY_MODE"
   | "VERIFY_DEPLOYMENT";
+
+export type AuthorityMode = "admin_managed" | "governance_managed";
+
+export const AUTHORITY_MODES: readonly AuthorityMode[] = ["admin_managed", "governance_managed"];
 
 export type StepStatus = "pending" | "running" | "succeeded" | "failed" | "skipped";
 
@@ -26,7 +32,10 @@ export type VerificationCheckKey =
   | "ROLE_MEMBERSHIP_MINTER_ENGAGEMENTS"
   | "ROLE_VA_SBT_MANAGER_REGISTRY"
   | "MARKETPLACE_COMMUNITY_ACTIVE"
-  | "REVENUE_ROUTER_TREASURY_SET";
+  | "REVENUE_ROUTER_TREASURY_SET"
+  | "AUTHORITY_DEPLOYER_ADMIN"
+  | "AUTHORITY_TIMELOCK_ADMIN"
+  | "AUTHORITY_BOOTSTRAP_ADMIN";
 
 export type DeploymentRunAddresses = {
   communityRegistry: `0x${string}`;
@@ -77,14 +86,7 @@ export type DeploymentWizardSession = {
   chainId: number;
   communityId?: number;
   deploymentAddresses?: DeploymentRunAddresses;
-  deploymentConfig?: {
-    communityName: string;
-    communityDescription: string;
-    communityMetadataUri: string;
-    treasuryVault: string;
-    treasuryStableToken: string;
-    supportedTokensCsv: string;
-  };
+  deploymentConfig?: CommunityDeploymentConfig;
   targetType: "pre-registration" | "registered";
   status: WizardStatus;
   createdAt: string;
@@ -138,6 +140,16 @@ export type VerificationCheckResult = {
   label: string;
   passed: boolean;
   failureReason?: string;
+  /** Set on authority-mode checks: positive = must hold ADMIN, negative = must not. */
+  polarity?: "positive" | "negative";
+};
+
+/** ADMIN_ROLE membership of the three authority-relevant wallets. */
+export type AuthorityAdminHolders = {
+  deployer: boolean;
+  timelock: boolean;
+  /** Absent when no bootstrap coordinator is configured. */
+  bootstrapCoordinator?: boolean;
 };
 
 export type VerificationSnapshot = {
@@ -163,4 +175,6 @@ export type VerificationSnapshot = {
   };
   marketplaceActive: boolean;
   revenueTreasurySet: boolean;
+  /** Present only when the reader was given the wallets to probe (mode-aware verification). */
+  authority?: AuthorityAdminHolders;
 };

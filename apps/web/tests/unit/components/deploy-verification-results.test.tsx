@@ -28,4 +28,19 @@ describe("DeployVerificationResults", () => {
     expect(await screen.findByText(/Pass/i)).toBeInTheDocument();
     expect(await screen.findByText(/Fail/i)).toBeInTheDocument();
   });
+
+  it("shows the verified authority mode and labels positive/negative checks", async () => {
+    renderWithProviders(
+      <DeployVerificationResults
+        authorityMode="admin_managed"
+        results={[
+          { key: "AUTHORITY_DEPLOYER_ADMIN", label: "Deployer holds ADMIN", passed: true, polarity: "positive" },
+          { key: "AUTHORITY_TIMELOCK_ADMIN", label: "Timelock does not hold ADMIN", passed: true, polarity: "negative" }
+        ]}
+      />
+    );
+    expect(await screen.findByText(/Verified authority mode: Admin-managed/i)).toBeInTheDocument();
+    expect(await screen.findByText("Positive check")).toBeInTheDocument();
+    expect(await screen.findByText("Negative check")).toBeInTheDocument();
+  });
 });

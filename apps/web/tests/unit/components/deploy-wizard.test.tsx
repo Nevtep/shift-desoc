@@ -160,4 +160,31 @@ describe("DeployWizard", () => {
     await openWizard();
     expect(await screen.findByRole("heading", { name: /^Create your community$/i })).toBeInTheDocument();
   });
+
+  it("requires an authority mode choice (no pre-selection) before reaching the review step", async () => {
+    mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000", chainId: 84532 });
+    renderWithProviders(<DeployWizard />);
+
+    await openWizard();
+    await userEvent.type(screen.getByLabelText(/Community name/i), "Shift Builders");
+    await userEvent.click(screen.getByRole("button", { name: /^Next$/i }));
+    await userEvent.type(screen.getByLabelText(/Description/i), "A community");
+    await userEvent.click(screen.getByRole("button", { name: /^Next$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Next$/i }));
+
+    const admin = await screen.findByRole("radio", { name: /Admin-managed/i });
+    const governance = screen.getByRole("radio", { name: /Governance-managed/i });
+    expect(admin).not.toBeChecked();
+    expect(governance).not.toBeChecked();
+    expect(screen.getByText(/Recommended/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Next$/i })).toBeDisabled();
+
+    await userEvent.click(admin);
+    expect(admin).toBeChecked();
+    expect(screen.getByRole("button", { name: /^Next$/i })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: /^Next$/i }));
+    expect(await screen.findByText(/Authority mode: Admin-managed/i)).toBeInTheDocument();
+  });
 });

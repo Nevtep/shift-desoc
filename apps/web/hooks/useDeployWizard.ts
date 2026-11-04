@@ -20,6 +20,7 @@ import {
 } from "../lib/deploy/preflight";
 import {
   createMockStepExecutor,
+  mockAuthorityHolders,
   mockReadVerificationSnapshot
 } from "../lib/deploy/mock-step-executor";
 import { readVerificationSnapshot as readVerificationSnapshotFromChain } from "../lib/deploy/onchain";
@@ -39,6 +40,7 @@ import type {
   VerificationSnapshot
 } from "../lib/deploy/types";
 import {
+  applyAuthorityModeToSteps,
   createInitialSession,
   isCreatedState,
   nextRunnableStep,
@@ -48,10 +50,13 @@ import {
 } from "../lib/deploy/wizard-machine";
 import { allVerificationChecksPassed, evaluateVerificationSnapshot } from "../lib/deploy/verification";
 
+type AuthorityProbe = Parameters<typeof readVerificationSnapshotFromChain>[4];
+
 export type VerificationSnapshotReader = (
   communityId: number,
   chainId: number,
-  deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"]
+  deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"],
+  authorityProbe?: AuthorityProbe
 ) => Promise<VerificationSnapshot>;
 
 export type UseDeployWizardOptions = {
@@ -182,18 +187,42 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         chainId
       });
 
+      const authorityMode = activeSession.deploymentConfig?.authorityMode || undefined;
+      const authorityProbe: AuthorityProbe | undefined = authorityMode
+        ? {
+            deployer: activeSession.deployerAddress,
+            bootstrapCoordinator: (process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR || undefined) as
+              | `0x${string}`
+              | undefined
+          }
+        : undefined;
       const reader =
         options.readVerificationSnapshot ??
         (options.designMode
-          ? mockReadVerificationSnapshot
+          ? async (communityId: number, currentChainId: number) => ({
+              ...(await mockReadVerificationSnapshot(communityId, currentChainId)),
+              ...(authorityMode ? { authority: mockAuthorityHolders(authorityMode) } : {})
+            })
           : async (
             communityId: number,
             currentChainId: number,
-            deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"]
+            deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"],
+            probe?: AuthorityProbe
           ) =>
-              readVerificationSnapshotFromChain(publicClient!, currentChainId, communityId, deploymentAddresses));
-      const snapshot = await reader(activeSession.communityId, chainId, activeSession.deploymentAddresses);
-      const results = evaluateVerificationSnapshot(snapshot);
+              readVerificationSnapshotFromChain(
+                publicClient!,
+                currentChainId,
+                communityId,
+                deploymentAddresses,
+                probe
+              ));
+      const snapshot = await reader(
+        activeSession.communityId,
+        chainId,
+        activeSession.deploymentAddresses,
+        authorityProbe
+      );
+      const results = evaluateVerificationSnapshot(snapshot, authorityMode);
       setVerificationResults(results);
       log("Verification checks completed", {
         totalChecks: results.length,
@@ -205,12 +234,21 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     [chainId, options, publicClient]
   );
 
-  const run = useCallback(async (config: CommunityDeploymentConfig, resumeSession?: DeploymentWizardSession) => {
+  const run = useCallback(async (formConfig: CommunityDeploymentConfig, resumeSession?: DeploymentWizardSession) => {
     if (runInFlightRef.current) {
       setError("A deployment run is already in progress. Wait for it to finish.");
       log("Start deploy ignored: run already in progress");
       return;
     }
+
+    // A resumed compatible session keeps the authority mode it started with; the form cannot change it.
+    const persistedMode =
+      resumeSession && isSessionCompatibleWithCurrentWizard(resumeSession)
+        ? resumeSession.deploymentConfig?.authorityMode
+        : undefined;
+    const config: CommunityDeploymentConfig = persistedMode
+      ? { ...formConfig, authorityMode: persistedMode }
+      : formConfig;
 
     runInFlightRef.current = true;
     setIsRunning(true);
@@ -257,6 +295,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       let active: DeploymentWizardSession = {
         ...initial,
         deploymentConfig: { ...config },
+        steps: applyAuthorityModeToSteps(initial.steps, config.authorityMode),
         status: "in-progress",
         updatedAt: new Date().toISOString()
       };

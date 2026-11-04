@@ -1,5 +1,7 @@
 import type { Address } from "viem";
 
+import { AUTHORITY_MODES, type AuthorityMode } from "./types";
+
 export type CommunityDeploymentConfig = {
   communityName: string;
   communityDescription: string;
@@ -7,6 +9,8 @@ export type CommunityDeploymentConfig = {
   treasuryVault: string;
   treasuryStableToken: string;
   supportedTokensCsv: string;
+  /** Post-deploy authority outcome. Empty until the admin chooses; required to start. */
+  authorityMode: AuthorityMode | "";
 };
 
 export type DeploymentConfigValidation = {
@@ -28,7 +32,8 @@ export function createDefaultDeploymentConfig(connectedAddress?: `0x${string}`):
     communityMetadataUri: "",
     treasuryVault: fallback,
     treasuryStableToken: "",
-    supportedTokensCsv: ""
+    supportedTokensCsv: "",
+    authorityMode: ""
   };
 }
 
@@ -40,6 +45,10 @@ export function validateDeploymentConfig(config: CommunityDeploymentConfig): Dep
   if (!config.treasuryVault.trim()) errors.push("Treasury vault address is required.");
   if (!config.treasuryStableToken.trim()) errors.push("Treasury stable token address is required.");
   if (!config.supportedTokensCsv.trim()) errors.push("At least one supported token address is required.");
+
+  if (!AUTHORITY_MODES.includes(config.authorityMode as AuthorityMode)) {
+    errors.push("Authority mode is required (Admin-managed or Governance-managed).");
+  }
 
   if (config.treasuryVault.trim() && !isAddress(config.treasuryVault)) {
     errors.push("Treasury vault must be a valid 0x address.");
