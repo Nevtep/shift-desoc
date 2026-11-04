@@ -42,6 +42,7 @@ check escarlet-mcp hermes mcp test escarlet
 check gh-persisted-login bash -c "env -u GH_TOKEN -u GITHUB_TOKEN gh auth status --hostname github.com"
 check terminal-home bash -c "grep -q 'home_mode: real' \"\$HERMES_HOME/config.yaml\""
 check monitor-scripts bash -c "test -x \"\$HERMES_HOME/scripts/shift-dev-monitor.sh\" -a -x \"\$HERMES_HOME/scripts/shift-merge-watch.sh\""
+check logs-writable bash -c "for f in \"\$HERMES_HOME\"/logs/*.log*; do [ ! -e \"\$f\" ] || [ -w \"\$f\" ] || exit 1; done"
 check cron-jobs bash -c "test -s \"\$HERMES_HOME/shift/jobs.env\""
 # Only required once the skill is in main (Hermes loads dev skills from there).
 if [[ -d "$REPO/hermes-bootstrap/skills/shift-post-merge-learning" ]]; then

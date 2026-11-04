@@ -40,6 +40,11 @@ infra/aws/hermes/update.sh [git-ref]    # pull, re-sync secrets, rebuild, restar
                                         # (a deleted ref falls back to main)
 ```
 
+Every `up` first runs the one-shot `fix-ownership` service, which re-chowns
+`/opt/data/logs` to the `hermes` user. A root-owned `agent.log` (from a root
+`docker exec ... hermes`, or a root-side rotation) would otherwise crash-loop
+the gateway and stop the cron scheduler. Still prefer `docker exec -u hermes`.
+
 Inside the container, finish the one-time steps from `README-HERMES-RUNTIME.md`
 (check `hermes mcp test linear`, run `install-loop.sh`, then `doctor.sh`).
 
