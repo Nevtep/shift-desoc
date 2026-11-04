@@ -13,6 +13,7 @@ import {
   type ProposalsQueryResult
 } from "../../lib/graphql/queries";
 import { proposalStatusBadgeLabel } from "../../lib/governance/proposal-status";
+import { communityProposalDetailPath } from "../../lib/governance/community-scoped-routes";
 import { getI18n } from "../../lib/i18n";
 import { useToast } from "../ui/toaster";
 
@@ -110,7 +111,7 @@ export function ProposalList({ communityId, detailHrefBasePath }: ProposalListPr
             detailHref={
               detailHrefBasePath
                 ? `${detailHrefBasePath}/${proposal.id}`
-                : `/governance/proposals/${proposal.id}`
+                : communityProposalDetailPath(proposal.communityId, proposal.id)
             }
           />
         ))}

@@ -46,6 +46,23 @@ x-shift-env: &shift-env
   TZ: ${TZ:-America/Argentina/Cordoba}
 
 services:
+  # Runs as root before bootstrap and the gateway on every `up`. The image's
+  # stage2 hook only re-chowns $HERMES_HOME/profiles and /cron when it finds
+  # non-hermes owners; logs/ is left alone. A root-owned agent.log (any root
+  # `docker exec ... hermes`, or a root rotation of the file) then makes the
+  # gateway, which runs as hermes, crash-loop on PermissionError and takes the
+  # cron scheduler down with it. The entrypoint is overridden on purpose: this
+  # one-shot must not go through the Hermes stage2/s6 startup.
+  fix-ownership:
+    image: shift-hermes:local
+    container_name: shift-hermes-fix-ownership
+    restart: "no"
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["if [ -d /opt/data/logs ]; then chown -R hermes:hermes /opt/data/logs; fi"]
+    volumes:
+      - hermes_data:/opt/data
+
   init:
     build:
       context: .
@@ -59,6 +76,10 @@ services:
 
     image: shift-hermes:local
     container_name: shift-hermes-init
+
+    depends_on:
+      fix-ownership:
+        condition: service_completed_successfully
 
     # Run with Docker's tiny init as PID 1. The image's entrypoint-dispatch.sh
     # then skips the s6 supervision tree (it still runs the stage2 setup and

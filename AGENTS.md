@@ -30,7 +30,9 @@ Source-of-truth hierarchy for planning and delivery:
 - SpecKit artifacts in `.specify/`, `.github/prompts/speckit.*`, `.github/agents/speckit.*`, and related playbooks are legacy/reference only unless a task explicitly requires historical context.
 - Future audit targets must be grounded in real repo architecture and implemented module groups. Do not invent new vertical taxonomy from product vision alone.
 
-## Backlog Shape (Linear project "Shift Manager")
+## Backlog Shape (Linear projects "Shift Manager" and "Shift Protocol")
+
+- Team SHI holds one project per surface: **Shift Protocol** (Solidity, wiring, roles, deploys; every `domain:contracts` issue), **Shift Manager** (Manager app and indexer), **Shift Marketing** (website) and one `App: <name>` project per ecosystem app. The readiness skill ranks Shift Manager and Shift Protocol.
 
 - Milestones are the roadmap phases (Phase 0 → 6). Agents work the lowest open phase first; within a phase, Linear priority ranks the work. Every open issue has a milestone and a priority.
 - **One issue = one testable feature.** A `Feature` is one contract capability delivered as a vertical slice: contract calls → indexer projection/endpoints → Manager route or wizard → a `QA: how to test (Base Sepolia)` section an admin can run. Projections, read models, schemas and hooks are tasks inside the Feature that needs them (ODD `T#` items), never issues of their own. `Improvement` adjusts an existing feature; `Bug` is a defect.

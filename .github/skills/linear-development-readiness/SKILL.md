@@ -16,7 +16,7 @@ Do not use it for one issue already selected for refinement, ODD planning, imple
 ## Hard Rules
 
 - Required capabilities: Linear read, Git read, GitHub PR/check read, Engram read, and repo status-doc read. If any needed capability is unavailable, return `blocked` with evidence.
-- Scope: the Linear project **Shift Manager** (team SHI) is the product backlog this skill ranks. The **Automation** project holds agent-workflow design issues and is out of scope unless the supervisor explicitly asks for it; never put its issues in `recommendedQueue`.
+- Scope: the Linear projects **Shift Manager** (Manager app and indexer) and **Shift Protocol** (contracts, all `domain:contracts`) in team SHI are the product backlog this skill ranks. Shift Marketing and `App: <name>` projects are out of scope here unless the supervisor explicitly asks. The **Automation** project holds agent-workflow design issues and is out of scope unless the supervisor explicitly asks for it; never put its issues in `recommendedQueue`.
 - Do not modify Linear, GitHub, Engram, branches, repository files, specs, PRs, comments, or labels while running the analysis; Engram access is read-only.
 - Read relevant open issues: status, priority, labels, parent/children, blockers/dependencies, comments, acceptance criteria, linked specs (ODD feature documents `odd/tasks/<feature-name>.md` and their Engram mirrors), linked PRs, timestamps, and recent changes.
 - Check overlapping open PRs and code reality only for candidate verification; do not exhaustively audit the repo per issue.

@@ -22,6 +22,7 @@ check claude-auth bash -c "test -n \"\${ANTHROPIC_API_KEY:-}\${CLAUDE_CODE_OAUTH
 check claude-linear-mcp bash -c "out=\$(claude mcp list 2>/dev/null); grep -q linear <<<\"\$out\""
 check gentle gentle-ai --version
 check engram engram version
+check foundry forge --version
 check github gh repo view "${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}"
 check repo test -d "$REPO/.git"
 check agents test -f "$REPO/AGENTS.md"
@@ -41,6 +42,7 @@ check escarlet-mcp hermes mcp test escarlet
 check gh-persisted-login bash -c "env -u GH_TOKEN -u GITHUB_TOKEN gh auth status --hostname github.com"
 check terminal-home bash -c "grep -q 'home_mode: real' \"\$HERMES_HOME/config.yaml\""
 check monitor-scripts bash -c "test -x \"\$HERMES_HOME/scripts/shift-dev-monitor.sh\" -a -x \"\$HERMES_HOME/scripts/shift-merge-watch.sh\""
+check logs-writable bash -c "for f in \"\$HERMES_HOME\"/logs/*.log*; do [ ! -e \"\$f\" ] || [ -w \"\$f\" ] || exit 1; done"
 check cron-jobs bash -c "test -s \"\$HERMES_HOME/shift/jobs.env\""
 # Only required once the skill is in main (Hermes loads dev skills from there).
 if [[ -d "$REPO/hermes-bootstrap/skills/shift-post-merge-learning" ]]; then
@@ -50,6 +52,8 @@ else
 fi
 check main-clean bash -c "cd '$REPO' && test -z \"\$(git status --porcelain)\""
 check cron hermes cron status
+check voice-piper bash -c "test -x \"\$HERMES_HOME/scripts/shift-piper-say.sh\" && printf 'Hola' >/tmp/shift-doctor-tts.txt && \"\$HERMES_HOME/scripts/shift-piper-say.sh\" /tmp/shift-doctor-tts.txt /tmp/shift-doctor-tts.wav && test -s /tmp/shift-doctor-tts.wav; rc=\$?; rm -f /tmp/shift-doctor-tts.*; exit \$rc"
+check voice-stt bash -c "PYTHONPATH=\"\$HERMES_HOME/lazy-packages\" /opt/hermes/.venv/bin/python -c 'import av, faster_whisper; assert int(av.__version__.split(\".\")[0]) < 17'"
 
 echo
 if [[ "$fail" -eq 0 ]]; then

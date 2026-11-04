@@ -1,5 +1,7 @@
 "use client";
 
+import { CommunityScopeRedirect } from "../routing/community-scope-redirect";
+import { communityDraftDetailPath } from "../../lib/governance/community-scoped-routes";
 import Link from "next/link";
 import type { Route } from "next";
 import { useMemo, useState } from "react";
@@ -201,6 +203,9 @@ export function DraftDetail({
 
   return (
     <div className="space-y-8">
+      {typeof expectedCommunityId !== "number" && draftCommunityId ? (
+        <CommunityScopeRedirect href={communityDraftDetailPath(draftCommunityId, draftId)} />
+      ) : null}
       {hasCommunityMismatch ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           This draft belongs to Community #{draftCommunityId}, not Community #{expectedCommunityId}.{" "}
