@@ -22,6 +22,9 @@ const DISCOVERY_CACHE_TTL_MS = 45_000;
 // Discovery is a convenience hint, never a precondition for creating a community. Whatever the RPC does,
 // the check resolves (with the session cache as fallback) within this budget.
 export const DISCOVERY_DEADLINE_MS = 9_000;
+// After a timeout or an RPC error the hook keeps the session-cache fallback, then re-checks quietly in the
+// background so the hint recovers on its own once the RPC is back. Bounded: one retry per entry, then stop.
+export const DISCOVERY_RETRY_DELAYS_MS = [15_000, 30_000, 60_000] as const;
 
 class DiscoveryCancelledError extends Error {
   constructor() {
@@ -166,17 +169,29 @@ export function useMyDeployedCommunities() {
   const inFlightRef = useRef(false);
   // The scan whose result may still be applied. Unmount (or a newer scan) supersedes it.
   const activeScanRef = useRef<ScanControl | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryAttemptRef = useRef(0);
+  const refetchRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(async () => {});
+
+  const clearRetryTimer = useCallback(() => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     return () => {
+      clearRetryTimer();
       if (activeScanRef.current) activeScanRef.current.cancelled = true;
       activeScanRef.current = null;
       inFlightRef.current = false;
     };
-  }, []);
+  }, [clearRetryTimer]);
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async (options?: { silent?: boolean }) => {
     if (inFlightRef.current) return;
+    clearRetryTimer();
 
     if (status !== "connected" || !address) {
       setChainIds([]);
@@ -185,7 +200,8 @@ export function useMyDeployedCommunities() {
     }
 
     inFlightRef.current = true;
-    setIsLoading(true);
+    // Background retries stay quiet: the entry point never goes back to a "checking" state.
+    if (!options?.silent) setIsLoading(true);
     const control: ScanControl = { cancelled: false };
     activeScanRef.current = control;
     try {
@@ -201,6 +217,7 @@ export function useMyDeployedCommunities() {
       const fromSessions = getCompletedCommunityIdsFromSessions(address, chainId);
       const merged = [...new Set([...fromChain, ...fromSessions])];
       setChainIds(merged);
+      retryAttemptRef.current = 0;
       writePersistentCache(
         `community-discovery:${chainId}:${address.toLowerCase()}`,
         merged,
@@ -216,6 +233,14 @@ export function useMyDeployedCommunities() {
       });
       const fromSessions = getCompletedCommunityIdsFromSessions(address, chainId);
       setChainIds(fromSessions);
+      const delay = DISCOVERY_RETRY_DELAYS_MS[retryAttemptRef.current];
+      if (delay !== undefined) {
+        retryAttemptRef.current += 1;
+        retryTimerRef.current = setTimeout(() => {
+          retryTimerRef.current = null;
+          void refetchRef.current({ silent: true });
+        }, delay);
+      }
     } finally {
       if (activeScanRef.current === control) {
         setIsLoading(false);
@@ -223,11 +248,24 @@ export function useMyDeployedCommunities() {
         inFlightRef.current = false;
       }
     }
-  }, [address, chainId, publicClient, status]);
+  }, [address, chainId, clearRetryTimer, publicClient, status]);
+
+  refetchRef.current = refetch;
 
   useEffect(() => {
+    retryAttemptRef.current = 0;
     void refetch();
   }, [refetch]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onOnline = () => {
+      retryAttemptRef.current = 0;
+      void refetchRef.current({ silent: true });
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, []);
 
   const communityIds = chainIds;
   const hasCommunities = communityIds.length > 0;
