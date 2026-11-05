@@ -4,6 +4,13 @@ export type WagmiMockState = {
   connected: boolean;
   address: `0x${string}` | undefined;
   chainId: number;
+  /** `null` simulates wagmi not having resolved the wallet client yet. */
+  walletClient?: { deployContract: (...args: any[]) => Promise<`0x${string}`> } | null;
+  walletClientRefetch?: () => Promise<{ data: unknown }>;
+};
+
+const defaultWalletClient = {
+  deployContract: () => Promise.resolve("0x1234" as `0x${string}`)
 };
 
 export const wagmiMockState: WagmiMockState = {
@@ -84,9 +91,8 @@ export function buildMockedHooks() {
       variables: undefined
     },
     walletClient: {
-      data: {
-        deployContract: () => Promise.resolve("0x1234" as `0x${string}`)
-      },
+      data: wagmiMockState.walletClient === null ? undefined : (wagmiMockState.walletClient ?? defaultWalletClient),
+      refetch: wagmiMockState.walletClientRefetch ?? (() => Promise.resolve({ data: undefined })),
       error: null,
       isError: false,
       isLoading: false,

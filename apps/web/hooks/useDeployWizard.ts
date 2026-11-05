@@ -83,7 +83,12 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
   const designMode = options.designMode ?? false;
   const { status, address } = useAccount();
   const { writeContractAsync } = useWriteContract();
-  const { data: walletClient } = useWalletClient();
+  const { data: walletClient, refetch: refetchWalletClient } = useWalletClient();
+  // Latest wallet client for call-time resolution; `run` must not capture a stale (possibly undefined) client.
+  const walletClientRef = useRef(walletClient);
+  walletClientRef.current = walletClient;
+  const refetchWalletClientRef = useRef(refetchWalletClient);
+  refetchWalletClientRef.current = refetchWalletClient;
   const chainId = useChainId();
   const cachedPublicClient = useCachedPublicClient();
   const publicClient = cachedPublicClient.raw;
@@ -301,7 +306,17 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
           : createFactoryDeployStepExecutor({
               publicClient,
               writeContractAsync: writeContractAsync as any,
-              deployContractAsync: walletClient?.deployContract?.bind(walletClient) as any,
+              resolveDeployContractAsync: async () => {
+                let client = walletClientRef.current;
+                if (!client) {
+                  try {
+                    client = (await refetchWalletClientRef.current?.())?.data ?? walletClientRef.current;
+                  } catch {
+                    client = walletClientRef.current;
+                  }
+                }
+                return client?.deployContract?.bind(client) as any;
+              },
               connectedAddress: address
             }));
       log("Executor selected", {
