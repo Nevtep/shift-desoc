@@ -514,4 +514,32 @@ describe("factory-step-executor strict staging guards", () => {
 
     delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
   });
+
+  it("fails resumably with the reconnect message when the wallet client cannot be resolved", async () => {
+    const resolve = vi.fn().mockResolvedValue(undefined);
+    const executor = createFactoryDeployStepExecutor({
+      publicClient: {} as any,
+      writeContractAsync: vi.fn(),
+      resolveDeployContractAsync: resolve
+    });
+
+    await expect(executor("DEPLOY_STACK", makeSession(), makeContext())).rejects.toThrow(
+      "Wallet deploy client unavailable. Reconnect wallet and retry deployment."
+    );
+    expect(resolve).toHaveBeenCalledTimes(1);
+  });
+
+  it("proceeds past the wallet client guard when the resolver supplies a client", async () => {
+    const resolve = vi.fn().mockResolvedValue(vi.fn());
+    const executor = createFactoryDeployStepExecutor({
+      publicClient: {} as any,
+      writeContractAsync: vi.fn(),
+      resolveDeployContractAsync: resolve
+    });
+
+    await expect(executor("DEPLOY_STACK", makeSession(), makeContext())).rejects.not.toThrow(
+      "Wallet deploy client unavailable"
+    );
+    expect(resolve).toHaveBeenCalledTimes(1);
+  });
 });
