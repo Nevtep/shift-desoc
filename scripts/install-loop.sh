@@ -132,9 +132,13 @@ watch_id="$UPSERT_ID"
 # Content job: Sonnet 5.5 on Anthropic direct (override with SHIFT_CONTENT_MODEL /
 # SHIFT_CONTENT_PROVIDER). Image generation still uses image_gen (OpenRouter).
 mapfile -t content_skills < <(skill_args escarlet-mcp-content shift-social-content shift-reels-publishing)
+# SHIFT_CONTENT_DELIVER overrides the delivery target of this job only, e.g.
+# "telegram,telegram:<chat id>" to also reach a personal chat.
+DELIVER_DEFAULT="$DELIVER"; DELIVER="${SHIFT_CONTENT_DELIVER:-$DELIVER}"
 upsert "Shift daily content (carrusel IG, X y reel)" "$CONTENT_SCHEDULE" "" "$CONTENT_PROMPT" \
   "${content_skills[@]}" --model "${SHIFT_CONTENT_MODEL:-claude-sonnet-5-5}" --provider "${SHIFT_CONTENT_PROVIDER:-anthropic}"
 content_id="$UPSERT_ID"
+DELIVER="$DELIVER_DEFAULT"
 
 upsert "Shift drift to PR" "$DRIFT_SCHEDULE" shift-drift-monitor.sh "$DRIFT_PROMPT" \
   --skill shift-runtime-tools
