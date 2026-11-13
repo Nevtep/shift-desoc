@@ -36,6 +36,9 @@ x-shift-env: &shift-env
   ESCARLET_SITE: ${ESCARLET_SITE:-}
   SHIFT_CONTENT_CHANNELS: ${SHIFT_CONTENT_CHANNELS:-instagram}
   SHIFT_CONTENT_AUTOPUBLISH: ${SHIFT_CONTENT_AUTOPUBLISH:-false}
+  # Delivery target of the daily content job only (install-loop.sh), e.g.
+  # "telegram,telegram:<chat id>". Empty = the default Telegram home channel.
+  SHIFT_CONTENT_DELIVER: ${SHIFT_CONTENT_DELIVER:-}
 
   # Telegram gateway. Only the listed numeric user IDs may talk to the agent;
   # the home channel receives cron job reports.
