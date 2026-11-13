@@ -271,6 +271,10 @@ install -m 0755 "$BOOTSTRAP"/scripts/shift-*.sh "$HERMES_HOME/scripts/"
 # failing, since voice must never block a boot.
 bash "$BOOTSTRAP/scripts/shift-voice-setup.sh"
 
+# Remotion reel template for the daily content job (copied to $HERMES_HOME/shift-reels,
+# npm install only when package.json changes). Warns instead of failing.
+bash "$BOOTSTRAP/scripts/shift-reels-setup.sh"
+
 # Initialize Hermes Kanban for durable task/handoff history.
 hermes kanban init || true
 
