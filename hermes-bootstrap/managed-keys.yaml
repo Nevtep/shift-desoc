@@ -2,15 +2,6 @@
 # persistent $HERMES_HOME/config.yaml on every bootstrap, so reviewed changes
 # here reach existing deployments. Everything else in config.yaml is left to
 # Hermes and the operator.
-# Supervisor and cron model: Anthropic directly (no OpenRouter). Sonnet 5.5 is
-# enough; code and audit work runs in Claude Code sessions.
-model:
-  provider: anthropic
-  default: claude-sonnet-5-5
-  # Clear the OpenRouter endpoint the old config left behind; it would otherwise
-  # keep routing requests there even with provider: anthropic.
-  base_url: ""
-
 skills:
   external_dirs:
     # Development skills: live from the reviewed main checkout.

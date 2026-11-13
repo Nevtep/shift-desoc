@@ -2,8 +2,8 @@
 # (and you) own the file; bootstrap.sh only re-asserts the repo-managed keys
 # listed in hermes-bootstrap/managed-keys.yaml.
 model:
-  provider: anthropic
-  default: claude-sonnet-5-5
+  provider: openrouter
+  default: anthropic/claude-fable-5
 
 terminal:
   backend: local
