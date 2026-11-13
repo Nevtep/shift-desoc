@@ -7,6 +7,9 @@
 model:
   provider: anthropic
   default: claude-sonnet-5-5
+  # Clear the OpenRouter endpoint the old config left behind; it would otherwise
+  # keep routing requests there even with provider: anthropic.
+  base_url: ""
 
 skills:
   external_dirs:
