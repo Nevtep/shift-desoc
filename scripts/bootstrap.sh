@@ -278,6 +278,10 @@ bash "$BOOTSTRAP/scripts/shift-reels-setup.sh"
 # Initialize Hermes Kanban for durable task/handoff history.
 hermes kanban init || true
 
+# Skills created on the server before they were versioned would duplicate the
+# repo copy: move them aside (never delete) so only the reviewed version loads.
+bash "$BOOTSTRAP/scripts/shift-skills-dedupe.sh" "$BOOTSTRAP/content-skills" "$REPO_DIR/hermes-bootstrap/skills"
+
 echo "Verifying Hermes workflow skills from repo-managed source..."
 # `hermes skills inspect` queries remote registries (and exits 0 on a miss),
 # so check the locally loaded skill set instead. COLUMNS avoids truncation.
