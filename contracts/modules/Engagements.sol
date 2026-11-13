@@ -515,7 +515,7 @@ contract Engagements is AccessManaged {
     /// @param juror Juror address
     /// @return Whether juror has voted
     function hasJurorVoted(uint256 engagementId, address juror) external view returns (bool) {
-        return engagements[engagementId].votes[juror];
+        return engagements[engagementId].hasVoted[juror];
     }
 
     /// @notice Get participant cooldown info
