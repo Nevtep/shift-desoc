@@ -1,0 +1,15 @@
+{
+  "name": "Shift",
+  "palette": {
+    "cream": "#E9E3D6",
+    "paper": "#FBF7EC",
+    "logoBg": "#F6F0E1",
+    "sand": "#D8CBAE",
+    "sage": "#7C8F62",
+    "olive": "#5F704A",
+    "mustard": "#CFA63D",
+    "terracotta": "#D88F43",
+    "charcoal": "#3F3B34"
+  },
+  "_doc": "Paleta de la marca. logoBg debe ser EXACTAMENTE el color de fondo del archivo public/logo.png (si no, se ve el recuadro). Las fuentes se cambian en src/lib.tsx (loadFraunces/loadInter)."
+}
