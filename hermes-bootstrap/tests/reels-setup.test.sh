@@ -33,4 +33,16 @@ SHIFT_REELS_SRC="$WORK/missing" bash "$SETUP" 2>/dev/null
 check "missing source does not fail the boot" true
 out="$(SHIFT_REELS_DIR="$WORK/dst" bash "$SETUP" 2>&1 || true)"
 check "warns about missing music" grep -q "track-a.mp3" <<<"$out"
+# Server-side edits survive a boot; untouched files are refreshed from the repo.
+SRC2="$WORK/src2"; mkdir -p "$SRC2/src"; echo v1 >"$SRC2/src/a.tsx"; echo v1 >"$SRC2/src/b.tsx"; echo '{}' >"$SRC2/package.json"
+export SHIFT_REELS_SRC="$SRC2" SHIFT_REELS_DIR="$WORK/dst3"
+bash "$SETUP" 2>/dev/null
+echo mine >"$WORK/dst3/src/a.tsx"
+echo v2 >"$SRC2/src/a.tsx"; echo v2 >"$SRC2/src/b.tsx"
+out="$(bash "$SETUP" 2>&1 || true)"
+check "warns about a kept server edit"     grep -q "a.tsx was edited" <<<"$out"
+check "server edit is not overwritten"     grep -q mine "$WORK/dst3/src/a.tsx"
+check "untouched file is refreshed"        grep -q v2 "$WORK/dst3/src/b.tsx"
+check "baseline keeps the installed hash of the edited file" grep -q " src/a.tsx" "$WORK/dst3/.shift-template-baseline"
+unset SHIFT_REELS_SRC
 echo "$pass passed, $fail failed"; [[ "$fail" -eq 0 ]]
