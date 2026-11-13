@@ -166,7 +166,8 @@ describe("useDeployResume", () => {
             communityMetadataUri: "ipfs://recovered",
             treasuryVault: "0x1111111111111111111111111111111111111111",
             treasuryStableToken: "0x2222222222222222222222222222222222222222",
-            supportedTokensCsv: "0x2222222222222222222222222222222222222222"
+            supportedTokensCsv: "0x2222222222222222222222222222222222222222",
+            authorityMode: "governance_managed" as const
           })
         ),
       { wrapper: TestWrapper }

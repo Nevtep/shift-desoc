@@ -21,6 +21,12 @@ const HOLDER_LABEL: Record<AccessHolderState, string> = {
   address_only: ""
 };
 
+const MODE_LABEL: Record<AccessInspection["authorityMode"], string> = {
+  admin_managed: "Admin-managed",
+  governance_managed: "Governance-managed",
+  unavailable: "unavailable"
+};
+
 export function AccessSummary({ inspection, loading }: { inspection: AccessInspection; loading: boolean }) {
   const overallLabel = loading ? "checking" : SIGNAL_LABEL[inspection.overall];
   const overallClass = loading ? "text-muted-foreground" : SIGNAL_CLASS[inspection.overall];
@@ -31,6 +37,12 @@ export function AccessSummary({ inspection, loading }: { inspection: AccessInspe
       <h2 className="text-lg font-semibold">Role &amp; access verification</h2>
       <p className="text-sm">
         Access wiring: <span data-testid="access-overall" className={overallClass}>{overallLabel}</span>
+      </p>
+      <p className="text-sm">
+        Authority mode:{" "}
+        <span data-testid="access-authority-mode" className={loading ? "text-muted-foreground" : "font-medium"}>
+          {loading ? "checking" : MODE_LABEL[inspection.authorityMode]}
+        </span>
       </p>
       <p className="text-sm">
         Timelock holds ADMIN role:{" "}
