@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create or update the three Shift cron jobs deterministically (idempotent):
+# Create or update the four Shift cron jobs deterministically (idempotent):
 #
 #   Shift autonomous development loop  — daily 06:00, monitor-script preflight
 #       (shift-dev-monitor.sh): zero-token STOP on open-PR limit / auth / lock;
@@ -10,6 +10,10 @@
 #
 #   Shift daily content                — daily 09:00, no monitor script: one social
 #       content cycle (Instagram carousel, X image, reel) on Anthropic direct.
+#
+#   Shift drift to PR                  — every 6 hours, monitor-script
+#       (shift-drift-monitor.sh): wakes the agent only when durable work (skills,
+#       reel template) exists on the server but not in the repo; it opens one PR.
 #
 # Job ids are written to /opt/data/shift/jobs.env for the skills.
 set -euo pipefail
@@ -24,6 +28,7 @@ SCRIPTS_DST="$HERMES_HOME/scripts"
 DEV_SCHEDULE="${SHIFT_DEV_LOOP_SCHEDULE:-0 6 * * *}"
 WATCH_SCHEDULE="${SHIFT_MERGE_WATCH_SCHEDULE:-*/5 * * * *}"
 CONTENT_SCHEDULE="${SHIFT_CONTENT_SCHEDULE:-0 9 * * *}"
+DRIFT_SCHEDULE="${SHIFT_DRIFT_SCHEDULE:-0 */6 * * *}"
 DELIVER="${SHIFT_CRON_DELIVER:-telegram}"
 [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]] || DELIVER=local
 
@@ -68,6 +73,8 @@ DEV_PROMPT='Run one complete Shift autonomous development cycle now. The MONITOR
 WATCH_PROMPT='PRs merged into main and not yet acknowledged are listed under PENDING_MERGED_PRS in the MONITOR block. If that list is "(none)" or STATUS=ERROR, reply exactly [SILENT] and do nothing else. Otherwise follow shift-post-merge-learning for exactly those PRs: sync the checkout, learn from the reviews and post-audit fixes, persist the lessons, trigger the development loop job, and acknowledge the PRs with shift-merge-ack.sh as your last step. If the block says RETRY_EXHAUSTED=1, do not retry: report to the human that learning for those PRs keeps failing and why.'
 
 CONTENT_PROMPT='Run one Shift daily social content cycle now: follow shift-social-content (job policy from the environment) and escarlet-mcp-content. Publish at most one post for today on three channels: the Instagram carousel (instagram), the X image (x) and the Instagram reel (video, section 6: Remotion template in /opt/data/shift-reels with Suno music). MANDATORY: load skill shift-reels-publishing and use its section "Image style (fixed)" for EVERY image_generate call (fixed STYLE_BLOCK and always the 3 Brand Kit reference images; never invent your own style words, never 3D, clay or photo look) and its retry rule before any second publish. The reel render takes 10 to 30 minutes: run it in the background and poll in steps of 400 seconds or less. If the reel fails, keep the carousel and X result and report the reason. Then report the result per channel.'
+
+DRIFT_PROMPT='The MONITOR block above lists files Hermes created on the server that are not versioned in the repository. If STATUS=ERROR or DRIFT is "(none)", reply exactly [SILENT] and do nothing else. Otherwise open exactly one PR that versions exactly the listed DRIFT files and never anything under SKIPPED: create a worktree from origin/main on branch chore/drift-<YYYYMMDD>; copy each file to its repo path (a skill file <category>/<name>/... goes to hermes-bootstrap/content-skills/<name>/... when the skill is about Shift social content or reels, otherwise to hermes-bootstrap/skills/<name>/..., keeping subfolders; a reel-template file shift-reels/<path> goes to hermes-bootstrap/shift-reels/<path>); review the diff and drop anything that is a secret, personal data or generated media (the repository is public); run the bash tests under hermes-bootstrap/tests; commit, push and open the PR with gh. Never merge it. Report the PR link and list any SKIPPED files so a human can decide.'
 
 # Sets UPSERT_ID. Deliberately NOT called through command substitution: Bash
 # disables errexit inside $(...), so a failing `hermes cron create/edit` would
@@ -129,11 +136,16 @@ upsert "Shift daily content (carrusel IG, X y reel)" "$CONTENT_SCHEDULE" "" "$CO
   "${content_skills[@]}" --model "${SHIFT_CONTENT_MODEL:-claude-sonnet-5-5}" --provider "${SHIFT_CONTENT_PROVIDER:-anthropic}"
 content_id="$UPSERT_ID"
 
+upsert "Shift drift to PR" "$DRIFT_SCHEDULE" shift-drift-monitor.sh "$DRIFT_PROMPT" \
+  --skill shift-runtime-tools
+drift_id="$UPSERT_ID"
+
 cat > "$STATE_DIR/jobs.env" <<EOF
 DEV_LOOP_JOB_ID=$dev_id
 MERGE_WATCH_JOB_ID=$watch_id
 CONTENT_JOB_ID=$content_id
+DRIFT_JOB_ID=$drift_id
 EOF
-echo "jobs.env: DEV_LOOP_JOB_ID=$dev_id MERGE_WATCH_JOB_ID=$watch_id CONTENT_JOB_ID=$content_id"
+echo "jobs.env: DEV_LOOP_JOB_ID=$dev_id MERGE_WATCH_JOB_ID=$watch_id CONTENT_JOB_ID=$content_id DRIFT_JOB_ID=$drift_id"
 
 hermes cron list

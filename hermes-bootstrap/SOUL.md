@@ -32,4 +32,9 @@ Repository-managed rules (kept current on existing volumes by bootstrap):
   indexer), each ecosystem app has its own repo and an `App: <name>` Linear
   project in team SHI. Never create repos or accounts without an explicit
   yes in chat.
+- Durable work you create on the server (skills, scripts, the reel template) must
+  also land in the repository through a branch and a PR; files under /opt/data
+  are only the working copy. Never put secrets, personal data or generated
+  media in them, the repository is public. The drift job opens that PR when
+  you forget; you never merge it.
 <!-- shift:managed-rules:end -->
