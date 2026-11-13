@@ -102,9 +102,9 @@ skill_args() { # emit --skill <name> for each loaded skill; warn for the rest
 # subscription. Sonnet 5.5 costs half of Opus 5.5 per token. Override with
 # SHIFT_DEV_LOOP_MODEL / SHIFT_DEV_LOOP_PROVIDER, or set it empty to follow the
 # profile's default model.
-SHIFT_DEV_LOOP_MODEL="${SHIFT_DEV_LOOP_MODEL-anthropic/claude-sonnet-5.5}"
+SHIFT_DEV_LOOP_MODEL="${SHIFT_DEV_LOOP_MODEL-claude-sonnet-5-5}"
 model_args=()
-[[ -n "$SHIFT_DEV_LOOP_MODEL" ]] && model_args=(--model "$SHIFT_DEV_LOOP_MODEL" --provider "${SHIFT_DEV_LOOP_PROVIDER:-openrouter}")
+[[ -n "$SHIFT_DEV_LOOP_MODEL" ]] && model_args=(--model "$SHIFT_DEV_LOOP_MODEL" --provider "${SHIFT_DEV_LOOP_PROVIDER:-anthropic}")
 
 mapfile -t dev_skills < <(skill_args shift-autonomous-development shift-runtime-tools shift-learning-governance)
 mapfile -t watch_skills < <(skill_args shift-post-merge-learning shift-learning-governance shift-runtime-tools)
