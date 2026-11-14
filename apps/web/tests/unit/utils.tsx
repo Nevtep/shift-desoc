@@ -11,6 +11,7 @@ export type RenderOptions = {
   graphqlUrl?: string;
   apiBaseUrl?: string;
   queryClient?: QueryClient;
+  requestDeadlineMs?: number;
 };
 
 export function renderWithProviders(ui: ReactElement, options: RenderOptions = {}): ReturnType<typeof render> {
@@ -27,7 +28,7 @@ export function renderWithProviders(ui: ReactElement, options: RenderOptions = {
   // is enough, but wrapping again is safe for utilities like renderHook.
   return render(
     <QueryClientProvider client={queryClient}>
-      <ShiftProviders graphqlUrl={graphqlUrl} apiBaseUrl={apiBaseUrl}>
+      <ShiftProviders graphqlUrl={graphqlUrl} apiBaseUrl={apiBaseUrl} requestDeadlineMs={options.requestDeadlineMs}>
         {ui}
       </ShiftProviders>
     </QueryClientProvider>
