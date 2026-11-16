@@ -519,6 +519,23 @@ contract VerifierManagerTest is Test {
         }
     }
     
+    function testAdjustedNewVerifierIsCountedAndSelected() public {
+        address newVerifier = makeAddr("adjustedNewVerifier");
+        vm.prank(timelock);
+        verifierElection.adjustVerifierPower(newVerifier, 120, REASON_CID);
+
+        assertEq(verifierManager.getEligibleVerifierCount(), 6);
+
+        vm.prank(engagementsContract);
+        address[] memory selected = verifierManager.selectJurors(1, 6, 777, false);
+        assertEq(selected.length, 6);
+        bool found;
+        for (uint256 i = 0; i < selected.length; i++) {
+            if (selected[i] == newVerifier) found = true;
+        }
+        assertTrue(found);
+    }
+
     /*//////////////////////////////////////////////////////////////
                               FUZZ TESTS
     //////////////////////////////////////////////////////////////*/
