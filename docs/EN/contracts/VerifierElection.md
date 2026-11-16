@@ -10,9 +10,6 @@ The VerifierElection contract implements **governance-controlled verifier set ma
 
 ```solidity
 struct VerifierSet {
-    address[] verifiers;              // Current verifier addresses
-    mapping(address => uint256) powers; // Verifier power amounts
-    uint256 totalPower;              // Total power distributed
     uint64 lastUpdated;             // Last update timestamp
     string lastReasonCID;           // IPFS hash of update reason
 }
@@ -21,6 +18,15 @@ mapping(uint256 => VerifierSet) public verifierSets;           // Community veri
 mapping(uint256 => mapping(address => bool)) public bannedVerifiers;     // Banned verifiers per community
 mapping(uint256 => mapping(address => uint64)) public bannedTimestamp;  // Ban timestamps for cooldown logic
 ```
+
+> **Single canonical roster (SHI-135).** The roster itself is **not** stored here. The `VerifierPowerToken1155` active roster
+> is the one source of truth: `getVerifierSet()`, `getEligibleVerifiers()`, `getCommunityStats()` and juror selection
+> (`VerifierManager`) all read it, so totals always equal the token's `totalSupply()`. This holds for every path that changes
+> a balance: `setVerifierSet`, `adjustVerifierPower`, `banVerifiers`, and direct `VerifierPowerToken1155.mint/batchMint/adminTransfer`.
+> A direct mint makes the address eligible immediately (unless it is banned here); it emits only the token's
+> `VerifierGranted`/`VerifierRevoked`, not Election events.
+> `setVerifierSet` is a full replacement: every token-roster member not in the new set (including directly minted holders) is burned.
+> It still rejects an empty set; remove the last verifier with `adjustVerifierPower(v, 0)` or a ban.
 
 ### Timelock-Only Governance Model
 
@@ -241,14 +247,12 @@ function setVerifierSet() supports:
 ### Community Statistics and Analytics
 
 ```solidity
-function getCommunityStats(uint256 communityId) external view returns (
-    uint256 totalVerifiers,
-    uint256 totalPower,
-    uint256 bannedCount,
-    uint64 lastUpdated
-) {
-    // Provides community health metrics for governance decisions
-}
+function getCommunityStats() external view returns (
+    uint256 totalVerifiers,   // token roster size (zero-power holders are not roster members)
+    uint256 activeVerifiers,  // == totalVerifiers
+    uint256 totalPower,       // == vpt.totalSupply()
+    uint256 averagePower
+);
 ```
 
 ### Verifier Status Tracking
@@ -312,3 +316,9 @@ if (oldPower > newPower) {
 ---
 
 The VerifierElection contract establishes **democratic verifier governance** that prioritizes community control and social accountability over economic barriers, enabling sustainable and equitable work verification systems.
+## QA: how to test (Base Sepolia)
+
+1. As admin/timelock call `adjustVerifierPower(newWallet, 100, "qm...")`.
+2. `getVerifierSet()`, `getEligibleVerifiers()`, `getCommunityStats()` here and `getCommunityVerifiers(0,50)` on the VPT all list `newWallet`; totals equal `vpt.totalSupply()`.
+3. Submit engagements until the wallet is selected as juror (or panel size == eligible count).
+4. `adjustVerifierPower(newWallet, 0)` removes it from all views; ban → unban → re-grant restores it only after the re-grant.
