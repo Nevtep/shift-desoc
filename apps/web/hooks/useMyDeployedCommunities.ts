@@ -20,10 +20,12 @@ const CHUNK_SIZE_BLOCKS = 10_000n;
 const MIN_CHUNK_SIZE_BLOCKS = 250n;
 const DISCOVERY_CACHE_TTL_MS = 45_000;
 // Discovery is a convenience hint, never a precondition for creating a community. Whatever the RPC does,
-// the check resolves (with the session cache as fallback) within this budget.
+// the loading state ends (with the session cache as fallback) within this budget. The deadline only gates the
+// UI: a slow but healthy scan keeps running in the background and applies its result when it finishes, so
+// its progress is never discarded.
 export const DISCOVERY_DEADLINE_MS = 9_000;
-// After a timeout or an RPC error the hook keeps the session-cache fallback, then re-checks quietly in the
-// background so the hint recovers on its own once the RPC is back. Bounded: one retry per entry, then stop.
+// After an RPC error the hook keeps the session-cache fallback, then re-checks quietly in the background so
+// the hint recovers on its own once the RPC is back. Bounded: one retry per entry, then stop.
 export const DISCOVERY_RETRY_DELAYS_MS = [15_000, 30_000, 60_000] as const;
 
 class DiscoveryCancelledError extends Error {
@@ -33,25 +35,6 @@ class DiscoveryCancelledError extends Error {
 }
 
 type ScanControl = { cancelled: boolean };
-
-function raceDeadline<T>(work: Promise<T>, ms: number, onDeadline: () => void): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      onDeadline();
-      reject(new Error("COMMUNITY_DISCOVERY_DEADLINE"));
-    }, ms);
-    work.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
-}
 
 function isPayloadTooLargeError(error: unknown): boolean {
   const message = String(error ?? "").toLowerCase();
@@ -204,15 +187,8 @@ export function useMyDeployedCommunities() {
     if (!options?.silent) setIsLoading(true);
     const control: ScanControl = { cancelled: false };
     activeScanRef.current = control;
-    try {
-      const fromChain = await raceDeadline(
-        fetchCommunityIdsByCreator(publicClient, address, chainId, control),
-        DISCOVERY_DEADLINE_MS,
-        () => {
-          // Stop issuing further sequential getLogs requests once the budget is spent.
-          control.cancelled = true;
-        }
-      );
+
+    const onScanDone = (fromChain: number[]) => {
       if (activeScanRef.current !== control) return;
       const fromSessions = getCompletedCommunityIdsFromSessions(address, chainId);
       const merged = [...new Set([...fromChain, ...fromSessions])];
@@ -223,16 +199,16 @@ export function useMyDeployedCommunities() {
         merged,
         DISCOVERY_CACHE_TTL_MS
       );
-    } catch (error) {
-      control.cancelled = true;
+    };
+
+    const onScanFailed = (error: unknown) => {
       if (activeScanRef.current !== control) return;
       console.warn("[useMyDeployedCommunities] Falling back to session cache", {
         chainId,
         address,
         error: String(error)
       });
-      const fromSessions = getCompletedCommunityIdsFromSessions(address, chainId);
-      setChainIds(fromSessions);
+      setChainIds(getCompletedCommunityIdsFromSessions(address, chainId));
       const delay = DISCOVERY_RETRY_DELAYS_MS[retryAttemptRef.current];
       if (delay !== undefined) {
         retryAttemptRef.current += 1;
@@ -241,13 +217,34 @@ export function useMyDeployedCommunities() {
           void refetchRef.current({ silent: true });
         }, delay);
       }
-    } finally {
-      if (activeScanRef.current === control) {
-        setIsLoading(false);
-        activeScanRef.current = null;
-        inFlightRef.current = false;
-      }
+    };
+
+    let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+    let deadlineHit = false;
+    const deadline = new Promise<void>((resolve) => {
+      deadlineTimer = setTimeout(() => {
+        deadlineHit = true;
+        resolve();
+      }, DISCOVERY_DEADLINE_MS);
+    });
+
+    const scan = fetchCommunityIdsByCreator(publicClient, address, chainId, control)
+      .then(onScanDone, onScanFailed)
+      .finally(() => {
+        clearTimeout(deadlineTimer);
+        if (activeScanRef.current === control) {
+          activeScanRef.current = null;
+          inFlightRef.current = false;
+        }
+      });
+
+    await Promise.race([scan, deadline]);
+    if (control.cancelled) return;
+    if (deadlineHit && activeScanRef.current === control) {
+      // The scan is still running: unblock the UI with the session cache and let the scan finish quietly.
+      setChainIds(getCompletedCommunityIdsFromSessions(address, chainId));
     }
+    setIsLoading(false);
   }, [address, chainId, clearRetryTimer, publicClient, status]);
 
   refetchRef.current = refetch;
