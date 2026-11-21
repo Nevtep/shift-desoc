@@ -116,13 +116,22 @@ PRS
 has "PREFLIGHT=STOP" && pass "feature cap is clamped to the total cap" \
   || fail "clamp: $out"
 
-# 9. Defaults keep the previous behavior: total 2, two features => STOP.
+# 9. Defaults are total 3 and features 2, so one slot is always reserved for
+# bugs: two features leave only the bug lane, and a bug fills the last slot.
 run_monitor <<'PRS'
 10 feat/SHI-1/a
 11 imp/SHI-2/b
 PRS
-has "PREFLIGHT=STOP" && pass "defaults: 2 open agent PRs stop the loop" \
-  || fail "defaults: $out"
+if has "PREFLIGHT=GO" && has "LANES=bug" && grep -q "^OPEN_AGENT_PRS=2/3" <<<"$out"; then
+  pass "defaults: 2 features leave the reserved bug slot open (total 3)"
+else fail "defaults: $out"; fi
+run_monitor <<'PRS'
+10 feat/SHI-1/a
+11 imp/SHI-2/b
+20 fix/SHI-9/x
+PRS
+has "PREFLIGHT=STOP" && pass "defaults: 2 features + 1 bug stop the loop" \
+  || fail "defaults full: $out"
 
 # 10. A failing gh pr list stops the loop instead of reading zero PRs.
 touch "$WORK/gh-down"

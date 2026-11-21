@@ -12,7 +12,7 @@ set -euo pipefail
 export HOME="${HOME:-/opt/data}"
 REPO="${SHIFT_REPO_FULL_NAME:-Nevtep/shift-desoc}"
 REPO_DIR="${SHIFT_REPO_DIR:-/workspace/shift}"
-MAX_OPEN="${SHIFT_MAX_OPEN_PRS:-2}"
+MAX_OPEN="${SHIFT_MAX_OPEN_PRS:-3}"
 MAX_FEATURE="${SHIFT_MAX_FEATURE_PRS:-2}"
 LOCK=/opt/data/shift/dev-loop.lock
 

@@ -13,7 +13,7 @@ metadata:
         default: /workspace/shift
       - key: shift.max_open_prs
         description: Maximum open agent-created PRs (feature and bug lanes together) before waiting.
-        default: 2
+        default: 3
       - key: shift.max_feature_prs
         description: Maximum open feature PRs (feat/ and imp/); the rest of max_open_prs is reserved for bug PRs (fix/).
         default: 2

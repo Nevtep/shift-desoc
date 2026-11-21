@@ -74,11 +74,13 @@ unblock them:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `SHIFT_MAX_OPEN_PRS` | `2` | Total open agent PRs (`feat/`, `imp/` and `fix/` branches named `SHI-<n>/...`). |
+| `SHIFT_MAX_OPEN_PRS` | `3` | Total open agent PRs (`feat/`, `imp/` and `fix/` branches named `SHI-<n>/...`). |
 | `SHIFT_MAX_FEATURE_PRS` | `2` | Most feature PRs (`feat/`, `imp/`) open at once, clamped to the total. The rest of the total (`SHIFT_MAX_OPEN_PRS - SHIFT_MAX_FEATURE_PRS`) is reserved for bug PRs (`fix/`); features never take it. |
 
-The recommended setting is `SHIFT_MAX_OPEN_PRS=3` with the default
-`SHIFT_MAX_FEATURE_PRS=2`: two features plus one reserved bug slot. The monitor
+The defaults (`SHIFT_MAX_OPEN_PRS=3` and `SHIFT_MAX_FEATURE_PRS=2`) give two
+features plus one reserved bug slot. Keep the total at least one above the
+feature cap, otherwise the bug lane is empty. A server `.env.hermes` that still
+sets `SHIFT_MAX_OPEN_PRS` overrides the default. The monitor
 prints `LANES=feature,bug`, `LANES=bug` or stops when none is open, and the
 supervisor selects only an issue of an open lane. Branch conflicts between
 two PRs on the same flow are not detected by the guard.
