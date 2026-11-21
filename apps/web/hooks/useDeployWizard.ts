@@ -86,10 +86,13 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
   const supportedChainIds = options.supportedChainIds ?? DEFAULT_SUPPORTED_CHAIN_IDS;
   const estimateInput = options.estimateInput;
   const designMode = options.designMode ?? false;
-  const { status, address } = useAccount();
+  const { status, address, chainId: walletChainId } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
+  // Network the wallet is really on. `useChainId()` is the app config chain and never reflects the wallet:
+  // Rabby connects on Ethereum by default, so deploying with it needs the wallet chain, not the config chain.
+  const effectiveWalletChainId = walletChainId ?? chainId;
   const cachedPublicClient = useCachedPublicClient();
   const publicClient = cachedPublicClient.raw;
 
@@ -142,7 +145,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     const assessment = buildPreflightAssessment({
       walletConnected: connected,
       connectedAddress: address,
-      chainId,
+      chainId: effectiveWalletChainId,
       supportedChainIds,
       sharedInfra,
       funding
@@ -157,12 +160,12 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       blockingReasons: assessment.blockingReasons
     });
     return assessment;
-  }, [address, cachedPublicClient, chainId, estimateInput, publicClient, status, supportedChainIds]);
+  }, [address, cachedPublicClient, chainId, effectiveWalletChainId, estimateInput, publicClient, status, supportedChainIds]);
 
   useEffect(() => {
     if (!publicClient) return;
 
-    const key = `${chainId}:${status}:${address ?? ""}`;
+    const key = `${chainId}:${effectiveWalletChainId}:${status}:${address ?? ""}`;
     if (lastAutoPreflightKey.current === key) return;
     lastAutoPreflightKey.current = key;
 
@@ -172,7 +175,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       status
     });
     void runPreflight();
-  }, [address, chainId, publicClient, runPreflight, status]);
+  }, [address, chainId, effectiveWalletChainId, publicClient, runPreflight, status]);
 
   const runVerification = useCallback(
     async (activeSession: DeploymentWizardSession) => {
@@ -505,7 +508,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       runInFlightRef.current = false;
       setIsRunning(false);
     }
-  }, [address, chainId, createSession, options, publicClient, runPreflight, runVerification, writeContractAsync]);
+  }, [address, chainId, createSession, options, publicClient, runPreflight, runVerification, walletClient, writeContractAsync]);
 
   const resumeCandidate = useMemo(() => {
     if (!address) return null;
@@ -551,6 +554,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     resumeCandidate,
     error,
     isRunning,
+    walletChainId: effectiveWalletChainId,
     runPreflight,
     run,
     setSession,

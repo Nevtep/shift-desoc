@@ -2742,7 +2742,7 @@ async function executeConfigureAccessPermissions(
     {
       target: verifierManager,
       role: ROLES.VERIFIER_MANAGER_CALLER_ROLE,
-      signatures: ["selectJurors(uint256,uint256,uint256,bool)", "reportFraud(uint256,address[],string)"]
+      signatures: ["selectJurors(uint256,uint256,uint256,bool,address)", "reportFraud(uint256,address[],string)"]
     },
     {
       target: verifierPowerToken,

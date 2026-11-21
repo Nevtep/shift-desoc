@@ -1,3 +1,4 @@
+import "./storage-setup";
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
@@ -77,5 +78,8 @@ afterEach(() => {
   wagmiMockState.connected = false;
   wagmiMockState.address = undefined;
   wagmiMockState.chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "84532");
+  wagmiMockState.walletChainId = undefined;
+  wagmiMockState.connectSpy = undefined;
+  wagmiMockState.switchChainSpy = undefined;
 });
 afterAll(() => server.close());

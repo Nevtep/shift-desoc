@@ -89,27 +89,51 @@ describe("useMyDeployedCommunities discovery deadline", () => {
     expect(result.current.communityIds).toEqual([7]);
   });
 
-  it("stops issuing sequential getLogs requests once the deadline has passed", async () => {
-    clientState.getLogs.mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve([]), 3_000))
-    );
+  it("keeps a slow but healthy scan running past the deadline and applies its result without restarting", async () => {
+    // 21 sequential chunks x 600 ms = 12.6 s: longer than the 9 s UI deadline, yet every request succeeds.
+    let call = 0;
+    clientState.getLogs.mockImplementation(() => {
+      call += 1;
+      const logs = call === 1 ? [{ args: { communityId: 42n } }] : [];
+      return new Promise((resolve) => setTimeout(() => resolve(logs), 600));
+    });
 
     const { result } = renderHook(() => useMyDeployedCommunities(), { wrapper: TestWrapper });
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(DISCOVERY_DEADLINE_MS + 1_000);
+      await vi.advanceTimersByTimeAsync(DISCOVERY_DEADLINE_MS + 100);
     });
+    // The UI is unblocked with the session cache while the scan is still walking its chunks.
     expect(result.current.isLoading).toBe(false);
-    const callsAtDeadline = clientState.getLogs.mock.calls.length;
-    // 20 chunks x 3 s would take 60 s; the deadline must cut that to a handful of requests.
-    expect(callsAtDeadline).toBeLessThanOrEqual(4);
+    expect(result.current.communityIds).toEqual([7]);
 
-    // The cancelled scan must not keep walking its remaining chunks. The only later requests come
-    // from the scheduled background retry, which waits DISCOVERY_RETRY_DELAYS_MS[0] after the fallback.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(DISCOVERY_RETRY_DELAYS_MS[0] - 5_000);
+      await vi.advanceTimersByTimeAsync(5_000);
     });
-    expect(clientState.getLogs.mock.calls.length).toBe(callsAtDeadline);
+    // The delayed scan finished: its collected ids are applied, with no loading flicker and no restart.
+    expect([...result.current.communityIds].sort((a, b) => a - b)).toEqual([7, 42]);
+    expect(result.current.isLoading).toBe(false);
+    expect(clientState.getBlockNumber.mock.calls.length).toBe(1);
+    expect(clientState.getLogs.mock.calls.length).toBe(21);
+  });
+
+  it("stops walking the remaining chunks when the hook unmounts mid-scan", async () => {
+    clientState.getLogs.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve([]), 3_000))
+    );
+
+    const { unmount } = renderHook(() => useMyDeployedCommunities(), { wrapper: TestWrapper });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4_000);
+    });
+    unmount();
+    const callsAtUnmount = clientState.getLogs.mock.calls.length;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(120_000);
+    });
+    // At most the request already in flight at unmount time; no further sequential chunks.
+    expect(clientState.getLogs.mock.calls.length).toBeLessThanOrEqual(callsAtUnmount + 1);
   });
 
   it("merges on-chain results with the session cache when the scan finishes in time", async () => {
@@ -126,8 +150,11 @@ describe("useMyDeployedCommunities discovery deadline", () => {
 
   describe("recovery after the fallback (QA step 4)", () => {
     it("retries in the background and updates the communities without a reload once the RPC recovers", async () => {
+      // First request stalls past the deadline and then fails (as a real RPC transport timeout would).
       clientState.getLogs
-        .mockImplementationOnce(() => new Promise(() => {}))
+        .mockImplementationOnce(
+          () => new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 20_000))
+        )
         .mockResolvedValue([{ args: { communityId: 42n } }]);
 
       const { result } = renderHook(() => useMyDeployedCommunities(), { wrapper: TestWrapper });
@@ -139,7 +166,7 @@ describe("useMyDeployedCommunities discovery deadline", () => {
       expect(result.current.communityIds).toEqual([7]);
 
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(DISCOVERY_RETRY_DELAYS_MS[0] + 100);
+        await vi.advanceTimersByTimeAsync(20_000 + DISCOVERY_RETRY_DELAYS_MS[0] + 100);
       });
       expect([...result.current.communityIds].sort((a, b) => a - b)).toEqual([7, 42]);
       // The retry is silent: it never flips the hook back to loading.

@@ -488,7 +488,7 @@ contract VerifierElectionTest is Test {
             uint256 averagePower
         ) = verifierElection.getCommunityStats();
         
-        assertEq(totalVerifiers, 3); // All verifiers in the set
+        assertEq(totalVerifiers, 2); // token roster: zero-power members are not counted (SHI-135)
         assertEq(activeVerifiers, 2); // Only those with power > 0
         assertEq(totalPower, 300); // 100 + 0 + 200
         assertEq(averagePower, 150); // 300 / 2 active verifiers
@@ -522,5 +522,164 @@ contract VerifierElectionTest is Test {
         
         (, , uint256 totalPower, ,) = verifierElection.getVerifierSet();
         assertEq(totalPower, expectedTotalPower);
+    }
+
+    /*//////////////////////////////////////////////////////////////
+              SHI-135: TOKEN ROSTER IS THE SINGLE CANONICAL ROSTER
+    //////////////////////////////////////////////////////////////*/
+
+    function _seedSet() internal {
+        address[] memory a = new address[](2);
+        a[0] = verifier1;
+        a[1] = verifier2;
+        uint256[] memory w = new uint256[](2);
+        w[0] = 100;
+        w[1] = 150;
+        vm.prank(timelock);
+        verifierElection.setVerifierSet(a, w, REASON_CID);
+    }
+
+    function _assertRosterMatchesToken(uint256 expectedCount) internal view {
+        (address[] memory setAddrs, uint256[] memory setPowers, uint256 setTotal,,) = verifierElection.getVerifierSet();
+        (address[] memory elig, uint256[] memory eligPowers) = verifierElection.getEligibleVerifiers();
+        (uint256 totalVerifiers, uint256 activeVerifiers, uint256 totalPower,) = verifierElection.getCommunityStats();
+        assertEq(setAddrs.length, expectedCount, "set length");
+        assertEq(setPowers.length, expectedCount, "set powers length");
+        assertEq(totalVerifiers, expectedCount, "stats total");
+        assertEq(activeVerifiers, expectedCount, "stats active");
+        assertEq(totalPower, vpt.totalSupply(), "stats power == token supply");
+        assertEq(setTotal, vpt.totalSupply(), "set total == token supply");
+        for (uint256 i = 0; i < setAddrs.length; i++) {
+            assertEq(setPowers[i], vpt.balanceOf(setAddrs[i], COMMUNITY_ID_1));
+        }
+        // no banned addresses in these scenarios, so eligibility == roster
+        assertEq(elig.length, expectedCount, "eligible length");
+        for (uint256 i = 0; i < elig.length; i++) {
+            assertEq(eligPowers[i], vpt.balanceOf(elig[i], COMMUNITY_ID_1));
+        }
+    }
+
+    function _contains(address[] memory list, address who) internal pure returns (bool) {
+        for (uint256 i = 0; i < list.length; i++) if (list[i] == who) return true;
+        return false;
+    }
+
+    function testAdjustNewAddressIsEligibleListedAndCounted() public {
+        _seedSet();
+        vm.prank(timelock);
+        verifierElection.adjustVerifierPower(verifier3, 70, REASON_CID);
+
+        (address[] memory elig, uint256[] memory powers) = verifierElection.getEligibleVerifiers();
+        assertTrue(_contains(elig, verifier3));
+        for (uint256 i = 0; i < elig.length; i++) if (elig[i] == verifier3) assertEq(powers[i], 70);
+        (address[] memory setAddrs,,,,) = verifierElection.getVerifierSet();
+        assertTrue(_contains(setAddrs, verifier3));
+        _assertRosterMatchesToken(3);
+    }
+
+    function testAdjustToZeroRemovesAndRegrantRestores() public {
+        _seedSet();
+        vm.startPrank(timelock);
+        verifierElection.adjustVerifierPower(verifier2, 0, REASON_CID);
+        vm.stopPrank();
+        (address[] memory elig,) = verifierElection.getEligibleVerifiers();
+        assertFalse(_contains(elig, verifier2));
+        (address[] memory setAddrs,,,,) = verifierElection.getVerifierSet();
+        assertFalse(_contains(setAddrs, verifier2));
+        _assertRosterMatchesToken(1);
+
+        vm.prank(timelock);
+        verifierElection.adjustVerifierPower(verifier2, 40, REASON_CID);
+        _assertRosterMatchesToken(2);
+    }
+
+    function testBanUnbanRegrantLifecycle() public {
+        _seedSet();
+        address[] memory off = new address[](1);
+        off[0] = verifier2;
+        vm.prank(timelock);
+        verifierElection.banVerifiers(off, REASON_CID);
+        _assertRosterMatchesToken(1);
+        (address[] memory setAddrs,,,,) = verifierElection.getVerifierSet();
+        assertFalse(_contains(setAddrs, verifier2));
+
+        vm.prank(timelock);
+        verifierElection.unbanVerifier(verifier2, REASON_CID);
+        _assertRosterMatchesToken(1); // unban alone does not re-add
+
+        vm.prank(timelock);
+        verifierElection.adjustVerifierPower(verifier2, 60, REASON_CID);
+        _assertRosterMatchesToken(2);
+    }
+
+    function testDirectMintMakesEligibleAndAdjustUsesTokenBalance() public {
+        _seedSet();
+        vm.prank(timelock);
+        vpt.mint(verifier3, 50, REASON_CID);
+        _assertRosterMatchesToken(3);
+
+        // adjust must use the token balance as old power (no underflow / drift)
+        vm.expectEmit(true, true, false, true);
+        emit VerifierPowerAdjusted(COMMUNITY_ID_1, verifier3, 50, 10, REASON_CID);
+        vm.prank(timelock);
+        verifierElection.adjustVerifierPower(verifier3, 10, REASON_CID);
+        _assertRosterMatchesToken(3);
+    }
+
+    function testDirectBatchMintMakesEligible() public {
+        _seedSet();
+        address[] memory to = new address[](2);
+        to[0] = verifier3;
+        to[1] = verifier4;
+        uint256[] memory amts = new uint256[](2);
+        amts[0] = 5;
+        amts[1] = 6;
+        vm.prank(timelock);
+        vpt.batchMint(to, amts, REASON_CID);
+        _assertRosterMatchesToken(4);
+    }
+
+    function testAdminTransferDestinationIsEligible() public {
+        _seedSet();
+        vm.prank(timelock);
+        vpt.adminTransfer(verifier1, verifier3, 100, REASON_CID);
+        (address[] memory elig,) = verifierElection.getEligibleVerifiers();
+        assertTrue(_contains(elig, verifier3));
+        assertFalse(_contains(elig, verifier1));
+        _assertRosterMatchesToken(2);
+    }
+
+    function testBannedAddressWithDirectMintStaysIneligible() public {
+        _seedSet();
+        address[] memory off = new address[](1);
+        off[0] = verifier3;
+        vm.startPrank(timelock);
+        verifierElection.banVerifiers(off, REASON_CID);
+        vpt.mint(verifier3, 50, REASON_CID);
+        vm.stopPrank();
+        (address[] memory elig,) = verifierElection.getEligibleVerifiers();
+        assertFalse(_contains(elig, verifier3));
+        (, , bool isBanned) = verifierElection.getVerifierStatus(verifier3);
+        assertTrue(isBanned);
+    }
+
+    function testSetVerifierSetBurnsDirectlyMintedHolderNotInNewSet() public {
+        _seedSet();
+        vm.prank(timelock);
+        vpt.mint(verifier3, 50, REASON_CID);
+
+        address[] memory a = new address[](1);
+        a[0] = verifier1;
+        uint256[] memory w = new uint256[](1);
+        w[0] = 80;
+        vm.expectEmit(true, false, false, true);
+        emit VerifierSetUpdated(COMMUNITY_ID_1, 1, 80, REASON_CID);
+        vm.prank(timelock);
+        verifierElection.setVerifierSet(a, w, REASON_CID);
+
+        assertEq(vpt.balanceOf(verifier2, COMMUNITY_ID_1), 0);
+        assertEq(vpt.balanceOf(verifier3, COMMUNITY_ID_1), 0);
+        assertEq(vpt.balanceOf(verifier1, COMMUNITY_ID_1), 80);
+        _assertRosterMatchesToken(1);
     }
 }

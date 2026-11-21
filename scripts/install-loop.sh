@@ -61,7 +61,7 @@ PY
 }
 
 DEV_PROMPT='Run one complete Shift autonomous development cycle now. The MONITOR block above is the preflight: if it says PREFLIGHT=STOP, reply exactly [SILENT] and do nothing else. Otherwise stop after opening one audited PR, waiting because of the open-PR limit, finding no safe issue, or requiring human input.'
-WATCH_PROMPT='PRs merged into main and not yet acknowledged are listed under PENDING_MERGED_PRS in the MONITOR block. If that list is "(none)" or STATUS=ERROR, reply exactly [SILENT] and do nothing else. Otherwise follow shift-post-merge-learning for exactly those PRs: sync the checkout, learn from the reviews and post-audit fixes, persist the lessons, trigger the development loop job, and acknowledge the PRs with shift-merge-ack.sh as your last step. If the block says RETRY_EXHAUSTED=1, do not retry: report to the human that learning for those PRs keeps failing and why.'
+WATCH_PROMPT='First, if the MONITOR block has a SKILL_PERSIST= line (a skill edit captured as a PR, or a failed capture), handle it as shift-post-merge-learning step 0 says: create the Linear issue and link it, or report the failure to the human. PRs merged into main and not yet acknowledged are listed under PENDING_MERGED_PRS in the MONITOR block. If that list is "(none)" or STATUS=ERROR and there is no SKILL_PERSIST= line, reply exactly [SILENT] and do nothing else; if there is one, stop after step 0 when no PR is pending. Otherwise follow shift-post-merge-learning for exactly those PRs: sync the checkout, learn from the reviews and post-audit fixes, persist the lessons, trigger the development loop job, and acknowledge the PRs with shift-merge-ack.sh as your last step. If the block says RETRY_EXHAUSTED=1, do not retry: report to the human that learning for those PRs keeps failing and why.'
 
 # Sets UPSERT_ID. Deliberately NOT called through command substitution: Bash
 # disables errexit inside $(...), so a failing `hermes cron create/edit` would
@@ -102,9 +102,9 @@ skill_args() { # emit --skill <name> for each loaded skill; warn for the rest
 # subscription. Sonnet 5.5 costs half of Opus 5.5 per token. Override with
 # SHIFT_DEV_LOOP_MODEL / SHIFT_DEV_LOOP_PROVIDER, or set it empty to follow the
 # profile's default model.
-SHIFT_DEV_LOOP_MODEL="${SHIFT_DEV_LOOP_MODEL-anthropic/claude-sonnet-5.5}"
+SHIFT_DEV_LOOP_MODEL="${SHIFT_DEV_LOOP_MODEL-claude-sonnet-5-5}"
 model_args=()
-[[ -n "$SHIFT_DEV_LOOP_MODEL" ]] && model_args=(--model "$SHIFT_DEV_LOOP_MODEL" --provider "${SHIFT_DEV_LOOP_PROVIDER:-openrouter}")
+[[ -n "$SHIFT_DEV_LOOP_MODEL" ]] && model_args=(--model "$SHIFT_DEV_LOOP_MODEL" --provider "${SHIFT_DEV_LOOP_PROVIDER:-anthropic}")
 
 mapfile -t dev_skills < <(skill_args shift-autonomous-development shift-runtime-tools shift-learning-governance)
 mapfile -t watch_skills < <(skill_args shift-post-merge-learning shift-learning-governance shift-runtime-tools)

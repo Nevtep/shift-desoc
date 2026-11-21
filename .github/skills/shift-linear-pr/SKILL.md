@@ -25,7 +25,7 @@ Do not use it to implement code, audit completeness, merge, deploy, bypass human
 
 - Treat Linear as internal source of truth and GitHub community issues as separate public context.
 - Do not use global `branch-pr` for Shift Linear issue PRs.
-- Verify branch name has exactly one primary issue ID: `feat/SHI-XXX/short-description` or `imp/SHI-XXX/short-description`.
+- Verify branch name has exactly one primary issue ID: `feat/SHI-XXX/short-description`, `imp/SHI-XXX/short-description` or, for bugs, `fix/SHI-XXX/short-description`.
 - Verify PR title and body preserve the same primary Linear issue ID.
 - Block if the branch changed after audit, the auditor reviewed another commit, audit is `incomplete`/`blocked`/`failed`, remediation happened after audit, required tests are missing, `main` conflicts exist, or multiple primary issues are present.
 - Use a Linear closing phrase only after the audit proves complete work is safe to publish; never manually close that Linear issue afterward.

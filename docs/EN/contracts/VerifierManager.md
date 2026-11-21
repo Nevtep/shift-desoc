@@ -38,10 +38,10 @@ contract VerifierManager {
 ```solidity
 function selectJurors(
     uint256 engagementId,
-    uint256 communityId,
     uint256 panelSize,
     uint256 seed,
-    bool useWeighting
+    bool useWeighting,
+    address excluded // engagement participant: never selected, removed before the InsufficientVerifiers checks
 ) external restricted returns (address[] memory selectedJurors)
 ```
 

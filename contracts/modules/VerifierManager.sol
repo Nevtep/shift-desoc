@@ -86,21 +86,24 @@ contract VerifierManager is IVerifierManager, AccessManaged {
     /// @param panelSize Total number of jurors to select (N)
     /// @param seed Randomness seed for selection
     /// @param useWeighting Whether to use VPT amounts as weights in selection
+    /// @param excluded Address that must never be selected (the engagement participant); address(0) excludes nobody
     /// @return selectedJurors Array of selected juror addresses
     function selectJurors(
         uint256 engagementId,
         uint256 panelSize,
         uint256 seed,
-        bool useWeighting
+        bool useWeighting,
+        address excluded
     ) external restricted returns (address[] memory selectedJurors) {
-        return _selectJurors(engagementId, panelSize, seed, useWeighting);
+        return _selectJurors(engagementId, panelSize, seed, useWeighting, excluded);
     }
 
     function _selectJurors(
         uint256 engagementId,
         uint256 panelSize,
         uint256 seed,
-        bool useWeighting
+        bool useWeighting,
+        address excluded
     ) internal returns (address[] memory selectedJurors) {
         if (panelSize == 0) revert Errors.InvalidInput("Panel size cannot be zero");
         if (selections[engagementId].completed) {
@@ -110,6 +113,7 @@ contract VerifierManager is IVerifierManager, AccessManaged {
         // Get eligible verifiers from VerifierElection
         (address[] memory eligibleVerifiers, uint256[] memory eligiblePowers) = 
             verifierElection.getEligibleVerifiers();
+        (eligibleVerifiers, eligiblePowers) = _withoutExcluded(eligibleVerifiers, eligiblePowers, excluded);
         
         if (eligibleVerifiers.length == 0) {
             revert Errors.InsufficientVerifiers(0, panelSize);
@@ -344,6 +348,31 @@ contract VerifierManager is IVerifierManager, AccessManaged {
         }
         
         return (selected, selectedPowers);
+    }
+
+    /// @notice Drop `excluded` from the eligible pool so size checks and selection see the post-exclusion set
+    function _withoutExcluded(
+        address[] memory verifiers,
+        uint256[] memory powers,
+        address excluded
+    ) internal pure returns (address[] memory filteredVerifiers, uint256[] memory filteredPowers) {
+        if (excluded == address(0)) return (verifiers, powers);
+
+        uint256 kept = 0;
+        for (uint256 i = 0; i < verifiers.length; i++) {
+            if (verifiers[i] != excluded) kept++;
+        }
+        if (kept == verifiers.length) return (verifiers, powers);
+
+        filteredVerifiers = new address[](kept);
+        filteredPowers = new uint256[](kept);
+        uint256 idx = 0;
+        for (uint256 i = 0; i < verifiers.length; i++) {
+            if (verifiers[i] == excluded) continue;
+            filteredVerifiers[idx] = verifiers[i];
+            filteredPowers[idx] = powers[i];
+            idx++;
+        }
     }
 
     /// @notice Build a stronger, domain-separated entropy seed for juror selection

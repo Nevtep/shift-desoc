@@ -3,6 +3,7 @@
 import { Wallet, X } from "lucide-react";
 import { SiCoinbase, SiWalletconnect } from "react-icons/si";
 import { useConnect } from "wagmi";
+import { baseSepolia } from "wagmi/chains";
 import { getI18n } from "../../lib/i18n";
 
 function ConnectorIcon({ connectorId, connectorName }: { connectorId?: string; connectorName?: string }) {
@@ -59,7 +60,7 @@ export function OnboardingConnectStep({ fullScreen = true, onClose, hideCloseBut
           <button
             key={connector.uid}
             type="button"
-            onClick={() => connect({ connector })}
+            onClick={() => connect({ connector, chainId: baseSepolia.id })}
             disabled={isPending}
             className="flex cursor-pointer items-center justify-center gap-4 rounded-xl border border-border bg-background px-5 py-4 text-center font-medium transition-colors duration-200 hover:border-primary/40 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
           >
