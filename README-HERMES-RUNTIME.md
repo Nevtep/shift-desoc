@@ -106,6 +106,12 @@ Any failure leaves the checkout untouched. The monitor prints one
 PR must cite (`shift-post-merge-learning` step 0). Nothing is captured outside
 those two directories.
 
+The cron job prompt of the merge watcher also handles these lines, and the job
+stores its prompt: after deploying this change (`update.sh`), re-run
+`install-loop.sh` (idempotent) so the installed cron prompt is refreshed.
+Without that, the old prompt tells the agent to reply `[SILENT]` on an empty
+list and a captured edit would never get its Linear issue.
+
 ## 5. Start
 
 ```bash

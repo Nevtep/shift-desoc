@@ -63,6 +63,8 @@ check "post-merge creates the Linear issue for a captured edit" has "$POST_MERGE
 check "post-merge reports a failed capture to the human" has "$POST_MERGE" 'SKILL_PERSIST=FAILED'
 check "governance points at the monitor for edits made in place" has "$GOVERNANCE" 'shift-skill-persist'
 check "doctor checks the persist monitor is installed" has "$ROOT/scripts/doctor.sh" 'shift-skill-persist\.sh'
+check "the cron WATCH_PROMPT handles SKILL_PERSIST lines before the [SILENT] rule" has "$ROOT/scripts/install-loop.sh" "WATCH_PROMPT='[^']*SKILL_PERSIST[^']*\[SILENT\]"
+check "README says to re-run install-loop.sh so the cron prompt is refreshed" has "$ROOT/README-HERMES-RUNTIME.md" 're-run `install-loop\.sh`[^.]*cron prompt is refreshed'
 check "README documents the persist monitor and its quiet period" has "$ROOT/README-HERMES-RUNTIME.md" 'SHIFT_SKILL_PERSIST_QUIET_MIN'
 
 [[ $failures -eq 0 ]] && echo "all passed" || { echo "$failures failed" >&2; exit 1; }

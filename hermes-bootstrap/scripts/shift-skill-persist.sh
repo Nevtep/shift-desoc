@@ -74,39 +74,82 @@ done
 # the live index is never touched.
 mkdir -p "$OUT_DIR"
 tmp_index="$(mktemp "$OUT_DIR/index.XXXXXX")"
-snapshot() {  # print the current skill changes as one patch
-  cp "$(git rev-parse --git-path index)" "$tmp_index"
-  GIT_INDEX_FILE="$tmp_index" git add -A -- "${PATHS[@]}"
-  GIT_INDEX_FILE="$tmp_index" git diff --cached --binary HEAD -- "${PATHS[@]}"
+snapshot() {  # print the current skill changes as one patch; every step must succeed
+  cp "$(git rev-parse --git-path index)" "$tmp_index" || return 1
+  GIT_INDEX_FILE="$tmp_index" git add -A -- "${PATHS[@]}" || return 1
+  GIT_INDEX_FILE="$tmp_index" git diff --cached --binary HEAD -- "${PATHS[@]}" || return 1
 }
 patch_tmp="$(mktemp "$OUT_DIR/patch.XXXXXX")"
-snapshot >"$patch_tmp"
+# From here on $tmp_index is the frozen snapshot: it is never rebuilt, and the
+# restore compares every live file against it.
+snapshot >"$patch_tmp" || { rm -f "$patch_tmp"; say "FAILED snapshot failed"; exit 0; }
 [[ -s "$patch_tmp" ]] || { rm -f "$patch_tmp"; exit 0; }
 hash="$(sha <"$patch_tmp" | cut -c1-64)"; h12="${hash:0:12}"
 patch="$OUT_DIR/$h12.patch"
 mv "$patch_tmp" "$patch"; chmod 600 "$patch"   # the backup exists before anything else happens
 
-unchanged_since_snapshot() {  # nothing was edited while the PR was being prepared
-  [[ "$(snapshot | sha | cut -c1-64)" == "$hash" ]]
+# blob id of a path in the frozen snapshot (empty when the snapshot has no such file)
+snap_blob() { GIT_INDEX_FILE="$tmp_index" git rev-parse -q --verify ":$1" 2>/dev/null || true; }
+
+# Recreate $1 with its HEAD content, never overwriting a file that appeared
+# meanwhile (ln fails when the target exists, atomically).
+restore_head() {
+  local f="$1" tmp="$1.persist-new.$$" mode rc
+  git cat-file blob "HEAD:$f" >"$tmp" 2>/dev/null || { rm -f "$tmp"; return 1; }
+  mode="$(git ls-tree HEAD -- "$f" | cut -c1-6)"
+  if [[ "$mode" == 100755 ]]; then chmod 755 "$tmp"; else chmod 644 "$tmp"; fi
+  if ln -- "$tmp" "$f" 2>/dev/null; then rc=0; else rc=1; fi
+  rm -f "$tmp"
+  return $rc
 }
 
-restore_checkout() (
-  umask 022   # git writes restored files with the process umask: keep them readable
+# Put one file back to HEAD without ever deleting content that is not in the
+# snapshot. The live file is first moved aside (an atomic rename: a writer that
+# already has it open keeps writing to the moved file, and one that opens it
+# later creates a new file), compared with the snapshot, and dropped only when
+# identical. Anything else is kept in place. Returns 1 when live content was kept.
+restore_one() {  # $1 path, $2 tracked|fresh
+  local f="$1" kind="$2" bak="" snap cur
+  snap="$(snap_blob "$f")"
+  if [[ -e "$f" || -L "$f" ]]; then
+    bak="$f.persist-bak.$$"
+    mv -- "$f" "$bak" || return 1
+    cur="$(git hash-object -- "$bak" 2>/dev/null || true)"
+    if [[ -z "$snap" || "$cur" != "$snap" ]]; then   # edited since the snapshot, or unreadable
+      mv -n -- "$bak" "$f" 2>/dev/null || true       # never clobber a file that appeared meanwhile
+      return 1
+    fi
+  elif [[ -n "$snap" ]]; then
+    return 1   # the snapshot had this file and it is gone now: it changed since
+  fi
+  if [[ "$kind" == tracked ]] && ! restore_head "$f"; then
+    if [[ -n "$bak" ]]; then mv -n -- "$bak" "$f" 2>/dev/null || true; fi
+    return 1
+  fi
+  if [[ -n "$bak" ]]; then rm -f -- "$bak"; fi
+  return 0
+}
+
+restore_checkout() (  # returns 1 when any file was kept because it changed since the snapshot
+  umask 022   # restored files are written with the process umask: keep them readable
+  rc=0
   git reset -q HEAD -- "${PATHS[@]}" 2>/dev/null || true
-  for f in ${tracked[@]+"${tracked[@]}"}; do git checkout -q HEAD -- "$f"; done
+  for f in ${tracked[@]+"${tracked[@]}"}; do restore_one "$f" tracked || rc=1; done
   for f in ${fresh[@]+"${fresh[@]}"}; do
-    rm -f -- "$f"
-    d="$(dirname "$f")"   # drop the now-empty directories, never the skill roots
-    while [[ "$d" != "." && "$d" != "hermes-bootstrap/skills" && "$d" != ".github/skills" ]]; do
-      rmdir "$d" 2>/dev/null || break
-      d="$(dirname "$d")"
-    done
+    if restore_one "$f" fresh; then
+      d="$(dirname "$f")"   # drop the now-empty directories, never the skill roots
+      while [[ "$d" != "." && "$d" != "hermes-bootstrap/skills" && "$d" != ".github/skills" ]]; do
+        rmdir "$d" 2>/dev/null || break
+        d="$(dirname "$d")"
+      done
+    else rc=1; fi
   done
+  return $rc
 )
 
 marker="$OUT_DIR/$h12.pr"
 if [[ -f "$marker" ]]; then
-  if unchanged_since_snapshot; then restore_checkout; fi
+  restore_checkout || true   # a file changed since the snapshot is kept, and its new content is captured next tick
   say "ALREADY_PROPOSED #$(cat "$marker")"
   exit 0
 fi
@@ -163,8 +206,8 @@ fi
 echo "$num" >"$marker"
 
 # The patch was taken before the fetch, push and gh round trip. An edit made in
-# the meantime is in neither the backup nor the PR: never restore over it. The
-# next cycle captures the new content (a new hash) as its own PR.
-unchanged_since_snapshot || failed "checkout changed while capturing PR #$num; not restored"
-restore_checkout
+# the meantime is in neither the backup nor the PR: restore_checkout keeps every
+# file that no longer matches the snapshot. The next cycle captures the new
+# content (a new hash) as its own PR.
+restore_checkout || failed "checkout changed while capturing PR #$num; files changed since the snapshot were left in place"
 say "PR_OPENED #$num files=$count"

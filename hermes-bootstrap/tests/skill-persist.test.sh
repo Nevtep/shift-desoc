@@ -138,15 +138,27 @@ persist
 if has "SKILL_PERSIST=ALREADY_PROPOSED #77" && [[ "$(creates)" == 1 && -z "$(dirty)" ]]; then pass "the same edit is not proposed twice"
 else fail "again: out=[$out] creates=$(creates)"; fi
 
-# 9. A push failure leaves the checkout and the backup intact.
+# 9. A push failure (origin stays fetchable but rejects the push) leaves the
+#    checkout and the backup intact.
 setup pushfail
+printf 'edited by hermes\n' >>"$S/live/$SKILL"
+printf '#!/bin/sh\necho "push rejected" >&2\nexit 1\n' >"$S/origin.git/hooks/pre-receive"
+chmod +x "$S/origin.git/hooks/pre-receive"
+persist
+if has "SKILL_PERSIST=FAILED push failed" && grep -q 'edited by hermes' "$S/live/$SKILL" \
+  && [[ -n "$(find "$S/state/skill-persist" -name '*.patch' 2>/dev/null)" && -z "$(branches)" ]]; then
+  pass "a rejected push reports FAILED push failed, keeps the edit and the backup"
+else fail "pushfail: out=[$out] dirty=[$(dirty)]"; fi
+
+# 9b. An unreachable origin stops at the fetch, also leaving everything intact.
+setup fetchfail
 printf 'edited by hermes\n' >>"$S/live/$SKILL"
 git -C "$S/live" remote set-url origin "$S/does-not-exist.git"
 persist
-if grep -q '^SKILL_PERSIST=FAILED' <<<"$out" && grep -q 'edited by hermes' "$S/live/$SKILL" \
+if has "SKILL_PERSIST=FAILED fetch failed" && grep -q 'edited by hermes' "$S/live/$SKILL" \
   && [[ -n "$(find "$S/state/skill-persist" -name '*.patch' 2>/dev/null)" ]]; then
-  pass "a push failure reports FAILED, keeps the edit and the backup"
-else fail "pushfail: out=[$out] dirty=[$(dirty)]"; fi
+  pass "an unreachable origin reports FAILED fetch failed and keeps the edit"
+else fail "fetchfail: out=[$out]"; fi
 
 # 10. A gh failure leaves the checkout intact.
 setup ghfail
@@ -283,6 +295,52 @@ if has "SKILL_PERSIST=PR_OPENED #77 files=1" && [[ ! -e "$S/live/hermes-bootstra
   && [[ -z "$(git -C "$S/live" branch --list 'chore/hermes-self-update/*')" ]]; then
   pass "no empty directory and no local bot branch remain"
 else fail "tidy: out=[$out] dirs=$(ls "$S/live/hermes-bootstrap/skills") branches=[$(git -C "$S/live" branch --list 'chore/*')]"; fi
+
+# 21. A late edit that git cannot read back (so the final re-check cannot see it)
+#     must still survive: an already staged edit plus an unreadable late change used
+#     to look "unchanged" and was restored away.
+setup staged
+printf 'edited by hermes\n' >>"$S/live/$SKILL"
+git -C "$S/live" add "$SKILL"
+cat >"$S/bin/gh" <<FAKE
+#!/usr/bin/env bash
+echo "\$*" >>"$S/gh.log"
+if [[ "\$1 \$2" == "pr create" ]]; then
+  printf 'late edit during capture\n' >>"$S/live/$SKILL"
+  chmod 000 "$S/live/$SKILL"
+  echo "https://github.com/x/y/pull/77"
+fi
+FAKE
+persist
+chmod 644 "$S/live/$SKILL"
+if grep -q '^SKILL_PERSIST=FAILED checkout changed while capturing PR #77' <<<"$out" \
+  && grep -q 'late edit during capture' "$S/live/$SKILL"; then
+  pass "an unreadable late edit is kept, not restored away"
+else fail "staged: out=[$out] content=[$(cat "$S/live/$SKILL")]"; fi
+
+# 22. A deleted skill that is recreated during the capture is not overwritten
+#     with the old content, and a clean run leaves no helper files behind.
+setup recreated
+rm "$S/live/$GHSKILL"
+cat >"$S/bin/gh" <<FAKE
+#!/usr/bin/env bash
+echo "\$*" >>"$S/gh.log"
+if [[ "\$1 \$2" == "pr create" ]]; then
+  printf 'recreated while capturing\n' >"$S/live/$GHSKILL"
+  echo "https://github.com/x/y/pull/77"
+fi
+FAKE
+persist
+if grep -q '^SKILL_PERSIST=FAILED checkout changed while capturing PR #77' <<<"$out" \
+  && grep -qx 'recreated while capturing' "$S/live/$GHSKILL"; then
+  pass "a file recreated during the capture is not overwritten"
+else fail "recreated: out=[$out] content=[$(cat "$S/live/$GHSKILL" 2>/dev/null)]"; fi
+setup nohelpers
+printf 'edited by hermes\n' >>"$S/live/$SKILL"
+persist
+if has "SKILL_PERSIST=PR_OPENED #77 files=1" && [[ -z "$(find "$S/live/hermes-bootstrap" "$S/live/.github" -name '*persist-*' 2>/dev/null)" ]]; then
+  pass "a clean run leaves no helper files in the checkout"
+else fail "helpers: out=[$out] found=[$(find "$S/live/hermes-bootstrap" "$S/live/.github" -name '*persist-*' 2>/dev/null)]"; fi
 
 # 14. The merge watcher runs the monitor: its output is unchanged while idle and
 #     carries the SKILL_PERSIST line, right after STATUS=OK, when an edit is captured.
