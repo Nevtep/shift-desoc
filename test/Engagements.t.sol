@@ -593,6 +593,28 @@ contract EngagementsTest is Test {
         assertTrue(resolved);
     }
 
+    function testHasJurorVotedTracksApproveRejectAndNoVote() public {
+        vm.prank(worker1);
+        uint256 engagementId = engagements.submit(ACTION_TYPE_1, EVIDENCE_CID);
+
+        address[] memory jurors = engagements.getEngagementJurors(engagementId);
+        assertGe(jurors.length, 3);
+
+        assertFalse(engagements.hasJurorVoted(engagementId, jurors[0]));
+        assertFalse(engagements.hasJurorVoted(engagementId, jurors[1]));
+
+        vm.prank(jurors[0]);
+        engagements.verify(engagementId, true);
+        vm.prank(jurors[1]);
+        engagements.verify(engagementId, false);
+
+        // approve vote and reject vote both count as having voted
+        assertTrue(engagements.hasJurorVoted(engagementId, jurors[0]));
+        assertTrue(engagements.hasJurorVoted(engagementId, jurors[1]));
+        // juror who has not voted
+        assertFalse(engagements.hasJurorVoted(engagementId, jurors[2]));
+    }
+
     function testVerifyEngagementRejectsWithMajority() public {
         vm.prank(worker1);
         uint256 engagementId = engagements.submit(ACTION_TYPE_1, EVIDENCE_CID);
