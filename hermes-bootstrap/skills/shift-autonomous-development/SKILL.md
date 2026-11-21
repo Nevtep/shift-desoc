@@ -267,8 +267,10 @@ and starts another round for a cosmetic change. Instead, when a passing audit
 returns nits or advisories, collect all of them in one Linear issue per audited
 PR (project of the audited issue, label `Improvement`, `relatedTo` the audited
 issue), mention that issue in the PR body, and publish the PR as audited.
-Remediation starts only for an `incomplete`, `blocked` or `failed` verdict, or
-for remediation items the auditor marks as required.
+Remediation starts only for an `incomplete` verdict with required, in-scope
+items and `remediation.allowed=true`, within the cycle limit. Retry a `blocked`
+verdict only to resolve recoverable preconditions; on `failed`, stop for human
+review.
 
 ## Publish
 
