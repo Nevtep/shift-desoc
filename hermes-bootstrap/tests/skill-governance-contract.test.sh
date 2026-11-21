@@ -51,5 +51,7 @@ check "runtime tools: web bundle refresh rule" has "$RUNTIME_TOOLS" 'Bundle is s
 check "runtime tools: pre-mainnet policy" has "$RUNTIME_TOOLS" 'Pre-mainnet policy'
 check "runtime tools: open PRs on the same files block an issue" has "$RUNTIME_TOOLS" 'open PR touching the same files'
 check "runtime tools: contract changes and their consumers" has "$RUNTIME_TOOLS" 'Contract changes and their consumers'
+check "runtime tools: a Feature keeps its consumers in the same issue and PR" has "$RUNTIME_TOOLS" 'Feature.{0,90}consumers are part of the same issue and PR'
+check "runtime tools: no consumer is left neither implemented nor tracked" has "$RUNTIME_TOOLS" 'neither implemented nor tracked'
 
 [[ $failures -eq 0 ]] && echo "all passed" || { echo "$failures failed" >&2; exit 1; }
