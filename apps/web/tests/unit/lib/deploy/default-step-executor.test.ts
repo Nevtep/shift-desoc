@@ -68,6 +68,50 @@ function makeContext() {
   } as any;
 }
 
+const ONCHAIN_MODULES = {
+  accessManager: "0x1000000000000000000000000000000000000003",
+  membershipToken: "0x1000000000000000000000000000000000000019",
+  governor: "0x1000000000000000000000000000000000000004",
+  timelock: "0x1000000000000000000000000000000000000005",
+  requestHub: "0x1000000000000000000000000000000000000006",
+  draftsManager: "0x1000000000000000000000000000000000000007",
+  engagementsManager: "0x1000000000000000000000000000000000000008",
+  valuableActionRegistry: "0x1000000000000000000000000000000000000009",
+  verifierPowerToken: "0x1000000000000000000000000000000000000010",
+  verifierElection: "0x1000000000000000000000000000000000000011",
+  verifierManager: "0x1000000000000000000000000000000000000012",
+  valuableActionSBT: "0x1000000000000000000000000000000000000013",
+  positionManager: "0x1000000000000000000000000000000000000018",
+  credentialManager: "0x1000000000000000000000000000000000000028",
+  cohortRegistry: "0x1000000000000000000000000000000000000029",
+  investmentCohortManager: "0x1000000000000000000000000000000000000030",
+  revenueRouter: "0x1000000000000000000000000000000000000016",
+  treasuryVault: "0x1111111111111111111111111111111111111111",
+  treasuryAdapter: "0x1000000000000000000000000000000000000014",
+  communityToken: "0x1000000000000000000000000000000000000015",
+  paramController: "0x1000000000000000000000000000000000000002",
+  commerceDisputes: "0x1000000000000000000000000000000000000031",
+  marketplace: "0x1000000000000000000000000000000000000017",
+  housingManager: "0x1000000000000000000000000000000000000032",
+  projectFactory: "0x0000000000000000000000000000000000000000"
+};
+
+/** On-chain reads of a fully wired community; undefined for any other function. */
+function wiringRead(functionName: string): unknown {
+  switch (functionName) {
+    case "getCommunityModules":
+      return ONCHAIN_MODULES;
+    case "getRevenuePolicy":
+      return [1000, 2000, 1, 5000];
+    case "getVerifierParams":
+      return [5n, 3n, 20n, true, 1000n, 86400n];
+    case "getGovernanceParams":
+      return [7200n, 86400n, 21600n];
+    default:
+      return undefined;
+  }
+}
+
 describe("factory-step-executor strict staging guards", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -179,6 +223,8 @@ describe("factory-step-executor strict staging guards", () => {
           if (account.toLowerCase() === "0x1000000000000000000000000000000000000005") return [true, 0];
           return [false, 0];
         }
+        const wiring = wiringRead(functionName);
+        if (wiring !== undefined) return wiring;
         return true;
       }),
       simulateContract: vi.fn().mockResolvedValue({}),
@@ -226,6 +272,8 @@ describe("factory-step-executor strict staging guards", () => {
           }
           return [false, 0];
         }
+        const wiring = wiringRead(functionName);
+        if (wiring !== undefined) return wiring;
         return true;
       }),
       getBytecode: vi.fn().mockResolvedValue("0x1234"),

@@ -68,6 +68,50 @@ function makeContext() {
   } as any;
 }
 
+const ONCHAIN_MODULES = {
+  accessManager: "0x1000000000000000000000000000000000000003",
+  membershipToken: "0x1000000000000000000000000000000000000019",
+  governor: "0x1000000000000000000000000000000000000004",
+  timelock: "0x1000000000000000000000000000000000000005",
+  requestHub: "0x1000000000000000000000000000000000000006",
+  draftsManager: "0x1000000000000000000000000000000000000007",
+  engagementsManager: "0x1000000000000000000000000000000000000008",
+  valuableActionRegistry: "0x1000000000000000000000000000000000000009",
+  verifierPowerToken: "0x1000000000000000000000000000000000000010",
+  verifierElection: "0x1000000000000000000000000000000000000011",
+  verifierManager: "0x1000000000000000000000000000000000000012",
+  valuableActionSBT: "0x1000000000000000000000000000000000000013",
+  positionManager: "0x1000000000000000000000000000000000000018",
+  credentialManager: "0x1000000000000000000000000000000000000028",
+  cohortRegistry: "0x1000000000000000000000000000000000000029",
+  investmentCohortManager: "0x1000000000000000000000000000000000000030",
+  revenueRouter: "0x1000000000000000000000000000000000000016",
+  treasuryVault: "0x1111111111111111111111111111111111111111",
+  treasuryAdapter: "0x1000000000000000000000000000000000000014",
+  communityToken: "0x1000000000000000000000000000000000000015",
+  paramController: "0x1000000000000000000000000000000000000002",
+  commerceDisputes: "0x1000000000000000000000000000000000000031",
+  marketplace: "0x1000000000000000000000000000000000000017",
+  housingManager: "0x1000000000000000000000000000000000000032",
+  projectFactory: "0x0000000000000000000000000000000000000000"
+};
+
+/** On-chain reads of a fully wired community; undefined for any other function. */
+function wiringRead(functionName: string): unknown {
+  switch (functionName) {
+    case "getCommunityModules":
+      return ONCHAIN_MODULES;
+    case "getRevenuePolicy":
+      return [1000, 2000, 1, 5000];
+    case "getVerifierParams":
+      return [5n, 3n, 20n, true, 1000n, 86400n];
+    case "getGovernanceParams":
+      return [7200n, 86400n, 21600n];
+    default:
+      return undefined;
+  }
+}
+
 describe("factory-step-executor strict staging guards", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -303,7 +347,7 @@ describe("factory-step-executor strict staging guards", () => {
           case "hasRole":
             return [true, 0];
           default:
-            return true;
+            return wiringRead(functionName) ?? true;
         }
       }),
       simulateContract: vi.fn().mockResolvedValue({}),
@@ -443,6 +487,8 @@ describe("factory-step-executor strict staging guards", () => {
           if (account.toLowerCase() === "0x1000000000000000000000000000000000000005") return [true, 0];
           return [false, 0];
         }
+        const wiring = wiringRead(functionName);
+        if (wiring !== undefined) return wiring;
         return true;
       }),
       simulateContract: vi.fn().mockResolvedValue({}),
@@ -491,6 +537,8 @@ describe("factory-step-executor strict staging guards", () => {
           }
           return [false, 0];
         }
+        const wiring = wiringRead(functionName);
+        if (wiring !== undefined) return wiring;
         return true;
       }),
       getBytecode: vi.fn().mockResolvedValue("0x1234"),
@@ -544,6 +592,8 @@ describe("FINALIZE_AUTHORITY_MODE branches", () => {
         if (functionName === "ADMIN_ROLE") return 0n;
         if (functionName === "authority") return ACCESS_MANAGER;
         if (functionName === "hasRole") return [Boolean(state[String(args?.[1]).toLowerCase()]), 0];
+        const wiring = wiringRead(functionName);
+        if (wiring !== undefined) return wiring;
         return true;
       }),
       getBytecode: vi.fn().mockResolvedValue("0x1234"),
@@ -648,5 +698,122 @@ describe("FINALIZE_AUTHORITY_MODE branches", () => {
     );
     expect(writeContractAsync).not.toHaveBeenCalled();
     delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+});
+
+describe("SHI-169: resume completes the wiring after registerCommunity", () => {
+  const DEPLOYER = "0xabc1230000000000000000000000000000000000";
+  const ZERO = "0x0000000000000000000000000000000000000000";
+  const REGISTER_HASH = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+  /** Chain whose registerCommunity landed (id 6) and which records each setter the wizard sends. */
+  function legacyChain(done: { verifier: boolean; governance: boolean; revenue: boolean; modules: boolean }) {
+    const state = { ...done };
+    const publicClient = {
+      getTransactionCount: vi.fn().mockResolvedValue(9n),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      getTransactionReceipt: vi.fn().mockResolvedValue({ logs: [] }),
+      readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
+        switch (functionName) {
+          case "nextCommunityId":
+            return 7n;
+          case "getCommunityModules":
+            return state.modules ? ONCHAIN_MODULES : { ...ONCHAIN_MODULES, verifierPowerToken: ZERO, governor: ZERO };
+          case "getRevenuePolicy":
+            return state.revenue ? [1000, 2000, 1, 5000] : [0, 0, 0, 0];
+          case "getVerifierParams":
+            return state.verifier ? [5n, 3n, 20n, true, 1000n, 86400n] : [0n, 0n, 0n, false, 0n, 0n];
+          case "getGovernanceParams":
+            return state.governance ? [7200n, 86400n, 21600n] : [0n, 0n, 0n];
+          case "ADMIN_ROLE":
+            return 0n;
+          case "authority":
+            return ONCHAIN_MODULES.accessManager;
+          default:
+            return true;
+        }
+      }),
+      // The registry of the QA run has no bootstrapCommunity: simulation reverts.
+      simulateContract: vi.fn().mockRejectedValue(new Error("0xdaa2ea61 reverted")),
+      estimateContractGas: vi.fn().mockResolvedValue(21000n),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
+    } as any;
+    const writeContractAsync = vi.fn(async (call: any) => {
+      if (call.functionName === "setVerifierParams") state.verifier = true;
+      if (call.functionName === "setGovernanceParams") state.governance = true;
+      if (call.functionName === "setRevenuePolicy") state.revenue = true;
+      if (call.functionName === "setModuleAddresses") state.modules = true;
+      return `0x${(writeContractAsync.mock.calls.length + 1).toString(16).padStart(64, "0")}`;
+    });
+    return { publicClient, writeContractAsync };
+  }
+
+  function failedConfigureSession() {
+    const session = makeSession();
+    session.communityId = undefined;
+    session.steps = [
+      { key: "CONFIGURE_ACCESS_PERMISSIONS", status: "failed", expectedTxCount: 9, confirmedTxCount: 4, txHashes: [REGISTER_HASH] }
+    ];
+    return session;
+  }
+
+  async function resumeConfigure(done: Parameters<typeof legacyChain>[0]) {
+    const { publicClient, writeContractAsync } = legacyChain(done);
+    const executor = createFactoryDeployStepExecutor({ publicClient, writeContractAsync: writeContractAsync as any, connectedAddress: DEPLOYER });
+    // Stop right after the wiring: the access/runtime stage is not under test here.
+    await executor("CONFIGURE_ACCESS_PERMISSIONS", failedConfigureSession(), makeContext()).catch(() => undefined);
+    const sent = writeContractAsync.mock.calls.map(([call]) => call.functionName as string);
+    return { sent };
+  }
+
+  it("sends the remaining setters after a failed setRevenuePolicy and never registers again", async () => {
+    const { sent } = await resumeConfigure({ verifier: true, governance: true, revenue: false, modules: false });
+
+    expect(sent).not.toContain("registerCommunity");
+    expect(sent).not.toContain("bootstrapCommunity");
+    expect(sent).not.toContain("setVerifierParams");
+    expect(sent).not.toContain("setGovernanceParams");
+    expect(sent.slice(0, 3)).toEqual(["setEligibilityParams", "setRevenuePolicy", "setModuleAddresses"]);
+  });
+
+  it("sends only setModuleAddresses when the revenue policy is already set", async () => {
+    const { sent } = await resumeConfigure({ verifier: true, governance: true, revenue: true, modules: false });
+
+    expect(sent[0]).toBe("setModuleAddresses");
+    expect(sent).not.toContain("setRevenuePolicy");
+  });
+
+  it("sends no wiring transaction when the chain already shows a complete wiring", async () => {
+    const { sent } = await resumeConfigure({ verifier: true, governance: true, revenue: true, modules: true });
+
+    for (const name of ["registerCommunity", "setVerifierParams", "setGovernanceParams", "setEligibilityParams", "setRevenuePolicy", "setModuleAddresses"]) {
+      expect(sent).not.toContain(name);
+    }
+  });
+
+  describe.each(["admin_managed", "governance_managed"])("FINALIZE_AUTHORITY_MODE (%s) with incomplete wiring", (mode) => {
+    function finalizeWith(done: Parameters<typeof legacyChain>[0]) {
+      process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = "0x2000000000000000000000000000000000000002";
+      const { publicClient, writeContractAsync } = legacyChain(done);
+      const session = makeSession();
+      session.communityId = 6;
+      session.deploymentConfig = { authorityMode: mode };
+      const executor = createFactoryDeployStepExecutor({ publicClient, writeContractAsync: writeContractAsync as any, connectedAddress: DEPLOYER });
+      return { run: () => executor("FINALIZE_AUTHORITY_MODE", session, makeContext()), writeContractAsync };
+    }
+
+    it("sends no revokeRole and names the missing modules and revenue policy", async () => {
+      const { run, writeContractAsync } = finalizeWith({ verifier: true, governance: true, revenue: false, modules: false });
+
+      await expect(run()).rejects.toThrow(/modules not registered \(.*verifierPowerToken.*\).*revenue policy not set/);
+      expect(writeContractAsync).not.toHaveBeenCalled();
+    });
+
+    it("names only the revenue policy when the modules are registered", async () => {
+      const { run, writeContractAsync } = finalizeWith({ verifier: true, governance: true, revenue: false, modules: true });
+
+      await expect(run()).rejects.toThrow("revenue policy not set");
+      expect(writeContractAsync).not.toHaveBeenCalled();
+    });
   });
 });

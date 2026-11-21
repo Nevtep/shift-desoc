@@ -7,7 +7,7 @@
       "selector": "0x46a2ba22",
       "signature": "setCohortActive(uint256,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2317,
+      "sourceLine": 2455,
       "targetKey": "cohortRegistry",
       "targetVariable": "cohortRegistry"
     },
@@ -18,7 +18,7 @@
       "selector": "0x64229dad",
       "signature": "addInvestment(uint256,address,uint256,uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2327,
+      "sourceLine": 2465,
       "targetKey": "cohortRegistry",
       "targetVariable": "cohortRegistry"
     },
@@ -29,7 +29,7 @@
       "selector": "0x9cc70b8c",
       "signature": "createCohort(uint16,uint32,bytes32,uint64,uint64,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2317,
+      "sourceLine": 2455,
       "targetKey": "cohortRegistry",
       "targetVariable": "cohortRegistry"
     },
@@ -40,7 +40,7 @@
       "selector": "0xb16598a3",
       "signature": "markRecovered(uint256,uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2322,
+      "sourceLine": 2460,
       "targetKey": "cohortRegistry",
       "targetVariable": "cohortRegistry"
     },
@@ -51,7 +51,7 @@
       "selector": "0xbe11f1ac",
       "signature": "openDispute(uint8,uint256,address,address,uint256,string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2407,
+      "sourceLine": 2545,
       "targetKey": "commerceDisputes",
       "targetVariable": "commerceDisputes"
     },
@@ -62,7 +62,7 @@
       "selector": "0xcab5a035",
       "signature": "setDisputeReceiver(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2398,
+      "sourceLine": 2536,
       "targetKey": "commerceDisputes",
       "targetVariable": "commerceDisputes"
     },
@@ -73,7 +73,7 @@
       "selector": "0xd9e786ab",
       "signature": "finalizeDispute(uint256,uint8)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2398,
+      "sourceLine": 2536,
       "targetKey": "commerceDisputes",
       "targetVariable": "commerceDisputes"
     },
@@ -84,7 +84,7 @@
       "selector": "0xdf02935c",
       "signature": "cancelDispute(uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2398,
+      "sourceLine": 2536,
       "targetKey": "commerceDisputes",
       "targetVariable": "commerceDisputes"
     },
@@ -95,7 +95,7 @@
       "selector": "0x213fbf1b",
       "signature": "approveApplication(uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2350,
+      "sourceLine": 2488,
       "targetKey": "credentialManager",
       "targetVariable": "credentialManager"
     },
@@ -106,7 +106,7 @@
       "selector": "0x24cdf73b",
       "signature": "setCourseActive(bytes32,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2341,
+      "sourceLine": 2479,
       "targetKey": "credentialManager",
       "targetVariable": "credentialManager"
     },
@@ -117,7 +117,7 @@
       "selector": "0x792450fb",
       "signature": "revokeCredential(uint256,bytes32,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2341,
+      "sourceLine": 2479,
       "targetKey": "credentialManager",
       "targetVariable": "credentialManager"
     },
@@ -128,7 +128,7 @@
       "selector": "0xcf51b14c",
       "signature": "defineCourse(bytes32,address,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2341,
+      "sourceLine": 2479,
       "targetKey": "credentialManager",
       "targetVariable": "credentialManager"
     },
@@ -139,7 +139,7 @@
       "selector": "0x20c5429b",
       "signature": "revoke(uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2252,
+      "sourceLine": 2390,
       "targetKey": "engagements",
       "targetVariable": "engagements"
     },
@@ -150,7 +150,7 @@
       "selector": "0xe692c49f",
       "signature": "updateContracts(address,address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2252,
+      "sourceLine": 2390,
       "targetKey": "engagements",
       "targetVariable": "engagements"
     },
@@ -161,7 +161,7 @@
       "selector": "0x24f0e469",
       "signature": "consume(uint256,address,bytes,uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2417,
+      "sourceLine": 2555,
       "targetKey": "housingManager",
       "targetVariable": "housingManager"
     },
@@ -172,7 +172,7 @@
       "selector": "0x28793bff",
       "signature": "createUnit(address,string,uint256,uint256,uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2412,
+      "sourceLine": 2550,
       "targetKey": "housingManager",
       "targetVariable": "housingManager"
     },
@@ -183,7 +183,7 @@
       "selector": "0xc1c5613a",
       "signature": "onOrderSettled(uint256,uint256,uint8)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2417,
+      "sourceLine": 2555,
       "targetKey": "housingManager",
       "targetVariable": "housingManager"
     },
@@ -194,7 +194,7 @@
       "selector": "0x4104c3be",
       "signature": "issueInvestment(address,uint256,uint32,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2332,
+      "sourceLine": 2470,
       "targetKey": "investmentCohortManager",
       "targetVariable": "investmentCohortManager"
     },
@@ -205,7 +205,7 @@
       "selector": "0x46a2ba22",
       "signature": "setCohortActive(uint256,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2332,
+      "sourceLine": 2470,
       "targetKey": "investmentCohortManager",
       "targetVariable": "investmentCohortManager"
     },
@@ -216,7 +216,7 @@
       "selector": "0x9cc70b8c",
       "signature": "createCohort(uint16,uint32,bytes32,uint64,uint64,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2332,
+      "sourceLine": 2470,
       "targetKey": "investmentCohortManager",
       "targetVariable": "investmentCohortManager"
     },
@@ -227,7 +227,7 @@
       "selector": "0x0562d1cd",
       "signature": "setCommerceDisputes(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2365,
+      "sourceLine": 2503,
       "targetKey": "marketplace",
       "targetVariable": "marketplace"
     },
@@ -238,7 +238,7 @@
       "selector": "0x8c15e6a4",
       "signature": "setCommunityToken(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2365,
+      "sourceLine": 2503,
       "targetKey": "marketplace",
       "targetVariable": "marketplace"
     },
@@ -249,7 +249,7 @@
       "selector": "0xb3b917d9",
       "signature": "setRevenueRouter(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2365,
+      "sourceLine": 2503,
       "targetKey": "marketplace",
       "targetVariable": "marketplace"
     },
@@ -260,7 +260,7 @@
       "selector": "0xedcbb1aa",
       "signature": "setCommunityActive(bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2365,
+      "sourceLine": 2503,
       "targetKey": "marketplace",
       "targetVariable": "marketplace"
     },
@@ -271,7 +271,7 @@
       "selector": "0x37f9fbdd",
       "signature": "batchMint(address[],uint256[],string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2375,
+      "sourceLine": 2513,
       "targetKey": "membershipToken",
       "targetVariable": "membershipToken"
     },
@@ -282,7 +282,7 @@
       "selector": "0xc151f0f1",
       "signature": "emergencyBurn(address,uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2380,
+      "sourceLine": 2518,
       "targetKey": "membershipToken",
       "targetVariable": "membershipToken"
     },
@@ -293,7 +293,7 @@
       "selector": "0xd3fc9864",
       "signature": "mint(address,uint256,string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2375,
+      "sourceLine": 2513,
       "targetKey": "membershipToken",
       "targetVariable": "membershipToken"
     },
@@ -304,7 +304,7 @@
       "selector": "0x06711c77",
       "signature": "definePositionType(bytes32,uint32,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2307,
+      "sourceLine": 2445,
       "targetKey": "positionManager",
       "targetVariable": "positionManager"
     },
@@ -315,7 +315,7 @@
       "selector": "0x8e9c9bd6",
       "signature": "closePosition(uint256,uint8,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2307,
+      "sourceLine": 2445,
       "targetKey": "positionManager",
       "targetVariable": "positionManager"
     },
@@ -326,7 +326,7 @@
       "selector": "0xb3b917d9",
       "signature": "setRevenueRouter(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2307,
+      "sourceLine": 2445,
       "targetKey": "positionManager",
       "targetVariable": "positionManager"
     },
@@ -337,7 +337,7 @@
       "selector": "0xe7ad0d2b",
       "signature": "approveApplication(uint256,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2307,
+      "sourceLine": 2445,
       "targetKey": "positionManager",
       "targetVariable": "positionManager"
     },
@@ -348,7 +348,7 @@
       "selector": "0x232f69a1",
       "signature": "routeRevenue(address,uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2302,
+      "sourceLine": 2440,
       "targetKey": "revenueRouter",
       "targetVariable": "revenueRouter"
     },
@@ -359,7 +359,7 @@
       "selector": "0x6b3be696",
       "signature": "unregisterPosition(uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2297,
+      "sourceLine": 2435,
       "targetKey": "revenueRouter",
       "targetVariable": "revenueRouter"
     },
@@ -370,7 +370,7 @@
       "selector": "0x9aaf5cfc",
       "signature": "registerPosition(uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2297,
+      "sourceLine": 2435,
       "targetKey": "revenueRouter",
       "targetVariable": "revenueRouter"
     },
@@ -381,7 +381,7 @@
       "selector": "0xb3d31ea6",
       "signature": "setCohortRegistry(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2287,
+      "sourceLine": 2425,
       "targetKey": "revenueRouter",
       "targetVariable": "revenueRouter"
     },
@@ -392,7 +392,7 @@
       "selector": "0xb807a2e6",
       "signature": "setParamController(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2287,
+      "sourceLine": 2425,
       "targetKey": "revenueRouter",
       "targetVariable": "revenueRouter"
     },
@@ -403,7 +403,7 @@
       "selector": "0xe74abe39",
       "signature": "setCommunityTreasury(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2287,
+      "sourceLine": 2425,
       "targetKey": "revenueRouter",
       "targetVariable": "revenueRouter"
     },
@@ -414,7 +414,7 @@
       "selector": "0xe7986466",
       "signature": "setSupportedToken(address,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2287,
+      "sourceLine": 2425,
       "targetKey": "revenueRouter",
       "targetVariable": "revenueRouter"
     },
@@ -425,7 +425,7 @@
       "selector": "0x15f69012",
       "signature": "setTokenAllowed(address,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2355,
+      "sourceLine": 2493,
       "targetKey": "treasuryAdapter",
       "targetVariable": "treasuryAdapter"
     },
@@ -436,7 +436,7 @@
       "selector": "0x5c1d2d1b",
       "signature": "setVaultAdapterAllowed(address,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2355,
+      "sourceLine": 2493,
       "targetKey": "treasuryAdapter",
       "targetVariable": "treasuryAdapter"
     },
@@ -447,7 +447,7 @@
       "selector": "0xcb39331f",
       "signature": "setCapBps(address,uint16)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2355,
+      "sourceLine": 2493,
       "targetKey": "treasuryAdapter",
       "targetVariable": "treasuryAdapter"
     },
@@ -458,7 +458,7 @@
       "selector": "0xf3142095",
       "signature": "setDestinationAllowed(address,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2355,
+      "sourceLine": 2493,
       "targetKey": "treasuryAdapter",
       "targetVariable": "treasuryAdapter"
     },
@@ -469,7 +469,7 @@
       "selector": "0x041848f9",
       "signature": "issuePosition(address,bytes32,uint32,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2241,
+      "sourceLine": 2379,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -480,7 +480,7 @@
       "selector": "0x14f1d4f1",
       "signature": "setIssuanceModule(address,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -491,7 +491,7 @@
       "selector": "0x2f1ec91c",
       "signature": "issueRoleFromPosition(address,bytes32,uint32,uint64,uint64,uint8,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2241,
+      "sourceLine": 2379,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -502,7 +502,7 @@
       "selector": "0x3ee2b01d",
       "signature": "setModerator(address,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2236,
+      "sourceLine": 2374,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -513,7 +513,7 @@
       "selector": "0x408a6802",
       "signature": "activateFromGovernance(uint256,bytes32)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -524,7 +524,7 @@
       "selector": "0x4104c3be",
       "signature": "issueInvestment(address,uint256,uint32,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2241,
+      "sourceLine": 2379,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -535,7 +535,7 @@
       "selector": "0x6da7a0ba",
       "signature": "update(uint256,(uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64))",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -546,7 +546,7 @@
       "selector": "0x71304940",
       "signature": "issueEngagement(address,uint8,bytes32,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2241,
+      "sourceLine": 2379,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -557,7 +557,7 @@
       "selector": "0x7d0df1be",
       "signature": "setCommunityNarrowing(bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -568,7 +568,7 @@
       "selector": "0x8045303d",
       "signature": "closePositionToken(uint256,uint8)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2241,
+      "sourceLine": 2379,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -579,7 +579,7 @@
       "selector": "0x916b9bef",
       "signature": "deactivate(uint256)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -590,7 +590,7 @@
       "selector": "0xc6ffb6cb",
       "signature": "setIssuancePaused(bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -601,7 +601,7 @@
       "selector": "0xe08d5b8a",
       "signature": "setCommunityIssuanceModule(address,bool)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -612,7 +612,7 @@
       "selector": "0xe610e6dd",
       "signature": "proposeValuableAction((uint32,uint32,uint32,uint8,bytes32,uint32,uint8,bytes32,uint32,uint32,uint32,uint32,uint32,uint32,uint32,bool,uint32,uint256,address,string,string,bytes32[],uint64,uint64),bytes32)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -623,7 +623,7 @@
       "selector": "0xef4ec047",
       "signature": "addFounder(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -634,7 +634,7 @@
       "selector": "0xff012a43",
       "signature": "setValuableActionSBT(address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2220,
+      "sourceLine": 2358,
       "targetKey": "valuableActionRegistry",
       "targetVariable": "valuableActionRegistry"
     },
@@ -645,7 +645,7 @@
       "selector": "0x18e97fd1",
       "signature": "updateTokenURI(uint256,string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2385,
+      "sourceLine": 2523,
       "targetKey": "valuableActionSBT",
       "targetVariable": "valuableActionSBT"
     },
@@ -656,7 +656,7 @@
       "selector": "0x34481d75",
       "signature": "setEndedAt(uint256,uint64)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2385,
+      "sourceLine": 2523,
       "targetKey": "valuableActionSBT",
       "targetVariable": "valuableActionSBT"
     },
@@ -667,7 +667,7 @@
       "selector": "0x56ea547f",
       "signature": "mintEngagement(address,uint8,bytes32,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2385,
+      "sourceLine": 2523,
       "targetKey": "valuableActionSBT",
       "targetVariable": "valuableActionSBT"
     },
@@ -678,7 +678,7 @@
       "selector": "0x6a4bff23",
       "signature": "mintPosition(address,bytes32,uint32,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2385,
+      "sourceLine": 2523,
       "targetKey": "valuableActionSBT",
       "targetVariable": "valuableActionSBT"
     },
@@ -689,7 +689,7 @@
       "selector": "0x8045303d",
       "signature": "closePositionToken(uint256,uint8)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2385,
+      "sourceLine": 2523,
       "targetKey": "valuableActionSBT",
       "targetVariable": "valuableActionSBT"
     },
@@ -700,7 +700,7 @@
       "selector": "0x874f4145",
       "signature": "mintInvestment(address,uint256,uint32,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2385,
+      "sourceLine": 2523,
       "targetKey": "valuableActionSBT",
       "targetVariable": "valuableActionSBT"
     },
@@ -711,7 +711,7 @@
       "selector": "0xac701fb8",
       "signature": "mintRoleFromPosition(address,bytes32,uint32,uint64,uint64,uint8,bytes)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2385,
+      "sourceLine": 2523,
       "targetKey": "valuableActionSBT",
       "targetVariable": "valuableActionSBT"
     },
@@ -722,7 +722,7 @@
       "selector": "0x126d612e",
       "signature": "setVerifierSet(address[],uint256[],string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2257,
+      "sourceLine": 2395,
       "targetKey": "verifierElection",
       "targetVariable": "verifierElection"
     },
@@ -733,7 +733,7 @@
       "selector": "0xb7cecec7",
       "signature": "unbanVerifier(address,string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2257,
+      "sourceLine": 2395,
       "targetKey": "verifierElection",
       "targetVariable": "verifierElection"
     },
@@ -744,7 +744,7 @@
       "selector": "0xd4a7a2f3",
       "signature": "adjustVerifierPower(address,uint256,string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2257,
+      "sourceLine": 2395,
       "targetKey": "verifierElection",
       "targetVariable": "verifierElection"
     },
@@ -755,7 +755,7 @@
       "selector": "0xe9759d9c",
       "signature": "banVerifiers(address[],string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2257,
+      "sourceLine": 2395,
       "targetKey": "verifierElection",
       "targetVariable": "verifierElection"
     },
@@ -766,7 +766,7 @@
       "selector": "0x1c2bfb7d",
       "signature": "selectJurors(uint256,uint256,uint256,bool,address)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2267,
+      "sourceLine": 2405,
       "targetKey": "verifierManager",
       "targetVariable": "verifierManager"
     },
@@ -777,7 +777,7 @@
       "selector": "0xe512c8cd",
       "signature": "reportFraud(uint256,address[],string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2267,
+      "sourceLine": 2405,
       "targetKey": "verifierManager",
       "targetVariable": "verifierManager"
     },
@@ -788,7 +788,7 @@
       "selector": "0x02fe5305",
       "signature": "setURI(string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2272,
+      "sourceLine": 2410,
       "targetKey": "verifierPowerToken",
       "targetVariable": "verifierPowerToken"
     },
@@ -799,7 +799,7 @@
       "selector": "0x09b2c748",
       "signature": "initializeCommunity(string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2272,
+      "sourceLine": 2410,
       "targetKey": "verifierPowerToken",
       "targetVariable": "verifierPowerToken"
     },
@@ -810,7 +810,7 @@
       "selector": "0x15f570dc",
       "signature": "burn(address,uint256,string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2277,
+      "sourceLine": 2415,
       "targetKey": "verifierPowerToken",
       "targetVariable": "verifierPowerToken"
     },
@@ -821,7 +821,7 @@
       "selector": "0x1fa0850c",
       "signature": "batchBurn(address[],uint256[],string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2277,
+      "sourceLine": 2415,
       "targetKey": "verifierPowerToken",
       "targetVariable": "verifierPowerToken"
     },
@@ -832,7 +832,7 @@
       "selector": "0x37f9fbdd",
       "signature": "batchMint(address[],uint256[],string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2277,
+      "sourceLine": 2415,
       "targetKey": "verifierPowerToken",
       "targetVariable": "verifierPowerToken"
     },
@@ -843,7 +843,7 @@
       "selector": "0xd3fc9864",
       "signature": "mint(address,uint256,string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2277,
+      "sourceLine": 2415,
       "targetKey": "verifierPowerToken",
       "targetVariable": "verifierPowerToken"
     },
@@ -854,7 +854,7 @@
       "selector": "0xf8cd5ff1",
       "signature": "adminTransfer(address,address,uint256,string)",
       "sourceFile": "apps/web/lib/deploy/factory-step-executor.ts",
-      "sourceLine": 2272,
+      "sourceLine": 2410,
       "targetKey": "verifierPowerToken",
       "targetVariable": "verifierPowerToken"
     }

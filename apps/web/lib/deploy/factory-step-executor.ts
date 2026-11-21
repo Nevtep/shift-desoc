@@ -1694,6 +1694,91 @@ async function executeDeployStackWithFactories(
   };
 }
 
+type ModulePayload = Record<string, `0x${string}`>;
+
+function buildModulePayload(
+  runAddresses: DeploymentRunAddresses,
+  treasuryVault: `0x${string}`,
+): ModulePayload {
+  return {
+    accessManager: runAddresses.accessManager,
+    membershipToken: runAddresses.membershipToken ?? ZERO_ADDRESS,
+    governor: runAddresses.governor,
+    timelock: runAddresses.timelock,
+    countingMultiChoice: runAddresses.countingMultiChoice ?? ZERO_ADDRESS,
+    requestHub: runAddresses.requestHub,
+    draftsManager: runAddresses.draftsManager,
+    engagementsManager: runAddresses.engagements,
+    valuableActionRegistry: runAddresses.valuableActionRegistry,
+    verifierPowerToken: runAddresses.verifierPowerToken,
+    verifierElection: runAddresses.verifierElection,
+    verifierManager: runAddresses.verifierManager,
+    valuableActionSBT: runAddresses.valuableActionSBT,
+    positionManager: runAddresses.positionManager ?? ZERO_ADDRESS,
+    credentialManager: runAddresses.credentialManager ?? ZERO_ADDRESS,
+    cohortRegistry: runAddresses.cohortRegistry ?? ZERO_ADDRESS,
+    investmentCohortManager: runAddresses.investmentCohortManager ?? ZERO_ADDRESS,
+    revenueRouter: runAddresses.revenueRouter,
+    treasuryVault,
+    treasuryAdapter: runAddresses.treasuryAdapter,
+    communityToken: runAddresses.communityToken,
+    paramController: runAddresses.paramController,
+    commerceDisputes: runAddresses.commerceDisputes ?? ZERO_ADDRESS,
+    marketplace: runAddresses.marketplace,
+    housingManager: runAddresses.housingManager ?? ZERO_ADDRESS,
+    projectFactory: runAddresses.projectFactory ?? ZERO_ADDRESS,
+  };
+}
+
+type WiringState = {
+  missingModules: string[];
+  revenuePolicySet: boolean;
+  verifierParamsSet: boolean;
+  governanceParamsSet: boolean;
+};
+
+/** Reads what the community's registry wiring and policy already hold on-chain, never what the session remembers. */
+async function readWiringState(
+  publicClient: PublicClient,
+  sharedInfra: { communityRegistry: `0x${string}`; paramController: `0x${string}` },
+  communityId: number,
+  modulePayload: ModulePayload,
+): Promise<WiringState> {
+  const id = BigInt(communityId);
+  const modules = (await publicClient.readContract({
+    address: sharedInfra.communityRegistry,
+    abi: COMMUNITY_REGISTRY_ABI,
+    functionName: "getCommunityModules",
+    args: [id],
+  })) as Record<string, `0x${string}`>;
+  const missingModules = Object.entries(modulePayload)
+    .filter(([key, expected]) => isNonZeroAddress(expected) && !isNonZeroAddress(modules?.[key]))
+    .map(([key]) => key);
+
+  const read = (functionName: string) =>
+    publicClient.readContract({
+      address: sharedInfra.paramController,
+      abi: PARAM_CONTROLLER_ABI,
+      functionName,
+      args: [id],
+    }) as Promise<readonly unknown[]>;
+  const anyNonZero = (values: readonly unknown[]) => values.some((value) => BigInt(value as bigint | number) !== 0n);
+
+  return {
+    missingModules,
+    revenuePolicySet: anyNonZero(await read("getRevenuePolicy")),
+    verifierParamsSet: anyNonZero(await read("getVerifierParams")),
+    governanceParamsSet: anyNonZero(await read("getGovernanceParams")),
+  };
+}
+
+function describeWiringGaps(state: WiringState): string[] {
+  return [
+    ...(state.missingModules.length > 0 ? [`modules not registered (${state.missingModules.join(", ")})`] : []),
+    ...(state.revenuePolicySet ? [] : ["revenue policy not set"]),
+  ];
+}
+
 async function registerAndWireCommunity(
   params: {
     publicClient: PublicClient;
@@ -1729,7 +1814,16 @@ async function registerAndWireCommunity(
     return null;
   };
 
-  // Resume idempotency: if bootstrapCommunity already succeeded in this step, do not submit it again.
+  if (!runAddresses) {
+    throw new Error("DEPLOY_STACK must complete before wiring. Missing run-scoped deployment addresses.");
+  }
+
+  const treasuryVault = requireAddressArg(context.config.treasuryVault, "treasury vault");
+  const modulePayload = buildModulePayload(runAddresses, treasuryVault);
+
+  // Resume: a registered community only means the first sub-transaction landed. The legacy fallback sends
+  // about seven, so what is left is decided from the chain, never from "a community was registered".
+  let recoveredCommunityId: number | undefined;
   if (!session.communityId) {
     const configureStep = session.steps.find((step) => step.key === "CONFIGURE_ACCESS_PERMISSIONS");
     const priorHashes = configureStep?.txHashes ?? [];
@@ -1743,31 +1837,37 @@ async function registerAndWireCommunity(
               hash,
               communityId: decodedCommunityId,
             });
-            return { txHashes, communityId: decodedCommunityId };
+            recoveredCommunityId = decodedCommunityId;
+            break;
           }
         } catch {
           // Ignore unavailable receipts and continue fallback recovery.
         }
       }
 
-      const nextCommunityId = (await publicClient.readContract({
-        address: sharedInfra.communityRegistry,
-        abi: COMMUNITY_REGISTRY_ABI,
-        functionName: "nextCommunityId",
-      })) as bigint;
-      if (nextCommunityId > 1n) {
-        const recoveredCommunityId = Number(nextCommunityId - 1n);
-        console.log("[DeployWizard] Recovered configure-step communityId from nextCommunityId fallback", {
-          recoveredCommunityId,
-          nextCommunityId: Number(nextCommunityId),
-        });
-        return { txHashes, communityId: recoveredCommunityId };
+      if (!recoveredCommunityId) {
+        const nextCommunityId = (await publicClient.readContract({
+          address: sharedInfra.communityRegistry,
+          abi: COMMUNITY_REGISTRY_ABI,
+          functionName: "nextCommunityId",
+        })) as bigint;
+        if (nextCommunityId > 1n) {
+          recoveredCommunityId = Number(nextCommunityId - 1n);
+          console.log("[DeployWizard] Recovered configure-step communityId from nextCommunityId fallback", {
+            recoveredCommunityId,
+            nextCommunityId: Number(nextCommunityId),
+          });
+        }
       }
     }
   }
 
-  if (!runAddresses) {
-    throw new Error("DEPLOY_STACK must complete before wiring. Missing run-scoped deployment addresses.");
+  if (recoveredCommunityId) {
+    const state = await readWiringState(publicClient, sharedInfra, recoveredCommunityId, modulePayload);
+    if (describeWiringGaps(state).length === 0) {
+      return { txHashes, communityId: recoveredCommunityId };
+    }
+    return resumeLegacyWiring(params, context, sharedInfra, recoveredCommunityId, modulePayload, state);
   }
 
   let nextNonce: bigint | undefined;
@@ -1777,36 +1877,6 @@ async function registerAndWireCommunity(
     const current = nextNonce;
     nextNonce += 1n;
     return current;
-  };
-
-  const treasuryVault = requireAddressArg(context.config.treasuryVault, "treasury vault");
-  const modulePayload = {
-    accessManager: runAddresses.accessManager,
-    membershipToken: runAddresses.membershipToken ?? ZERO_ADDRESS,
-    governor: runAddresses.governor,
-    timelock: runAddresses.timelock,
-    countingMultiChoice: runAddresses.countingMultiChoice ?? ZERO_ADDRESS,
-    requestHub: runAddresses.requestHub,
-    draftsManager: runAddresses.draftsManager,
-    engagementsManager: runAddresses.engagements,
-    valuableActionRegistry: runAddresses.valuableActionRegistry,
-    verifierPowerToken: runAddresses.verifierPowerToken,
-    verifierElection: runAddresses.verifierElection,
-    verifierManager: runAddresses.verifierManager,
-    valuableActionSBT: runAddresses.valuableActionSBT,
-    positionManager: runAddresses.positionManager ?? ZERO_ADDRESS,
-    credentialManager: runAddresses.credentialManager ?? ZERO_ADDRESS,
-    cohortRegistry: runAddresses.cohortRegistry ?? ZERO_ADDRESS,
-    investmentCohortManager: runAddresses.investmentCohortManager ?? ZERO_ADDRESS,
-    revenueRouter: runAddresses.revenueRouter,
-    treasuryVault,
-    treasuryAdapter: runAddresses.treasuryAdapter,
-    communityToken: runAddresses.communityToken,
-    paramController: runAddresses.paramController,
-    commerceDisputes: runAddresses.commerceDisputes ?? ZERO_ADDRESS,
-    marketplace: runAddresses.marketplace,
-    housingManager: runAddresses.housingManager ?? ZERO_ADDRESS,
-    projectFactory: runAddresses.projectFactory ?? ZERO_ADDRESS,
   };
 
   const beforeNextId = (await publicClient.readContract({
@@ -1903,41 +1973,109 @@ async function registerAndWireCommunity(
 
   const communityId = decodeCommunityId(registerResult.receipt as { logs?: unknown }, beforeNextId, afterNextId);
 
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.paramController,
-    abi: PARAM_CONTROLLER_ABI,
-    functionName: "setVerifierParams",
-    args: [BigInt(communityId), 5n, 3n, 20n, true, 1000n, 86400n],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+  await sendLegacyWiringTransactions(
+    { publicClient, writeContractAsync, connectedAddress },
+    context,
+    sharedInfra,
+    communityId,
+    modulePayload,
+    txHashes,
+    consumeNonce,
+    {
+      missingModules: Object.keys(modulePayload),
+      revenuePolicySet: false,
+      verifierParamsSet: false,
+      governanceParamsSet: false,
+    },
+  );
 
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.paramController,
-    abi: PARAM_CONTROLLER_ABI,
-    functionName: "setGovernanceParams",
-    args: [BigInt(communityId), 7200n, 86400n, 21600n],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+  return { txHashes, communityId };
+}
 
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.paramController,
-    abi: PARAM_CONTROLLER_ABI,
-    functionName: "setEligibilityParams",
-    args: [BigInt(communityId), 0n, 0n, 0n],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+/**
+ * Sends the legacy post-registration transactions in order, skipping the ones the chain already shows as done.
+ * The eligibility setter writes zeros, so it is inferred done only once the later revenue policy is set.
+ */
+async function sendLegacyWiringTransactions(
+  params: { publicClient: PublicClient; writeContractAsync: WriteContractAsync; connectedAddress?: `0x${string}` },
+  context: DeployContext,
+  sharedInfra: { communityRegistry: `0x${string}`; paramController: `0x${string}` },
+  communityId: number,
+  modulePayload: ModulePayload,
+  txHashes: `0x${string}`[],
+  consumeNonce: () => bigint | undefined,
+  state: WiringState,
+): Promise<void> {
+  const { publicClient, writeContractAsync, connectedAddress } = params;
+  const send = (call: Record<string, unknown>) =>
+    writeAndConfirm(writeContractAsync, publicClient, txHashes, call as never, connectedAddress, consumeNonce(), context.onTxConfirmed);
+  const id = BigInt(communityId);
 
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.paramController,
-    abi: PARAM_CONTROLLER_ABI,
-    functionName: "setRevenuePolicy",
-    args: [BigInt(communityId), 1000n, 2000n, 1n, 5000n],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+  if (!state.verifierParamsSet) {
+    await send({
+      address: sharedInfra.paramController,
+      abi: PARAM_CONTROLLER_ABI,
+      functionName: "setVerifierParams",
+      args: [id, 5n, 3n, 20n, true, 1000n, 86400n],
+    });
+  }
 
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.communityRegistry,
-    abi: COMMUNITY_REGISTRY_ABI,
-    functionName: "setModuleAddresses",
-    args: [BigInt(communityId), modulePayload],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+  if (!state.governanceParamsSet) {
+    await send({
+      address: sharedInfra.paramController,
+      abi: PARAM_CONTROLLER_ABI,
+      functionName: "setGovernanceParams",
+      args: [id, 7200n, 86400n, 21600n],
+    });
+  }
 
+  if (!state.revenuePolicySet) {
+    await send({
+      address: sharedInfra.paramController,
+      abi: PARAM_CONTROLLER_ABI,
+      functionName: "setEligibilityParams",
+      args: [id, 0n, 0n, 0n],
+    });
+
+    await send({
+      address: sharedInfra.paramController,
+      abi: PARAM_CONTROLLER_ABI,
+      functionName: "setRevenuePolicy",
+      args: [id, 1000n, 2000n, 1n, 5000n],
+    });
+  }
+
+  if (state.missingModules.length > 0) {
+    await send({
+      address: sharedInfra.communityRegistry,
+      abi: COMMUNITY_REGISTRY_ABI,
+      functionName: "setModuleAddresses",
+      args: [id, modulePayload],
+    });
+  }
+}
+
+async function resumeLegacyWiring(
+  params: { publicClient: PublicClient; writeContractAsync: WriteContractAsync; connectedAddress?: `0x${string}` },
+  context: DeployContext,
+  sharedInfra: { communityRegistry: `0x${string}`; paramController: `0x${string}` },
+  communityId: number,
+  modulePayload: ModulePayload,
+  state: WiringState,
+): Promise<StepExecutionResult> {
+  const txHashes: `0x${string}`[] = [];
+  let nextNonce = await initializeNonceCursor(params.publicClient, params.connectedAddress);
+  const consumeNonce = () => {
+    if (typeof nextNonce !== "bigint") return undefined;
+    const current = nextNonce;
+    nextNonce += 1n;
+    return current;
+  };
+  console.log("[DeployWizard] Resuming configure-step wiring for registered community", {
+    communityId,
+    gaps: describeWiringGaps(state),
+  });
+  await sendLegacyWiringTransactions(params, context, sharedInfra, communityId, modulePayload, txHashes, consumeNonce, state);
   return { txHashes, communityId };
 }
 
@@ -2809,16 +2947,42 @@ async function executeAdminManagedFinalization(
   return { txHashes };
 }
 
-function executeFinalizeAuthorityMode(
+/**
+ * The bootstrap coordinator is the only holder that can still finish the community wiring, so no role is
+ * revoked until the chain shows the modules registered and the revenue policy set.
+ */
+async function assertCommunityWiringComplete(
+  params: FinalizeParams,
+  session: DeploymentWizardSession,
+  context: DeployContext,
+): Promise<void> {
+  if (!session.communityId) return;
+  const runAddresses = requireRunScopedAddresses(session);
+  const sharedInfra = resolveSharedInfra(context.preflight);
+  const modulePayload = buildModulePayload(runAddresses, requireAddressArg(context.config.treasuryVault, "treasury vault"));
+  const state = await readWiringState(params.publicClient, sharedInfra, session.communityId, modulePayload);
+  const gaps = describeWiringGaps(state);
+  if (gaps.length > 0) {
+    throw new Error(
+      `Cannot finalize authority: community ${session.communityId} wiring is incomplete (${gaps.join("; ")}). No role was revoked; resume the configure step first.`
+    );
+  }
+}
+
+async function executeFinalizeAuthorityMode(
   params: FinalizeParams,
   session: DeploymentWizardSession,
   context: DeployContext,
 ): Promise<StepExecutionResult> {
   // Always the mode persisted with the session; never a default and never the other mode.
   const mode = session.deploymentConfig?.authorityMode;
-  if (mode === "admin_managed") return executeAdminManagedFinalization(params, session, context);
-  if (mode === "governance_managed") return executeGovernanceManagedFinalization(params, session, context);
-  return Promise.reject(new Error("Cannot finalize authority without a selected authority mode."));
+  if (mode !== "admin_managed" && mode !== "governance_managed") {
+    throw new Error("Cannot finalize authority without a selected authority mode.");
+  }
+  await assertCommunityWiringComplete(params, session, context);
+  return mode === "admin_managed"
+    ? executeAdminManagedFinalization(params, session, context)
+    : executeGovernanceManagedFinalization(params, session, context);
 }
 
 export function createFactoryDeployStepExecutor(params: {
