@@ -116,6 +116,7 @@ function buildRecoveredRegisteredSession(params: {
     (session) =>
       session.deployerAddress.toLowerCase() === params.deployerAddress.toLowerCase() &&
       session.chainId === params.chainId &&
+      session.communityId === params.communityId &&
       session.deploymentConfig
   )?.deploymentConfig;
 

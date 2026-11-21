@@ -179,4 +179,54 @@ describe("useDeployResume", () => {
       "0x2222222222222222222222222222222222222222"
     );
   });
+
+  it("does not inherit the authority mode of another community when recovering a registered one", async () => {
+    mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000", chainId: 84532 });
+
+    const other = createInitialSession("0xabc1230000000000000000000000000000000000", 84532);
+    other.communityId = 9;
+    other.status = "completed";
+    other.deploymentConfig = {
+      communityName: "Other",
+      communityDescription: "",
+      communityMetadataUri: "",
+      treasuryVault: "0x1111111111111111111111111111111111111111",
+      treasuryStableToken: "0x2222222222222222222222222222222222222222",
+      supportedTokensCsv: "0x2222222222222222222222222222222222222222",
+      authorityMode: "governance_managed"
+    };
+    saveSession(other);
+
+    const failing = {
+      modules: { valuableActionRegistryMatches: false },
+      vptInitialized: false,
+      roles: {
+        rrPositionManager: false,
+        verifierManagerCallerEngagements: false,
+        rrDistributor: false,
+        commerceDisputesCaller: false,
+        cohortRevenueRouter: false,
+        housingMarketplaceCaller: false,
+        cohortInvestmentRecorder: false,
+        vaIssuerRequestHub: false,
+        vaIssuerPositionManager: false,
+        vaIssuerInvestmentCohortManager: false,
+        vaIssuerCredentialManager: false,
+        membershipMinterEngagements: false,
+        vaSbtManagerRegistry: false
+      },
+      marketplaceActive: false,
+      revenueTreasurySet: false
+    };
+
+    const { result } = renderHook(
+      () => useDeployResume(async () => failing, async () => [3], async () => null),
+      { wrapper: TestWrapper }
+    );
+
+    const resumed = await result.current.resume();
+    expect(resumed?.communityId).toBe(3);
+    expect(resumed?.deploymentConfig?.authorityMode).toBeUndefined();
+    expect(resumed?.deploymentConfig?.communityName).not.toBe("Other");
+  });
 });
