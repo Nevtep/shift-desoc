@@ -23,6 +23,27 @@ those PRs keeps failing, with the last error you can find, and stop.
 
 ## 1. Sync the runtime
 
+First check the working tree. `git reset --hard` deletes uncommitted work, so
+never run it on a dirty checkout:
+
+```bash
+cd /workspace/shift
+if [[ -n "$(git status --porcelain)" ]]; then
+  patch="/opt/data/shift/dirty-checkout-$(date +%s).patch"
+  git diff >"$patch"
+  git status --porcelain
+  echo "DIRTY CHECKOUT: not synced; patch saved at $patch"
+fi
+```
+
+If the checkout is dirty, do not reset or switch branches: report the changed
+files and the patch path, say that skills may be stale (the merged versions are
+not live), and continue with the rest of this cycle without syncing. Ask the
+human to move the change into a worktree under a Linear issue, as
+`shift-learning-governance` describes.
+
+When the checkout is clean, sync it:
+
 ```bash
 cd /workspace/shift
 git fetch origin --prune

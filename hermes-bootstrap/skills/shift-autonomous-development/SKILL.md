@@ -261,6 +261,17 @@ Process the auditor's structured verdict:
 
 Never broaden scope during remediation. Never reuse an audit after a new commit.
 
+Findings of severity nit or advisory never trigger remediation, and a nit never
+forces a re-audit: fixing one needs a new commit, which invalidates the audit
+and starts another round for a cosmetic change. Instead, when a passing audit
+returns nits or advisories, collect all of them in one Linear issue per audited
+PR (project of the audited issue, label `Improvement`, `relatedTo` the audited
+issue), mention that issue in the PR body, and publish the PR as audited.
+Remediation starts only for an `incomplete` verdict with required, in-scope
+items and `remediation.allowed=true`, within the cycle limit. Retry a `blocked`
+verdict only to resolve recoverable preconditions; on `failed`, stop for human
+review.
+
 ## Publish
 
 After a passing audit for current HEAD, load and execute `shift-linear-pr`.
