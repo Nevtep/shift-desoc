@@ -215,6 +215,7 @@ contract Engagements is AccessManaged {
     function verify(uint256 engagementId, bool approve) external onlyAssignedJuror(engagementId) {
         Engagement storage engagement = engagements[engagementId];
         
+        if (msg.sender == engagement.participant) revert Errors.NotAuthorized(msg.sender);
         if (engagement.resolved) revert Errors.InvalidInput("Engagement already resolved");
         if (block.timestamp > engagement.verifyDeadline) revert Errors.InvalidInput("Verification deadline passed");
         if (engagement.hasVoted[msg.sender]) revert Errors.InvalidInput("Juror already voted");
