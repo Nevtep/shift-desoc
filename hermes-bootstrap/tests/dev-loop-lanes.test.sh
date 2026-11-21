@@ -133,4 +133,15 @@ if has "PREFLIGHT=STOP" && grep -q "^REASON=gh pr list failed" <<<"$out"; then
   pass "gh pr list failure stops the loop"
 else fail "gh failure: $out"; fi
 
+# 11. Every document that defines the agent branch policy allows fix/ branches,
+# so a bug taken from the reserved lane can be implemented and published.
+for doc in \
+  "$ROOT/AGENTS.md" \
+  "$ROOT/.github/skills/linear-implement-agent-ready/SKILL.md" \
+  "$ROOT/.github/skills/shift-linear-pr/SKILL.md" \
+  "$ROOT/hermes-bootstrap/skills/shift-autonomous-development/SKILL.md"; do
+  if grep -qF 'fix/SHI-XXX/' "$doc"; then pass "branch policy allows fix/ in ${doc#"$ROOT"/}"
+  else fail "branch policy does not mention fix/SHI-XXX/ in ${doc#"$ROOT"/}"; fi
+done
+
 [[ $failures -eq 0 ]] && echo "all passed" || { echo "$failures failed" >&2; exit 1; }
