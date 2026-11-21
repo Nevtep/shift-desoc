@@ -69,7 +69,7 @@ describe("CommunityList", () => {
     expect(icon).toHaveAttribute("aria-hidden", "true");
     expect(icon).toHaveClass("text-destructive");
     const message = screen.getByText(/Failed to load communities/i);
-    expect(message).toHaveClass("text-lg", "text-destructive");
+    expect(message).toHaveClass("text-base", "text-destructive");
     expect(message).not.toHaveClass("text-sm");
     expect(alert.firstElementChild).toBe(icon);
     expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();

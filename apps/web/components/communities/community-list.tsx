@@ -151,8 +151,8 @@ export function CommunityList() {
         role="alert"
         className="card-tight flex flex-col items-center justify-center gap-4 border-destructive/25 px-4 py-8 text-center sm:py-10"
       >
-        <CircleX className="h-10 w-10 shrink-0 text-destructive sm:h-12 sm:w-12" aria-hidden="true" />
-        <p className="max-w-md text-balance text-lg font-semibold text-destructive sm:text-xl">{t.loadFailed}</p>
+        <CircleX className="h-8 w-8 shrink-0 text-destructive sm:h-9 sm:w-9" aria-hidden="true" />
+        <p className="max-w-md text-balance text-base font-semibold text-destructive sm:text-lg">{t.loadFailed}</p>
         <button
           type="button"
           className="btn-ghost min-h-11 cursor-pointer px-6 text-base"
