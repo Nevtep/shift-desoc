@@ -90,6 +90,8 @@ run_monitor SHIFT_MAX_OPEN_PRS=3 SHIFT_MAX_FEATURE_PRS=2 <<'PRS'
 30 dependabot/npm/foo
 31 fix/hermes-anthropic-provider-only
 32 feature/SHI-1/not-an-agent-prefix
+33 feat/SHI-1abc/non-numeric-issue-id
+34 fix/SHI-/missing-issue-number
 PRS
 if has "PREFLIGHT=GO" && has "LANES=feature,bug" && grep -q "^OPEN_AGENT_PRS=0/3" <<<"$out"; then
   pass "non-agent branches are ignored"

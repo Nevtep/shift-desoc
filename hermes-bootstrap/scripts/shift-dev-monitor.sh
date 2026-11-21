@@ -43,10 +43,11 @@ pr_lines="$(gh pr list --repo "$REPO" --state open --limit 50 \
 feature_nums=(); bug_nums=()
 while read -r num branch; do
   [[ -n "${num:-}" ]] || continue
-  case "$branch" in
-    feat/SHI-[0-9]*/*|imp/SHI-[0-9]*/*) feature_nums+=("$num");;
-    fix/SHI-[0-9]*/*)                   bug_nums+=("$num");;
-  esac
+  if [[ "$branch" =~ ^(feat|imp)/SHI-[0-9]+/ ]]; then
+    feature_nums+=("$num")
+  elif [[ "$branch" =~ ^fix/SHI-[0-9]+/ ]]; then
+    bug_nums+=("$num")
+  fi
 done < <(sort -n <<<"$pr_lines")
 feature_count=${#feature_nums[@]}
 bug_count=${#bug_nums[@]}

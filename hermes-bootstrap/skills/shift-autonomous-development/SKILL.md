@@ -137,8 +137,10 @@ only from an open lane named by the monitor's `LANES=` line:
   open PR or the deploy flow. If the queue has no safe Bug, stop and say so;
   never fill the bug lane with a Feature.
 - Both open: the feature lane applies unless a Bug blocks an open PR or the
-  deploy flow, in which case take that Bug first. `ready_direct` and `ready_spec_backed` are equally
-eligible. If the top candidate is `needs_spec`, run `linear-odd-from-issue`
+  deploy flow, in which case take that Bug first.
+
+`ready_direct` and `ready_spec_backed` are equally eligible. If the top
+candidate is `needs_spec`, run `linear-odd-from-issue`
 first (ODD feature document + Engram mirror, committed on the issue branch),
 then continue into spec-backed implementation in the same cycle; stop after
 the document only if the budget or a blocker says so, and report it.
