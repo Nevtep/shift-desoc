@@ -54,4 +54,15 @@ check "runtime tools: contract changes and their consumers" has "$RUNTIME_TOOLS"
 check "runtime tools: a Feature keeps its consumers in the same issue and PR" has "$RUNTIME_TOOLS" 'Feature.{0,90}consumers are part of the same issue and PR'
 check "runtime tools: no consumer is left neither implemented nor tracked" has "$RUNTIME_TOOLS" 'neither implemented nor tracked'
 
+# 5. In-place skill edits are captured by a monitor, not only forbidden in text.
+WATCHER="$ROOT/hermes-bootstrap/scripts/shift-merge-watch.sh"
+check "the merge watcher runs the skill persist monitor" has "$WATCHER" 'shift-skill-persist\.sh'
+check "the watcher hands the SKILL_PERSIST lines to the agent" has "$WATCHER" 'persist_out'
+check "post-merge reacts to a captured edit (PR_OPENED)" has "$POST_MERGE" 'SKILL_PERSIST=PR_OPENED'
+check "post-merge creates the Linear issue for a captured edit" has "$POST_MERGE" 'SKILL_PERSIST[^.]*Linear issue'
+check "post-merge reports a failed capture to the human" has "$POST_MERGE" 'SKILL_PERSIST=FAILED'
+check "governance points at the monitor for edits made in place" has "$GOVERNANCE" 'shift-skill-persist'
+check "doctor checks the persist monitor is installed" has "$ROOT/scripts/doctor.sh" 'shift-skill-persist\.sh'
+check "README documents the persist monitor and its quiet period" has "$ROOT/README-HERMES-RUNTIME.md" 'SHIFT_SKILL_PERSIST_QUIET_MIN'
+
 [[ $failures -eq 0 ]] && echo "all passed" || { echo "$failures failed" >&2; exit 1; }

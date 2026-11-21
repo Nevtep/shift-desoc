@@ -25,6 +25,11 @@ MAX_ROUNDS="${SHIFT_MERGE_RETRY_ROUNDS:-6}"
 mkdir -p "$STATE_DIR"
 touch "$SEEN" "$PENDING"
 
+# Turn uncommitted skill edits in the live checkout into a PR (best effort, never
+# fails the hand-over). It prints SKILL_PERSIST=... lines only when something
+# happened, so the output stays stable while idle.
+persist_out="$(SHIFT_STATE_DIR="$STATE_DIR" bash "$(dirname "${BASH_SOURCE[0]}")/shift-skill-persist.sh" 2>/dev/null || true)"
+
 # Only PRs merged into main, most recently updated first. A merge always
 # bumps updatedAt, so a long-open PR that merges now is at the top of this
 # window no matter how old its creation date is; 100 covers any downtime.
@@ -49,6 +54,7 @@ while IFS=$'\t' read -r number sha branch title; do
 done <<<"$merged"
 
 echo "STATUS=OK"
+[[ -n "$persist_out" ]] && echo "$persist_out"
 echo "PENDING_MERGED_PRS:"
 if [[ ${#new_lines[@]} -eq 0 ]]; then
   echo "- (none)"
