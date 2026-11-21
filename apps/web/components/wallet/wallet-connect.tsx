@@ -98,7 +98,7 @@ export function WalletConnect({ showAddress }: WalletConnectProps = {}) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const { address, status: accountStatus } = useAccount();
+  const { address, status: accountStatus, chainId: walletChainId } = useAccount();
   const isConnected = accountStatus === "connected";
 
   const { connectors, connect, error: connectError, isPending } = useConnect();
@@ -113,12 +113,14 @@ export function WalletConnect({ showAddress }: WalletConnectProps = {}) {
     isPending: isSwitching
   } = useSwitchChain();
 
-  const activeChain = useMemo(() => chains.find((chain) => chain.id === chainId), [chains, chainId]);
+  // Show the network the wallet is really on, not the app config chain.
+  const shownChainId = walletChainId ?? chainId;
+  const activeChain = useMemo(() => chains.find((chain) => chain.id === shownChainId), [chains, shownChainId]);
   const allowedChains = useMemo(
     () => switchableChains.filter((chain) => preferredChainIds.has(chain.id)),
     [switchableChains]
   );
-  const showChainWarning = activeChain ? !preferredChainIds.has(activeChain.id) : false;
+  const showChainWarning = isConnected && !preferredChainIds.has(shownChainId);
 
   async function handleCopyAddress() {
     if (!address) return;
@@ -165,7 +167,7 @@ export function WalletConnect({ showAddress }: WalletConnectProps = {}) {
                 key={connector.uid}
                 type="button"
                 onClick={() => {
-                  connect({ connector });
+                  connect({ connector, chainId: baseSepolia.id });
                   setIsOpen(false);
                 }}
                 disabled={isPending}

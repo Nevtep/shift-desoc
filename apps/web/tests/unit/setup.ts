@@ -78,5 +78,8 @@ afterEach(() => {
   wagmiMockState.connected = false;
   wagmiMockState.address = undefined;
   wagmiMockState.chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || "84532");
+  wagmiMockState.walletChainId = undefined;
+  wagmiMockState.connectSpy = undefined;
+  wagmiMockState.switchChainSpy = undefined;
 });
 afterAll(() => server.close());

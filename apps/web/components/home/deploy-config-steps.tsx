@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useChainId } from "wagmi";
+import { useChainId, useSwitchChain } from "wagmi";
 import type { CommunityDeploymentConfig } from "../../lib/deploy/config";
 import type { PreflightAssessment } from "../../lib/deploy/types";
 import { getI18n } from "../../lib/i18n";
@@ -86,7 +86,10 @@ export function DeployConfigSteps({
   ] as const;
   const [stepIndex, setStepIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const chainId = useChainId();
+  const configChainId = useChainId();
+  // Network the wallet is on (from preflight); falls back to the app chain before the first preflight.
+  const chainId = preflight?.chainId ?? configChainId;
+  const { switchChain, isPending: isSwitchingChain, error: switchChainError } = useSwitchChain();
   const tokenOptions = STABLE_TOKENS_BY_CHAIN[chainId] ?? STABLE_TOKENS_BY_CHAIN[84532];
   const currentStep = CONFIG_STEPS[stepIndex];
   const isFirstStep = stepIndex === 0;
@@ -291,6 +294,23 @@ export function DeployConfigSteps({
                     </div>
                     {preflight.blockingReasons.length > 0 ? (
                       <>
+                        {preflight.walletConnected && !preflight.supportedNetwork ? (
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              disabled={isSwitchingChain}
+                              onClick={() => switchChain({ chainId: 84532 })}
+                              className="cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+                            >
+                              Cambiar la wallet a Base Sepolia
+                            </button>
+                            {switchChainError ? (
+                              <p className="text-xs text-destructive">
+                                No se pudo cambiar de red. Cambiala desde tu wallet.
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
                         <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
                           {preflight.blockingReasons.map((reason) => (
                             <li key={reason}>{reason}</li>
