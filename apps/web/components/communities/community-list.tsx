@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Building2 } from "lucide-react";
+import { ArrowRight, Building2, CircleX } from "lucide-react";
 import { useMemo } from "react";
 
 import { useGraphQLQuery } from "../../hooks/useGraphQLQuery";
@@ -147,9 +147,17 @@ export function CommunityList() {
 
   if (isError) {
     return (
-      <div className="card-tight space-y-3 border-destructive/25">
-        <p className="text-sm text-destructive">{t.loadFailed}</p>
-        <button type="button" className="btn-ghost cursor-pointer text-sm" onClick={() => void refetch()}>
+      <div
+        role="alert"
+        className="card-tight flex flex-col items-center justify-center gap-4 border-destructive/25 px-4 py-8 text-center sm:py-10"
+      >
+        <CircleX className="h-10 w-10 shrink-0 text-destructive sm:h-12 sm:w-12" aria-hidden="true" />
+        <p className="max-w-md text-balance text-lg font-semibold text-destructive sm:text-xl">{t.loadFailed}</p>
+        <button
+          type="button"
+          className="btn-ghost min-h-11 cursor-pointer px-6 text-base"
+          onClick={() => void refetch()}
+        >
           {t.retry}
         </button>
       </div>
