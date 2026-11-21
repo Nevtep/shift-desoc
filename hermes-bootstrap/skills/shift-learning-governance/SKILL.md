@@ -48,6 +48,18 @@ Applies whenever Hermes changes its own skills or config (`hermes-bootstrap/`,
 `docker/`, `scripts/`, `infra/`) or proposes a change to repo skills
 (`.github/skills/`).
 
+- Never edit files in `/workspace/shift` itself. That checkout must stay clean:
+  the post-merge sync resets it to `origin/main`, so any uncommitted edit there
+  is lost. Make every change in a worktree (`.worktrees/<name>`) on its own
+  branch.
+- Create a Linear issue (project Automation, label `automation`) before the
+  first edit and cite it in the PR. An instruction given by the operator in
+  chat is not an exception: the directive is written down through the same
+  issue, worktree and PR as any other change, never saved in place.
+- If you find an uncommitted change in `/workspace/shift` (for example an edit
+  made before this rule), save `git diff` as a patch outside the checkout,
+  restore the checkout with `git checkout -- <file>`, and replay the patch in a
+  worktree under a Linear issue.
 - Work on a branch named `chore/hermes-self-update/<short-description>`.
 - Make small, coherent commits; every commit message ends with a `Risk:` line
   (tier plus the reason).
