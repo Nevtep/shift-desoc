@@ -39,6 +39,23 @@ if [[ -f "$LOCK" ]]; then
   (( $(date +%s) - $(mtime "$LOCK") < 4 * 3600 )) && exit 0
 fi
 
+# One run at a time: overlapping ticks (a slow gh) must not open two PRs or
+# delete each other's worktree. A lock older than 30 minutes is stale.
+RUN_LOCK="$STATE_DIR/skill-persist.lock"
+tmp_index=""; wt=""; branch=""
+on_exit() {
+  if [[ -n "$tmp_index" ]]; then rm -f "$tmp_index"; fi
+  if [[ -n "$wt" ]]; then git worktree remove --force "$wt" 2>/dev/null || true; fi
+  if [[ -n "$branch" ]]; then git branch -D "$branch" >/dev/null 2>&1 || true; fi
+  rmdir "$RUN_LOCK" 2>/dev/null || true
+}
+if ! mkdir "$RUN_LOCK" 2>/dev/null; then
+  (( $(date +%s) - $(mtime "$RUN_LOCK") > 1800 )) || exit 0
+  rmdir "$RUN_LOCK" 2>/dev/null || true
+  mkdir "$RUN_LOCK" 2>/dev/null || exit 0
+fi
+trap on_exit EXIT
+
 tracked=(); fresh=()
 while IFS= read -r -d '' f; do tracked+=("$f"); done < <(git diff HEAD --name-only -z -- "${PATHS[@]}")
 while IFS= read -r -d '' f; do fresh+=("$f"); done < <(git ls-files --others --exclude-standard -z -- "${PATHS[@]}")
@@ -57,7 +74,6 @@ done
 # the live index is never touched.
 mkdir -p "$OUT_DIR"
 tmp_index="$(mktemp "$OUT_DIR/index.XXXXXX")"
-trap 'rm -f "$tmp_index"' EXIT
 snapshot() {  # print the current skill changes as one patch
   cp "$(git rev-parse --git-path index)" "$tmp_index"
   GIT_INDEX_FILE="$tmp_index" git add -A -- "${PATHS[@]}"
@@ -74,11 +90,19 @@ unchanged_since_snapshot() {  # nothing was edited while the PR was being prepar
   [[ "$(snapshot | sha | cut -c1-64)" == "$hash" ]]
 }
 
-restore_checkout() {
+restore_checkout() (
+  umask 022   # git writes restored files with the process umask: keep them readable
   git reset -q HEAD -- "${PATHS[@]}" 2>/dev/null || true
   for f in ${tracked[@]+"${tracked[@]}"}; do git checkout -q HEAD -- "$f"; done
-  for f in ${fresh[@]+"${fresh[@]}"}; do rm -f -- "$f"; rmdir "$(dirname "$f")" 2>/dev/null || true; done
-}
+  for f in ${fresh[@]+"${fresh[@]}"}; do
+    rm -f -- "$f"
+    d="$(dirname "$f")"   # drop the now-empty directories, never the skill roots
+    while [[ "$d" != "." && "$d" != "hermes-bootstrap/skills" && "$d" != ".github/skills" ]]; do
+      rmdir "$d" 2>/dev/null || break
+      d="$(dirname "$d")"
+    done
+  done
+)
 
 marker="$OUT_DIR/$h12.pr"
 if [[ -f "$marker" ]]; then
@@ -89,12 +113,10 @@ fi
 
 branch="chore/hermes-self-update/skill-edit-$h12"
 wt="$OUT_DIR/wt-$h12"
-cleanup_wt() { git worktree remove --force "$wt" 2>/dev/null || true; }
-failed() { cleanup_wt; say "FAILED $1"; exit 0; }
-trap 'rm -f "$tmp_index"; cleanup_wt' EXIT
+failed() { say "FAILED $1"; exit 0; }   # on_exit removes the worktree and the local branch
 
 git fetch -q origin main || failed "fetch failed"
-cleanup_wt
+git worktree remove --force "$wt" 2>/dev/null || true
 git worktree add -q -B "$branch" "$wt" origin/main || failed "worktree failed"
 git -C "$wt" apply --index "$patch" || failed "patch does not apply to origin/main"
 

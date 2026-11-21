@@ -227,6 +227,63 @@ persist
 if grep -q '^SKILL_PERSIST=FAILED' <<<"$first" && [[ "$first" == "$out" ]]; then pass "a repeated failure prints the same line every tick"
 else fail "repeatfail: first=[$first] second=[$out]"; fi
 
+# 17. The captured-edit line must not be lost when the watcher itself ends in
+#     STATUS=ERROR: the PR is already open and the checkout restored, so the next
+#     tick has nothing left to print and the agent would never create the issue.
+WATCH="$ROOT/hermes-bootstrap/scripts/shift-merge-watch.sh"
+setup watcherr
+printf 'edited by hermes\n' >>"$S/live/$SKILL"
+cat >"$S/bin/gh" <<FAKE
+#!/usr/bin/env bash
+echo "\$*" >>"$S/gh.log"
+case "\$*" in *"--state merged"*) echo "gh: network down" >&2; exit 1;; esac
+if [[ "\$1 \$2" == "pr create" ]]; then echo "https://github.com/x/y/pull/77"; fi
+FAKE
+out="$(env -i PATH="$S/bin:$PATH" HOME="$S" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+  GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com \
+  SHIFT_REPO_DIR="$S/live" SHIFT_STATE_DIR="$S/state" SHIFT_SKILL_PERSIST_QUIET_MIN=0 bash "$WATCH" 2>&1)" || true
+if grep -q '^STATUS=ERROR' <<<"$out" && grep -qx 'SKILL_PERSIST=PR_OPENED #77 files=1' <<<"$out"; then
+  pass "the SKILL_PERSIST line survives a watcher STATUS=ERROR"
+else fail "watcherr: [$out]"; fi
+
+# 18. Restored files keep readable permissions (the monitor runs with umask 077).
+setup perms
+chmod 644 "$S/live/$SKILL"
+printf 'edited by hermes\n' >>"$S/live/$SKILL"
+persist
+if has "SKILL_PERSIST=PR_OPENED #77 files=1" && [[ "$(ls -l "$S/live/$SKILL" | cut -c1-10)" == "-rw-r--r--" ]]; then
+  pass "a restored skill file is not left at mode 600"
+else fail "perms: out=[$out] mode=$(ls -l "$S/live/$SKILL" | cut -c1-10)"; fi
+
+# 19. Overlapping ticks: only one run works at a time (no duplicate PR, no worktree
+#     deleted under the other run).
+setup overlap
+printf 'edited by hermes\n' >>"$S/live/$SKILL"
+cat >"$S/bin/gh" <<FAKE
+#!/usr/bin/env bash
+echo "\$*" >>"$S/gh.log"
+if [[ "\$1 \$2" == "pr create" ]]; then sleep 2; echo "https://github.com/x/y/pull/77"; fi
+FAKE
+( persist; echo "$out" >"$S/first.out" ) &
+bg=$!
+sleep 1
+persist
+second="$out"
+wait "$bg"
+if [[ "$(creates)" == 1 && -z "$second" && "$(cat "$S/first.out")" == "SKILL_PERSIST=PR_OPENED #77 files=1" && -z "$(dirty)" ]]; then
+  pass "overlapping ticks do not duplicate the PR"
+else fail "overlap: creates=$(creates) second=[$second] first=[$(cat "$S/first.out")] dirty=[$(dirty)]"; fi
+
+# 20. A captured new skill leaves no empty directory and no local bot branch behind.
+setup tidy
+mkdir -p "$S/live/hermes-bootstrap/skills/deep/er/skill"
+printf 'brand new skill\n' >"$S/live/hermes-bootstrap/skills/deep/er/skill/SKILL.md"
+persist
+if has "SKILL_PERSIST=PR_OPENED #77 files=1" && [[ ! -e "$S/live/hermes-bootstrap/skills/deep" ]] \
+  && [[ -z "$(git -C "$S/live" branch --list 'chore/hermes-self-update/*')" ]]; then
+  pass "no empty directory and no local bot branch remain"
+else fail "tidy: out=[$out] dirs=$(ls "$S/live/hermes-bootstrap/skills") branches=[$(git -C "$S/live" branch --list 'chore/*')]"; fi
+
 # 14. The merge watcher runs the monitor: its output is unchanged while idle and
 #     carries the SKILL_PERSIST line, right after STATUS=OK, when an edit is captured.
 WATCH="$ROOT/hermes-bootstrap/scripts/shift-merge-watch.sh"

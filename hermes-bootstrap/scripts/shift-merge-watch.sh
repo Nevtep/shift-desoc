@@ -39,6 +39,9 @@ if ! merged="$(gh pr list --repo "$REPO" --state merged --base main --limit 100 
       --jq '.[] | "\(.number)\t\(.mergeCommit.oid[0:7])\t\(.headRefName)\t\(.title)"' 2>/dev/null)"; then
   echo "STATUS=ERROR"
   echo "REASON=gh pr list failed (auth or network); nothing handed over"
+  # A captured skill edit was already turned into a PR and the checkout restored:
+  # the next tick has nothing left to print, so report it now or it is lost.
+  [[ -n "$persist_out" ]] && echo "$persist_out"
   exit 0
 fi
 
