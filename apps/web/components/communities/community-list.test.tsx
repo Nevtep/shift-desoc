@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { HttpResponse, graphql } from "msw";
 
@@ -50,5 +51,60 @@ describe("CommunityList", () => {
 
     expect(await screen.findByText(/Failed to load communities/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
+  });
+
+  it("renders the error card centered, with a red icon above a larger message and a centered retry button", async () => {
+    server.use(
+      graphql.query("Communities", () =>
+        HttpResponse.json({ errors: [{ message: "fail" }] }, { status: 500 })
+      )
+    );
+
+    renderWithProviders(<CommunityList />);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveClass("text-center", "items-center");
+    const icon = alert.querySelector("svg");
+    expect(icon).not.toBeNull();
+    expect(icon).toHaveAttribute("aria-hidden", "true");
+    expect(icon).toHaveClass("text-destructive");
+    const message = screen.getByText(/Failed to load communities/i);
+    expect(message).toHaveClass("text-base", "text-destructive");
+    expect(message).not.toHaveClass("text-sm");
+    expect(alert.firstElementChild).toBe(icon);
+    expect(screen.getByRole("button", { name: /Retry/i })).toBeInTheDocument();
+  });
+
+  it("leaves the loading state with an error card when the indexer hangs, and recovers on retry", async () => {
+    let healthy = false;
+    server.use(
+      graphql.query("Communities", async () => {
+        if (!healthy) await new Promise(() => undefined);
+        return HttpResponse.json({
+          data: { communities: { nodes: [fixtures.community], pageInfo: { endCursor: null, hasNextPage: false } } }
+        });
+      })
+    );
+
+    renderWithProviders(<CommunityList />, { requestDeadlineMs: 50 });
+
+    expect(await screen.findByText(/Failed to load communities/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Loading communities/i)).not.toBeInTheDocument();
+
+    healthy = true;
+    await userEvent.click(screen.getByRole("button", { name: /Retry/i }));
+
+    expect(await screen.findByText(fixtures.community.name)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText(/Failed to load communities/i)).not.toBeInTheDocument());
+  });
+
+  it("shows the error card for a 502 from the indexer", async () => {
+    server.use(
+      graphql.query("Communities", () =>
+        HttpResponse.json({ errors: [{ message: "Application failed to respond" }] }, { status: 502 })
+      )
+    );
+    renderWithProviders(<CommunityList />);
+    expect(await screen.findByText(/Failed to load communities/i)).toBeInTheDocument();
   });
 });
