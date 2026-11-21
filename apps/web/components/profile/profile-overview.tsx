@@ -95,7 +95,7 @@ export function ProfileOverview({
 
   const myEngagements = useMemo(() => {
     if (!normalizedAddress) return [];
-    return (engagementsData?.engagements.nodes ?? []).filter((e) => e.claimant.toLowerCase() === normalizedAddress);
+    return (engagementsData?.engagements.nodes ?? []).filter((e) => e.participant.toLowerCase() === normalizedAddress);
   }, [engagementsData?.engagements.nodes, normalizedAddress]);
 
   async function copyAddress() {

@@ -126,23 +126,25 @@ export const fixtures = {
     createdAt: new Date("2024-02-08T00:00:00Z").toISOString()
   },
   engagement: {
+    id: "84532:50",
+    engagementId: 50,
     communityId: 84532,
-    id: "50",
-    valuableActionId: "200",
-    claimant: "0xabc1230000000000000000000000000000000000",
-    status: "Pending",
+    valuableActionId: 200,
+    participant: "0xabc1230000000000000000000000000000000000",
+    status: "PENDING",
     evidenceManifestCid: "claim-manifest-cid",
     submittedAt: new Date("2024-04-01T00:00:00Z").toISOString(),
-    resolvedAt: null,
-    jurorAssignments: [
-      {
-        juror: "0xJUROR000000000000000000000000000000000000",
-        weight: "1",
-        decision: null,
-        decidedAt: null
-      }
-    ]
+    resolvedAt: null
   },
+  engagementJurors: [
+    {
+      id: "84532:50:0xJUROR000000000000000000000000000000000000",
+      juror: "0xJUROR000000000000000000000000000000000000",
+      weight: "1",
+      decision: null,
+      decidedAt: null
+    }
+  ],
   engagementJuror: {
     juror: "0xJUROR000000000000000000000000000000000000",
     weight: "1",
