@@ -61,12 +61,29 @@ Creates or updates two jobs (idempotent, ids written to `/opt/data/shift/jobs.en
 
 | Job | Schedule | Monitor script (no LLM) | Agent runs when |
 | --- | --- | --- | --- |
-| Shift autonomous development loop | daily 06:00 | `shift-dev-monitor.sh`: gh auth, Linear key, cycle lock, open agent PRs `< SHIFT_MAX_OPEN_PRS`, `origin/main` | guard says GO and the day or `origin/main` changed; repeated STOP costs nothing |
+| Shift autonomous development loop | daily 06:00 | `shift-dev-monitor.sh`: gh auth, Linear key, cycle lock, open agent PRs `< SHIFT_MAX_OPEN_PRS` (with feature and bug lanes, see below), `origin/main` | guard says GO and the day or `origin/main` changed; repeated STOP costs nothing |
 | Shift merge watcher | every 5 min | `shift-merge-watch.sh`: PRs merged into `main` and not yet acknowledged (a PR stays pending until the learning skill runs `shift-merge-ack.sh`; retried hourly, 6 rounds max) | a PR merged → `shift-post-merge-learning` (sync checkout, prune worktrees, learn from reviews and post-audit fixes, persist to memory/Engram) → triggers the dev loop |
 
 So the human loop is: review → merge on GitHub → within 5 minutes Hermes
 learns from the merge and starts the next feature, which stops by itself when
 `SHIFT_MAX_OPEN_PRS` agent PRs are already open.
+
+The open-PR limit has lanes, because review capacity (one human reviewer) is
+the real bottleneck and a single cap let feature PRs starve the bug fixes that
+unblock them:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `SHIFT_MAX_OPEN_PRS` | `3` | Total open agent PRs (`feat/`, `imp/` and `fix/` branches named `SHI-<n>/...`). |
+| `SHIFT_MAX_FEATURE_PRS` | `2` | Most feature PRs (`feat/`, `imp/`) open at once, clamped to the total. The rest of the total (`SHIFT_MAX_OPEN_PRS - SHIFT_MAX_FEATURE_PRS`) is reserved for bug PRs (`fix/`); features never take it. |
+
+The defaults (`SHIFT_MAX_OPEN_PRS=3` and `SHIFT_MAX_FEATURE_PRS=2`) give two
+features plus one reserved bug slot. Keep the total at least one above the
+feature cap, otherwise the bug lane is empty. A server `.env.hermes` that still
+sets `SHIFT_MAX_OPEN_PRS` overrides the default. The monitor
+prints `LANES=feature,bug`, `LANES=bug` or stops when none is open, and the
+supervisor selects only an issue of an open lane. Branch conflicts between
+two PRs on the same flow are not detected by the guard.
 
 ## 5. Start
 
