@@ -73,7 +73,7 @@ contract VerifierManagerTest is Test {
         vm.startPrank(governance);
         accessManager.grantRole(accessManager.ADMIN_ROLE(), timelock, 0);
         bytes4[] memory managerSelectors = new bytes4[](2);
-        managerSelectors[0] = bytes4(keccak256("selectJurors(uint256,uint256,uint256,bool)"));
+        managerSelectors[0] = bytes4(keccak256("selectJurors(uint256,uint256,uint256,bool,address)"));
         managerSelectors[1] = bytes4(keccak256("reportFraud(uint256,address[],string)"));
         accessManager.setTargetFunctionRole(
             address(verifierManager),
@@ -166,7 +166,7 @@ contract VerifierManagerTest is Test {
         emit JurorsSelected(claimId, COMMUNITY_ID_1, new address[](0), new uint256[](0), seed, true);
         
         vm.prank(engagementsContract);
-        address[] memory selectedJurors = verifierManager.selectJurors(claimId, panelSize, seed, useWeighting
+        address[] memory selectedJurors = verifierManager.selectJurors(claimId, panelSize, seed, useWeighting, address(0)
         );
         
         assertEq(selectedJurors.length, panelSize);
@@ -189,7 +189,7 @@ contract VerifierManagerTest is Test {
         bool useWeighting = false;
         
         vm.prank(engagementsContract);
-        address[] memory selectedJurors = verifierManager.selectJurors(claimId, panelSize, seed, useWeighting
+        address[] memory selectedJurors = verifierManager.selectJurors(claimId, panelSize, seed, useWeighting, address(0)
         );
         
         assertEq(selectedJurors.length, panelSize);
@@ -202,23 +202,72 @@ contract VerifierManagerTest is Test {
         }
     }
     
+    function testSelectJurorsExcludesParticipantUniform() public {
+        for (uint256 i = 0; i < 8; i++) {
+            vm.prank(engagementsContract);
+            address[] memory selected = verifierManager.selectJurors(900 + i, 4, 1000 + i, false, verifier3);
+            assertEq(selected.length, 4);
+            for (uint256 j = 0; j < selected.length; j++) {
+                assertTrue(selected[j] != verifier3);
+            }
+        }
+    }
+
+    function testSelectJurorsExcludesParticipantWeighted() public {
+        for (uint256 i = 0; i < 8; i++) {
+            vm.prank(engagementsContract);
+            address[] memory selected = verifierManager.selectJurors(950 + i, 4, 2000 + i, true, verifier3);
+            assertEq(selected.length, 4);
+            for (uint256 j = 0; j < selected.length; j++) {
+                assertTrue(selected[j] != verifier3);
+            }
+        }
+    }
+
+    function testSelectJurorsExclusionShrinksPoolBelowPanelSize() public {
+        // 5 eligible, 1 excluded => 4 available, panel of 5 must revert with the post-exclusion pool size
+        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientVerifiers.selector, 4, 5));
+        vm.prank(engagementsContract);
+        verifierManager.selectJurors(970, 5, 12345, false, verifier1);
+    }
+
+    function testSelectJurorsLoneEligibleParticipantReverts() public {
+        address[] memory verifiers = new address[](1);
+        verifiers[0] = verifier1;
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 100;
+        vm.prank(timelock);
+        verifierElection.setVerifierSet(verifiers, weights, REASON_CID);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientVerifiers.selector, 0, 1));
+        vm.prank(engagementsContract);
+        verifierManager.selectJurors(971, 1, 12345, false, verifier1);
+    }
+
+    function testSelectJurorsExcludedNotEligibleLeavesPoolUnchanged() public {
+        address outsider = address(0xBEEF);
+        vm.prank(engagementsContract);
+        address[] memory selected = verifierManager.selectJurors(972, 5, 12345, false, outsider);
+        assertEq(selected.length, 5);
+    }
+
     function testSelectJurorsNonEngagementsReverts() public {
         vm.expectRevert(abi.encodeWithSelector(IAccessManaged.AccessManagedUnauthorized.selector, unauthorizedUser));
         vm.prank(unauthorizedUser);
-        verifierManager.selectJurors(1, 3, 12345, false);
+        verifierManager.selectJurors(1, 3, 12345, false, address(0));
     }
     
     function testSelectJurorsZeroPanelSizeReverts() public {
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Panel size cannot be zero"));
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(1, 0, 12345, false);
+        verifierManager.selectJurors(1, 0, 12345, false, address(0));
     }
     
     function testSelectJurorsInsufficientVerifiersReverts() public {
         // Try to select more jurors than available verifiers
         vm.expectRevert();
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(1, 10, 12345, false); // Only 5 verifiers available
+        verifierManager.selectJurors(1, 10, 12345, false, address(0)); // Only 5 verifiers available
     }
     
     function testSelectJurorsAlreadySelectedReverts() public {
@@ -226,12 +275,12 @@ contract VerifierManagerTest is Test {
         
         // First selection succeeds
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(claimId, 3, 12345, false);
+        verifierManager.selectJurors(claimId, 3, 12345, false, address(0));
         
         // Second selection for same claim should fail
         vm.expectRevert(abi.encodeWithSelector(Errors.InvalidInput.selector, "Jurors already selected for engagement"));
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(claimId, 3, 54321, false);
+        verifierManager.selectJurors(claimId, 3, 54321, false, address(0));
     }
     
     function testSelectJurorsNoEligibleVerifiers() public {
@@ -247,7 +296,7 @@ contract VerifierManagerTest is Test {
 
         vm.expectRevert();
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(1, 3, 12345, false);
+        verifierManager.selectJurors(1, 3, 12345, false, address(0));
     }
     
     /*//////////////////////////////////////////////////////////////
@@ -258,7 +307,7 @@ contract VerifierManagerTest is Test {
         // First select jurors
         uint256 claimId = 1;
         vm.prank(engagementsContract);
-        address[] memory selectedJurors = verifierManager.selectJurors(claimId, 3, 12345, false);
+        address[] memory selectedJurors = verifierManager.selectJurors(claimId, 3, 12345, false, address(0));
         
         // Report some of them as fraudulent
         address[] memory offenders = new address[](2);
@@ -304,7 +353,7 @@ contract VerifierManagerTest is Test {
         // Select jurors
         uint256 claimId = 1;
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(claimId, 3, 12345, false);
+        verifierManager.selectJurors(claimId, 3, 12345, false, address(0));
         
         // Try to report someone who wasn't selected
         address[] memory offenders = new address[](1);
@@ -357,7 +406,7 @@ contract VerifierManagerTest is Test {
         
         // After selection
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(claimId, 3, 12345, false);
+        verifierManager.selectJurors(claimId, 3, 12345, false, address(0));
         
         VerifierManager.JurorSelection memory selectionAfter = verifierManager.getJurorSelection(claimId);
         assertTrue(selectionAfter.completed);
@@ -368,14 +417,14 @@ contract VerifierManagerTest is Test {
 
     function testEntropyDiffersAcrossBlocksWithSameInputSeed() public {
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(701, 3, 11111, true);
+        verifierManager.selectJurors(701, 3, 11111, true, address(0));
         VerifierManager.JurorSelection memory first = verifierManager.getJurorSelection(701);
 
         vm.roll(block.number + 1);
         vm.warp(block.timestamp + 12);
 
         vm.prank(engagementsContract);
-        verifierManager.selectJurors(702, 3, 11111, true);
+        verifierManager.selectJurors(702, 3, 11111, true, address(0));
         VerifierManager.JurorSelection memory second = verifierManager.getJurorSelection(702);
 
         assertTrue(first.seed != second.seed);
@@ -391,7 +440,7 @@ contract VerifierManagerTest is Test {
 
             uint256 claimId = 800 + i;
             vm.prank(engagementsContract);
-            address[] memory selected = verifierManager.selectJurors(claimId, 3, 424242, true);
+            address[] memory selected = verifierManager.selectJurors(claimId, 3, 424242, true, address(0));
 
             bytes32 panelHash = keccak256(abi.encode(selected));
             if (i == 0) {
@@ -417,7 +466,7 @@ contract VerifierManagerTest is Test {
         vm.stopPrank();
         
         vm.prank(engagementsContract);
-        address[] memory selectedJurors = verifierManager.selectJurors(claimId, 3, 12345, false // Even though we pass false, community config should override
+        address[] memory selectedJurors = verifierManager.selectJurors(claimId, 3, 12345, false, address(0) // Even though we pass false, community config should override
         );
         
         assertEq(selectedJurors.length, 3);
@@ -437,7 +486,7 @@ contract VerifierManagerTest is Test {
         
         uint256 claimId = 1;
         vm.prank(engagementsContract);
-        address[] memory selectedJurors = verifierManager.selectJurors(claimId, 3, 12345, true);
+        address[] memory selectedJurors = verifierManager.selectJurors(claimId, 3, 12345, true, address(0));
         
         // Verify selection worked (detailed weight capping is tested in the weighted selection logic)
         assertEq(selectedJurors.length, 3);
@@ -455,7 +504,7 @@ contract VerifierManagerTest is Test {
             uint256 claimId = 1000 + i; // Use different claim IDs
             
             vm.prank(engagementsContract);
-            address[] memory selected = verifierManager.selectJurors(claimId, 1, i + 1, true);
+            address[] memory selected = verifierManager.selectJurors(claimId, 1, i + 1, true, address(0));
             
             // This test verifies the weighted selection functionality works
             assertEq(selected.length, 1);
@@ -471,7 +520,7 @@ contract VerifierManagerTest is Test {
         uint256 panelSize = 5; // Select all available verifiers
         
         vm.prank(engagementsContract);
-        address[] memory selected = verifierManager.selectJurors(claimId, panelSize, 12345, false);
+        address[] memory selected = verifierManager.selectJurors(claimId, panelSize, 12345, false, address(0));
         
         // Verify no duplicates
         for (uint256 i = 0; i < selected.length; i++) {
@@ -509,7 +558,7 @@ contract VerifierManagerTest is Test {
         
         uint256 claimId = 1;
         vm.prank(engagementsContract);
-        address[] memory selected = verifierManager.selectJurors(claimId, 3, 12345, false);
+        address[] memory selected = verifierManager.selectJurors(claimId, 3, 12345, false, address(0));
         
         // Verify banned verifiers are not in the selection
         for (uint256 i = 0; i < selected.length; i++) {
@@ -519,6 +568,23 @@ contract VerifierManagerTest is Test {
         }
     }
     
+    function testAdjustedNewVerifierIsCountedAndSelected() public {
+        address newVerifier = makeAddr("adjustedNewVerifier");
+        vm.prank(timelock);
+        verifierElection.adjustVerifierPower(newVerifier, 120, REASON_CID);
+
+        assertEq(verifierManager.getEligibleVerifierCount(), 6);
+
+        vm.prank(engagementsContract);
+        address[] memory selected = verifierManager.selectJurors(1, 6, 777, false, address(0));
+        assertEq(selected.length, 6);
+        bool found;
+        for (uint256 i = 0; i < selected.length; i++) {
+            if (selected[i] == newVerifier) found = true;
+        }
+        assertTrue(found);
+    }
+
     /*//////////////////////////////////////////////////////////////
                               FUZZ TESTS
     //////////////////////////////////////////////////////////////*/
@@ -529,7 +595,7 @@ contract VerifierManagerTest is Test {
         uint256 claimId = seed % 1000000; // Ensure unique claim ID
         
         vm.prank(engagementsContract);
-        address[] memory selected = verifierManager.selectJurors(claimId, panelSize, seed, false
+        address[] memory selected = verifierManager.selectJurors(claimId, panelSize, seed, false, address(0)
         );
         
         assertEq(selected.length, panelSize);
@@ -549,7 +615,7 @@ contract VerifierManagerTest is Test {
         // First select jurors
         uint256 claimId = seed % 1000000;
         vm.prank(engagementsContract);
-        address[] memory selectedJurors = verifierManager.selectJurors(claimId, 3, seed, false);
+        address[] memory selectedJurors = verifierManager.selectJurors(claimId, 3, seed, false, address(0));
         
         // Create offenders array with selected jurors
         address[] memory offenders = new address[](numOffenders);

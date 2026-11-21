@@ -1,0 +1,4 @@
+# Approvals only count from these people. With "Require review from Code Owners"
+# on the main ruleset, one approval from any of them unblocks a merge; approvals
+# from anyone else (including the bot) do not.
+* @Nevtep @brugiafredo @jp-utrace

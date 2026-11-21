@@ -54,7 +54,8 @@ function loadDraft(address?: `0x${string}`, chainId?: number): CommunityDeployme
   try {
     const raw = window.localStorage.getItem(`${FORM_DRAFT_STORAGE_KEY}:${chainId}:${address.toLowerCase()}`);
     if (!raw) return null;
-    return JSON.parse(raw) as CommunityDeploymentConfig;
+    // Drafts saved before authority mode existed lack it; default to "not chosen".
+    return { ...createDefaultDeploymentConfig(), ...(JSON.parse(raw) as Partial<CommunityDeploymentConfig>) };
   } catch {
     return null;
   }
@@ -112,17 +113,13 @@ export function DeployWizard({ options }: Props) {
     session != null &&
     (session.status === "in-progress" || session.status === "preflight-blocked" || session.status === "failed");
   const showFullScreen = !isCompleted || !completedDismissed;
+  // Knowing whether this wallet already created communities is a convenience hint, never a
+  // precondition for creating one (SHI-138): the entry point renders as soon as the wallet is connected.
   const showHomeView =
     status === "connected" &&
-    !isLoadingMyCommunities &&
     !isDeploying &&
     !isCompleted &&
     (!wizardExpanded || wizardClosed);
-  const showLoadingCheck =
-    status === "connected" &&
-    isLoadingMyCommunities &&
-    !isDeploying &&
-    !isCompleted;
 
   useEffect(() => {
     const draft = loadDraft(address, chainId);
@@ -177,10 +174,16 @@ export function DeployWizard({ options }: Props) {
         hasDeploymentConfig: Boolean(resumed.deploymentConfig)
       });
 
-      const resumeConfig = resumed.deploymentConfig ?? config;
+      // A recovered session may lack a persisted mode: fall back to the form's selection (persisted mode always wins in run()).
+      const resumeConfig = resumed.deploymentConfig
+        ? {
+            ...resumed.deploymentConfig,
+            authorityMode: resumed.deploymentConfig.authorityMode || config.authorityMode
+          }
+        : config;
       if (resumed.deploymentConfig) {
-        setConfig(resumed.deploymentConfig);
-        saveDraft(resumed.deploymentConfig, address, chainId);
+        setConfig(resumeConfig);
+        saveDraft(resumeConfig, address, chainId);
       }
 
       // Resume should continue execution from the first incomplete step.
@@ -269,22 +272,15 @@ export function DeployWizard({ options }: Props) {
     );
   }
 
-  if (showLoadingCheck) {
-    return (
-      <section className="card-tight space-y-3">
-        <p className="text-sm font-medium">{t.checkingTitle}</p>
-        <p className="text-sm text-muted-foreground">{t.checkingBody}</p>
-      </section>
-    );
-  }
-
   if (showHomeView) {
     return (
       <section className="flex flex-col items-center space-y-3 text-center">
         <p className="max-w-xl text-sm text-muted-foreground">
-          {hasCommunities
-            ? t.hasCommunities
-            : t.noCommunities}
+          {isLoadingMyCommunities
+            ? t.checkingTitle
+            : hasCommunities
+              ? t.hasCommunities
+              : t.noCommunities}
         </p>
         <p className="max-w-xl text-sm font-medium text-primary">{t.connectedHint}</p>
         <button
@@ -362,6 +358,7 @@ export function DeployWizard({ options }: Props) {
               <div className="mt-8 flex w-full flex-col items-center gap-8">
                 <DeployVerificationResults
                   results={verificationResults}
+                  authorityMode={session?.deploymentConfig?.authorityMode}
                   isVerifying={
                     (session?.steps ?? []).some(
                       (s) => s.key === "VERIFY_DEPLOYMENT" && s.status === "running"
@@ -370,6 +367,7 @@ export function DeployWizard({ options }: Props) {
                 />
                 <DeployStepList
                   steps={session?.steps ?? []}
+                  authorityMode={session?.deploymentConfig?.authorityMode}
                   betweenTxListAndStepper={
                     (() => {
                       const latestHash = getLatestTxHash(session?.steps ?? []);
@@ -401,7 +399,10 @@ export function DeployWizard({ options }: Props) {
                 <h2 className="text-2xl font-semibold">{t.verification}</h2>
                 <p className="text-sm text-muted-foreground">{t.allChecksPassed}</p>
               </div>
-              <DeployVerificationResults results={verificationResults} />
+              <DeployVerificationResults
+                results={verificationResults}
+                authorityMode={session?.deploymentConfig?.authorityMode}
+              />
               <div className="space-y-4 text-center">
                 <p className="text-lg font-medium text-primary">{t.ready}</p>
                 <div className="flex flex-wrap justify-center gap-3">
@@ -423,7 +424,7 @@ export function DeployWizard({ options }: Props) {
                   ) : null}
                 </div>
               </div>
-              <DeployStepList steps={session?.steps ?? []} />
+              <DeployStepList steps={session?.steps ?? []} authorityMode={session?.deploymentConfig?.authorityMode} />
             </div>
           ) : (
             <>
@@ -461,11 +462,14 @@ export function DeployWizard({ options }: Props) {
                   setWizardExpanded(false);
                 }}
               />
-              <DeployStepList steps={session?.steps ?? []} />
+              <DeployStepList steps={session?.steps ?? []} authorityMode={session?.deploymentConfig?.authorityMode} />
             </>
           )}
           {!isDeploying && !isCompleted && verificationResults.length > 0 ? (
-            <DeployVerificationResults results={verificationResults} />
+            <DeployVerificationResults
+                results={verificationResults}
+                authorityMode={session?.deploymentConfig?.authorityMode}
+              />
           ) : null}
       </div>
     </div>

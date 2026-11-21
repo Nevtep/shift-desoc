@@ -991,8 +991,12 @@ function resolveFactoryAddressesFromPreflight(preflight: PreflightAssessment): F
   };
 }
 
-function resolveBootstrapCoordinatorAddress(): `0x${string}` | undefined {
-  const value = process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ?? FACTORY_ENV_VALUES.bootstrapCoordinator;
+/**
+ * The coordinator persisted with the session (the one that received ADMIN when the run deployed)
+ * wins over the current env value, which can change between sessions.
+ */
+function resolveBootstrapCoordinatorAddress(persisted?: string): `0x${string}` | undefined {
+  const value = persisted || (process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ?? FACTORY_ENV_VALUES.bootstrapCoordinator);
   if (!value) {
     return undefined;
   }
@@ -1618,7 +1622,7 @@ async function executeDeployStackWithFactories(
     }
   }
 
-  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress();
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress(session.bootstrapCoordinator);
   if (bootstrapCoordinator) {
     const coordinatorCode = await publicClient.getBytecode({ address: bootstrapCoordinator });
     if (coordinatorCode && coordinatorCode !== "0x") {
@@ -2742,7 +2746,7 @@ async function executeConfigureAccessPermissions(
     {
       target: verifierManager,
       role: ROLES.VERIFIER_MANAGER_CALLER_ROLE,
-      signatures: ["selectJurors(uint256,uint256,uint256,bool)", "reportFraud(uint256,address[],string)"]
+      signatures: ["selectJurors(uint256,uint256,uint256,bool,address)", "reportFraud(uint256,address[],string)"]
     },
     {
       target: verifierPowerToken,
@@ -2986,7 +2990,7 @@ async function executeConfigureAccessPermissions(
     }
   ] as const;
 
-  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress();
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress(session.bootstrapCoordinator);
   if (!bootstrapCoordinator) {
     throw new Error(
       "Strict configure flow requires NEXT_PUBLIC_BOOTSTRAP_COORDINATOR. Refusing direct role-by-role fallback to preserve minimal transactions."
@@ -3062,7 +3066,7 @@ async function executeConfigureAccessPermissions(
   return { txHashes };
 }
 
-async function executeHandoffAdminToTimelock(
+async function executeGovernanceManagedFinalization(
   params: {
     publicClient: PublicClient;
     writeContractAsync: WriteContractAsync;
@@ -3136,7 +3140,7 @@ async function executeHandoffAdminToTimelock(
     }, connectedAddress, consumeNonce(), context.onTxConfirmed);
   }
 
-  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress();
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress(session.bootstrapCoordinator);
   if (bootstrapCoordinator) {
     const coordinatorHasAdmin = ((await publicClient.readContract({
       address: accessManager,
@@ -3214,6 +3218,88 @@ async function executeHandoffAdminToTimelock(
   return { txHashes };
 }
 
+type FinalizeParams = {
+  publicClient: PublicClient;
+  writeContractAsync: WriteContractAsync;
+  connectedAddress?: `0x${string}`;
+};
+
+/**
+ * Admin-managed outcome: the deployer keeps ADMIN, the timelock must not hold it, and the
+ * deploy-time bootstrap coordinator loses it. Fails closed on any other end state.
+ */
+async function executeAdminManagedFinalization(
+  params: FinalizeParams,
+  session: DeploymentWizardSession,
+  context: DeployContext,
+): Promise<StepExecutionResult> {
+  const txHashes: `0x${string}`[] = [];
+  const { publicClient, writeContractAsync, connectedAddress } = params;
+  if (!session.communityId) {
+    throw new Error("Cannot finalize authority without a registered community ID.");
+  }
+
+  const runAddresses = requireRunScopedAddresses(session);
+  const accessManager = runAddresses.accessManager;
+  const timelock = runAddresses.timelock;
+  const deployer = connectedAddress ?? session.deployerAddress;
+
+  const adminRole = await readAccessManagerAdminRoleWithRetry(publicClient, accessManager).catch(() => {
+    throw new Error(
+      `Invalid AccessManager at ${accessManager}. The stored run address is stale, unavailable on RPC, or not a ShiftAccessManager. Re-run DEPLOY_STACK to refresh addresses.`
+    );
+  });
+
+  const hasAdmin = async (account: `0x${string}`) =>
+    ((await publicClient.readContract({
+      address: accessManager,
+      abi: SHIFT_ACCESS_MANAGER_ABI,
+      functionName: "hasRole",
+      args: [adminRole, account]
+    })) as readonly [boolean, number])[0];
+
+  if (await hasAdmin(timelock)) {
+    throw new Error("Admin-managed finalization failed: timelock holds admin role.");
+  }
+
+  const nonceCursor = await initializeNonceCursor(publicClient, connectedAddress);
+  let nextNonce = nonceCursor;
+  const consumeNonce = () => {
+    if (typeof nextNonce !== "bigint") return undefined;
+    const current = nextNonce;
+    nextNonce += 1n;
+    return current;
+  };
+
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress(session.bootstrapCoordinator);
+  if (bootstrapCoordinator && (await hasAdmin(bootstrapCoordinator))) {
+    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
+      address: accessManager,
+      abi: SHIFT_ACCESS_MANAGER_ABI,
+      functionName: "revokeRole",
+      args: [adminRole, bootstrapCoordinator]
+    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+  }
+
+  if (!(await hasAdmin(deployer))) {
+    throw new Error("Admin-managed finalization failed: deployer wallet does not hold admin role.");
+  }
+
+  return { txHashes };
+}
+
+function executeFinalizeAuthorityMode(
+  params: FinalizeParams,
+  session: DeploymentWizardSession,
+  context: DeployContext,
+): Promise<StepExecutionResult> {
+  // Always the mode persisted with the session; never a default and never the other mode.
+  const mode = session.deploymentConfig?.authorityMode;
+  if (mode === "admin_managed") return executeAdminManagedFinalization(params, session, context);
+  if (mode === "governance_managed") return executeGovernanceManagedFinalization(params, session, context);
+  return Promise.reject(new Error("Cannot finalize authority without a selected authority mode."));
+}
+
 export function createFactoryDeployStepExecutor(params: {
   publicClient: PublicClient;
   writeContractAsync: WriteContractAsync;
@@ -3243,8 +3329,8 @@ export function createFactoryDeployStepExecutor(params: {
             configureResult.deploymentAddresses ?? syntheticSession.deploymentAddresses ?? session.deploymentAddresses,
         };
       }
-      case "HANDOFF_ADMIN_TO_TIMELOCK":
-        return executeHandoffAdminToTimelock(params, session, context);
+      case "FINALIZE_AUTHORITY_MODE":
+        return executeFinalizeAuthorityMode(params, session, context);
       default:
         throw new Error(`Unknown deployment step: ${step}`);
     }

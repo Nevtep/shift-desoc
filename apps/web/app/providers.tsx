@@ -17,6 +17,7 @@ import type { Config as WagmiConfigType } from "wagmi";
 import { WagmiProvider } from "wagmi";
 import { createShiftConfig, getEnv } from "@shift/shared";
 import { installDevEmptyObjectConsoleFilter } from "../lib/dev-quiet-walletconnect";
+import { createDeadlineFetch } from "../lib/graphql/request-deadline";
 import { ToastProvider } from "../components/ui/toaster";
 
 const GraphQLClientContext = createContext<GraphQLClient | null>(null);
@@ -42,11 +43,14 @@ export function useApiBaseUrl() {
 export type ShiftProvidersProps = PropsWithChildren<{
   graphqlUrl: string;
   apiBaseUrl: string;
+  /** Overrides the indexer request deadline (tests). */
+  requestDeadlineMs?: number;
 }>;
 
 export function ShiftProviders({
   graphqlUrl,
   apiBaseUrl,
+  requestDeadlineMs,
   children
 }: ShiftProvidersProps) {
   const [mounted, setMounted] = useState(false);
@@ -62,7 +66,10 @@ export function ShiftProviders({
       })
   );
 
-  const graphClient = useMemo(() => new GraphQLClient(graphqlUrl), [graphqlUrl]);
+  const graphClient = useMemo(
+    () => new GraphQLClient(graphqlUrl, { fetch: createDeadlineFetch(requestDeadlineMs) }),
+    [graphqlUrl, requestDeadlineMs]
+  );
 
   // Defer Wagmi/WalletConnect setup until after mount to avoid setState warnings during hydration.
   useEffect(() => setMounted(true), []);

@@ -137,6 +137,12 @@ function adminTransfer(
 
 ## 🔗 Puntos de Integración
 
+### Padrón canónico de verificadores (SHI-135)
+
+El padrón activo del token (`getCommunityVerifiers`, `getCommunityStats`) es el único padrón canónico; `VerifierElection` deriva de él la
+elegibilidad y las estadísticas. Un `mint`/`batchMint` directo o el destino de `adminTransfer` hace elegible a la dirección de inmediato; un
+vetado sigue excluido porque `VerifierElection` filtra los vetos. Las llamadas directas solo emiten `VerifierGranted`/`VerifierRevoked`.
+
 ### Sincronización VerifierElection
 
 ```solidity

@@ -1,3 +1,7 @@
+// Authority-mode contract (SHI-101): this script verifies the Governance-managed outcome
+// (FINALIZE_AUTHORITY_MODE handoff): timelock holds ADMIN; deployer and bootstrap coordinator do not.
+// Admin-managed communities intentionally fail the timelock/deployer checks here: deployer keeps ADMIN,
+// timelock does not, bootstrap coordinator is revoked. See docs/EN/Layers.md.
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 

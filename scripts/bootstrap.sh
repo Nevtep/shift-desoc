@@ -266,6 +266,11 @@ fi
 mkdir -p "$HERMES_HOME/scripts" "$HERMES_HOME/shift" "$HERMES_HOME/cache/shift"
 install -m 0755 "$BOOTSTRAP"/scripts/shift-*.sh "$HERMES_HOME/scripts/"
 
+# Local voice stack (Piper TTS + faster-whisper STT pin). Idempotent, runs on
+# every boot so fresh volumes and image upgrades converge; it warns instead of
+# failing, since voice must never block a boot.
+bash "$BOOTSTRAP/scripts/shift-voice-setup.sh"
+
 # Initialize Hermes Kanban for durable task/handoff history.
 hermes kanban init || true
 

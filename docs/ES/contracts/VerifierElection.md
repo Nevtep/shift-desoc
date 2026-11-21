@@ -22,6 +22,12 @@ mapping(uint256 => mapping(address => bool)) public bannedVerifiers;     // Veri
 mapping(uint256 => mapping(address => uint64)) public bannedTimestamp;  // Timestamps de baneo para lógica de cooldown
 ```
 
+> **Padrón canónico único (SHI-135).** El padrón no se almacena aquí: el padrón activo de `VerifierPowerToken1155` es la única fuente
+> de verdad. `getVerifierSet()`, `getEligibleVerifiers()`, `getCommunityStats()` y la selección de jurados leen de él, por lo que los
+> totales siempre igualan `totalSupply()` del token, sea cual sea la vía que cambie un balance (`setVerifierSet`, `adjustVerifierPower`,
+> `banVerifiers` o `mint/batchMint/adminTransfer` directos en el token). Un mint directo vuelve elegible a la dirección de inmediato
+> (salvo que esté vetada aquí) y solo emite eventos del token. `setVerifierSet` reemplaza el conjunto completo y sigue rechazando el vacío.
+
 ### Modelo de Gobernanza Solo-Timelock
 
 **Filosofía de Diseño**: Toda la gestión de verificadores requiere aprobación de gobernanza comunitaria a través de ejecución timelock, asegurando supervisión democrática sin barreras económicas para la participación.

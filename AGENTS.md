@@ -37,7 +37,7 @@ Source-of-truth hierarchy for planning and delivery:
 - Milestones are the roadmap phases (Phase 0 → 6). Agents work the lowest open phase first; within a phase, Linear priority ranks the work. Every open issue has a milestone and a priority.
 - **One issue = one testable feature.** A `Feature` is one contract capability delivered as a vertical slice: contract calls → indexer projection/endpoints → Manager route or wizard → a `QA: how to test (Base Sepolia)` section an admin can run. Projections, read models, schemas and hooks are tasks inside the Feature that needs them (ODD `T#` items), never issues of their own. `Improvement` adjusts an existing feature; `Bug` is a defect.
 - Labels: type (`Feature` | `Improvement` | `Bug`), readiness (`workflow:agent-ready` small and directly implementable | `workflow:needs-spec` medium/large, ODD document first | `workflow:backlog` not yet refined), and `domain:contracts` for anything that changes Solidity (skipped by the autonomous loop unless `SHIFT_ALLOW_CONTRACT_ISSUES=true`). `type:*`, `area:*` and `phase:*` are retired.
-- Delivery is one Feature per branch and PR (`feat/SHI-XXX/...` or `imp/SHI-XXX/...`), implemented as work-unit commits from the ODD document when one exists. Issues are not bundled into one PR; a PR that is too small to be a feature means the issue was split wrong — fix the issue, not the PR policy.
+- Delivery is one Feature per branch and PR (`feat/SHI-XXX/...` or `imp/SHI-XXX/...`; a Bug uses `fix/SHI-XXX/...`), implemented as work-unit commits from the ODD document when one exists. Issues are not bundled into one PR; a PR that is too small to be a feature means the issue was split wrong — fix the issue, not the PR policy.
 
 ## ODD Feature Documents
 

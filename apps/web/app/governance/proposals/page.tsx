@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -34,7 +34,7 @@ export default async function ProposalsPage({ searchParams }: PageProps) {
     rawCommunityId && /^\d+$/.test(String(rawCommunityId).trim()) ? String(rawCommunityId).trim() : undefined;
 
   if (communityId) {
-    redirect(communityProposalsPath(communityId));
+    redirect(communityProposalsPath(communityId) as Route);
   }
 
   return (

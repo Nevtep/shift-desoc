@@ -50,7 +50,7 @@ export const ACCESS_WIRING_CHECKS: AccessWiringCheck[] = [
   { targetKey: "verifierElection", signature: "banVerifiers(address[],string)", role: "ADMIN" },
   { targetKey: "verifierElection", signature: "unbanVerifier(address,string)", role: "ADMIN" },
   { targetKey: "verifierElection", signature: "adjustVerifierPower(address,uint256,string)", role: "ADMIN" },
-  { targetKey: "verifierManager", signature: "selectJurors(uint256,uint256,uint256,bool)", role: VERIFIER_MANAGER_CALLER_ROLE },
+  { targetKey: "verifierManager", signature: "selectJurors(uint256,uint256,uint256,bool,address)", role: VERIFIER_MANAGER_CALLER_ROLE },
   { targetKey: "verifierManager", signature: "reportFraud(uint256,address[],string)", role: VERIFIER_MANAGER_CALLER_ROLE },
   { targetKey: "verifierPowerToken", signature: "initializeCommunity(string)", role: "ADMIN" },
   { targetKey: "verifierPowerToken", signature: "adminTransfer(address,address,uint256,string)", role: "ADMIN" },
@@ -148,7 +148,11 @@ export type AccessInspectionRow = {
   status: AccessSignal;
 };
 
+export type OverviewAuthorityMode = "admin_managed" | "governance_managed" | "unavailable";
+
 export type AccessInspection = {
+  /** Same ADMIN-holder probe as the deploy wizard verification: timelock holds ADMIN => governance_managed. */
+  authorityMode: OverviewAuthorityMode;
   overall: AccessSignal;
   timelockAdmin: AccessSignal;
   rows: AccessInspectionRow[];
@@ -160,6 +164,16 @@ function rollUp(signals: AccessSignal[]): AccessSignal {
   if (signals.includes("fail")) return "fail";
   if (signals.length === 0 || signals.includes("unavailable")) return "unavailable";
   return "pass";
+}
+
+/**
+ * Derives the authority mode from the timelock ADMIN read only (assumption: a timelock without ADMIN is
+ * Admin-managed; the browser cannot enumerate other ADMIN holders). Unreadable stays "unavailable".
+ */
+export function deriveAuthorityMode(timelockAdmin: AccessSignal): OverviewAuthorityMode {
+  if (timelockAdmin === "pass") return "governance_managed";
+  if (timelockAdmin === "fail") return "admin_managed";
+  return "unavailable";
 }
 
 export function evaluateAccessInspection(
@@ -224,6 +238,7 @@ export function evaluateAccessInspection(
   ];
 
   return {
+    authorityMode: deriveAuthorityMode(timelockAdmin),
     overall: rollUp([timelockAdmin, ...rows.map((r) => r.status)]),
     timelockAdmin,
     rows,

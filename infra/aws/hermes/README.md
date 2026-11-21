@@ -23,7 +23,8 @@ Set `AWS_PROFILE` / `AWS_REGION` as needed (default region: `us-east-1`).
 ## Deploy
 
 ```bash
-infra/aws/hermes/put-secrets.sh            # uploads .env.hermes; generates dashboard creds
+infra/aws/hermes/put-secrets.sh --dry-run  # shows what would change, writes nothing
+infra/aws/hermes/put-secrets.sh            # writes only new/changed keys; generates dashboard creds
 infra/aws/hermes/deploy.sh devops/hermes-aws   # git ref to run; default main
 infra/aws/hermes/connect.sh logs           # watch first boot (~10-15 min)
 ```
@@ -38,6 +39,11 @@ ssh shift-hermes                        # after ssh-setup.sh (see Operators)
 infra/aws/hermes/update.sh [git-ref]    # pull, re-sync secrets, rebuild, restart
                                         # (a deleted ref falls back to main)
 ```
+
+Every `up` first runs the one-shot `fix-ownership` service, which re-chowns
+`/opt/data/logs` to the `hermes` user. A root-owned `agent.log` (from a root
+`docker exec ... hermes`, or a root-side rotation) would otherwise crash-loop
+the gateway and stop the cron scheduler. Still prefer `docker exec -u hermes`.
 
 Inside the container, finish the one-time steps from `README-HERMES-RUNTIME.md`
 (check `hermes mcp test linear`, run `install-loop.sh`, then `doctor.sh`).

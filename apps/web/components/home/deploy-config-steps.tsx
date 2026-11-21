@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useChainId } from "wagmi";
+import { useChainId, useSwitchChain } from "wagmi";
 import type { CommunityDeploymentConfig } from "../../lib/deploy/config";
 import type { PreflightAssessment } from "../../lib/deploy/types";
 import { getI18n } from "../../lib/i18n";
@@ -40,6 +40,16 @@ function shortenAddress(addr: string): string {
   if (addr.length < 12) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
+
+const AUTHORITY_OPTIONS = [
+  { mode: "admin_managed", titleKey: "authorityAdminManaged", descKey: "authorityAdminManagedDesc", recommended: false },
+  {
+    mode: "governance_managed",
+    titleKey: "authorityGovernanceManaged",
+    descKey: "authorityGovernanceManagedDesc",
+    recommended: true
+  }
+] as const;
 
 type Props = {
   value: CommunityDeploymentConfig;
@@ -82,11 +92,15 @@ export function DeployConfigSteps({
     { key: "name", title: t.stepNameTitle, description: t.stepNameDesc },
     { key: "description", title: t.stepDescriptionTitle, description: t.stepDescriptionDesc },
     { key: "currency", title: t.stepCurrencyTitle, description: t.stepCurrencyDesc },
+    { key: "authority", title: t.stepAuthorityTitle, description: t.stepAuthorityDesc },
     { key: "ready", title: t.stepReadyTitle, description: t.stepReadyDesc }
   ] as const;
   const [stepIndex, setStepIndex] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const chainId = useChainId();
+  const configChainId = useChainId();
+  // Network the wallet is on (from preflight); falls back to the app chain before the first preflight.
+  const chainId = preflight?.chainId ?? configChainId;
+  const { switchChain, isPending: isSwitchingChain, error: switchChainError } = useSwitchChain();
   const tokenOptions = STABLE_TOKENS_BY_CHAIN[chainId] ?? STABLE_TOKENS_BY_CHAIN[84532];
   const currentStep = CONFIG_STEPS[stepIndex];
   const isFirstStep = stepIndex === 0;
@@ -112,6 +126,7 @@ export function DeployConfigSteps({
     if (stepIndex === 0) return value.communityName.trim().length > 0;
     if (stepIndex === 1) return value.communityDescription.trim().length > 0;
     if (stepIndex === 2) return value.treasuryStableToken.trim().length > 0;
+    if (stepIndex === 3) return Boolean(value.authorityMode);
     return false;
   })();
   const preflightPassed = !preflight || preflight.blockingReasons.length === 0;
@@ -120,6 +135,7 @@ export function DeployConfigSteps({
   const canCreate =
     validationErrors.length === 0 &&
     value.treasuryStableToken.trim().length > 0 &&
+    Boolean(value.authorityMode) &&
     (preflightPassed || (designMode && blockedByInsufficientFunds));
 
   function handleNext() {
@@ -226,8 +242,44 @@ export function DeployConfigSteps({
           </div>
         )}
 
+        {currentStep.key === "authority" && (
+          <div role="radiogroup" aria-label={t.stepAuthorityTitle} className="grid grid-cols-1 gap-2">
+            {AUTHORITY_OPTIONS.map((opt) => {
+              const selected = value.authorityMode === opt.mode;
+              return (
+                <button
+                  key={opt.mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => onChange({ ...value, authorityMode: opt.mode })}
+                  className={`cursor-pointer rounded-lg border border-border bg-background/80 px-3 py-2 text-left text-sm transition-colors ${
+                    selected ? "border-primary/50" : "hover:border-primary/30"
+                  }`}
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{t[opt.titleKey]}</span>
+                    {opt.recommended ? (
+                      <span className="text-xs font-medium text-primary">{t.recommended}</span>
+                    ) : null}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">{t[opt.descKey]}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {currentStep.key === "ready" && (
           <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
+            <p className="text-sm">
+              {t.authorityModeSummary}:{" "}
+              {value.authorityMode === "admin_managed"
+                ? t.authorityAdminManaged
+                : value.authorityMode === "governance_managed"
+                  ? t.authorityGovernanceManaged
+                  : "—"}
+            </p>
             {!preflight && !isRefreshing ? (
               <p className="text-sm text-muted-foreground">{t.checking}</p>
             ) : (
@@ -291,6 +343,23 @@ export function DeployConfigSteps({
                     </div>
                     {preflight.blockingReasons.length > 0 ? (
                       <>
+                        {preflight.walletConnected && !preflight.supportedNetwork ? (
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              disabled={isSwitchingChain}
+                              onClick={() => switchChain({ chainId: 84532 })}
+                              className="cursor-pointer rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+                            >
+                              Cambiar la wallet a Base Sepolia
+                            </button>
+                            {switchChainError ? (
+                              <p className="text-xs text-destructive">
+                                No se pudo cambiar de red. Cambiala desde tu wallet.
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
                         <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
                           {preflight.blockingReasons.map((reason) => (
                             <li key={reason}>{reason}</li>
@@ -324,6 +393,9 @@ export function DeployConfigSteps({
         )}
       </div>
 
+      {currentStep.key === "authority" && !value.authorityMode ? (
+        <p className="text-sm text-destructive">{t.selectAuthorityMode}</p>
+      ) : null}
       {validationErrors.length > 0 && currentStep.key === "currency" ? (
         <p className="text-sm text-destructive">{t.selectCurrency}</p>
       ) : null}

@@ -20,6 +20,7 @@ import {
 } from "../lib/deploy/preflight";
 import {
   createMockStepExecutor,
+  mockAuthorityHolders,
   mockReadVerificationSnapshot
 } from "../lib/deploy/mock-step-executor";
 import { readVerificationSnapshot as readVerificationSnapshotFromChain } from "../lib/deploy/onchain";
@@ -39,6 +40,7 @@ import type {
   VerificationSnapshot
 } from "../lib/deploy/types";
 import {
+  applyAuthorityModeToSteps,
   createInitialSession,
   isCreatedState,
   nextRunnableStep,
@@ -48,10 +50,13 @@ import {
 } from "../lib/deploy/wizard-machine";
 import { allVerificationChecksPassed, evaluateVerificationSnapshot } from "../lib/deploy/verification";
 
+type AuthorityProbe = Parameters<typeof readVerificationSnapshotFromChain>[4];
+
 export type VerificationSnapshotReader = (
   communityId: number,
   chainId: number,
-  deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"]
+  deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"],
+  authorityProbe?: AuthorityProbe
 ) => Promise<VerificationSnapshot>;
 
 export type UseDeployWizardOptions = {
@@ -81,10 +86,13 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
   const supportedChainIds = options.supportedChainIds ?? DEFAULT_SUPPORTED_CHAIN_IDS;
   const estimateInput = options.estimateInput;
   const designMode = options.designMode ?? false;
-  const { status, address } = useAccount();
+  const { status, address, chainId: walletChainId } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const { data: walletClient } = useWalletClient();
   const chainId = useChainId();
+  // Network the wallet is really on. `useChainId()` is the app config chain and never reflects the wallet:
+  // Rabby connects on Ethereum by default, so deploying with it needs the wallet chain, not the config chain.
+  const effectiveWalletChainId = walletChainId ?? chainId;
   const cachedPublicClient = useCachedPublicClient();
   const publicClient = cachedPublicClient.raw;
 
@@ -137,7 +145,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     const assessment = buildPreflightAssessment({
       walletConnected: connected,
       connectedAddress: address,
-      chainId,
+      chainId: effectiveWalletChainId,
       supportedChainIds,
       sharedInfra,
       funding
@@ -152,12 +160,12 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       blockingReasons: assessment.blockingReasons
     });
     return assessment;
-  }, [address, cachedPublicClient, chainId, estimateInput, publicClient, status, supportedChainIds]);
+  }, [address, cachedPublicClient, chainId, effectiveWalletChainId, estimateInput, publicClient, status, supportedChainIds]);
 
   useEffect(() => {
     if (!publicClient) return;
 
-    const key = `${chainId}:${status}:${address ?? ""}`;
+    const key = `${chainId}:${effectiveWalletChainId}:${status}:${address ?? ""}`;
     if (lastAutoPreflightKey.current === key) return;
     lastAutoPreflightKey.current = key;
 
@@ -167,7 +175,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       status
     });
     void runPreflight();
-  }, [address, chainId, publicClient, runPreflight, status]);
+  }, [address, chainId, effectiveWalletChainId, publicClient, runPreflight, status]);
 
   const runVerification = useCallback(
     async (activeSession: DeploymentWizardSession) => {
@@ -182,18 +190,42 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
         chainId
       });
 
+      const authorityMode = activeSession.deploymentConfig?.authorityMode || undefined;
+      const authorityProbe: AuthorityProbe | undefined = authorityMode
+        ? {
+            deployer: activeSession.deployerAddress,
+            bootstrapCoordinator: (activeSession.bootstrapCoordinator ||
+              process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ||
+              undefined) as `0x${string}` | undefined
+          }
+        : undefined;
       const reader =
         options.readVerificationSnapshot ??
         (options.designMode
-          ? mockReadVerificationSnapshot
+          ? async (communityId: number, currentChainId: number) => ({
+              ...(await mockReadVerificationSnapshot(communityId, currentChainId)),
+              ...(authorityMode ? { authority: mockAuthorityHolders(authorityMode) } : {})
+            })
           : async (
             communityId: number,
             currentChainId: number,
-            deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"]
+            deploymentAddresses?: DeploymentWizardSession["deploymentAddresses"],
+            probe?: AuthorityProbe
           ) =>
-              readVerificationSnapshotFromChain(publicClient!, currentChainId, communityId, deploymentAddresses));
-      const snapshot = await reader(activeSession.communityId, chainId, activeSession.deploymentAddresses);
-      const results = evaluateVerificationSnapshot(snapshot);
+              readVerificationSnapshotFromChain(
+                publicClient!,
+                currentChainId,
+                communityId,
+                deploymentAddresses,
+                probe
+              ));
+      const snapshot = await reader(
+        activeSession.communityId,
+        chainId,
+        activeSession.deploymentAddresses,
+        authorityProbe
+      );
+      const results = evaluateVerificationSnapshot(snapshot, authorityMode);
       setVerificationResults(results);
       log("Verification checks completed", {
         totalChecks: results.length,
@@ -205,12 +237,21 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     [chainId, options, publicClient]
   );
 
-  const run = useCallback(async (config: CommunityDeploymentConfig, resumeSession?: DeploymentWizardSession) => {
+  const run = useCallback(async (formConfig: CommunityDeploymentConfig, resumeSession?: DeploymentWizardSession) => {
     if (runInFlightRef.current) {
       setError("A deployment run is already in progress. Wait for it to finish.");
       log("Start deploy ignored: run already in progress");
       return;
     }
+
+    // A resumed compatible session keeps the authority mode it started with; the form cannot change it.
+    const persistedMode =
+      resumeSession && isSessionCompatibleWithCurrentWizard(resumeSession)
+        ? resumeSession.deploymentConfig?.authorityMode
+        : undefined;
+    const config: CommunityDeploymentConfig = persistedMode
+      ? { ...formConfig, authorityMode: persistedMode }
+      : formConfig;
 
     runInFlightRef.current = true;
     setIsRunning(true);
@@ -257,6 +298,10 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       let active: DeploymentWizardSession = {
         ...initial,
         deploymentConfig: { ...config },
+        bootstrapCoordinator: (initial.bootstrapCoordinator ||
+          process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ||
+          undefined) as `0x${string}` | undefined,
+        steps: applyAuthorityModeToSteps(initial.steps, config.authorityMode),
         status: "in-progress",
         updatedAt: new Date().toISOString()
       };
@@ -466,7 +511,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       runInFlightRef.current = false;
       setIsRunning(false);
     }
-  }, [address, chainId, createSession, options, publicClient, runPreflight, runVerification, writeContractAsync]);
+  }, [address, chainId, createSession, options, publicClient, runPreflight, runVerification, walletClient, writeContractAsync]);
 
   const resumeCandidate = useMemo(() => {
     if (!address) return null;
@@ -512,6 +557,7 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
     resumeCandidate,
     error,
     isRunning,
+    walletChainId: effectiveWalletChainId,
     runPreflight,
     run,
     setSession,

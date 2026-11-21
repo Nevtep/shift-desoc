@@ -12,11 +12,26 @@ interface IVPT1155 {
     function batchBurn(address[] calldata from, uint256[] calldata amounts, string calldata reasonCID) external;
     function balanceOf(address account, uint256 id) external view returns (uint256);
     function hasVerifierPower(address account) external view returns (bool);
+    function totalSupply() external view returns (uint256);
+    function getCommunityVerifiers(uint256 startIndex, uint256 maxResults) external view returns (
+        address[] memory verifiers,
+        uint256[] memory powers,
+        bool hasMore
+    );
+    function getCommunityStats() external view returns (
+        uint256 totalVerifiers,
+        uint256 totalPower,
+        uint256 averagePower
+    );
 }
 
 /// @title VerifierElection
 /// @notice Manages verifier election and governance for a single community verifier power token instance
-/// @dev Only timelock can execute verifier management functions
+/// @dev Only timelock can execute verifier management functions.
+/// The VPT token's active roster is the single canonical verifier roster: eligibility, `getVerifierSet`
+/// and `getCommunityStats` are all derived from it, so any path that changes a balance (this contract,
+/// direct `mint`/`batchMint`, `adminTransfer`) is reflected without a second hand-maintained list.
+/// Bans remain Election state and are filtered out of eligibility.
 contract VerifierElection is AccessManaged {
     /// @notice Verifier power token contract
     IVPT1155 public immutable vpt;
@@ -24,11 +39,11 @@ contract VerifierElection is AccessManaged {
     /// @notice Immutable community scope for this module instance.
     uint256 public immutable communityId;
 
-    /// @notice Verifier set information for the local community
+    /// @notice Page size used when reading the token roster
+    uint256 internal constant ROSTER_PAGE = 100;
+
+    /// @notice Verifier set metadata (the roster itself lives in the VPT token)
     struct VerifierSet {
-        address[] verifiers;
-        mapping(address => uint256) powers;
-        uint256 totalPower;
         uint64 lastUpdated;
         string lastReasonCID;
     }
@@ -92,6 +107,9 @@ contract VerifierElection is AccessManaged {
             revert Errors.InvalidInput("Empty verifier set");
         }
 
+        // Snapshot the canonical roster before minting so directly-minted holders are also replaced
+        (address[] memory oldVerifiers,) = _roster();
+
         uint256 newTotalPower = 0;
 
         for (uint256 i = 0; i < addrs.length; i++) {
@@ -110,11 +128,9 @@ contract VerifierElection is AccessManaged {
                 vpt.burn(addrs[i], currentPower - targetPower, reasonCID);
             }
 
-            verifierSet.powers[addrs[i]] = targetPower;
             newTotalPower += targetPower;
         }
 
-        address[] memory oldVerifiers = verifierSet.verifiers;
         for (uint256 i = 0; i < oldVerifiers.length; i++) {
             address oldVerifier = oldVerifiers[i];
             bool stillInSet = false;
@@ -131,12 +147,9 @@ contract VerifierElection is AccessManaged {
                 if (currentPower > 0) {
                     vpt.burn(oldVerifier, currentPower, reasonCID);
                 }
-                verifierSet.powers[oldVerifier] = 0;
             }
         }
 
-        verifierSet.verifiers = addrs;
-        verifierSet.totalPower = newTotalPower;
         verifierSet.lastUpdated = uint64(block.timestamp);
         verifierSet.lastReasonCID = reasonCID;
 
@@ -162,8 +175,6 @@ contract VerifierElection is AccessManaged {
             uint256 currentPower = vpt.balanceOf(offender, communityId);
             if (currentPower > 0) {
                 vpt.burn(offender, currentPower, reasonCID);
-                verifierSet.totalPower -= verifierSet.powers[offender];
-                verifierSet.powers[offender] = 0;
             }
         }
 
@@ -210,12 +221,9 @@ contract VerifierElection is AccessManaged {
             vpt.burn(verifier, currentPower - newPower, reasonCID);
         }
 
-        uint256 oldPower = verifierSet.powers[verifier];
-        verifierSet.powers[verifier] = newPower;
-        verifierSet.totalPower = verifierSet.totalPower - oldPower + newPower;
         verifierSet.lastUpdated = uint64(block.timestamp);
 
-        emit VerifierPowerAdjusted(communityId, verifier, oldPower, newPower, reasonCID);
+        emit VerifierPowerAdjusted(communityId, verifier, currentPower, newPower, reasonCID);
     }
 
     /// @notice Get verifier set information for a community
@@ -231,13 +239,8 @@ contract VerifierElection is AccessManaged {
         uint64 lastUpdated,
         string memory lastReasonCID
     ) {
-        verifiers = verifierSet.verifiers;
-        powers = new uint256[](verifiers.length);
-        for (uint256 i = 0; i < verifiers.length; i++) {
-            powers[i] = verifierSet.powers[verifiers[i]];
-        }
-
-        totalPower = verifierSet.totalPower;
+        (verifiers, powers) = _roster();
+        totalPower = vpt.totalSupply();
         lastUpdated = verifierSet.lastUpdated;
         lastReasonCID = verifierSet.lastReasonCID;
     }
@@ -266,13 +269,11 @@ contract VerifierElection is AccessManaged {
         address[] memory eligibleVerifiers,
         uint256[] memory eligiblePowers
     ) {
-        address[] memory allVerifiers = verifierSet.verifiers;
+        (address[] memory allVerifiers, uint256[] memory allPowers) = _roster();
 
         uint256 eligibleCount = 0;
         for (uint256 i = 0; i < allVerifiers.length; i++) {
-            address verifier = allVerifiers[i];
-            uint256 power = vpt.balanceOf(verifier, communityId);
-            if (power > 0 && !_bannedVerifiers[verifier]) {
+            if (allPowers[i] > 0 && !_bannedVerifiers[allVerifiers[i]]) {
                 eligibleCount++;
             }
         }
@@ -282,11 +283,9 @@ contract VerifierElection is AccessManaged {
 
         uint256 index = 0;
         for (uint256 i = 0; i < allVerifiers.length; i++) {
-            address verifier = allVerifiers[i];
-            uint256 power = vpt.balanceOf(verifier, communityId);
-            if (power > 0 && !_bannedVerifiers[verifier]) {
-                eligibleVerifiers[index] = verifier;
-                eligiblePowers[index] = power;
+            if (allPowers[i] > 0 && !_bannedVerifiers[allVerifiers[i]]) {
+                eligibleVerifiers[index] = allVerifiers[i];
+                eligiblePowers[index] = allPowers[i];
                 index++;
             }
         }
@@ -304,8 +303,8 @@ contract VerifierElection is AccessManaged {
     }
 
     /// @notice Get community verifier statistics
-    /// @return totalVerifiers Number of verifiers in set
-    /// @return activeVerifiers Number of verifiers with power > 0
+    /// @return totalVerifiers Number of verifiers in the token roster
+    /// @return activeVerifiers Number of verifiers with power > 0 (equal to totalVerifiers)
     /// @return totalPower Total power distributed
     /// @return averagePower Average power per active verifier
     function getCommunityStats() external view returns (
@@ -314,17 +313,29 @@ contract VerifierElection is AccessManaged {
         uint256 totalPower,
         uint256 averagePower
     ) {
-        address[] memory allVerifiers = verifierSet.verifiers;
-        totalVerifiers = allVerifiers.length;
-        totalPower = verifierSet.totalPower;
+        // Token roster members always hold power > 0, so total == active.
+        (totalVerifiers, totalPower, averagePower) = vpt.getCommunityStats();
+        activeVerifiers = totalVerifiers;
+    }
 
-        for (uint256 i = 0; i < allVerifiers.length; i++) {
-            if (vpt.balanceOf(allVerifiers[i], communityId) > 0) {
-                activeVerifiers++;
+    /// @dev Reads the full active roster from the VPT token in bounded pages.
+    function _roster() internal view returns (address[] memory verifiers, uint256[] memory powers) {
+        (uint256 count,,) = vpt.getCommunityStats();
+        verifiers = new address[](count);
+        powers = new uint256[](count);
+
+        uint256 filled = 0;
+        bool hasMore = count > 0;
+        while (hasMore) {
+            (address[] memory pageV, uint256[] memory pageP, bool more) =
+                vpt.getCommunityVerifiers(filled, ROSTER_PAGE);
+            for (uint256 i = 0; i < pageV.length; i++) {
+                verifiers[filled + i] = pageV[i];
+                powers[filled + i] = pageP[i];
             }
+            filled += pageV.length;
+            hasMore = more && pageV.length > 0;
         }
-
-        averagePower = activeVerifiers > 0 ? totalPower / activeVerifiers : 0;
     }
 
     function bannedVerifiers(address verifier) external view returns (bool) {

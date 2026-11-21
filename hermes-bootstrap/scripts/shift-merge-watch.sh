@@ -25,6 +25,11 @@ MAX_ROUNDS="${SHIFT_MERGE_RETRY_ROUNDS:-6}"
 mkdir -p "$STATE_DIR"
 touch "$SEEN" "$PENDING"
 
+# Turn uncommitted skill edits in the live checkout into a PR (best effort, never
+# fails the hand-over). It prints SKILL_PERSIST=... lines only when something
+# happened, so the output stays stable while idle.
+persist_out="$(SHIFT_STATE_DIR="$STATE_DIR" bash "$(dirname "${BASH_SOURCE[0]}")/shift-skill-persist.sh" 2>/dev/null || true)"
+
 # Only PRs merged into main, most recently updated first. A merge always
 # bumps updatedAt, so a long-open PR that merges now is at the top of this
 # window no matter how old its creation date is; 100 covers any downtime.
@@ -34,6 +39,9 @@ if ! merged="$(gh pr list --repo "$REPO" --state merged --base main --limit 100 
       --jq '.[] | "\(.number)\t\(.mergeCommit.oid[0:7])\t\(.headRefName)\t\(.title)"' 2>/dev/null)"; then
   echo "STATUS=ERROR"
   echo "REASON=gh pr list failed (auth or network); nothing handed over"
+  # A captured skill edit was already turned into a PR and the checkout restored:
+  # the next tick has nothing left to print, so report it now or it is lost.
+  [[ -n "$persist_out" ]] && echo "$persist_out"
   exit 0
 fi
 
@@ -49,6 +57,7 @@ while IFS=$'\t' read -r number sha branch title; do
 done <<<"$merged"
 
 echo "STATUS=OK"
+[[ -n "$persist_out" ]] && echo "$persist_out"
 echo "PENDING_MERGED_PRS:"
 if [[ ${#new_lines[@]} -eq 0 ]]; then
   echo "- (none)"
