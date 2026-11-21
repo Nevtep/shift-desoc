@@ -600,6 +600,23 @@ describe("FINALIZE_AUTHORITY_MODE branches", () => {
     delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
   });
 
+  it("admin_managed: revokes the coordinator persisted with the session even if the env value changed", async () => {
+    const CHANGED = "0x3000000000000000000000000000000000000003";
+    process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = CHANGED;
+    const { executor, writeContractAsync } = setup({
+      [DEPLOYER]: true,
+      [COORDINATOR]: true,
+      [CHANGED]: false,
+      [TIMELOCK]: false
+    });
+    const session = sessionFor("admin_managed");
+    session.bootstrapCoordinator = COORDINATOR;
+    await executor("FINALIZE_AUTHORITY_MODE", session, makeContext());
+    const calls = writeContractAsync.mock.calls.map(([c]) => [c.functionName, String(c.args[1]).toLowerCase()]);
+    expect(calls).toEqual([["revokeRole", COORDINATOR]]);
+    delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+
   it("governance_managed: grants timelock, revokes coordinator then deployer (same calls as the legacy handoff)", async () => {
     const { executor, writeContractAsync } = setup({
       [DEPLOYER]: true,

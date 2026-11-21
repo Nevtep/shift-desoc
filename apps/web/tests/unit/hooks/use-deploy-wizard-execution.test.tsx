@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { useDeployWizard } from "../../../hooks/useDeployWizard";
 import { applyAuthorityModeToSteps, createInitialSession, transitionStep } from "../../../lib/deploy/wizard-machine";
@@ -358,5 +358,102 @@ describe("useDeployWizard execution flow", () => {
     expect(seen.map((e) => e.step)).not.toContain("DEPLOY_STACK");
     expect(result.current.session?.status).toBe("completed");
     expect(result.current.session?.deploymentConfig?.authorityMode).toBe("admin_managed");
+  });
+
+  describe("bootstrap coordinator identity", () => {
+    const ORIGINAL = "0x2000000000000000000000000000000000000002";
+    const CHANGED = "0x3000000000000000000000000000000000000003";
+    const holders = { deployer: true, timelock: false, bootstrapCoordinator: false };
+
+    function snapshot() {
+      return {
+        communityId: 77,
+        modules: { valuableActionRegistryMatches: true },
+        vptInitialized: true,
+        roles: {
+          rrPositionManager: true,
+          verifierManagerCallerEngagements: true,
+          rrDistributor: true,
+          commerceDisputesCaller: true,
+          cohortRevenueRouter: true,
+          housingMarketplaceCaller: true,
+          cohortInvestmentRecorder: true,
+          vaIssuerRequestHub: true,
+          vaIssuerPositionManager: true,
+          vaIssuerInvestmentCohortManager: true,
+          vaIssuerCredentialManager: true,
+          membershipMinterEngagements: true,
+          vaSbtManagerRegistry: true
+        },
+        marketplaceActive: true,
+        revenueTreasurySet: true,
+        authority: holders
+      };
+    }
+
+    afterEach(() => {
+      delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+    });
+
+    it("verifies the coordinator persisted with the session, not the current env value", async () => {
+      mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000", chainId: 84532 });
+      process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = CHANGED;
+
+      const probes: Array<{ bootstrapCoordinator?: string } | undefined> = [];
+      const sessionsSeen: Array<string | undefined> = [];
+      const { result } = renderHook(
+        () =>
+          useDeployWizard({
+            stepExecutor: async (_step, session) => {
+              sessionsSeen.push((session as any).bootstrapCoordinator);
+              return {};
+            },
+            readVerificationSnapshot: async (_c: number, _ch: number, _a: unknown, probe?: any) => {
+              probes.push(probe);
+              return snapshot();
+            }
+          }),
+        { wrapper: TestWrapper }
+      );
+
+      const interrupted = createInitialSession("0xabc1230000000000000000000000000000000000", 84532);
+      interrupted.communityId = 77;
+      interrupted.status = "failed";
+      interrupted.deploymentConfig = { ...validConfig(), authorityMode: "admin_managed" };
+      (interrupted as any).bootstrapCoordinator = ORIGINAL;
+      interrupted.steps = ["PRECHECKS", "DEPLOY_STACK", "CONFIGURE_ACCESS_PERMISSIONS"].reduce(
+        (steps, key) => transitionStep(steps, key as any, "succeeded"),
+        applyAuthorityModeToSteps(interrupted.steps, "admin_managed")
+      );
+
+      await act(async () => {
+        await result.current.run({ ...validConfig(), authorityMode: "admin_managed" }, interrupted);
+      });
+
+      expect(sessionsSeen).toContain(ORIGINAL);
+      expect(sessionsSeen).not.toContain(CHANGED);
+      expect(probes.length).toBeGreaterThan(0);
+      expect(probes.every((probe) => probe?.bootstrapCoordinator === ORIGINAL)).toBe(true);
+    });
+
+    it("persists the coordinator in force when a fresh deployment starts", async () => {
+      mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000", chainId: 84532 });
+      process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR = ORIGINAL;
+
+      const { result } = renderHook(
+        () =>
+          useDeployWizard({
+            stepExecutor: async (step) => (step === "DEPLOY_STACK" ? { communityId: 77 } : {}),
+            readVerificationSnapshot: async () => snapshot()
+          }),
+        { wrapper: TestWrapper }
+      );
+
+      await act(async () => {
+        await result.current.run({ ...validConfig(), authorityMode: "admin_managed" });
+      });
+
+      expect((result.current.session as any)?.bootstrapCoordinator).toBe(ORIGINAL);
+    });
   });
 });

@@ -194,9 +194,9 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       const authorityProbe: AuthorityProbe | undefined = authorityMode
         ? {
             deployer: activeSession.deployerAddress,
-            bootstrapCoordinator: (process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR || undefined) as
-              | `0x${string}`
-              | undefined
+            bootstrapCoordinator: (activeSession.bootstrapCoordinator ||
+              process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ||
+              undefined) as `0x${string}` | undefined
           }
         : undefined;
       const reader =
@@ -298,6 +298,9 @@ export function useDeployWizard(options: UseDeployWizardOptions = {}) {
       let active: DeploymentWizardSession = {
         ...initial,
         deploymentConfig: { ...config },
+        bootstrapCoordinator: (initial.bootstrapCoordinator ||
+          process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ||
+          undefined) as `0x${string}` | undefined,
         steps: applyAuthorityModeToSteps(initial.steps, config.authorityMode),
         status: "in-progress",
         updatedAt: new Date().toISOString()

@@ -991,8 +991,12 @@ function resolveFactoryAddressesFromPreflight(preflight: PreflightAssessment): F
   };
 }
 
-function resolveBootstrapCoordinatorAddress(): `0x${string}` | undefined {
-  const value = process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ?? FACTORY_ENV_VALUES.bootstrapCoordinator;
+/**
+ * The coordinator persisted with the session (the one that received ADMIN when the run deployed)
+ * wins over the current env value, which can change between sessions.
+ */
+function resolveBootstrapCoordinatorAddress(persisted?: string): `0x${string}` | undefined {
+  const value = persisted || (process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR ?? FACTORY_ENV_VALUES.bootstrapCoordinator);
   if (!value) {
     return undefined;
   }
@@ -1618,7 +1622,7 @@ async function executeDeployStackWithFactories(
     }
   }
 
-  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress();
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress(session.bootstrapCoordinator);
   if (bootstrapCoordinator) {
     const coordinatorCode = await publicClient.getBytecode({ address: bootstrapCoordinator });
     if (coordinatorCode && coordinatorCode !== "0x") {
@@ -2986,7 +2990,7 @@ async function executeConfigureAccessPermissions(
     }
   ] as const;
 
-  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress();
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress(session.bootstrapCoordinator);
   if (!bootstrapCoordinator) {
     throw new Error(
       "Strict configure flow requires NEXT_PUBLIC_BOOTSTRAP_COORDINATOR. Refusing direct role-by-role fallback to preserve minimal transactions."
@@ -3136,7 +3140,7 @@ async function executeGovernanceManagedFinalization(
     }, connectedAddress, consumeNonce(), context.onTxConfirmed);
   }
 
-  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress();
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress(session.bootstrapCoordinator);
   if (bootstrapCoordinator) {
     const coordinatorHasAdmin = ((await publicClient.readContract({
       address: accessManager,
@@ -3267,7 +3271,7 @@ async function executeAdminManagedFinalization(
     return current;
   };
 
-  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress();
+  const bootstrapCoordinator = resolveBootstrapCoordinatorAddress(session.bootstrapCoordinator);
   if (bootstrapCoordinator && (await hasAdmin(bootstrapCoordinator))) {
     await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
       address: accessManager,

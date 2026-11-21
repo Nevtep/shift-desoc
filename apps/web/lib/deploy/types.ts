@@ -87,6 +87,8 @@ export type DeploymentWizardSession = {
   communityId?: number;
   deploymentAddresses?: DeploymentRunAddresses;
   deploymentConfig?: CommunityDeploymentConfig;
+  /** BootstrapCoordinator that received ADMIN for this run; finalization and verification use it, not the current env. */
+  bootstrapCoordinator?: `0x${string}`;
   targetType: "pre-registration" | "registered";
   status: WizardStatus;
   createdAt: string;
