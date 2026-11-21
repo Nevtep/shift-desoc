@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getAbiItem, toFunctionSelector, type Hex } from "viem";
+import { getAbiItem, toFunctionSelector, type Abi, type Hex } from "viem";
 
+import accessManagerArtifact from "../abis/ShiftAccessManager.json" assert { type: "json" };
 import { CONTRACTS } from "../lib/contracts";
 import type { ValuableActionAuthorityMode } from "../lib/community-overview/types";
 
@@ -92,22 +93,7 @@ export const VALUABLE_ACTION_OPERATION_FUNCTION: Record<ValuableActionOperation,
   deactivate: "deactivate",
 };
 
-const ACCESS_MANAGER_CAN_CALL_ABI = [
-  {
-    type: "function",
-    name: "canCall",
-    stateMutability: "view",
-    inputs: [
-      { name: "caller", type: "address" },
-      { name: "target", type: "address" },
-      { name: "selector", type: "bytes4" },
-    ],
-    outputs: [
-      { name: "immediate", type: "bool" },
-      { name: "delay", type: "uint32" },
-    ],
-  },
-] as const;
+const ACCESS_MANAGER_CAN_CALL_ABI = accessManagerArtifact.abi as Abi;
 
 export function resolveValuableActionOperationSelector(operation: ValuableActionOperation): Hex | null {
   const functionName = VALUABLE_ACTION_OPERATION_FUNCTION[operation];

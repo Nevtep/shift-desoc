@@ -6,6 +6,7 @@ import communityRegistryArtifact from "../../abis/CommunityRegistry.json" assert
 import marketplaceArtifact from "../../abis/Marketplace.json" assert { type: "json" };
 import revenueRouterArtifact from "../../abis/RevenueRouter.json" assert { type: "json" };
 import verifierPowerTokenArtifact from "../../abis/VerifierPowerToken1155.json" assert { type: "json" };
+import { ACCESS_MANAGED_AUTHORITY_ABI } from "./compiled-abis";
 import type { AuthorityAdminHolders, DeploymentRunAddresses, VerificationSnapshot } from "./types";
 
 const communityRegistryAbi = communityRegistryArtifact.abi as Abi;
@@ -13,16 +14,6 @@ const accessManagerAbi = accessManagerArtifact.abi as Abi;
 const verifierPowerTokenAbi = verifierPowerTokenArtifact.abi as Abi;
 const marketplaceAbi = marketplaceArtifact.abi as Abi;
 const revenueRouterAbi = revenueRouterArtifact.abi as Abi;
-
-const ACCESS_MANAGED_AUTHORITY_ABI = [
-  {
-    type: "function",
-    name: "authority",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }]
-  }
-] as const satisfies Abi;
 
 const ROLES = {
   COHORT_REVENUE_ROUTER_ROLE: 1n,
