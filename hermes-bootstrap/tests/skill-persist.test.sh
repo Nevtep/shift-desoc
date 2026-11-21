@@ -192,6 +192,41 @@ persist
 if has "SKILL_PERSIST=PR_OPENED #41 files=1" && [[ "$(creates)" == 0 && -z "$(dirty)" ]]; then pass "an existing open PR for the branch is reused"
 else fail "existing: out=[$out] creates=$(creates)"; fi
 
+# 15. An edit made while the PR is being created is in neither the backup nor the
+#     PR, so the checkout must not be restored over it.
+setup race
+printf 'edited by hermes\n' >>"$S/live/$SKILL"
+cat >"$S/bin/gh" <<FAKE
+#!/usr/bin/env bash
+echo "\$*" >>"$S/gh.log"
+if [[ "\$1 \$2" == "pr create" ]]; then
+  printf 'late edit during capture\n' >>"$S/live/$SKILL"
+  echo "https://github.com/x/y/pull/77"
+fi
+FAKE
+persist
+if grep -q '^SKILL_PERSIST=FAILED checkout changed while capturing PR #77' <<<"$out" \
+  && grep -q 'late edit during capture' "$S/live/$SKILL" && [[ -n "$(dirty)" ]]; then
+  pass "an edit made during the capture is not discarded"
+else fail "race: out=[$out] dirty=[$(dirty)]"; fi
+# The next cycle captures the new content (a different hash) as its own PR.
+setup raceretry
+printf 'edited by hermes\n' >>"$S/live/$SKILL"
+persist
+if grep -q '^SKILL_PERSIST=PR_OPENED' <<<"$out"; then pass "an unchanged checkout is still restored after the capture"
+else fail "raceretry: out=[$out]"; fi
+
+# 16. A failure that persists produces the same output on every tick, so Hermes
+#     (which only wakes on a changed output) is woken once, not every 5 minutes.
+setup repeatfail
+printf 'line one MINE\nline two\n' >"$S/live/$SKILL"
+printf 'line one CHANGED UPSTREAM\nline two\n' >"$S/seed/$SKILL"
+git -C "$S/seed" commit -q -am upstream && git -C "$S/seed" push -q origin HEAD:main
+persist; first="$out"
+persist
+if grep -q '^SKILL_PERSIST=FAILED' <<<"$first" && [[ "$first" == "$out" ]]; then pass "a repeated failure prints the same line every tick"
+else fail "repeatfail: first=[$first] second=[$out]"; fi
+
 # 14. The merge watcher runs the monitor: its output is unchanged while idle and
 #     carries the SKILL_PERSIST line, right after STATUS=OK, when an edit is captured.
 WATCH="$ROOT/hermes-bootstrap/scripts/shift-merge-watch.sh"

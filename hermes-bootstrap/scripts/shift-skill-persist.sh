@@ -58,14 +58,21 @@ done
 mkdir -p "$OUT_DIR"
 tmp_index="$(mktemp "$OUT_DIR/index.XXXXXX")"
 trap 'rm -f "$tmp_index"' EXIT
-cp "$(git rev-parse --git-path index)" "$tmp_index"
-GIT_INDEX_FILE="$tmp_index" git add -A -- "${PATHS[@]}"
+snapshot() {  # print the current skill changes as one patch
+  cp "$(git rev-parse --git-path index)" "$tmp_index"
+  GIT_INDEX_FILE="$tmp_index" git add -A -- "${PATHS[@]}"
+  GIT_INDEX_FILE="$tmp_index" git diff --cached --binary HEAD -- "${PATHS[@]}"
+}
 patch_tmp="$(mktemp "$OUT_DIR/patch.XXXXXX")"
-GIT_INDEX_FILE="$tmp_index" git diff --cached --binary HEAD -- "${PATHS[@]}" >"$patch_tmp"
+snapshot >"$patch_tmp"
 [[ -s "$patch_tmp" ]] || { rm -f "$patch_tmp"; exit 0; }
 hash="$(sha <"$patch_tmp" | cut -c1-64)"; h12="${hash:0:12}"
 patch="$OUT_DIR/$h12.patch"
 mv "$patch_tmp" "$patch"; chmod 600 "$patch"   # the backup exists before anything else happens
+
+unchanged_since_snapshot() {  # nothing was edited while the PR was being prepared
+  [[ "$(snapshot | sha | cut -c1-64)" == "$hash" ]]
+}
 
 restore_checkout() {
   git reset -q HEAD -- "${PATHS[@]}" 2>/dev/null || true
@@ -75,7 +82,7 @@ restore_checkout() {
 
 marker="$OUT_DIR/$h12.pr"
 if [[ -f "$marker" ]]; then
-  restore_checkout
+  if unchanged_since_snapshot; then restore_checkout; fi
   say "ALREADY_PROPOSED #$(cat "$marker")"
   exit 0
 fi
@@ -133,5 +140,9 @@ if [[ ! "$num" =~ ^[0-9]+$ ]]; then
 fi
 echo "$num" >"$marker"
 
+# The patch was taken before the fetch, push and gh round trip. An edit made in
+# the meantime is in neither the backup nor the PR: never restore over it. The
+# next cycle captures the new content (a new hash) as its own PR.
+unchanged_since_snapshot || failed "checkout changed while capturing PR #$num; not restored"
 restore_checkout
 say "PR_OPENED #$num files=$count"
