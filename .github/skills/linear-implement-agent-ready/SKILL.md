@@ -33,7 +33,7 @@ Do not use it for umbrellas, unresolved smart-contract architecture decisions, P
 - Normal execution may create/reuse a branch, write files, run validations, and create commits only when supervisor policy allows.
 - Normal execution must not push, open/update PRs, move Linear to review, use closing phrases, or claim the issue is definitively complete.
 - The completeness audit must run in a separate Codex session/thread from the implementer; same-session self-audit is invalid.
-- Branch policy: use/reuse `feat/SHI-XXX/short-description` for features or `imp/SHI-XXX/short-description` for improvements; stop if ownership is ambiguous.
+- Branch policy: use/reuse `feat/SHI-XXX/short-description` for features `imp/SHI-XXX/short-description` for improvements, or `fix/SHI-XXX/short-description` for bugs; stop if ownership is ambiguous.
 - Validation policy: add/update required tests, run the narrowest relevant command, and widen only when evidence requires it.
 - No-side-effect results must include `sideEffects: [{"effect":"none","target":"none","status":"none","summary":"No external side effects were performed."}]`.
 - Codex non-interactive mode: avoid prompts/browser waits; if auth, permissions, installs, or conflicts block progress, return blocked with evidence.

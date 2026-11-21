@@ -12,7 +12,10 @@ metadata:
         description: Absolute path to the Shift repository.
         default: /workspace/shift
       - key: shift.max_open_prs
-        description: Maximum open agent-created PRs before waiting.
+        description: Maximum open agent-created PRs (feature and bug lanes together) before waiting.
+        default: 2
+      - key: shift.max_feature_prs
+        description: Maximum open feature PRs (feat/ and imp/); the rest of max_open_prs is reserved for bug PRs (fix/).
         default: 2
       - key: shift.max_remediations
         description: Maximum bounded remediation cycles per issue.
@@ -112,8 +115,10 @@ claude -p "<lane prompt>" \
    - GitHub read/write works;
    - Engram works;
    - repo-local skills are discoverable;
-   - the number of open branches matching `imp/SHI-*` or `feat/SHI-*` with open
-     PRs is below `${SHIFT_MAX_OPEN_PRS}`.
+   - the number of open branches matching `imp/SHI-*`, `feat/SHI-*` or
+     `fix/SHI-*` with open PRs is below `${SHIFT_MAX_OPEN_PRS}`, and the
+     monitor's `LANES=` line names at least one open lane (see "Analyze and
+     select").
 5. If any required capability is unavailable, record the failure, learn from it
    if novel, and stop without modifying project state.
 
@@ -122,9 +127,17 @@ claude -p "<lane prompt>" \
 Load and execute `linear-development-readiness` in strict read-only mode.
 
 Reason over its structured result. Select only from `recommendedQueue`, and
-take the **top-ranked Feature** (lowest open milestone, then highest Linear
-priority): the goal of a cycle is one finished, admin-testable feature, not
-the smallest possible PR. `ready_direct` and `ready_spec_backed` are equally
+only from an open lane named by the monitor's `LANES=` line:
+
+- `feature` open: take the **top-ranked Feature or Improvement** (lowest open
+  milestone, then highest Linear priority): the goal of a cycle is one
+  finished, admin-testable feature, not the smallest possible PR.
+- Only `bug` open (`LANES=bug`): the feature lane is full and its reserved slot
+  is for fixes, so take the top-ranked **Bug**, preferring one that blocks an
+  open PR or the deploy flow. If the queue has no safe Bug, stop and say so;
+  never fill the bug lane with a Feature.
+- Both open: the feature lane applies unless a Bug blocks an open PR or the
+  deploy flow, in which case take that Bug first. `ready_direct` and `ready_spec_backed` are equally
 eligible. If the top candidate is `needs_spec`, run `linear-odd-from-issue`
 first (ODD feature document + Engram mirror, committed on the issue branch),
 then continue into spec-backed implementation in the same cycle; stop after
@@ -182,7 +195,8 @@ Use `.worktrees/<ISSUE_ID>` inside the repository root.
 
 Create or reuse exactly one issue branch:
 - `feat/SHI-XXX/<slug>` for features;
-- `imp/SHI-XXX/<slug>` for improvements.
+- `imp/SHI-XXX/<slug>` for improvements;
+- `fix/SHI-XXX/<slug>` for bugs (the bug lane of the open-PR limit).
 
 The worktree must start from current `origin/main`, be clean, and have one owner.
 Run `pnpm install --frozen-lockfile` and refresh Gentle's skill registry inside it.
