@@ -576,7 +576,7 @@ contract VerifierManagerTest is Test {
         assertEq(verifierManager.getEligibleVerifierCount(), 6);
 
         vm.prank(engagementsContract);
-        address[] memory selected = verifierManager.selectJurors(1, 6, 777, false);
+        address[] memory selected = verifierManager.selectJurors(1, 6, 777, false, address(0));
         assertEq(selected.length, 6);
         bool found;
         for (uint256 i = 0; i < selected.length; i++) {
