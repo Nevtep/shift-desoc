@@ -4,13 +4,11 @@ export type WagmiMockState = {
   connected: boolean;
   address: `0x${string}` | undefined;
   chainId: number;
-  /** `null` simulates wagmi not having resolved the wallet client yet. */
-  walletClient?: { deployContract: (...args: any[]) => Promise<`0x${string}`> } | null;
-  walletClientRefetch?: () => Promise<{ data: unknown }>;
-};
-
-const defaultWalletClient = {
-  deployContract: () => Promise.resolve("0x1234" as `0x${string}`)
+  /** Records `connect(...)` and `switchChain(...)` calls made by components under test. */
+  /** Network the wallet is really on; defaults to `chainId` (the app config chain). */
+  walletChainId?: number;
+  connectSpy?: (args: unknown) => void;
+  switchChainSpy?: (args: unknown) => void;
 };
 
 export const wagmiMockState: WagmiMockState = {
@@ -25,12 +23,13 @@ export function setWagmiMockState(partial: Partial<WagmiMockState>) {
 
 export function buildMockedHooks() {
   const { connected, address, chainId } = wagmiMockState;
+  const walletChainId = wagmiMockState.walletChainId ?? chainId;
   const chains = [baseSepolia, base];
   const account = connected
     ? {
         address,
-        chain: chains.find((c) => c.id === chainId),
-        chainId,
+        chain: chains.find((c) => c.id === walletChainId),
+        chainId: walletChainId,
         connector: { id: "mock", name: "Mock", type: "mock" } as any,
         status: "connected" as const
       }
@@ -48,7 +47,9 @@ export function buildMockedHooks() {
     chains,
     connect: {
       connectors: [{ id: "mock", name: "Mock", type: "mock", uid: "mock-1" } as any],
-      connect: () => Promise.resolve(),
+      connect: (args: unknown) => {
+        wagmiMockState.connectSpy?.(args);
+      },
       connectAsync: () => Promise.resolve({}),
       data: undefined,
       error: null,
@@ -75,7 +76,9 @@ export function buildMockedHooks() {
       isPending: false,
       reset: () => undefined,
       status: "idle",
-      switchChain: () => Promise.resolve(),
+      switchChain: (args: unknown) => {
+        wagmiMockState.switchChainSpy?.(args);
+      },
       switchChainAsync: () => Promise.resolve(),
       variables: undefined
     },
@@ -91,8 +94,9 @@ export function buildMockedHooks() {
       variables: undefined
     },
     walletClient: {
-      data: wagmiMockState.walletClient === null ? undefined : (wagmiMockState.walletClient ?? defaultWalletClient),
-      refetch: wagmiMockState.walletClientRefetch ?? (() => Promise.resolve({ data: undefined })),
+      data: {
+        deployContract: () => Promise.resolve("0x1234" as `0x${string}`)
+      },
       error: null,
       isError: false,
       isLoading: false,

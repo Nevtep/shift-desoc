@@ -1484,7 +1484,6 @@ async function executeDeployStackWithFactories(
     publicClient: PublicClient;
     writeContractAsync: WriteContractAsync;
     deployContractAsync?: DeployContractAsync;
-    resolveDeployContractAsync?: () => Promise<DeployContractAsync | undefined>;
     connectedAddress?: `0x${string}`;
   },
   session: DeploymentWizardSession,
@@ -1494,11 +1493,7 @@ async function executeDeployStackWithFactories(
   const { publicClient, writeContractAsync, connectedAddress } = params;
   const sharedInfra = resolveSharedInfra(context.preflight);
   const factories = resolveFactoryAddressesFromPreflight(context.preflight);
-  // Resolve the wallet client at call time: it may not have existed when the executor was created.
-  const deployContractAsync = params.resolveDeployContractAsync
-    ? await params.resolveDeployContractAsync()
-    : params.deployContractAsync;
-  if (!deployContractAsync) {
+  if (!params.deployContractAsync) {
     throw new Error("Wallet deploy client unavailable. Reconnect wallet and retry deployment.");
   }
   const artifacts = await loadFactoryArtifacts();
@@ -1598,7 +1593,7 @@ async function executeDeployStackWithFactories(
     }
 
     accessManager = await deployAndConfirm(
-      deployContractAsync,
+      params.deployContractAsync,
       publicClient,
       txHashes,
       {
@@ -3223,7 +3218,6 @@ export function createFactoryDeployStepExecutor(params: {
   publicClient: PublicClient;
   writeContractAsync: WriteContractAsync;
   deployContractAsync?: DeployContractAsync;
-  resolveDeployContractAsync?: () => Promise<DeployContractAsync | undefined>;
   connectedAddress?: `0x${string}`;
 }): StepExecutor {
   return async (step, session, context) => {
