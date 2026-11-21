@@ -198,7 +198,7 @@ contract EngagementsTest is Test {
 
         bytes4[] memory managerCallerSelectors = new bytes4[](2);
             managerCallerSelectors[0] = bytes4(
-                keccak256("selectJurors(uint256,uint256,uint256,bool)")
+                keccak256("selectJurors(uint256,uint256,uint256,bool,address)")
             );
             managerCallerSelectors[1] = bytes4(
                 keccak256("reportFraud(uint256,address[],string)")

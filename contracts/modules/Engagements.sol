@@ -175,7 +175,8 @@ contract Engagements is AccessManaged {
             engagementId,
             action.panelSize,
             uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, engagementId))),
-            false // Use community configuration for weighting
+            false, // Use community configuration for weighting
+            msg.sender // The participant can never sit on their own panel
         );
 
         if (selectedJurors.length < action.jurorsMin) {
