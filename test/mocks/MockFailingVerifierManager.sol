@@ -6,8 +6,8 @@ contract MockFailingVerifierManager {
         uint256,
         uint256,
         uint256,
-        uint256,
-        bool
+        bool,
+        address
     ) external pure returns (address[] memory) {
         revert("mock juror selection failure");
     }

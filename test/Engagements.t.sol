@@ -198,7 +198,7 @@ contract EngagementsTest is Test {
 
         bytes4[] memory managerCallerSelectors = new bytes4[](2);
             managerCallerSelectors[0] = bytes4(
-                keccak256("selectJurors(uint256,uint256,uint256,bool)")
+                keccak256("selectJurors(uint256,uint256,uint256,bool,address)")
             );
             managerCallerSelectors[1] = bytes4(
                 keccak256("reportFraud(uint256,address[],string)")
@@ -681,6 +681,74 @@ contract EngagementsTest is Test {
         assertEq(approvals, 1);
         assertEq(rejections, 0);
         assertTrue(resolved);
+    }
+
+    function _setVerifierSet(address[] memory verifiers) internal {
+        uint256[] memory weights = new uint256[](verifiers.length);
+        for (uint256 i = 0; i < verifiers.length; i++) weights[i] = 100;
+        vm.prank(governance);
+        verifierElection.setVerifierSet(verifiers, weights, REASON_CID);
+    }
+
+    function testSubmitterWhoIsVerifierIsNeverOnOwnPanel() public {
+        // worker1 becomes an eligible verifier alongside the five existing ones
+        address[] memory verifiers = new address[](6);
+        verifiers[0] = verifier1;
+        verifiers[1] = verifier2;
+        verifiers[2] = verifier3;
+        verifiers[3] = verifier4;
+        verifiers[4] = verifier5;
+        verifiers[5] = worker1;
+        _setVerifierSet(verifiers);
+
+        // every verifier submits once (per-participant concurrency limit); none may sit on their own panel
+        for (uint256 i = 0; i < 6; i++) {
+            address submitter = verifiers[i];
+            vm.roll(block.number + 1);
+            vm.warp(block.timestamp + 13);
+            vm.prank(submitter);
+            uint256 engagementId = engagements.submit(ACTION_TYPE_1, EVIDENCE_CID);
+
+            address[] memory jurors = engagements.getEngagementJurors(engagementId);
+            assertGe(jurors.length, 2);
+            for (uint256 j = 0; j < jurors.length; j++) {
+                assertTrue(jurors[j] != submitter);
+            }
+        }
+    }
+
+    function testSubmitRevertsWhenSubmitterIsOnlyEligibleVerifier() public {
+        address[] memory verifiers = new address[](1);
+        verifiers[0] = worker1;
+        _setVerifierSet(verifiers);
+
+        uint256 lastBefore = engagements.lastEngagementId();
+        vm.expectRevert(abi.encodeWithSelector(Errors.InsufficientVerifiers.selector, 0, 3));
+        vm.prank(worker1);
+        engagements.submit(ACTION_TYPE_1, EVIDENCE_CID);
+        assertEq(engagements.lastEngagementId(), lastBefore);
+    }
+
+    function testParticipantCannotVerifyOwnEngagementEvenIfInjectedAsJuror() public {
+        vm.prank(worker1);
+        uint256 engagementId = engagements.submit(ACTION_TYPE_1, EVIDENCE_CID);
+
+        address[] memory injected = new address[](3);
+        injected[0] = worker1;
+        injected[1] = verifier1;
+        injected[2] = verifier2;
+        vm.prank(address(verifierManager));
+        engagements.assignJurors(engagementId, injected);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAuthorized.selector, worker1));
+        vm.prank(worker1);
+        engagements.verify(engagementId, true);
+
+        (, , , , , , , uint32 approvals, uint32 rejections, bool resolved) = engagements.getEngagement(engagementId);
+        assertEq(approvals, 0);
+        assertEq(rejections, 0);
+        assertFalse(resolved);
+        assertFalse(engagements.hasJurorVoted(engagementId, worker1));
     }
 
     function testNonJurorCannotVerify() public {

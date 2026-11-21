@@ -9,12 +9,14 @@ interface IVerifierManager {
     /// @param panelSize Total number of jurors to select (N)
     /// @param seed Randomness seed for selection
     /// @param useWeighting Whether to use VPT amounts as weights in selection
+    /// @param excluded Address that must never be selected (the engagement participant); address(0) excludes nobody
     /// @return selectedJurors Array of selected juror addresses
     function selectJurors(
         uint256 engagementId, 
         uint256 panelSize,
         uint256 seed,
-        bool useWeighting
+        bool useWeighting,
+        address excluded
     ) external returns (address[] memory selectedJurors);
 
     /// @notice Handle fraud detection by initiating governance ban process

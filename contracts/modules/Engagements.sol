@@ -175,7 +175,8 @@ contract Engagements is AccessManaged {
             engagementId,
             action.panelSize,
             uint256(keccak256(abi.encode(block.timestamp, block.prevrandao, engagementId))),
-            false // Use community configuration for weighting
+            false, // Use community configuration for weighting
+            msg.sender // The participant can never sit on their own panel
         );
 
         if (selectedJurors.length < action.jurorsMin) {
@@ -214,6 +215,7 @@ contract Engagements is AccessManaged {
     function verify(uint256 engagementId, bool approve) external onlyAssignedJuror(engagementId) {
         Engagement storage engagement = engagements[engagementId];
         
+        if (msg.sender == engagement.participant) revert Errors.NotAuthorized(msg.sender);
         if (engagement.resolved) revert Errors.InvalidInput("Engagement already resolved");
         if (block.timestamp > engagement.verifyDeadline) revert Errors.InvalidInput("Verification deadline passed");
         if (engagement.hasVoted[msg.sender]) revert Errors.InvalidInput("Juror already voted");

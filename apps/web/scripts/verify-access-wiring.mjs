@@ -77,7 +77,7 @@ const CHECKS = [
   { targetKey: "verifierElection", signature: "unbanVerifier(address,string)", role: "ADMIN" },
   { targetKey: "verifierElection", signature: "adjustVerifierPower(address,uint256,string)", role: "ADMIN" },
 
-  { targetKey: "verifierManager", signature: "selectJurors(uint256,uint256,uint256,bool)", role: VERIFIER_MANAGER_CALLER_ROLE },
+  { targetKey: "verifierManager", signature: "selectJurors(uint256,uint256,uint256,bool,address)", role: VERIFIER_MANAGER_CALLER_ROLE },
   { targetKey: "verifierManager", signature: "reportFraud(uint256,address[],string)", role: VERIFIER_MANAGER_CALLER_ROLE },
 
   { targetKey: "verifierPowerToken", signature: "initializeCommunity(string)", role: "ADMIN" },
