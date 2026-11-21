@@ -5,9 +5,9 @@
  */
 
 import type { CommunityDeploymentConfig } from "./config";
-import type { DeploymentWizardSession, PreflightAssessment, StepKey, VerificationSnapshot } from "./types";
+import type { AuthorityAdminHolders, AuthorityMode, DeploymentWizardSession, PreflightAssessment, StepKey, VerificationSnapshot } from "./types";
 import type { StepExecutionResult } from "./step-executor-types";
-import { STEP_META } from "./wizard-machine";
+import { getStepMeta, STEP_META } from "./wizard-machine";
 
 const MOCK_DELAY_MS = 1800;
 const MOCK_COMMUNITY_ID = 99999;
@@ -54,10 +54,10 @@ export function createMockStepExecutor(): (
       return { txHashes };
     }
 
-    if (step === "HANDOFF_ADMIN_TO_TIMELOCK") {
-      const expectedTxCount = STEP_META.HANDOFF_ADMIN_TO_TIMELOCK.expectedTxCount;
+    if (step === "FINALIZE_AUTHORITY_MODE") {
+      const expectedTxCount = getStepMeta("FINALIZE_AUTHORITY_MODE", session.deploymentConfig?.authorityMode).expectedTxCount;
       const txHashes = Array.from({ length: expectedTxCount }, (_, i) =>
-        fakeTxHash("HANDOFF_ADMIN_TO_TIMELOCK", i)
+        fakeTxHash("FINALIZE_AUTHORITY_MODE", i)
       );
       return { txHashes };
     }
@@ -100,4 +100,11 @@ export async function mockReadVerificationSnapshot(
     marketplaceActive: true,
     revenueTreasurySet: true
   };
+}
+
+/** Design-mode ADMIN holders consistent with the selected authority mode. */
+export function mockAuthorityHolders(mode: AuthorityMode): AuthorityAdminHolders {
+  return mode === "admin_managed"
+    ? { deployer: true, timelock: false, bootstrapCoordinator: false }
+    : { deployer: false, timelock: true, bootstrapCoordinator: false };
 }

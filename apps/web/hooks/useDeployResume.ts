@@ -116,6 +116,7 @@ function buildRecoveredRegisteredSession(params: {
     (session) =>
       session.deployerAddress.toLowerCase() === params.deployerAddress.toLowerCase() &&
       session.chainId === params.chainId &&
+      session.communityId === params.communityId &&
       session.deploymentConfig
   )?.deploymentConfig;
 
@@ -176,7 +177,8 @@ async function recoverDeploymentConfigFromChain(
       communityMetadataUri: community.metadataURI ?? "",
       treasuryVault: normalizeAddress(community.treasuryVault),
       treasuryStableToken: backingAssets[0] ?? "",
-      supportedTokensCsv: backingAssets.join(",")
+      supportedTokensCsv: backingAssets.join(","),
+      authorityMode: ""
     };
   } catch (error) {
     log("On-chain deployment config hydration failed", {

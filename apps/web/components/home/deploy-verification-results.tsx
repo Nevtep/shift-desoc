@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Loader2, X } from "lucide-react";
-import type { VerificationCheckResult } from "../../lib/deploy/types";
+import type { AuthorityMode, VerificationCheckResult } from "../../lib/deploy/types";
 import { getI18n } from "../../lib/i18n";
 
 const FRIENDLY_LABELS: Record<string, string> = {
@@ -48,6 +48,7 @@ const VERIFY_CHECK_KEYS = [
 type Props = {
   results: VerificationCheckResult[];
   isVerifying?: boolean;
+  authorityMode?: AuthorityMode | "";
 };
 
 type DisplayVerificationItem = {
@@ -55,18 +56,21 @@ type DisplayVerificationItem = {
   label: string;
   passed?: boolean;
   failureReason?: string;
+  polarity?: "positive" | "negative";
 };
 
 function CheckRow({
   label,
   passed,
   failureReason,
+  polarity,
   isLoading,
   delayMs
 }: {
   label: string;
   passed?: boolean;
   failureReason?: string;
+  polarity?: "positive" | "negative";
   isLoading: boolean;
   delayMs: number;
 }) {
@@ -86,7 +90,14 @@ function CheckRow({
   return (
     <li className="rounded-lg border border-border bg-background/80 px-3 py-2 transition-colors">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-foreground">{label}</span>
+        <span className="text-sm font-medium text-foreground">
+          {label}
+          {polarity ? (
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              {polarity === "positive" ? t.positiveCheck : t.negativeCheck}
+            </span>
+          ) : null}
+        </span>
         <span className="flex shrink-0 items-center gap-2">
           {showLoading ? (
             <>
@@ -115,7 +126,8 @@ function CheckRow({
   );
 }
 
-export function DeployVerificationResults({ results, isVerifying }: Props) {
+export function DeployVerificationResults({ results, isVerifying, authorityMode }: Props) {
+  const t = getI18n().verification;
   const hasResults = results.length > 0;
   const showSection = hasResults || isVerifying;
 
@@ -126,7 +138,8 @@ export function DeployVerificationResults({ results, isVerifying }: Props) {
         key: item.key,
         label: item.label,
         passed: item.passed,
-        failureReason: item.failureReason
+        failureReason: item.failureReason,
+        polarity: item.polarity
       }))
     : VERIFY_CHECK_KEYS.map((key) => ({
         key,
@@ -135,6 +148,11 @@ export function DeployVerificationResults({ results, isVerifying }: Props) {
 
   return (
     <section className="mx-auto w-full max-w-2xl space-y-2">
+      {authorityMode ? (
+        <p className="text-sm font-medium text-foreground">
+          {t.verifiedMode}: {authorityMode === "admin_managed" ? t.adminManaged : t.governanceManaged}
+        </p>
+      ) : null}
       <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {items.map((item, i) => (
           <CheckRow
@@ -142,6 +160,7 @@ export function DeployVerificationResults({ results, isVerifying }: Props) {
             label={FRIENDLY_LABELS[item.key] ?? item.label}
             passed={item.passed}
             failureReason={item.failureReason}
+            polarity={item.polarity}
             isLoading={isVerifying || !hasResults}
             delayMs={600 + i * 320}
           />

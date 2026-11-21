@@ -15,6 +15,7 @@ const row = (status: "pass" | "fail" | "unavailable") => ({
 
 const inspection = (overall: "pass" | "fail" | "unavailable", rows = [row(overall)]): AccessInspection => ({
   holders: [],
+  authorityMode: "unavailable",
   overall,
   timelockAdmin: overall,
   rows
@@ -38,5 +39,18 @@ describe("AccessSummary", () => {
     expect(screen.getByTestId("access-overall")).not.toHaveTextContent("verified");
     rerender(<AccessSummary inspection={inspection("pass")} loading />);
     expect(screen.getByTestId("access-overall")).toHaveTextContent("checking");
+  });
+
+  it("labels the derived authority mode", () => {
+    const { rerender } = render(
+      <AccessSummary inspection={{ ...inspection("pass"), authorityMode: "governance_managed" }} loading={false} />
+    );
+    expect(screen.getByTestId("access-authority-mode")).toHaveTextContent("Governance-managed");
+    rerender(<AccessSummary inspection={{ ...inspection("pass"), authorityMode: "admin_managed" }} loading={false} />);
+    expect(screen.getByTestId("access-authority-mode")).toHaveTextContent("Admin-managed");
+    rerender(<AccessSummary inspection={inspection("unavailable")} loading={false} />);
+    expect(screen.getByTestId("access-authority-mode")).toHaveTextContent("unavailable");
+    rerender(<AccessSummary inspection={{ ...inspection("pass"), authorityMode: "admin_managed" }} loading />);
+    expect(screen.getByTestId("access-authority-mode")).toHaveTextContent("checking");
   });
 });

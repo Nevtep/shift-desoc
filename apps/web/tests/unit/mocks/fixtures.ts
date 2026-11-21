@@ -159,7 +159,7 @@ export const fixtures = {
       { key: "PRECHECKS", status: "succeeded" },
       { key: "DEPLOY_STACK", status: "running" },
       { key: "CONFIGURE_ACCESS_PERMISSIONS", status: "pending" },
-      { key: "HANDOFF_ADMIN_TO_TIMELOCK", status: "pending" },
+      { key: "FINALIZE_AUTHORITY_MODE", status: "pending" },
       { key: "VERIFY_DEPLOYMENT", status: "pending" }
     ]
   }

@@ -31,6 +31,8 @@ describe("Deploy preflight gating", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+    await userEvent.click(screen.getByRole("radio", { name: /Governance-managed/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
     expect(await screen.findByText(/Preflight check/i)).toBeInTheDocument();
     expect(await screen.findByText(/All checks passed\. You can deploy\./i)).toBeInTheDocument();
@@ -62,6 +64,8 @@ describe("Deploy preflight gating", () => {
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
     await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+    await userEvent.click(screen.getByRole("radio", { name: /Governance-managed/i }));
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
     expect(await screen.findByText(/Switch to a supported network/i)).toBeInTheDocument();

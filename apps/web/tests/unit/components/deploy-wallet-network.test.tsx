@@ -63,6 +63,8 @@ describe("Wallet network handling (Rabby connects on Ethereum by default)", () =
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
     await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+    await userEvent.click(await screen.findByRole("radio", { name: /Admin-managed/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
     expect(await screen.findByText(/Switch to a supported network\./i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /Cambiar la wallet a Base Sepolia/i }));
@@ -79,6 +81,8 @@ describe("Wallet network handling (Rabby connects on Ethereum by default)", () =
     await userEvent.type(screen.getByLabelText(/^Description$/i), "Test Description");
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
     await userEvent.click(screen.getByRole("button", { name: /USDC \(Base Sepolia\)/i }));
+    await userEvent.click(screen.getByRole("button", { name: /Next/i }));
+    await userEvent.click(await screen.findByRole("radio", { name: /Admin-managed/i }));
     await userEvent.click(screen.getByRole("button", { name: /Next/i }));
 
     expect(await screen.findByText(/All checks passed\. You can deploy\./i)).toBeInTheDocument();
