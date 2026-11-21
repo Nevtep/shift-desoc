@@ -50,6 +50,14 @@ untracked (`/lib/` is gitignored), so every fresh worktree must run them once:
 bash scripts/ci/install-foundry-dependencies.sh
 ```
 
+Any change to a Solidity contract also needs the web bundle refreshed (CI "Web unit tests" fails with "Bundle is stale for: <Contract>" otherwise): run `pnpm hh:compile && node scripts/copy-web-deploy-artifacts.js`, confirm `node scripts/copy-web-deploy-artifacts.js --check` passes, and commit the changed `apps/web/lib/deploy/bundled-contracts/<Contract>.json` together with the contract change. Also run contract tests and `pnpm --filter @shift/web test:unit`. Do not commit docs/operations-cost-estimate.md.
+
+Pre-mainnet policy (confirmed by the operator): this applies to ALL Shift development, not one issue. While Shift runs only on Base Sepolia with staging communities, contract changes may break ABI or storage compatibility (replace a method instead of adding an overload, redeploy). Existing test communities are disposable: create new ones and reindex from a recent block. No backwards-compatibility shims, overloads or migrations are needed. This changes at mainnet launch with real communities.
+
+Issue selection (operator rule): before starting an issue, check open PRs (`gh pr list --json files`) and treat any open PR touching the same files (contract, bundled JSON, shared test file, Manager component) as a blocker. Set it in Linear (`blockedBy`) and pick another issue; never open a PR that will conflict. When a change alters what the Manager must show (a new revert reason, a new guard), make sure a Manager issue exists for the UI side (the wallet must be told why it cannot act, never left to sign a failing tx) and link it. Record findings in Linear as you go.
+
+Contract changes and their consumers (operator rule, general): whenever a PR or issue modifies a contract, search the code for every integration and usage (Manager screens, hooks, indexer mappings, deploy wizard, and any other ecosystem app we know of) and make sure a Linear issue exists to update each one, proposing the best UX possible (prevent and explain, never let the user sign a failing tx). Do not mix those changes into the contract PR.
+
 Commit only declared files:
 
 ```bash
