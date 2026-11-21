@@ -3,6 +3,18 @@ import { decodeEventLog, encodeDeployData, encodeFunctionData, keccak256, string
 import { getAddress } from "viem";
 
 import type { StepExecutor, StepExecutionResult, WriteContractAsync } from "./step-executor-types";
+import {
+  ACCESS_MANAGED_AUTHORITY_ABI,
+  BOOTSTRAP_COORDINATOR_ABI,
+  COMMUNITY_REGISTRY_ABI,
+  MARKETPLACE_ABI,
+  PARAM_CONTROLLER_ABI,
+  REVENUE_ROUTER_ABI,
+  SHIFT_ACCESS_MANAGER_ABI,
+  TREASURY_ADAPTER_ABI,
+  VALUABLE_ACTION_REGISTRY_ABI,
+  VERIFIER_POWER_TOKEN_ABI,
+} from "./compiled-abis";
 import type {
   CommunityDeploymentConfig,
 } from "./config";
@@ -60,443 +72,14 @@ type SharedInfra = {
   paramController: `0x${string}`;
 };
 
-const COMMUNITY_REGISTRY_ABI = [
-  {
-    type: "function",
-    name: "nextCommunityId",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint256" }],
-  },
-  {
-    type: "function",
-    name: "registerCommunity",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "name", type: "string" },
-      { name: "description", type: "string" },
-      { name: "metadataURI", type: "string" },
-      { name: "parentCommunityId", type: "uint256" },
-    ],
-    outputs: [{ name: "communityId", type: "uint256" }],
-  },
-  {
-    type: "event",
-    name: "CommunityRegistered",
-    inputs: [
-      { indexed: true, name: "communityId", type: "uint256" },
-      { indexed: false, name: "name", type: "string" },
-      { indexed: true, name: "creator", type: "address" },
-      { indexed: false, name: "parentCommunityId", type: "uint256" },
-    ],
-  },
-  {
-    type: "function",
-    name: "setModuleAddresses",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "communityId", type: "uint256" },
-      {
-        name: "modules",
-        type: "tuple",
-        components: [
-          { name: "governor", type: "address" },
-          { name: "timelock", type: "address" },
-          { name: "requestHub", type: "address" },
-          { name: "draftsManager", type: "address" },
-          { name: "engagementsManager", type: "address" },
-          { name: "valuableActionRegistry", type: "address" },
-          { name: "verifierPowerToken", type: "address" },
-          { name: "verifierElection", type: "address" },
-          { name: "verifierManager", type: "address" },
-          { name: "valuableActionSBT", type: "address" },
-          { name: "treasuryVault", type: "address" },
-          { name: "treasuryAdapter", type: "address" },
-          { name: "communityToken", type: "address" },
-          { name: "paramController", type: "address" },
-        ],
-      },
-    ],
-    outputs: [],
-  },
-  {
-    type: "function",
-    name: "bootstrapCommunity",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "name", type: "string" },
-      { name: "description", type: "string" },
-      { name: "metadataURI", type: "string" },
-      { name: "parentCommunityId", type: "uint256" },
-      {
-        name: "bootstrapParams",
-        type: "tuple",
-        components: [
-          { name: "verifierPanelSize", type: "uint256" },
-          { name: "verifierMin", type: "uint256" },
-          { name: "maxPanelsPerEpoch", type: "uint256" },
-          { name: "useVPTWeighting", type: "bool" },
-          { name: "maxWeightPerVerifier", type: "uint256" },
-          { name: "cooldownAfterFraud", type: "uint256" },
-          { name: "debateWindow", type: "uint256" },
-          { name: "voteWindow", type: "uint256" },
-          { name: "executionDelay", type: "uint256" },
-          { name: "minSeniority", type: "uint256" },
-          { name: "minSBTs", type: "uint256" },
-          { name: "proposalThreshold", type: "uint256" },
-          { name: "minTreasuryBps", type: "uint16" },
-          { name: "minPositionsBps", type: "uint16" },
-          { name: "spilloverTarget", type: "uint8" },
-          { name: "spilloverSplitBpsToTreasury", type: "uint16" },
-        ],
-      },
-      {
-        name: "modules",
-        type: "tuple",
-        components: [
-          { name: "governor", type: "address" },
-          { name: "timelock", type: "address" },
-          { name: "requestHub", type: "address" },
-          { name: "draftsManager", type: "address" },
-          { name: "engagementsManager", type: "address" },
-          { name: "valuableActionRegistry", type: "address" },
-          { name: "verifierPowerToken", type: "address" },
-          { name: "verifierElection", type: "address" },
-          { name: "verifierManager", type: "address" },
-          { name: "valuableActionSBT", type: "address" },
-          { name: "treasuryVault", type: "address" },
-          { name: "treasuryAdapter", type: "address" },
-          { name: "communityToken", type: "address" },
-          { name: "paramController", type: "address" },
-        ],
-      },
-    ],
-    outputs: [{ name: "communityId", type: "uint256" }],
-  },
-] as const satisfies Abi;
 
-const PARAM_CONTROLLER_ABI = [
-  {
-    type: "function",
-    name: "setVerifierParams",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "bool" }, { type: "uint256" }, { type: "uint256" }],
-    outputs: [],
-  },
-  {
-    type: "function",
-    name: "setGovernanceParams",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }],
-    outputs: [],
-  },
-  {
-    type: "function",
-    name: "setEligibilityParams",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }],
-    outputs: [],
-  },
-  {
-    type: "function",
-    name: "setRevenuePolicy",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }],
-    outputs: [],
-  },
-] as const satisfies Abi;
 
-const SHIFT_ACCESS_MANAGER_ABI = [
-  {
-    type: "constructor",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "initialAdmin", type: "address" }],
-  },
-  {
-    type: "function",
-    name: "ADMIN_ROLE",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint64" }],
-  },
-  {
-    type: "function",
-    name: "hasRole",
-    stateMutability: "view",
-    inputs: [{ type: "uint64" }, { type: "address" }],
-    outputs: [{ type: "bool" }, { type: "uint32" }],
-  },
-  {
-    type: "function",
-    name: "grantRole",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint64" }, { type: "address" }, { type: "uint32" }],
-    outputs: [],
-  },
-  {
-    type: "function",
-    name: "setTargetFunctionRole",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }, { type: "bytes4[]" }, { type: "uint64" }],
-    outputs: [],
-  },
-  {
-    type: "function",
-    name: "getTargetFunctionRole",
-    stateMutability: "view",
-    inputs: [{ type: "address" }, { type: "bytes4" }],
-    outputs: [{ type: "uint64" }],
-  },
-  {
-    type: "function",
-    name: "revokeRole",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint64" }, { type: "address" }],
-    outputs: [],
-  }
-] as const satisfies Abi;
 
-const VERIFIER_POWER_TOKEN_ABI = [
-  {
-    type: "function",
-    name: "communityInitialized",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "communityInitialized",
-    stateMutability: "view",
-    inputs: [{ type: "uint256" }],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "initializeCommunity",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "string" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "initializeCommunity",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "string" }],
-    outputs: []
-  }
-] as const satisfies Abi;
 
-const VALUABLE_ACTION_REGISTRY_ABI = [
-  {
-    type: "function",
-    name: "valuableActionSBT",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "address" }]
-  },
-  {
-    type: "function",
-    name: "isIssuanceModule",
-    stateMutability: "view",
-    inputs: [{ type: "address" }],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "founderWhitelist",
-    stateMutability: "view",
-    inputs: [{ type: "address" }, { type: "uint256" }],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "setValuableActionSBT",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "setIssuanceModule",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }, { type: "bool" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "addFounder",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "addFounder",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }, { type: "uint256" }],
-    outputs: []
-  }
-] as const satisfies Abi;
 
-const REVENUE_ROUTER_ABI = [
-  {
-    type: "function",
-    name: "communityTreasuries",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "address" }]
-  },
-  {
-    type: "function",
-    name: "supportedTokens",
-    stateMutability: "view",
-    inputs: [{ type: "address" }],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "setCommunityTreasury",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "setSupportedToken",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }, { type: "bool" }],
-    outputs: []
-  }
-] as const satisfies Abi;
 
-const TREASURY_ADAPTER_ABI = [
-  {
-    type: "function",
-    name: "tokenAllowed",
-    stateMutability: "view",
-    inputs: [{ type: "address" }],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "tokenAllowed",
-    stateMutability: "view",
-    inputs: [{ type: "uint256" }, { type: "address" }],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "capBps",
-    stateMutability: "view",
-    inputs: [{ type: "address" }],
-    outputs: [{ type: "uint16" }]
-  },
-  {
-    type: "function",
-    name: "capBps",
-    stateMutability: "view",
-    inputs: [{ type: "uint256" }, { type: "address" }],
-    outputs: [{ type: "uint16" }]
-  },
-  {
-    type: "function",
-    name: "destinationAllowed",
-    stateMutability: "view",
-    inputs: [{ type: "address" }],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "destinationAllowed",
-    stateMutability: "view",
-    inputs: [{ type: "uint256" }, { type: "address" }],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "setTokenAllowed",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }, { type: "bool" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "setTokenAllowed",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "address" }, { type: "bool" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "setCapBps",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }, { type: "uint16" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "setCapBps",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "address" }, { type: "uint16" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "setDestinationAllowed",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }, { type: "bool" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "setDestinationAllowed",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "uint256" }, { type: "address" }, { type: "bool" }],
-    outputs: []
-  }
-] as const satisfies Abi;
 
-const MARKETPLACE_ABI = [
-  {
-    type: "function",
-    name: "communityActive",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "bool" }]
-  },
-  {
-    type: "function",
-    name: "communityTokens",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "address" }]
-  },
-  {
-    type: "function",
-    name: "setCommunityActive",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "bool" }],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "setCommunityToken",
-    stateMutability: "nonpayable",
-    inputs: [{ type: "address" }],
-    outputs: []
-  }
-] as const satisfies Abi;
 
-const ACCESS_MANAGED_AUTHORITY_ABI = [
-  {
-    type: "function",
-    name: "authority",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "address" }],
-  }
-] as const satisfies Abi;
 
 function isNonZeroAddress(value: unknown): value is `0x${string}` {
   if (typeof value !== "string") return false;
@@ -504,77 +87,6 @@ function isNonZeroAddress(value: unknown): value is `0x${string}` {
   return value.toLowerCase() !== ZERO_ADDRESS;
 }
 
-const BOOTSTRAP_COORDINATOR_ABI = [
-  {
-    type: "function",
-    name: "configureAccessManager",
-    stateMutability: "nonpayable",
-    inputs: [
-      { type: "address" },
-      {
-        type: "tuple[]",
-        components: [
-          { name: "target", type: "address" },
-          { name: "selectors", type: "bytes4[]" },
-          { name: "role", type: "uint64" }
-        ]
-      },
-      {
-        type: "tuple[]",
-        components: [
-          { name: "role", type: "uint64" },
-          { name: "account", type: "address" },
-          { name: "executionDelay", type: "uint32" }
-        ]
-      }
-    ],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "bootstrapAccessAndRuntime",
-    stateMutability: "nonpayable",
-    inputs: [
-      { type: "address" },
-      {
-        type: "tuple[]",
-        components: [
-          { name: "target", type: "address" },
-          { name: "selectors", type: "bytes4[]" },
-          { name: "role", type: "uint64" }
-        ]
-      },
-      {
-        type: "tuple[]",
-        components: [
-          { name: "role", type: "uint64" },
-          { name: "account", type: "address" },
-          { name: "executionDelay", type: "uint32" }
-        ]
-      },
-      {
-        type: "tuple",
-        components: [
-          { name: "communityId", type: "uint256" },
-          { name: "valuableActionRegistry", type: "address" },
-          { name: "verifierPowerToken", type: "address" },
-          { name: "requestHub", type: "address" },
-          { name: "founder", type: "address" },
-          { name: "valuableActionSBT", type: "address" },
-          { name: "revenueRouter", type: "address" },
-          { name: "treasuryAdapter", type: "address" },
-          { name: "marketplace", type: "address" },
-          { name: "communityToken", type: "address" },
-          { name: "treasuryVault", type: "address" },
-          { name: "supportedTokens", type: "address[]" },
-          { name: "tokenCapBps", type: "uint16" },
-          { name: "verifierMetadataURI", type: "string" }
-        ]
-      }
-    ],
-    outputs: []
-  }
-] as const satisfies Abi;
 
 const ACCESS_MANAGED_UNAUTHORIZED_SELECTOR = "0x068ca9d8";
 const VPT_ELECTION_POWER_ROLE = 1001n;
@@ -2208,7 +1720,7 @@ async function registerAndWireCommunity(
           topics: rawLog.topics as [`0x${string}`, ...`0x${string}`[]],
         });
         if (decoded.eventName === "CommunityRegistered") {
-          return Number(decoded.args.communityId as bigint);
+          return Number((decoded.args as unknown as { communityId: bigint }).communityId);
         }
       } catch {
         // Ignore unrelated logs.
@@ -2312,37 +1824,51 @@ async function registerAndWireCommunity(
     return Number(derivedCommunityId);
   };
 
+  const bootstrapCall = {
+    address: sharedInfra.communityRegistry,
+    abi: COMMUNITY_REGISTRY_ABI,
+    functionName: "bootstrapCommunity",
+    args: [
+      context.config.communityName,
+      context.config.communityDescription,
+      context.config.communityMetadataUri,
+      0n,
+      {
+        verifierPanelSize: 5n,
+        verifierMin: 3n,
+        maxPanelsPerEpoch: 20n,
+        useVPTWeighting: true,
+        maxWeightPerVerifier: 1000n,
+        cooldownAfterFraud: 86400n,
+        debateWindow: 7200n,
+        voteWindow: 86400n,
+        executionDelay: 21600n,
+        minSeniority: 0n,
+        minSBTs: 0n,
+        proposalThreshold: 0n,
+        minTreasuryBps: 1000,
+        minPositionsBps: 2000,
+        spilloverTarget: 1,
+        spilloverSplitBpsToTreasury: 5000,
+      },
+      modulePayload,
+    ],
+  };
+
+  // Detect a registry that lacks bootstrapCommunity by simulating the call, never by sending a reverting tx.
+  let atomicBootstrapAvailable = true;
   try {
-    const bootstrapResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.communityRegistry,
-      abi: COMMUNITY_REGISTRY_ABI,
-      functionName: "bootstrapCommunity",
-      args: [
-        context.config.communityName,
-        context.config.communityDescription,
-        context.config.communityMetadataUri,
-        0n,
-        {
-          verifierPanelSize: 5n,
-          verifierMin: 3n,
-          maxPanelsPerEpoch: 20n,
-          useVPTWeighting: true,
-          maxWeightPerVerifier: 1000n,
-          cooldownAfterFraud: 86400n,
-          debateWindow: 7200n,
-          voteWindow: 86400n,
-          executionDelay: 21600n,
-          minSeniority: 0n,
-          minSBTs: 0n,
-          proposalThreshold: 0n,
-          minTreasuryBps: 1000,
-          minPositionsBps: 2000,
-          spilloverTarget: 1,
-          spilloverSplitBpsToTreasury: 5000,
-        },
-        modulePayload,
-      ],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+    await publicClient.simulateContract({ ...bootstrapCall, account: connectedAddress } as never);
+  } catch (error) {
+    atomicBootstrapAvailable = false;
+    console.warn("[DeployWizard] bootstrapCommunity simulation failed; using legacy register+setters path", {
+      error,
+      communityRegistry: sharedInfra.communityRegistry,
+    });
+  }
+
+  if (atomicBootstrapAvailable) {
+    const bootstrapResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, bootstrapCall, connectedAddress, consumeNonce(), context.onTxConfirmed);
 
     const afterNextId = (await publicClient.readContract({
       address: sharedInfra.communityRegistry,
@@ -2354,70 +1880,65 @@ async function registerAndWireCommunity(
       txHashes,
       communityId: decodeCommunityId(bootstrapResult.receipt as { logs?: unknown }, beforeNextId, afterNextId),
     };
-  } catch (error) {
-    console.warn("[DeployWizard] bootstrapCommunity failed; falling back to legacy register+setters path", {
-      error,
-      communityRegistry: sharedInfra.communityRegistry,
-    });
-
-    // Compatibility fallback for older registry deployments that do not include bootstrapCommunity.
-    const registerResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.communityRegistry,
-      abi: COMMUNITY_REGISTRY_ABI,
-      functionName: "registerCommunity",
-      args: [
-        context.config.communityName,
-        context.config.communityDescription,
-        context.config.communityMetadataUri,
-        0n,
-      ],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    const afterNextId = (await publicClient.readContract({
-      address: sharedInfra.communityRegistry,
-      abi: COMMUNITY_REGISTRY_ABI,
-      functionName: "nextCommunityId",
-    })) as bigint;
-
-    const communityId = decodeCommunityId(registerResult.receipt as { logs?: unknown }, beforeNextId, afterNextId);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.paramController,
-      abi: PARAM_CONTROLLER_ABI,
-      functionName: "setVerifierParams",
-      args: [BigInt(communityId), 5n, 3n, 20n, true, 1000n, 86400n],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.paramController,
-      abi: PARAM_CONTROLLER_ABI,
-      functionName: "setGovernanceParams",
-      args: [BigInt(communityId), 7200n, 86400n, 21600n],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.paramController,
-      abi: PARAM_CONTROLLER_ABI,
-      functionName: "setEligibilityParams",
-      args: [BigInt(communityId), 0n, 0n, 0n],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.paramController,
-      abi: PARAM_CONTROLLER_ABI,
-      functionName: "setRevenuePolicy",
-      args: [BigInt(communityId), 1000n, 2000n, 1n, 5000n],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-      address: sharedInfra.communityRegistry,
-      abi: COMMUNITY_REGISTRY_ABI,
-      functionName: "setModuleAddresses",
-      args: [BigInt(communityId), modulePayload],
-    }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    return { txHashes, communityId };
   }
+
+  // Compatibility fallback for older registry deployments that do not include bootstrapCommunity.
+  const registerResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
+    address: sharedInfra.communityRegistry,
+    abi: COMMUNITY_REGISTRY_ABI,
+    functionName: "registerCommunity",
+    args: [
+      context.config.communityName,
+      context.config.communityDescription,
+      context.config.communityMetadataUri,
+      0n,
+    ],
+  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+
+  const afterNextId = (await publicClient.readContract({
+    address: sharedInfra.communityRegistry,
+    abi: COMMUNITY_REGISTRY_ABI,
+    functionName: "nextCommunityId",
+  })) as bigint;
+
+  const communityId = decodeCommunityId(registerResult.receipt as { logs?: unknown }, beforeNextId, afterNextId);
+
+  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
+    address: sharedInfra.paramController,
+    abi: PARAM_CONTROLLER_ABI,
+    functionName: "setVerifierParams",
+    args: [BigInt(communityId), 5n, 3n, 20n, true, 1000n, 86400n],
+  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+
+  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
+    address: sharedInfra.paramController,
+    abi: PARAM_CONTROLLER_ABI,
+    functionName: "setGovernanceParams",
+    args: [BigInt(communityId), 7200n, 86400n, 21600n],
+  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+
+  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
+    address: sharedInfra.paramController,
+    abi: PARAM_CONTROLLER_ABI,
+    functionName: "setEligibilityParams",
+    args: [BigInt(communityId), 0n, 0n, 0n],
+  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+
+  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
+    address: sharedInfra.paramController,
+    abi: PARAM_CONTROLLER_ABI,
+    functionName: "setRevenuePolicy",
+    args: [BigInt(communityId), 1000n, 2000n, 1n, 5000n],
+  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+
+  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
+    address: sharedInfra.communityRegistry,
+    abi: COMMUNITY_REGISTRY_ABI,
+    functionName: "setModuleAddresses",
+    args: [BigInt(communityId), modulePayload],
+  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+
+  return { txHashes, communityId };
 }
 
 async function executeConfigureAccessPermissions(

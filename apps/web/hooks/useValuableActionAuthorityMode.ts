@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getAbiItem, toFunctionSelector, type Hex } from "viem";
 
 import { CONTRACTS } from "../lib/contracts";
+import { SHIFT_ACCESS_MANAGER_ABI } from "../lib/deploy/compiled-abis";
 import type { ValuableActionAuthorityMode } from "../lib/community-overview/types";
 
 export type ValuableActionOperation = "create" | "edit" | "activate" | "deactivate";
@@ -91,23 +92,6 @@ export const VALUABLE_ACTION_OPERATION_FUNCTION: Record<ValuableActionOperation,
   activate: "activateFromGovernance",
   deactivate: "deactivate",
 };
-
-const ACCESS_MANAGER_CAN_CALL_ABI = [
-  {
-    type: "function",
-    name: "canCall",
-    stateMutability: "view",
-    inputs: [
-      { name: "caller", type: "address" },
-      { name: "target", type: "address" },
-      { name: "selector", type: "bytes4" },
-    ],
-    outputs: [
-      { name: "immediate", type: "bool" },
-      { name: "delay", type: "uint32" },
-    ],
-  },
-] as const;
 
 export function resolveValuableActionOperationSelector(operation: ValuableActionOperation): Hex | null {
   const functionName = VALUABLE_ACTION_OPERATION_FUNCTION[operation];
@@ -197,7 +181,7 @@ export function useValuableActionDirectWriteAuthority(input: {
     publicClient
       .readContract({
         address: accessManagerAddress as `0x${string}`,
-        abi: ACCESS_MANAGER_CAN_CALL_ABI,
+        abi: SHIFT_ACCESS_MANAGER_ABI,
         functionName: "canCall",
         args: [walletAddress, registryAddress, selector],
       })

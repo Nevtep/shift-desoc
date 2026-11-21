@@ -150,6 +150,7 @@ describe("factory-step-executor strict staging guards", () => {
             return true;
         }
       }),
+      simulateContract: vi.fn().mockResolvedValue({}),
       estimateContractGas: vi.fn().mockResolvedValue(21000n),
       waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
     } as any;
@@ -180,6 +181,7 @@ describe("factory-step-executor strict staging guards", () => {
         }
         return true;
       }),
+      simulateContract: vi.fn().mockResolvedValue({}),
       estimateContractGas: vi.fn().mockResolvedValue(21000n),
       waitForTransactionReceipt: vi.fn()
     } as any;
@@ -227,6 +229,7 @@ describe("factory-step-executor strict staging guards", () => {
         return true;
       }),
       getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      simulateContract: vi.fn().mockResolvedValue({}),
       estimateContractGas: vi.fn().mockResolvedValue(21000n),
       waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" })
     } as any;

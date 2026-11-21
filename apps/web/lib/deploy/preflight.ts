@@ -1,28 +1,9 @@
 import type { Abi, Address, PublicClient } from "viem";
 
 import { getContractAddress } from "../contracts";
+import { COMMUNITY_REGISTRY_ABI, PARAM_CONTROLLER_ABI } from "./compiled-abis";
 import { getOrFetchPersistentCache } from "./persistent-cache";
 import type { FundingAssessment, PreflightAssessment, ProbeStatus, SharedInfraStatus } from "./types";
-
-const PARAM_CONTROLLER_ABI = [
-  {
-    type: "function",
-    name: "communityRegistry",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }]
-  }
-] as const satisfies Abi;
-
-const COMMUNITY_REGISTRY_ABI = [
-  {
-    type: "function",
-    name: "nextCommunityId",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }]
-  }
-] as const satisfies Abi;
 
 const PREFLIGHT_PROBE_TTL_MS = 45_000;
 
