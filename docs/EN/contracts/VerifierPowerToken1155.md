@@ -137,6 +137,13 @@ function adminTransfer(
 
 ## 🔗 Integration Points
 
+### Canonical Verifier Roster (SHI-135)
+
+The token's active roster (`getCommunityVerifiers`, `getCommunityStats`) is the single canonical verifier roster. `VerifierElection`
+derives eligibility, `getVerifierSet()` and stats from it. A direct `mint`/`batchMint` or the destination of `adminTransfer` makes the
+address eligible for juror selection immediately; a banned address stays excluded because `VerifierElection` still filters bans.
+Direct token calls emit only `VerifierGranted`/`VerifierRevoked`, not `VerifierElection` events.
+
 ### VerifierElection Synchronization
 
 ```solidity
