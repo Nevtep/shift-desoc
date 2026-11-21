@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAbiItem, toFunctionSelector, type Abi, type Hex } from "viem";
 
-import accessManagerArtifact from "../abis/ShiftAccessManager.json" assert { type: "json" };
 import { CONTRACTS } from "../lib/contracts";
+import { SHIFT_ACCESS_MANAGER_ABI } from "../lib/deploy/compiled-abis";
 import type { ValuableActionAuthorityMode } from "../lib/community-overview/types";
 
 export type ValuableActionOperation = "create" | "edit" | "activate" | "deactivate";
@@ -92,8 +92,6 @@ export const VALUABLE_ACTION_OPERATION_FUNCTION: Record<ValuableActionOperation,
   activate: "activateFromGovernance",
   deactivate: "deactivate",
 };
-
-const ACCESS_MANAGER_CAN_CALL_ABI = accessManagerArtifact.abi as Abi;
 
 export function resolveValuableActionOperationSelector(operation: ValuableActionOperation): Hex | null {
   const functionName = VALUABLE_ACTION_OPERATION_FUNCTION[operation];
@@ -183,7 +181,7 @@ export function useValuableActionDirectWriteAuthority(input: {
     publicClient
       .readContract({
         address: accessManagerAddress as `0x${string}`,
-        abi: ACCESS_MANAGER_CAN_CALL_ABI,
+        abi: SHIFT_ACCESS_MANAGER_ABI,
         functionName: "canCall",
         args: [walletAddress, registryAddress, selector],
       })
