@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getAbiItem, toFunctionSelector, type Abi, type Hex } from "viem";
+import { getAbiItem, toFunctionSelector, type Hex } from "viem";
 
 import { CONTRACTS } from "../lib/contracts";
 import { SHIFT_ACCESS_MANAGER_ABI } from "../lib/deploy/compiled-abis";
