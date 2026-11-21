@@ -13,8 +13,30 @@ metadata:
 
 Triggered by the "Shift merge watcher" cron job. Its monitor output lists the
 merged PRs not yet acknowledged under `PENDING_MERGED_PRS:`. Work only on
-those. If the list is `(none)` or `STATUS=ERROR`, reply exactly `[SILENT]` and
-do nothing else.
+those. If the list is `(none)` or `STATUS=ERROR` and the output has no
+`SKILL_PERSIST=` line, reply exactly `[SILENT]` and do nothing else.
+
+## 0. A skill edit captured by the monitor
+
+The monitor may print a `SKILL_PERSIST=` line right after `STATUS=OK`. It comes
+from `shift-skill-persist.sh`, which turns uncommitted skill edits found in the
+live checkout into a PR and restores the checkout. Handle it first, even when
+no PR merged:
+
+- `SKILL_PERSIST=PR_OPENED #<n> files=<k>`: read the PR diff, then create the
+  Linear issue that `shift-learning-governance` requires for every skill change
+  (project Automation, label `automation`, title taken from the PR, link to the
+  PR), comment its URL on the PR, and tell the human in one line what the edit
+  changed and that it is waiting for review. The edit is not live until the PR
+  is merged. Do not make the same edit in place again.
+- `SKILL_PERSIST=ALREADY_PROPOSED #<n>`: the same content is already in PR #n.
+  Only make sure that PR cites a Linear issue.
+- `SKILL_PERSIST=FAILED <reason>`: the edits are still in the checkout and a
+  backup is under `/opt/data/shift/skill-persist/`. Report the reason to the
+  human. Do not reset, clean or edit the checkout yourself; step 1 below will
+  not sync a dirty checkout.
+
+When there are no merged PRs to process, stop after this step.
 
 A PR stays pending until you acknowledge it (step 4), so an interrupted run is
 retried automatically (`RETRY_ROUND=<n>` advances hourly). If the output says

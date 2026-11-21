@@ -85,6 +85,33 @@ prints `LANES=feature,bug`, `LANES=bug` or stops when none is open, and the
 supervisor selects only an issue of an open lane. Branch conflicts between
 two PRs on the same flow are not detected by the guard.
 
+### Skill edits made in place
+
+Hermes loads its skills from the live checkout, and its own skill editing
+writes there. So that an edit is neither lost at the next reset nor live
+without review, the merge watcher also runs `shift-skill-persist.sh` on every
+tick. When the live checkout holds uncommitted changes under
+`hermes-bootstrap/skills` or `.github/skills`, and no development cycle is
+running, and the newest change is older than `SHIFT_SKILL_PERSIST_QUIET_MIN`
+minutes (default `10`, so a half-finished edit is left alone), it:
+
+1. saves a backup patch under `/opt/data/shift/skill-persist/` (mode 600);
+2. applies the change on a fresh worktree from `origin/main`, commits it, pushes
+   `chore/hermes-self-update/skill-edit-<hash>` and opens a PR (never merges);
+3. only then restores the checkout.
+
+Any failure leaves the checkout untouched. The monitor prints one
+`SKILL_PERSIST=PR_OPENED #<n> files=<k>`, `ALREADY_PROPOSED #<n>` or
+`FAILED <reason>` line, which wakes the agent: it creates the Linear issue the
+PR must cite (`shift-post-merge-learning` step 0). Nothing is captured outside
+those two directories.
+
+The cron job prompt of the merge watcher also handles these lines, and the job
+stores its prompt: after deploying this change (`update.sh`), re-run
+`install-loop.sh` (idempotent) so the installed cron prompt is refreshed.
+Without that, the old prompt tells the agent to reply `[SILENT]` on an empty
+list and a captured edit would never get its Linear issue.
+
 ## 5. Start
 
 ```bash

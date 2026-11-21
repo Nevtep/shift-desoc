@@ -60,6 +60,12 @@ Applies whenever Hermes changes its own skills or config (`hermes-bootstrap/`,
   made before this rule), save `git diff` as a patch outside the checkout,
   restore the checkout with `git checkout -- <file>`, and replay the patch in a
   worktree under a Linear issue.
+- A monitor backs this rule up: `shift-skill-persist.sh` (run by the merge
+  watcher) turns uncommitted skill edits found in the live checkout into a
+  `chore/hermes-self-update/skill-edit-*` PR and restores the checkout. When a
+  `SKILL_PERSIST=` line reaches you, follow `shift-post-merge-learning` step 0
+  (create the Linear issue and link it). The monitor is a safety net, not
+  permission to edit in place.
 - Work on a branch named `chore/hermes-self-update/<short-description>`.
 - Make small, coherent commits; every commit message ends with a `Risk:` line
   (tier plus the reason).
