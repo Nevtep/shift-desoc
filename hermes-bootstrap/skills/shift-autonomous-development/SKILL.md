@@ -301,6 +301,16 @@ The publication stage must:
 
 Verify the remote branch SHA and PR HEAD equal the audited commit.
 
+## Design principle for contract and wiring work
+
+When an issue needs a workaround to fit the current design, treat it as a
+sign of a base design flaw and propose a redesign following the repo's main
+patterns (AccessManaged roles from `contracts/libs/Roles.sol`, dependencies
+deployed first, guards on every state-changing function; see
+`shift-protocol-capabilities`). Do not add patches over a flawed base. Test
+suites that call guarded functions directly, bypassing the real caller, are a
+smell to fix in the same change.
+
 ## Learning loop
 
 After every cycle, successful or not:

@@ -38,6 +38,33 @@ Every app on Shift is one or more **communities** keyed by `communityId` in
 Authority: staged lifecycle, admin-managed first and governance-managed after
 handoff (AccessManager + GovernorTimelockAccess). Do not flatten it.
 
+## Architecture rule: permissions are AccessManager roles, not stored addresses
+
+A module's privileged functions use `AccessManaged` + `restricted` with a role
+id from `contracts/libs/Roles.sol`, granted through the AccessManager
+(`setTargetFunctionRole` + `grantRole`, as BootstrapCoordinator does). Do not
+write `require(msg.sender == someAddress)` or an `onlyX` modifier backed by an
+address passed to the constructor. Reasons: (1) an address check forces
+deploy order and creates circular dependencies (e.g. `CountingMultiChoice(governor)`
+vs a Governor that needs the counter), while a role is granted after both exist,
+so deploy the dependency first and wire it by constructor; (2) the grant is
+visible, revocable and fits the staged authority lifecycle. Before proposing
+a contract design, grep for `msg.sender ==` and `onlyX` modifiers: they are
+the outliers (CountingMultiChoice is the known one, SHI-174). Also check that
+every state-changing external function is `restricted` or otherwise
+guarded; a caller-supplied `voter`/`weight` with no guard is a vulnerability.
+Do not reach for CREATE address prediction to break a cycle when a role
+grant removes it.
+
+Redesign over patching: if a fix needs a workaround (address prediction,
+extra setter, special-case flag, a test that calls a guarded function
+directly), the base design is probably wrong. Redesign it toward the pattern
+most contracts already follow (AccessManaged roles, dependencies deployed
+first and wired by constructor, access checks on every state-changing
+function) and say so in the issue, instead of stacking a patch on top. Prefer
+reading the real call path (who calls it and with what data) before judging
+whether a function needs a guard.
+
 ## Maturity (verify in IMPLEMENTATION_STATUS.md before quoting)
 
 Contracts are broadly implemented. Indexer and Manager coverage is uneven:
