@@ -195,6 +195,38 @@ describe("useDeployWizard execution flow", () => {
     expect(result.current.session?.status).toBe("completed");
   });
 
+  it("reports incomplete registry wiring at verification and keeps the session resumable", async () => {
+    mockWagmiHooks({
+      connected: true,
+      address: "0xabc1230000000000000000000000000000000000",
+      chainId: 84532
+    });
+    const message =
+      "Community 6 has no module registered for verifierPowerToken: the registry wiring step did not complete";
+
+    const { result } = renderHook(
+      () =>
+        useDeployWizard({
+          stepExecutor: async (step) => (step === "DEPLOY_STACK" ? { communityId: 6 } : {}),
+          readVerificationSnapshot: async () => {
+            throw new Error(message);
+          }
+        }),
+      { wrapper: TestWrapper }
+    );
+
+    await act(async () => {
+      await result.current.run(validConfig());
+    });
+
+    const verifyStep = result.current.session?.steps.find((step) => step.key === "VERIFY_DEPLOYMENT");
+    expect(result.current.session?.status).toBe("failed");
+    expect(verifyStep?.status).toBe("failed");
+    expect(verifyStep?.failureReason).toBe(message);
+    expect(verifyStep?.nextActionHint).toBe("Fix the issue and use Resume deploy.");
+    expect(result.current.error).toBe(message);
+  });
+
   it("ignores incompatible legacy resume sessions and starts fresh", async () => {
     mockWagmiHooks({
       connected: true,
