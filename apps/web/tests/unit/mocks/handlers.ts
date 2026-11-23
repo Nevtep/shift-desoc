@@ -53,6 +53,7 @@ export const handlers = [
       }
     });
   }),
+  graphql.query("CommunityOverviewName", () => HttpResponse.json({ data: { community: null } })),
   graphql.query("CommunityOverviewRequests", () => {
     return HttpResponse.json({
       data: {

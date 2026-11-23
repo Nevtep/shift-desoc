@@ -55,6 +55,16 @@ h1, h2, h3, h4, h5, h6 {
     @apply inline-flex items-center justify-center rounded-xl border border-border bg-transparent px-4 py-2 text-sm font-medium transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50;
   }
 
+  /* Cream: secundario sólido crema de la marca (#F6F0E1), legible sobre la ilustración de fondo */
+  .btn-cream {
+    @apply inline-flex items-center justify-center rounded-xl border px-4 py-2 text-sm font-medium text-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    background-color: rgba(246, 240, 225, 0.96);
+    border-color: rgba(86, 102, 69, 0.25);
+  }
+  .btn-cream:hover:not(:disabled) {
+    background-color: rgb(236, 227, 204);
+  }
+
   /* Variante compacta para filtros e inline */
   .btn-primary-sm {
     @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-bold text-white transition-all duration-200;

@@ -8,6 +8,8 @@ import type { CommunityModules } from "./useCommunityModules";
 import { useCommunityModules } from "./useCommunityModules";
 import { useCachedPublicClient } from "./useCachedPublicClient";
 import { useIndexerHealth } from "./useIndexerHealth";
+import { useGraphQLQuery } from "./useGraphQLQuery";
+import { CommunityOverviewNameQuery, type CommunityOverviewNameResult } from "../lib/graphql/queries";
 import { canEditParameters } from "../lib/community-overview/authority";
 import { formatBps, formatIntegerThreshold, formatModuleAddress, formatSeconds } from "../lib/community-overview/formatters";
 import { OVERVIEW_PARAMETER_MAPPINGS } from "../lib/community-overview/parameter-mapping";
@@ -80,6 +82,11 @@ const MODULE_DEFS: Array<{ key: keyof CommunityModules; label: string; moduleKey
   { key: "housingManager", label: "HousingManager", moduleKey: "housingManager" },
   { key: "projectFactory", label: "ProjectFactory", moduleKey: "projectFactory" }
 ];
+
+export function resolveCommunityDisplayName(communityId: number, indexedName?: string | null): string {
+  const trimmed = indexedName?.trim();
+  return trimmed ? trimmed : `Community #${communityId}`;
+}
 
 export function buildOverviewHeaderState(args: {
   communityId: number;
@@ -352,14 +359,22 @@ export function useCommunityOverview(communityId: number) {
     modules
   });
 
+  const nameQuery = useGraphQLQuery<CommunityOverviewNameResult, { id: number }>(
+    ["community-overview-name", communityId],
+    CommunityOverviewNameQuery,
+    { id: communityId },
+    { retry: false }
+  );
+  const indexedName = nameQuery.data?.community?.name;
+
   const header = useMemo(() => {
     return buildOverviewHeaderState({
       communityId,
-      displayName: `Community #${communityId}`,
+      displayName: resolveCommunityDisplayName(communityId, indexedName),
       health: indexer.state,
       canEdit: allowEdit
     });
-  }, [allowEdit, communityId, indexer.state]);
+  }, [allowEdit, communityId, indexer.state, indexedName]);
 
   return {
     header,

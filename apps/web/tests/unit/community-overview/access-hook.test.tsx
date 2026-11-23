@@ -43,6 +43,7 @@ const client = vi.hoisted(() => ({
   readContract: (a: any) => (state as any).readContract(a)
 }));
 vi.mock("../../../hooks/useCachedPublicClient", () => ({ useCachedPublicClient: () => client }));
+vi.mock("../../../hooks/useGraphQLQuery", () => ({ useGraphQLQuery: () => ({ data: undefined }) }));
 vi.mock("../../../hooks/useIndexerHealth", () => ({
   useIndexerHealth: () => ({ state: state.indexerState, isLoading: false, isError: state.indexerState === "error", refetch: async () => {} })
 }));
