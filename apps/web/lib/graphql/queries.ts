@@ -721,16 +721,3 @@ export function mapValuableActionNodeToDto(node: ValuableActionNode): ValuableAc
     },
   };
 }
-
-export const CommunityOverviewNameQuery = /* GraphQL */ `
-  query CommunityOverviewName($id: Int!) {
-    community: communities(id: $id) {
-      id
-      name
-    }
-  }
-`;
-
-export type CommunityOverviewNameResult = {
-  community: { id: number | string; name?: string | null } | null;
-};

@@ -8,8 +8,7 @@ import type { CommunityModules } from "./useCommunityModules";
 import { useCommunityModules } from "./useCommunityModules";
 import { useCachedPublicClient } from "./useCachedPublicClient";
 import { useIndexerHealth } from "./useIndexerHealth";
-import { useGraphQLQuery } from "./useGraphQLQuery";
-import { CommunityOverviewNameQuery, type CommunityOverviewNameResult } from "../lib/graphql/queries";
+import { useCommunityName } from "./useCommunityName";
 import { canEditParameters } from "../lib/community-overview/authority";
 import { formatBps, formatIntegerThreshold, formatModuleAddress, formatSeconds } from "../lib/community-overview/formatters";
 import { OVERVIEW_PARAMETER_MAPPINGS } from "../lib/community-overview/parameter-mapping";
@@ -359,13 +358,7 @@ export function useCommunityOverview(communityId: number) {
     modules
   });
 
-  const nameQuery = useGraphQLQuery<CommunityOverviewNameResult, { id: number }>(
-    ["community-overview-name", communityId],
-    CommunityOverviewNameQuery,
-    { id: communityId },
-    { retry: false }
-  );
-  const indexedName = nameQuery.data?.community?.name;
+  const indexedName = useCommunityName(communityId);
 
   const header = useMemo(() => {
     return buildOverviewHeaderState({
