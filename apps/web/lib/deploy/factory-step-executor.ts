@@ -1846,18 +1846,11 @@ async function registerAndWireCommunity(
       }
 
       if (!recoveredCommunityId) {
-        const nextCommunityId = (await publicClient.readContract({
-          address: sharedInfra.communityRegistry,
-          abi: COMMUNITY_REGISTRY_ABI,
-          functionName: "nextCommunityId",
-        })) as bigint;
-        if (nextCommunityId > 1n) {
-          recoveredCommunityId = Number(nextCommunityId - 1n);
-          console.log("[DeployWizard] Recovered configure-step communityId from nextCommunityId fallback", {
-            recoveredCommunityId,
-            nextCommunityId: Number(nextCommunityId),
-          });
-        }
+        // Never fall back to the global `nextCommunityId - 1`: another community may have registered after ours,
+        // and the wiring below writes to whatever id is recovered here.
+        throw new Error(
+          "Cannot confirm which community this deployment registered: the registration receipt is unavailable or has no CommunityRegistered event. Retry once the transaction receipt can be read; nothing was sent.",
+        );
       }
     }
   }

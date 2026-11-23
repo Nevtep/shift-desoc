@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { encodeAbiParameters, encodeEventTopics, parseAbi } from "viem";
 
 import { createFactoryDeployStepExecutor } from "../../../../lib/deploy/factory-step-executor";
 
@@ -328,11 +329,18 @@ describe("factory-step-executor strict staging guards", () => {
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(1n),
       getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      // The receipt of the earlier registration: the only evidence of which community id this session created.
       getTransactionReceipt: vi.fn().mockResolvedValue({
         logs: [
           {
-            data: "0x",
-            topics: ["0xdeadbeef"]
+            topics: encodeEventTopics({
+              abi: parseAbi([
+                "event CommunityRegistered(uint256 indexed communityId, string name, address indexed creator, uint256 parentCommunityId)"
+              ]),
+              eventName: "CommunityRegistered",
+              args: { communityId: 3n, creator: "0xabc1230000000000000000000000000000000000" }
+            }),
+            data: encodeAbiParameters([{ type: "string" }, { type: "uint256" }], ["Test", 0n])
           }
         ]
       }),
@@ -706,17 +714,44 @@ describe("SHI-169: resume completes the wiring after registerCommunity", () => {
   const ZERO = "0x0000000000000000000000000000000000000000";
   const REGISTER_HASH = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
-  /** Chain whose registerCommunity landed (id 6) and which records each setter the wizard sends. */
-  function legacyChain(done: { verifier: boolean; governance: boolean; revenue: boolean; modules: boolean }) {
+  const REGISTRY_EVENTS = parseAbi([
+    "event CommunityRegistered(uint256 indexed communityId, string name, address indexed creator, uint256 parentCommunityId)",
+  ]);
+  /** The receipt of this session's registerCommunity: the only evidence of which id it created. */
+  const registrationReceipt = (communityId: bigint) => ({
+    logs: [
+      {
+        topics: encodeEventTopics({
+          abi: REGISTRY_EVENTS,
+          eventName: "CommunityRegistered",
+          args: { communityId, creator: DEPLOYER },
+        }),
+        data: encodeAbiParameters([{ type: "string" }, { type: "uint256" }], ["Test", 0n]),
+      },
+    ],
+  });
+
+  /**
+   * Chain whose registerCommunity landed (id 6) and which records each setter the wizard sends.
+   * `receipt` is what the node returns for the registration tx; `nextId` is the registry counter.
+   */
+  function legacyChain(
+    done: { verifier: boolean; governance: boolean; revenue: boolean; modules: boolean },
+    options: { receipt?: { logs: unknown[] } | "unavailable"; nextId?: bigint } = {},
+  ) {
     const state = { ...done };
+    const receipt = options.receipt ?? registrationReceipt(6n);
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(9n),
       getBytecode: vi.fn().mockResolvedValue("0x1234"),
-      getTransactionReceipt: vi.fn().mockResolvedValue({ logs: [] }),
+      getTransactionReceipt:
+        receipt === "unavailable"
+          ? vi.fn().mockRejectedValue(new Error("receipt not found"))
+          : vi.fn().mockResolvedValue(receipt),
       readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
         switch (functionName) {
           case "nextCommunityId":
-            return 7n;
+            return options.nextId ?? 7n;
           case "getCommunityModules":
             return state.modules ? ONCHAIN_MODULES : { ...ONCHAIN_MODULES, verifierPowerToken: ZERO, governor: ZERO };
           case "getRevenuePolicy":
@@ -774,6 +809,33 @@ describe("SHI-169: resume completes the wiring after registerCommunity", () => {
     expect(sent).not.toContain("setVerifierParams");
     expect(sent).not.toContain("setGovernanceParams");
     expect(sent.slice(0, 3)).toEqual(["setEligibilityParams", "setRevenuePolicy", "setModuleAddresses"]);
+  });
+
+  it("never writes against the global counter when this session's registration receipt is unavailable", async () => {
+    // Another community registered after ours (counter is 8, ours is 6): `nextCommunityId - 1` would be 7.
+    const { publicClient, writeContractAsync } = legacyChain(
+      { verifier: true, governance: true, revenue: false, modules: false },
+      { receipt: "unavailable", nextId: 8n },
+    );
+    const executor = createFactoryDeployStepExecutor({ publicClient, writeContractAsync: writeContractAsync as any, connectedAddress: DEPLOYER });
+
+    await expect(executor("CONFIGURE_ACCESS_PERMISSIONS", failedConfigureSession(), makeContext())).rejects.toThrow(
+      /registration receipt/i,
+    );
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("never writes when the registration receipt carries no CommunityRegistered event", async () => {
+    const { publicClient, writeContractAsync } = legacyChain(
+      { verifier: true, governance: true, revenue: false, modules: false },
+      { receipt: { logs: [] }, nextId: 8n },
+    );
+    const executor = createFactoryDeployStepExecutor({ publicClient, writeContractAsync: writeContractAsync as any, connectedAddress: DEPLOYER });
+
+    await expect(executor("CONFIGURE_ACCESS_PERMISSIONS", failedConfigureSession(), makeContext())).rejects.toThrow(
+      /registration receipt/i,
+    );
+    expect(writeContractAsync).not.toHaveBeenCalled();
   });
 
   it("sends only setModuleAddresses when the revenue policy is already set", async () => {
