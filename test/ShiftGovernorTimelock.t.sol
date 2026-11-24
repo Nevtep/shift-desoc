@@ -453,6 +453,12 @@ contract ShiftGovernorTimelockLifecycleTest is GovernorTimelockFixture {
         vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorOnlyExecutor.selector, address(governor)));
         governor.setCountingMulti(address(0x1234));
 
+        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorOnlyExecutor.selector, deployer));
+        governor.initCountingMulti(address(0x1234));
+
+        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorOnlyExecutor.selector, deployer));
+        governor.updateTimelock(TimelockController(payable(address(0x1234))));
+
         // The Governor's executor is the timelock, so ETH/targets are only ever called by it.
         assertEq(governor.timelock(), address(timelock));
     }
