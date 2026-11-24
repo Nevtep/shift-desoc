@@ -36,7 +36,7 @@ Every app on Shift is one or more **communities** keyed by `communityId` in
 | Spin up sub-initiatives | `ProjectFactory` | project shells |
 
 Authority: staged lifecycle, admin-managed first and governance-managed after
-handoff (AccessManager + GovernorTimelockAccess). Do not flatten it.
+handoff (AccessManager + GovernorTimelockControl + community TimelockController). Do not flatten it.
 
 ## Architecture rule: permissions are AccessManager roles, not stored addresses
 

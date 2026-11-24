@@ -56,7 +56,7 @@ Composer authority surface update (2026-04): manager draft action availability i
 ┌────────────────────────────────────────────────────────────────┐
 │                        CORE LAYER                              │
 │   ShiftGovernor  ←→  CountingMultiChoice                       │
-│   (OZ Governor + multi-choice voting + AccessManager timelock) │
+│   (OZ Governor + multi-choice voting + community Timelock)       │
 └─────────────┬──────────────────────────────────────────────────┘
               │
 ┌─────────────▼──────────────────────────────────────────────────┐
@@ -107,7 +107,7 @@ Composer authority surface update (2026-04): manager draft action availability i
 | **Standard Binary Voting** | Traditional For/Against/Abstain voting via OpenZeppelin GovernorCountingSimple. |
 | **Multi-Choice Voting** | Proposals can define 2–10 options; voters distribute their weight as percentages across options (weights sum ≤ 1e18). |
 | **Quorum Fraction** | 4% quorum fraction of total voting supply. |
-| **Timelock Integration** | `GovernorTimelockAccess` integrates with `AccessManager` delay-based timelocks. |
+| **Timelock Integration** | `GovernorTimelockControl` queues and executes through the community `TimelockController` (`minDelay` is the only execution delay); the timelock holds AccessManager `ADMIN_ROLE` and is the effective caller on `restricted` modules and `ParamController.onlyAuthorized`. |
 | **Configurable Settings** | 1-day voting delay, 5-day voting period, 0 proposal threshold (adjustable). |
 | **Proposal Cancellation** | Multi-choice state is cleaned up properly when proposals are cancelled. |
 | **Vote Preview** | Users can preview how their weight distributes across options before casting. |
