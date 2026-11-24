@@ -8,7 +8,8 @@ import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensi
 import {GovernorVotes} from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 // solhint-disable-next-line max-line-length
 import {GovernorVotesQuorumFraction as Quorum} from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
-import {GovernorTimelockAccess} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockAccess.sol";
+import {GovernorTimelockControl} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {ICountingMultiChoice} from "contracts/core/interfaces/ICountingMultiChoice.sol";
 import {Errors} from "contracts/libs/Errors.sol";
 
@@ -17,7 +18,7 @@ import {Errors} from "contracts/libs/Errors.sol";
 /// @dev Extends OpenZeppelin Governor with custom multi-choice voting capability
 contract ShiftGovernor is
     Governor, GovernorSettings, GovernorCountingSimple,
-    GovernorVotes, Quorum, GovernorTimelockAccess
+    GovernorVotes, Quorum, GovernorTimelockControl
 {
     /// @notice Tracks number of options for multi-choice proposals
     mapping(uint256 => uint8) private _numOptions;
@@ -45,16 +46,22 @@ contract ShiftGovernor is
         string reason
     );
 
-    constructor(address token, address accessManager, uint32 baseDelaySeconds)
+    /// @param token Membership token used for voting power
+    /// @param communityTimelock Community TimelockController that queues and executes proposals.
+    ///        Its `getMinDelay()` is the only execution delay; the Governor keeps no delay of its own.
+    constructor(address token, TimelockController communityTimelock)
         Governor("ShiftGovernor")
         GovernorSettings(1 days, 5 days, 0)  // 1 day voting delay, 5 days voting period, 0 proposal threshold
-        GovernorVotes(IVotes(token))
+        GovernorVotes(IVotes(_nonZero(token)))
         Quorum(4)  // 4% quorum
-        GovernorTimelockAccess(accessManager, baseDelaySeconds) 
-    {
-        if (token == address(0) || accessManager == address(0)) {
-            revert Errors.ZeroAddress();
-        }
+        GovernorTimelockControl(TimelockController(payable(_nonZero(address(communityTimelock)))))
+    {}
+
+    /// @dev Evaluated as a base-constructor argument so a zero address fails with `ZeroAddress`
+    ///      before any base constructor touches it.
+    function _nonZero(address account) private pure returns (address) {
+        if (account == address(0)) revert Errors.ZeroAddress();
+        return account;
     }
 
     /// @notice Set the multi-choice counting contract
@@ -63,16 +70,6 @@ contract ShiftGovernor is
         address oldCounter = multiCounter;
         multiCounter = counter; 
         emit MultiCounterUpdated(oldCounter, counter);
-    }
-
-    // Resolve diamond inheritance between Governor and GovernorTimelockAccess
-    function propose(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        string memory description
-    ) public override(Governor, GovernorTimelockAccess) returns (uint256) {
-        return super.propose(targets, values, calldatas, description);
     }
 
     /// @notice Initialize multi-choice counter (admin only, for setup)
@@ -169,57 +166,59 @@ contract ShiftGovernor is
         return super.quorum(blockNumber);
     }
     
-    function state(uint256 proposalId) public view override(Governor) returns (ProposalState) {
+    function state(uint256 proposalId)
+        public
+        view
+        override(Governor, GovernorTimelockControl)
+        returns (ProposalState)
+    {
         return super.state(proposalId);
     }
-    
+
     function proposalThreshold() public view override(Governor, GovernorSettings) returns (uint256) {
         return super.proposalThreshold();
     }
-    
-    function proposalNeedsQueuing(uint256 proposalId) 
-        public 
-        view 
-        override(Governor, GovernorTimelockAccess) 
-        returns (bool) 
+
+    function proposalNeedsQueuing(uint256 proposalId)
+        public
+        view
+        override(Governor, GovernorTimelockControl)
+        returns (bool)
     {
         return super.proposalNeedsQueuing(proposalId);
     }
-    
-    function supportsInterface(bytes4 interfaceId) public view override(Governor) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
-    
+
     function _queueOperations(
-        uint256 proposalId, 
-        address[] memory targets, 
-        uint256[] memory values, 
-        bytes[] memory calldatas, 
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockAccess) returns (uint48) {
+    ) internal override(Governor, GovernorTimelockControl) returns (uint48) {
         return super._queueOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
-    
+
     function _executeOperations(
-        uint256 proposalId, 
-        address[] memory targets, 
-        uint256[] memory values, 
-        bytes[] memory calldatas, 
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockAccess) {
+    ) internal override(Governor, GovernorTimelockControl) {
         super._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
-    
+
     function _cancel(
-        address[] memory targets, 
-        uint256[] memory values, 
-        bytes[] memory calldatas, 
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockAccess) returns (uint256) {
+    ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
         return super._cancel(targets, values, calldatas, descriptionHash);
     }
-    
-    function _executor() internal view override(Governor) returns (address) {
+
+    /// @dev The community timelock is the effective `msg.sender` on every executed target.
+    function _executor() internal view override(Governor, GovernorTimelockControl) returns (address) {
         return super._executor();
     }
 }

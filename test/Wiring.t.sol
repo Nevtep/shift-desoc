@@ -15,6 +15,7 @@ import {CredentialManager} from "contracts/modules/CredentialManager.sol";
 import {MembershipTokenERC20Votes} from "contracts/tokens/MembershipTokenERC20Votes.sol";
 import {ShiftGovernor} from "contracts/core/ShiftGovernor.sol";
 import {Types} from "contracts/libs/Types.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {AccessManager} from "@openzeppelin/contracts/access/manager/AccessManager.sol";
 import {Roles} from "contracts/libs/Roles.sol";
 
@@ -72,6 +73,7 @@ contract WiringTest is Test {
     CredentialManager credentialManager;
     MembershipTokenERC20Votes membershipToken;
     ShiftGovernor governorContract;
+    TimelockController timelockController;
     AccessManager accessManager;
 
     ERC20Mock token;
@@ -102,7 +104,8 @@ contract WiringTest is Test {
         communityIdTwo = communityRegistry.registerCommunity("Comm 2", "Desc 2", "ipfs://meta-2", 0);
         accessManager = new AccessManager(governance);
         membershipToken = new MembershipTokenERC20Votes("Membership", "MEM", 1, address(accessManager));
-        governorContract = new ShiftGovernor(address(membershipToken), address(accessManager), 1 days);
+        timelockController = new TimelockController(1 days, new address[](0), new address[](0), governance);
+        governorContract = new ShiftGovernor(address(membershipToken), timelockController);
         valuableActionRegistry = new ValuableActionRegistry(
             address(accessManager),
             address(communityRegistry),
@@ -397,9 +400,12 @@ contract WiringTest is Test {
         assertEq(router.getClaimableInvestment(investmentTokenId, address(token)), 0);
     }
 
-    function testGovernorUsesLocalAccessManager() public view {
-        assertEq(address(governorContract.accessManager()), address(accessManager));
-        assertEq(governorContract.baseDelaySeconds(), 1 days);
+    function testGovernorUsesCommunityTimelock() public {
+        assertEq(governorContract.timelock(), address(timelockController));
+        assertEq(timelockController.getMinDelay(), 1 days);
+
+        communityRegistry.setModuleAddress(communityId, keccak256("timelock"), address(timelockController));
+        assertEq(communityRegistry.getTimelock(communityId), governorContract.timelock());
     }
 
     function testPostHandoffRestrictedWritesFailForDeployerAndManager() public {
