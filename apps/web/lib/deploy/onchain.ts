@@ -28,6 +28,8 @@ const ROLES = {
   VERIFIER_MANAGER_CALLER_ROLE: 15n
 };
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 /** OpenZeppelin AccessManager ADMIN_ROLE id. */
 const ADMIN_ROLE_ID = 0n;
 
@@ -84,6 +86,15 @@ export async function readVerificationSnapshot(
     revenueRouter: `0x${string}`;
     marketplace: `0x${string}`;
   };
+
+  // These modules have no run-scoped fallback: a zero entry means the registry wiring step never completed.
+  for (const name of ["verifierPowerToken", "requestHub", "valuableActionRegistry"] as const) {
+    if (!modules[name] || modules[name].toLowerCase() === ZERO_ADDRESS) {
+      throw new Error(
+        `Community ${communityId} has no module registered for ${name}: the registry wiring step did not complete`
+      );
+    }
+  }
 
   const requestHub = modules.requestHub;
   const engagementsFromRegistry = modules.engagementsManager;

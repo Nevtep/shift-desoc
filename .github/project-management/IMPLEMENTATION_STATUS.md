@@ -309,3 +309,10 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
   - contracts: post-handoff bootstrap admin cannot be reclaimed in `test/DeploymentRoleWiring.t.sol`
 - Validation evidence synced in `specs/004-single-community-architecture/quickstart.md`:
   `pnpm forge:test` PASS (485), `pnpm hh:compile` PASS, ABI copy PASS, indexer build/startup PASS, focused wizard web tests PASS (15).
+
+## 2026-11-23 Tactical Update (SHI-146 Verification Rejects Unwired Registry Modules)
+
+- `readVerificationSnapshot` (`apps/web/lib/deploy/onchain.ts`) now rejects when the registry returns a zero `verifierPowerToken`, `requestHub` or `valuableActionRegistry`, with `Community N has no module registered for <module>: the registry wiring step did not complete`, and makes no call to the zero address. The wizard marks `VERIFY_DEPLOYMENT` failed with that reason and Resume stays available.
+- Modules with a run-scoped fallback (marketplace, positionManager, engagements, credentialManager, investmentCohortManager, revenueRouter) keep their previous behavior; `countingMultiChoice` is not required (SHI-172 Option B).
+- Tests: `apps/web/tests/unit/lib/deploy/onchain-verification-snapshot.test.ts`, `apps/web/tests/unit/hooks/use-deploy-wizard-execution.test.tsx`.
+- QA (Base Sepolia): deploy a community with MetaMask and Rabby after SHI-168/SHI-169; "Verificar" must finish. On a community with no registered modules it must show the incomplete-wiring message, not a call to `0x0…0`.
