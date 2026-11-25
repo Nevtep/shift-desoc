@@ -1801,21 +1801,6 @@ async function registerAndWireCommunity(
   const treasuryVault = requireAddressArg(context.config.treasuryVault, "treasury vault");
   const modulePayload = buildModulePayload(runAddresses, treasuryVault);
 
-  const beforeNextId = (await publicClient.readContract({
-    address: sharedInfra.communityRegistry,
-    abi: COMMUNITY_REGISTRY_ABI,
-    functionName: "nextCommunityId",
-  })) as bigint;
-
-  const decodeCommunityId = (receipt: { logs?: unknown }, fallbackBefore: bigint, fallbackAfter: bigint): number => {
-    const communityIdFromEvent = decodeCommunityIdFromReceipt(receipt);
-    if (communityIdFromEvent && communityIdFromEvent > 0) {
-      return communityIdFromEvent;
-    }
-    const derivedCommunityId = fallbackAfter > 0n ? fallbackAfter - 1n : fallbackBefore;
-    return Number(derivedCommunityId);
-  };
-
   const bootstrapCall = {
     address: sharedInfra.communityRegistry,
     abi: COMMUNITY_REGISTRY_ABI,
@@ -1852,16 +1837,16 @@ async function registerAndWireCommunity(
 
   const bootstrapResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, bootstrapCall, connectedAddress, consumeNonce(), context.onTxConfirmed);
 
-  const afterNextId = (await publicClient.readContract({
-    address: sharedInfra.communityRegistry,
-    abi: COMMUNITY_REGISTRY_ABI,
-    functionName: "nextCommunityId",
-  })) as bigint;
+  // The id comes only from this transaction's own CommunityRegistered event. The global `nextCommunityId` is never
+  // read: another community may have registered meanwhile and the next steps write to whatever id is returned here.
+  const registeredCommunityId = decodeCommunityIdFromReceipt(bootstrapResult.receipt as { logs?: unknown });
+  if (!registeredCommunityId || registeredCommunityId <= 0) {
+    throw new Error(
+      "Cannot confirm which community this deployment registered: the registration receipt has no CommunityRegistered event. Retry once the transaction receipt can be read.",
+    );
+  }
 
-  return {
-    txHashes,
-    communityId: decodeCommunityId(bootstrapResult.receipt as { logs?: unknown }, beforeNextId, afterNextId),
-  };
+  return { txHashes, communityId: registeredCommunityId };
 }
 
 async function executeConfigureAccessPermissions(
@@ -2755,8 +2740,12 @@ async function assertCommunityWiringComplete(
     functionName: "getCommunityModules",
     args: [id],
   })) as Record<string, `0x${string}`>;
-  const missingModules = Object.entries(expected)
-    .filter(([key, address]) => isNonZeroAddress(address) && !isNonZeroAddress(modules?.[key]))
+  const requiredModules = Object.entries(expected).filter(([, address]) => isNonZeroAddress(address));
+  const missingModules = requiredModules.filter(([key]) => !isNonZeroAddress(modules?.[key])).map(([key]) => key);
+  // A non-zero module that is not this deployment's address means the registry points somewhere else: finalizing
+  // would change roles on the session's AccessManager for a community wired to another stack.
+  const mismatchedModules = requiredModules
+    .filter(([key, address]) => isNonZeroAddress(modules?.[key]) && modules[key].toLowerCase() !== address.toLowerCase())
     .map(([key]) => key);
 
   const revenuePolicy = (await publicClient.readContract({
@@ -2769,6 +2758,7 @@ async function assertCommunityWiringComplete(
 
   const gaps = [
     ...(missingModules.length > 0 ? [`modules not registered (${missingModules.join(", ")})`] : []),
+    ...(mismatchedModules.length > 0 ? [`modules registered at a different address (${mismatchedModules.join(", ")})`] : []),
     ...(revenuePolicySet ? [] : ["revenue policy not set"]),
   ];
   if (gaps.length > 0) {

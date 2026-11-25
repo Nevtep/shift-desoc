@@ -1,11 +1,64 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { encodeAbiParameters, encodeEventTopics } from "viem";
+
+import communityRegistryArtifact from "../../../../abis/CommunityRegistry.json";
+
 import { createFactoryDeployStepExecutor } from "../../../../lib/deploy/factory-step-executor";
+
+/** The module addresses this deployment expects the registry to hold (same mapping as the executor's payload). */
+function expectedModules(): Record<string, string> {
+  const a = makeSession().deploymentAddresses;
+  return {
+    accessManager: a.accessManager,
+    membershipToken: a.membershipToken,
+    governor: a.governor,
+    timelock: a.timelock,
+    requestHub: a.requestHub,
+    draftsManager: a.draftsManager,
+    engagementsManager: a.engagements,
+    valuableActionRegistry: a.valuableActionRegistry,
+    verifierPowerToken: a.verifierPowerToken,
+    verifierElection: a.verifierElection,
+    verifierManager: a.verifierManager,
+    valuableActionSBT: a.valuableActionSBT,
+    positionManager: a.positionManager,
+    credentialManager: a.credentialManager,
+    cohortRegistry: a.cohortRegistry,
+    investmentCohortManager: a.investmentCohortManager,
+    revenueRouter: a.revenueRouter,
+    treasuryVault: makeContext().config.treasuryVault,
+    treasuryAdapter: a.treasuryAdapter,
+    communityToken: a.communityToken,
+    paramController: a.paramController,
+    commerceDisputes: a.commerceDisputes,
+    marketplace: a.marketplace,
+    housingManager: a.housingManager,
+  };
+}
+
+/** The receipt of bootstrapCommunity: the only evidence of which community id it created. */
+function registrationReceipt(communityId: bigint) {
+  return {
+    status: "success",
+    logs: [
+      {
+        topics: encodeEventTopics({
+          abi: communityRegistryArtifact.abi as any,
+          eventName: "CommunityRegistered",
+          args: { communityId, creator: "0xabc1230000000000000000000000000000000000" },
+        } as any),
+        data: encodeAbiParameters([{ type: "string" }, { type: "uint256" }], ["Test", 0n]),
+      },
+    ],
+  };
+}
 
 /** What a fully wired community reads back from the registry and ParamController. */
 function wiringReads(functionName: string): unknown {
   if (functionName === "getCommunityModules") {
-    return new Proxy({}, { get: () => "0x4000000000000000000000000000000000000001" });
+    const expected = expectedModules();
+    return new Proxy({}, { get: (_t, key) => expected[key as string] ?? "0x4000000000000000000000000000000000000001" });
   }
   if (functionName === "getRevenuePolicy") return [1000n, 2000n, 1n, 5000n];
   return undefined;
@@ -161,7 +214,7 @@ describe("factory-step-executor strict staging guards", () => {
       }),
       simulateContract: vi.fn().mockResolvedValue({}),
       estimateContractGas: vi.fn().mockResolvedValue(21000n),
-      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
+      waitForTransactionReceipt: vi.fn().mockResolvedValue(registrationReceipt(1n))
     } as any;
 
     const writeContractAsync = vi.fn().mockResolvedValue("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");

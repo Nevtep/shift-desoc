@@ -5,10 +5,42 @@ import { encodeAbiParameters, encodeEventTopics } from "viem";
 import communityRegistryArtifact from "../../../../abis/CommunityRegistry.json";
 import { createFactoryDeployStepExecutor } from "../../../../lib/deploy/factory-step-executor";
 
+/** The module addresses this deployment expects the registry to hold (same mapping as the executor's payload). */
+function expectedModules(): Record<string, string> {
+  const a = makeSession().deploymentAddresses;
+  return {
+    accessManager: a.accessManager,
+    membershipToken: a.membershipToken,
+    governor: a.governor,
+    timelock: a.timelock,
+    requestHub: a.requestHub,
+    draftsManager: a.draftsManager,
+    engagementsManager: a.engagements,
+    valuableActionRegistry: a.valuableActionRegistry,
+    verifierPowerToken: a.verifierPowerToken,
+    verifierElection: a.verifierElection,
+    verifierManager: a.verifierManager,
+    valuableActionSBT: a.valuableActionSBT,
+    positionManager: a.positionManager,
+    credentialManager: a.credentialManager,
+    cohortRegistry: a.cohortRegistry,
+    investmentCohortManager: a.investmentCohortManager,
+    revenueRouter: a.revenueRouter,
+    treasuryVault: makeContext().config.treasuryVault,
+    treasuryAdapter: a.treasuryAdapter,
+    communityToken: a.communityToken,
+    paramController: a.paramController,
+    commerceDisputes: a.commerceDisputes,
+    marketplace: a.marketplace,
+    housingManager: a.housingManager,
+  };
+}
+
 /** What a fully wired community reads back from the registry and ParamController. */
 function wiringReads(functionName: string): unknown {
   if (functionName === "getCommunityModules") {
-    return new Proxy({}, { get: () => "0x4000000000000000000000000000000000000001" });
+    const expected = expectedModules();
+    return new Proxy({}, { get: (_t, key) => expected[key as string] ?? "0x4000000000000000000000000000000000000001" });
   }
   if (functionName === "getRevenuePolicy") return [1000n, 2000n, 1n, 5000n];
   return undefined;
@@ -17,6 +49,7 @@ function wiringReads(functionName: string): unknown {
 /** The receipt of this session's bootstrapCommunity: the only evidence of which community id it created. */
 function registrationReceipt(communityId: bigint) {
   return {
+    status: "success",
     logs: [
       {
         topics: encodeEventTopics({
@@ -183,7 +216,7 @@ describe("factory-step-executor strict staging guards", () => {
       }),
       simulateContract: vi.fn().mockResolvedValue({}),
       estimateContractGas: vi.fn().mockResolvedValue(21000n),
-      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
+      waitForTransactionReceipt: vi.fn().mockResolvedValue(registrationReceipt(1n))
     } as any;
 
     const writeContractAsync = vi.fn().mockResolvedValue("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
@@ -234,7 +267,7 @@ describe("factory-step-executor strict staging guards", () => {
         }
         return 21000n;
       }),
-      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] })
+      waitForTransactionReceipt: vi.fn().mockResolvedValue(registrationReceipt(1n))
     } as any;
 
     const writeContractAsync = vi
@@ -731,6 +764,32 @@ describe("SHI-182: one registration path, community id only from this session's 
     expect(writeContractAsync).not.toHaveBeenCalled();
   });
 
+  it("rejects a fresh bootstrap whose receipt has no CommunityRegistered event instead of reading the counter", async () => {
+    // nextCommunityId reads 8 in this chain: it must never become this deployment's id.
+    const { executor, publicClient } = chain({ receipt: { logs: [] } });
+    const session = makeSession();
+    session.communityId = undefined;
+
+    await expect(executor("CONFIGURE_ACCESS_PERMISSIONS", session, makeContext())).rejects.toThrow(
+      /registration receipt/i,
+    );
+    const reads = publicClient.readContract.mock.calls.map(([call]: any[]) => call.functionName);
+    expect(reads).not.toContain("nextCommunityId");
+  });
+
+  it("uses the id from the fresh bootstrap's own receipt, never the counter", async () => {
+    const { executor, publicClient } = chain();
+    publicClient.waitForTransactionReceipt = vi.fn().mockResolvedValue(registrationReceipt(6n));
+    const session = makeSession();
+    session.communityId = undefined;
+
+    const result = await executor("CONFIGURE_ACCESS_PERMISSIONS", session, makeContext());
+
+    expect(result.communityId).toBe(6);
+    const reads = publicClient.readContract.mock.calls.map(([call]: any[]) => call.functionName);
+    expect(reads).not.toContain("nextCommunityId");
+  });
+
   it("recovers the community id from the prior receipt, ignoring a counter that is ahead", async () => {
     const { executor, writeContractAsync } = chain({ receipt: registrationReceipt(6n) });
 
@@ -791,6 +850,37 @@ describe("SHI-182: one registration path, community id only from this session's 
 
         await expect(executor("FINALIZE_AUTHORITY_MODE", session, makeContext())).rejects.toThrow(/modules not registered \(.*governor/);
         expect(writeContractAsync).not.toHaveBeenCalled();
+      });
+
+      it(`${mode}: names a module registered at a different address and revokes nothing`, async () => {
+        const expected = expectedModules();
+        const other = "0x5000000000000000000000000000000000000005";
+        const { executor, writeContractAsync } = finalizeChain({
+          modules: new Proxy({}, { get: (_t, key) => (key === "timelock" ? other : expected[key as string]) }),
+        });
+        const session = makeSession();
+        session.deploymentConfig = { authorityMode: mode };
+
+        await expect(executor("FINALIZE_AUTHORITY_MODE", session, makeContext())).rejects.toThrow(
+          /modules registered at a different address \(.*timelock/,
+        );
+        expect(writeContractAsync).not.toHaveBeenCalled();
+      });
+
+      it(`${mode}: accepts the expected addresses regardless of letter case`, async () => {
+        const expected = expectedModules();
+        const { executor } = finalizeChain({
+          modules: new Proxy({}, { get: (_t, key) => (typeof expected[key as string] === "string" ? expected[key as string].toUpperCase().replace("0X", "0x") : undefined) }),
+        });
+        const session = makeSession();
+        session.deploymentConfig = { authorityMode: mode };
+
+        // The mocked role reads fail later in finalization; only the wiring guard is under test here.
+        const outcome = await executor("FINALIZE_AUTHORITY_MODE", session, makeContext()).then(
+          () => "",
+          (error: Error) => error.message,
+        );
+        expect(outcome).not.toMatch(/wiring is incomplete/);
       });
 
       it(`${mode}: names the missing revenue policy and revokes nothing`, async () => {

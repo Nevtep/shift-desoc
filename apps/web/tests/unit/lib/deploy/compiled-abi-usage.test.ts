@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { decodeFunctionData, encodeFunctionData, toFunctionSelector, type Abi } from "viem";
+import { decodeFunctionData, encodeAbiParameters, encodeEventTopics, encodeFunctionData, toFunctionSelector, type Abi } from "viem";
 import { describe, expect, it, vi } from "vitest";
 
 import communityRegistryArtifact from "../../../../abis/CommunityRegistry.json";
@@ -94,6 +94,23 @@ function makeContext() {
   } as any;
 }
 
+/** The receipt of bootstrapCommunity: the only evidence of which community id it created. */
+function registrationReceipt(communityId: bigint) {
+  return {
+    status: "success",
+    logs: [
+      {
+        topics: encodeEventTopics({
+          abi: communityRegistryArtifact.abi as any,
+          eventName: "CommunityRegistered",
+          args: { communityId, creator: "0xabc1230000000000000000000000000000000000" },
+        } as any),
+        data: encodeAbiParameters([{ type: "string" }, { type: "uint256" }], ["Test", 0n]),
+      },
+    ],
+  };
+}
+
 function makeClient(simulateContract: (args: any) => Promise<unknown>) {
   let nextId = 1n;
   return {
@@ -108,7 +125,7 @@ function makeClient(simulateContract: (args: any) => Promise<unknown>) {
     }),
     simulateContract: vi.fn(simulateContract),
     estimateContractGas: vi.fn().mockResolvedValue(21000n),
-    waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] }),
+    waitForTransactionReceipt: vi.fn().mockResolvedValue(registrationReceipt(1n)),
   } as any;
 }
 
