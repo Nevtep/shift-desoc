@@ -8,6 +8,7 @@ import { ParameterSummary } from "./parameter-summary";
 import { useCommunityOverview } from "../../../hooks/useCommunityOverview";
 import { useCommunityOverviewActivity } from "../../../hooks/useCommunityOverviewActivity";
 import { ActivityPreviews } from "./activity-previews";
+import { TechnicalDetail } from "./technical-detail";
 import { SectionTabs } from "./section-tabs";
 import { buildSectionTabs } from "../../../lib/community-overview/availability";
 
@@ -27,14 +28,15 @@ export function CommunityOverviewPage({ communityId }: { communityId: number }) 
       {!overview.hasData && !overview.modulesLoading ? <OverviewState type="not-found" /> : null}
       {overview.paramsError ? <OverviewState type="partial-failure" onRetry={() => void overview.indexer.refetch()} /> : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ModuleSummary items={overview.moduleItems} />
-        <ParameterSummary items={overview.parameterItems} />
-      </div>
-
-      <AccessSummary inspection={overview.accessInspection} loading={overview.accessLoading} />
-
       <ActivityPreviews panels={activity.panels} />
+
+      <TechnicalDetail>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ModuleSummary items={overview.moduleItems} />
+          <ParameterSummary items={overview.parameterItems} />
+        </div>
+        <AccessSummary inspection={overview.accessInspection} loading={overview.accessLoading} />
+      </TechnicalDetail>
     </main>
   );
 }

@@ -238,7 +238,7 @@ export function DeployWizard({ options }: Props) {
       <section className="space-y-6">
         <p className="text-sm font-medium text-primary">{t.ready}</p>
         <div className="flex flex-wrap justify-end gap-3">
-          <Link href="/" className="btn-ghost cursor-pointer">
+          <Link href="/" className="btn-cream cursor-pointer">
             {t.goHome}
           </Link>
           {typeof communityId === "number" ? (
@@ -302,6 +302,11 @@ export function DeployWizard({ options }: Props) {
       className="fixed inset-0 z-[100] h-dvh w-screen flex flex-col overflow-y-auto bg-background bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: "url(/contact-bg.webp)" }}
     >
+      <div
+        data-testid="wizard-contrast-overlay"
+        className="pointer-events-none fixed inset-0 bg-background/70"
+        aria-hidden="true"
+      />
       <div className="absolute right-4 top-4 z-10 flex items-center gap-3">
         {designMode ? (
           <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-medium text-amber-900">
@@ -310,7 +315,7 @@ export function DeployWizard({ options }: Props) {
         ) : null}
         <WalletConnect showAddress />
       </div>
-      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-16 sm:px-6">
+      <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-16 sm:px-6">
           <div className="flex flex-col items-center gap-6">
             <img
               src="/imagotipo-h.svg"
@@ -387,7 +392,7 @@ export function DeployWizard({ options }: Props) {
                 <button
                   type="button"
                   onClick={handleStartOver}
-                  className="btn-ghost cursor-pointer"
+                  className="btn-cream cursor-pointer"
                 >
                   {t.startOver}
                 </button>
@@ -409,7 +414,7 @@ export function DeployWizard({ options }: Props) {
                   <button
                     type="button"
                     onClick={() => setCompletedDismissed(true)}
-                    className="btn-ghost cursor-pointer"
+                    className="btn-cream cursor-pointer"
                   >
                     {t.done}
                   </button>
@@ -437,7 +442,7 @@ export function DeployWizard({ options }: Props) {
                       type="button"
                       disabled={!canResume || isResuming}
                       onClick={() => void handleResume()}
-                      className="btn-ghost cursor-pointer"
+                      className="btn-cream cursor-pointer"
                     >
                       {isResuming ? t.resuming : t.resume}
                     </button>
