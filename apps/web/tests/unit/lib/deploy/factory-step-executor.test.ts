@@ -1,6 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { encodeAbiParameters, encodeEventTopics } from "viem";
+
+import communityRegistryArtifact from "../../../../abis/CommunityRegistry.json";
 import { createFactoryDeployStepExecutor } from "../../../../lib/deploy/factory-step-executor";
+
+/** What a fully wired community reads back from the registry and ParamController. */
+function wiringReads(functionName: string): unknown {
+  if (functionName === "getCommunityModules") {
+    return new Proxy({}, { get: () => "0x4000000000000000000000000000000000000001" });
+  }
+  if (functionName === "getRevenuePolicy") return [1000n, 2000n, 1n, 5000n];
+  return undefined;
+}
+
+/** The receipt of this session's bootstrapCommunity: the only evidence of which community id it created. */
+function registrationReceipt(communityId: bigint) {
+  return {
+    logs: [
+      {
+        topics: encodeEventTopics({
+          abi: communityRegistryArtifact.abi as any,
+          eventName: "CommunityRegistered",
+          args: { communityId, creator: "0xabc1230000000000000000000000000000000000" },
+        } as any),
+        data: encodeAbiParameters([{ type: "string" }, { type: "uint256" }], ["Test", 0n]),
+      },
+    ],
+  };
+}
 
 function makeSession() {
   return {
@@ -88,7 +116,7 @@ describe("factory-step-executor strict staging guards", () => {
     ).rejects.toThrow("Strict staging mode only supports Base Sepolia");
   });
 
-  it("rejects legacy mode environment flags", async () => {
+  it("rejects unsupported mode environment flags", async () => {
     process.env.NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE = "1";
 
     const executor = createFactoryDeployStepExecutor({
@@ -102,7 +130,7 @@ describe("factory-step-executor strict staging guards", () => {
         chainId: 84532,
         preflight: {} as any
       })
-    ).rejects.toThrow("Legacy deploy modes are disabled in strict staging mode");
+    ).rejects.toThrow("Unsupported deploy modes are disabled in strict staging mode");
 
     delete process.env.NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE;
   });
@@ -284,18 +312,11 @@ describe("factory-step-executor strict staging guards", () => {
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(1n),
       getBytecode: vi.fn().mockResolvedValue("0x1234"),
-      getTransactionReceipt: vi.fn().mockResolvedValue({
-        logs: [
-          {
-            data: "0x",
-            topics: ["0xdeadbeef"]
-          }
-        ]
-      }),
+      getTransactionReceipt: vi.fn().mockResolvedValue(registrationReceipt(3n)),
       readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
         switch (functionName) {
           case "nextCommunityId":
-            return 4n;
+            return 9n; // another community registered since: the counter must never be used
           case "ADMIN_ROLE":
             return 0n;
           case "authority":
@@ -436,6 +457,8 @@ describe("factory-step-executor strict staging guards", () => {
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(1n),
       readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+        const wired = wiringReads(functionName);
+        if (wired !== undefined) return wired;
         if (functionName === "ADMIN_ROLE") return 0n;
         if (functionName === "authority") return "0x1000000000000000000000000000000000000003";
         if (functionName === "hasRole") {
@@ -473,6 +496,8 @@ describe("factory-step-executor strict staging guards", () => {
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(5n),
       readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+        const wired = wiringReads(functionName);
+        if (wired !== undefined) return wired;
         if (functionName === "ADMIN_ROLE") return 0n;
         if (functionName === "authority") return "0x1000000000000000000000000000000000000003";
         if (functionName === "hasRole") {
@@ -541,6 +566,8 @@ describe("FINALIZE_AUTHORITY_MODE branches", () => {
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(5n),
       readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+        const wired = wiringReads(functionName);
+        if (wired !== undefined) return wired;
         if (functionName === "ADMIN_ROLE") return 0n;
         if (functionName === "authority") return ACCESS_MANAGER;
         if (functionName === "hasRole") return [Boolean(state[String(args?.[1]).toLowerCase()]), 0];
@@ -648,5 +675,132 @@ describe("FINALIZE_AUTHORITY_MODE branches", () => {
     );
     expect(writeContractAsync).not.toHaveBeenCalled();
     delete process.env.NEXT_PUBLIC_BOOTSTRAP_COORDINATOR;
+  });
+});
+
+describe("SHI-182: one registration path, community id only from this session's receipt", () => {
+  const DEPLOYER = "0xabc1230000000000000000000000000000000000";
+  const PRIOR_TX = "0x1111111111111111111111111111111111111111111111111111111111111111";
+
+  function resumedSession() {
+    const session = makeSession();
+    session.communityId = undefined;
+    session.steps = [
+      { key: "CONFIGURE_ACCESS_PERMISSIONS", status: "failed", expectedTxCount: 2, confirmedTxCount: 1, txHashes: [PRIOR_TX] },
+    ];
+    return session;
+  }
+
+  function chain(options: { receipt?: { logs: unknown[] } | "unavailable"; simulate?: () => Promise<unknown> } = {}) {
+    const receipt = options.receipt ?? registrationReceipt(6n);
+    const publicClient = {
+      getTransactionCount: vi.fn().mockResolvedValue(1n),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      getTransactionReceipt:
+        receipt === "unavailable"
+          ? vi.fn().mockRejectedValue(new Error("receipt not found"))
+          : vi.fn().mockResolvedValue(receipt),
+      readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+        const wired = wiringReads(functionName);
+        if (wired !== undefined) return wired;
+        if (functionName === "nextCommunityId") return 8n; // ahead of our id: must never be used
+        if (functionName === "ADMIN_ROLE") return 0n;
+        if (functionName === "authority") return "0x1000000000000000000000000000000000000003";
+        if (functionName === "hasRole") return [true, 0];
+        return true;
+      }),
+      simulateContract: vi.fn(options.simulate ?? (async () => ({}))),
+      estimateContractGas: vi.fn().mockResolvedValue(21000n),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success", logs: [] }),
+    } as any;
+    const writeContractAsync = vi.fn().mockResolvedValue("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
+    const executor = createFactoryDeployStepExecutor({ publicClient, writeContractAsync, connectedAddress: DEPLOYER });
+    return { executor, writeContractAsync, publicClient };
+  }
+
+  it("stops with the node's reason and sends nothing when bootstrapCommunity cannot be simulated", async () => {
+    const { executor, writeContractAsync } = chain({
+      simulate: async () => {
+        throw new Error("execution reverted: InvalidVerifierParams");
+      },
+    });
+
+    await expect(executor("CONFIGURE_ACCESS_PERMISSIONS", makeSession(), makeContext())).rejects.toThrow(
+      /InvalidVerifierParams/,
+    );
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("recovers the community id from the prior receipt, ignoring a counter that is ahead", async () => {
+    const { executor, writeContractAsync } = chain({ receipt: registrationReceipt(6n) });
+
+    const result = await executor("CONFIGURE_ACCESS_PERMISSIONS", resumedSession(), makeContext());
+
+    expect(result.communityId).toBe(6);
+    expect(writeContractAsync.mock.calls.map(([call]) => call.functionName)).not.toContain("bootstrapCommunity");
+  });
+
+  it("stops with a retryable error and sends nothing when the prior receipt is unavailable", async () => {
+    const { executor, writeContractAsync } = chain({ receipt: "unavailable" });
+
+    await expect(executor("CONFIGURE_ACCESS_PERMISSIONS", resumedSession(), makeContext())).rejects.toThrow(
+      /registration receipt/i,
+    );
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("stops and sends nothing when the prior receipt carries no CommunityRegistered event", async () => {
+    const { executor, writeContractAsync } = chain({ receipt: { logs: [] } });
+
+    await expect(executor("CONFIGURE_ACCESS_PERMISSIONS", resumedSession(), makeContext())).rejects.toThrow(
+      /registration receipt/i,
+    );
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  describe("FINALIZE_AUTHORITY_MODE refuses to revoke while the wiring is incomplete", () => {
+    function finalizeChain(reads: { modules?: Record<string, string>; revenue?: bigint[] }) {
+      const publicClient = {
+        getTransactionCount: vi.fn().mockResolvedValue(5n),
+        getBytecode: vi.fn().mockResolvedValue("0x1234"),
+        readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
+          if (functionName === "getCommunityModules") return reads.modules ?? wiringReads(functionName);
+          if (functionName === "getRevenuePolicy") return reads.revenue ?? wiringReads(functionName);
+          if (functionName === "ADMIN_ROLE") return 0n;
+          if (functionName === "authority") return "0x1000000000000000000000000000000000000003";
+          if (functionName === "hasRole") return [true, 0];
+          return true;
+        }),
+        simulateContract: vi.fn().mockResolvedValue({}),
+        estimateContractGas: vi.fn().mockResolvedValue(21000n),
+        waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" }),
+      } as any;
+      const writeContractAsync = vi.fn().mockResolvedValue("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+      const executor = createFactoryDeployStepExecutor({ publicClient, writeContractAsync, connectedAddress: DEPLOYER });
+      return { executor, writeContractAsync };
+    }
+
+    for (const mode of ["admin_managed", "governance_managed"]) {
+      it(`${mode}: names the unregistered modules and revokes nothing`, async () => {
+        const zero = "0x0000000000000000000000000000000000000000";
+        const { executor, writeContractAsync } = finalizeChain({
+          modules: new Proxy({}, { get: (_t, key) => (key === "governor" ? zero : "0x4000000000000000000000000000000000000001") }),
+        });
+        const session = makeSession();
+        session.deploymentConfig = { authorityMode: mode };
+
+        await expect(executor("FINALIZE_AUTHORITY_MODE", session, makeContext())).rejects.toThrow(/modules not registered \(.*governor/);
+        expect(writeContractAsync).not.toHaveBeenCalled();
+      });
+
+      it(`${mode}: names the missing revenue policy and revokes nothing`, async () => {
+        const { executor, writeContractAsync } = finalizeChain({ revenue: [0n, 0n, 0n, 0n] });
+        const session = makeSession();
+        session.deploymentConfig = { authorityMode: mode };
+
+        await expect(executor("FINALIZE_AUTHORITY_MODE", session, makeContext())).rejects.toThrow(/revenue policy not set/);
+        expect(writeContractAsync).not.toHaveBeenCalled();
+      });
+    }
   });
 });

@@ -25,8 +25,7 @@ import type {
 } from "./types";
 
 const STRICT_STAGING_CHAIN_ID = 84532;
-const LEGACY_MODE_ENV_FLAGS = [
-  "NEXT_PUBLIC_SHIFT_ENABLE_LEGACY_DEPLOY",
+const UNSUPPORTED_MODE_ENV_FLAGS = [
   "NEXT_PUBLIC_SHIFT_ENABLE_BACKFILL",
   "NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE"
 ] as const;
@@ -111,12 +110,6 @@ const DEPLOY_LAYER_FALLBACK_GAS = 6000000n;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const WIZARD_REQUIRED_CONFIRMATIONS = 3;
 const GAS_FALLBACK_BY_FUNCTION: Record<string, bigint> = {
-  registerCommunity: 600000n,
-  setVerifierParams: 450000n,
-  setGovernanceParams: 350000n,
-  setEligibilityParams: 300000n,
-  setRevenuePolicy: 350000n,
-  setModuleAddresses: 900000n,
   initializeCommunity: 350000n,
   setValuableActionSBT: 250000n,
   setIssuanceModule: 250000n,
@@ -449,15 +442,15 @@ function assertStrictStagingMode(chainId: number): void {
     );
   }
 
-  const enabledLegacyFlags = LEGACY_MODE_ENV_FLAGS.filter((flag) => {
+  const enabledUnsupportedFlags = UNSUPPORTED_MODE_ENV_FLAGS.filter((flag) => {
     const value = process.env[flag];
     if (!value) return false;
     const normalized = value.trim().toLowerCase();
     return normalized === "1" || normalized === "true" || normalized === "yes";
   });
-  if (enabledLegacyFlags.length > 0) {
+  if (enabledUnsupportedFlags.length > 0) {
     throw new Error(
-      `Legacy deploy modes are disabled in strict staging mode. Unset: ${enabledLegacyFlags.join(", ")}.`,
+      `Unsupported deploy modes are disabled in strict staging mode. Unset: ${enabledUnsupportedFlags.join(", ")}.`,
     );
   }
 }
@@ -1694,6 +1687,40 @@ async function executeDeployStackWithFactories(
   };
 }
 
+function buildModulePayload(
+  runAddresses: DeploymentRunAddresses,
+  treasuryVault: `0x${string}`,
+): Record<string, `0x${string}`> {
+  return {
+    accessManager: runAddresses.accessManager,
+    membershipToken: runAddresses.membershipToken ?? ZERO_ADDRESS,
+    governor: runAddresses.governor,
+    timelock: runAddresses.timelock,
+    countingMultiChoice: runAddresses.countingMultiChoice ?? ZERO_ADDRESS,
+    requestHub: runAddresses.requestHub,
+    draftsManager: runAddresses.draftsManager,
+    engagementsManager: runAddresses.engagements,
+    valuableActionRegistry: runAddresses.valuableActionRegistry,
+    verifierPowerToken: runAddresses.verifierPowerToken,
+    verifierElection: runAddresses.verifierElection,
+    verifierManager: runAddresses.verifierManager,
+    valuableActionSBT: runAddresses.valuableActionSBT,
+    positionManager: runAddresses.positionManager ?? ZERO_ADDRESS,
+    credentialManager: runAddresses.credentialManager ?? ZERO_ADDRESS,
+    cohortRegistry: runAddresses.cohortRegistry ?? ZERO_ADDRESS,
+    investmentCohortManager: runAddresses.investmentCohortManager ?? ZERO_ADDRESS,
+    revenueRouter: runAddresses.revenueRouter,
+    treasuryVault,
+    treasuryAdapter: runAddresses.treasuryAdapter,
+    communityToken: runAddresses.communityToken,
+    paramController: runAddresses.paramController,
+    commerceDisputes: runAddresses.commerceDisputes ?? ZERO_ADDRESS,
+    marketplace: runAddresses.marketplace,
+    housingManager: runAddresses.housingManager ?? ZERO_ADDRESS,
+    projectFactory: runAddresses.projectFactory ?? ZERO_ADDRESS,
+  };
+}
+
 async function registerAndWireCommunity(
   params: {
     publicClient: PublicClient;
@@ -1730,6 +1757,8 @@ async function registerAndWireCommunity(
   };
 
   // Resume idempotency: if bootstrapCommunity already succeeded in this step, do not submit it again.
+  // The community id comes only from this session's own CommunityRegistered receipt, never from the global
+  // `nextCommunityId`: another community may have registered since, and later steps write to the recovered id.
   if (!session.communityId) {
     const configureStep = session.steps.find((step) => step.key === "CONFIGURE_ACCESS_PERMISSIONS");
     const priorHashes = configureStep?.txHashes ?? [];
@@ -1746,23 +1775,13 @@ async function registerAndWireCommunity(
             return { txHashes, communityId: decodedCommunityId };
           }
         } catch {
-          // Ignore unavailable receipts and continue fallback recovery.
+          // An unavailable receipt is handled below: nothing is sent without a confirmed community id.
         }
       }
 
-      const nextCommunityId = (await publicClient.readContract({
-        address: sharedInfra.communityRegistry,
-        abi: COMMUNITY_REGISTRY_ABI,
-        functionName: "nextCommunityId",
-      })) as bigint;
-      if (nextCommunityId > 1n) {
-        const recoveredCommunityId = Number(nextCommunityId - 1n);
-        console.log("[DeployWizard] Recovered configure-step communityId from nextCommunityId fallback", {
-          recoveredCommunityId,
-          nextCommunityId: Number(nextCommunityId),
-        });
-        return { txHashes, communityId: recoveredCommunityId };
-      }
+      throw new Error(
+        "Cannot confirm which community this deployment registered: the registration receipt is unavailable or has no CommunityRegistered event. Retry once the transaction receipt can be read; nothing was sent.",
+      );
     }
   }
 
@@ -1780,34 +1799,7 @@ async function registerAndWireCommunity(
   };
 
   const treasuryVault = requireAddressArg(context.config.treasuryVault, "treasury vault");
-  const modulePayload = {
-    accessManager: runAddresses.accessManager,
-    membershipToken: runAddresses.membershipToken ?? ZERO_ADDRESS,
-    governor: runAddresses.governor,
-    timelock: runAddresses.timelock,
-    countingMultiChoice: runAddresses.countingMultiChoice ?? ZERO_ADDRESS,
-    requestHub: runAddresses.requestHub,
-    draftsManager: runAddresses.draftsManager,
-    engagementsManager: runAddresses.engagements,
-    valuableActionRegistry: runAddresses.valuableActionRegistry,
-    verifierPowerToken: runAddresses.verifierPowerToken,
-    verifierElection: runAddresses.verifierElection,
-    verifierManager: runAddresses.verifierManager,
-    valuableActionSBT: runAddresses.valuableActionSBT,
-    positionManager: runAddresses.positionManager ?? ZERO_ADDRESS,
-    credentialManager: runAddresses.credentialManager ?? ZERO_ADDRESS,
-    cohortRegistry: runAddresses.cohortRegistry ?? ZERO_ADDRESS,
-    investmentCohortManager: runAddresses.investmentCohortManager ?? ZERO_ADDRESS,
-    revenueRouter: runAddresses.revenueRouter,
-    treasuryVault,
-    treasuryAdapter: runAddresses.treasuryAdapter,
-    communityToken: runAddresses.communityToken,
-    paramController: runAddresses.paramController,
-    commerceDisputes: runAddresses.commerceDisputes ?? ZERO_ADDRESS,
-    marketplace: runAddresses.marketplace,
-    housingManager: runAddresses.housingManager ?? ZERO_ADDRESS,
-    projectFactory: runAddresses.projectFactory ?? ZERO_ADDRESS,
-  };
+  const modulePayload = buildModulePayload(runAddresses, treasuryVault);
 
   const beforeNextId = (await publicClient.readContract({
     address: sharedInfra.communityRegistry,
@@ -1855,45 +1847,10 @@ async function registerAndWireCommunity(
     ],
   };
 
-  // Detect a registry that lacks bootstrapCommunity by simulating the call, never by sending a reverting tx.
-  let atomicBootstrapAvailable = true;
-  try {
-    await publicClient.simulateContract({ ...bootstrapCall, account: connectedAddress } as never);
-  } catch (error) {
-    atomicBootstrapAvailable = false;
-    console.warn("[DeployWizard] bootstrapCommunity simulation failed; using legacy register+setters path", {
-      error,
-      communityRegistry: sharedInfra.communityRegistry,
-    });
-  }
+  // Simulate first so a revert surfaces the node's real reason and nothing is sent.
+  await publicClient.simulateContract({ ...bootstrapCall, account: connectedAddress } as never);
 
-  if (atomicBootstrapAvailable) {
-    const bootstrapResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, bootstrapCall, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-    const afterNextId = (await publicClient.readContract({
-      address: sharedInfra.communityRegistry,
-      abi: COMMUNITY_REGISTRY_ABI,
-      functionName: "nextCommunityId",
-    })) as bigint;
-
-    return {
-      txHashes,
-      communityId: decodeCommunityId(bootstrapResult.receipt as { logs?: unknown }, beforeNextId, afterNextId),
-    };
-  }
-
-  // Compatibility fallback for older registry deployments that do not include bootstrapCommunity.
-  const registerResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.communityRegistry,
-    abi: COMMUNITY_REGISTRY_ABI,
-    functionName: "registerCommunity",
-    args: [
-      context.config.communityName,
-      context.config.communityDescription,
-      context.config.communityMetadataUri,
-      0n,
-    ],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
+  const bootstrapResult = await writeAndConfirm(writeContractAsync, publicClient, txHashes, bootstrapCall, connectedAddress, consumeNonce(), context.onTxConfirmed);
 
   const afterNextId = (await publicClient.readContract({
     address: sharedInfra.communityRegistry,
@@ -1901,44 +1858,10 @@ async function registerAndWireCommunity(
     functionName: "nextCommunityId",
   })) as bigint;
 
-  const communityId = decodeCommunityId(registerResult.receipt as { logs?: unknown }, beforeNextId, afterNextId);
-
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.paramController,
-    abi: PARAM_CONTROLLER_ABI,
-    functionName: "setVerifierParams",
-    args: [BigInt(communityId), 5n, 3n, 20n, true, 1000n, 86400n],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.paramController,
-    abi: PARAM_CONTROLLER_ABI,
-    functionName: "setGovernanceParams",
-    args: [BigInt(communityId), 7200n, 86400n, 21600n],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.paramController,
-    abi: PARAM_CONTROLLER_ABI,
-    functionName: "setEligibilityParams",
-    args: [BigInt(communityId), 0n, 0n, 0n],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.paramController,
-    abi: PARAM_CONTROLLER_ABI,
-    functionName: "setRevenuePolicy",
-    args: [BigInt(communityId), 1000n, 2000n, 1n, 5000n],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-  await writeAndConfirm(writeContractAsync, publicClient, txHashes, {
-    address: sharedInfra.communityRegistry,
-    abi: COMMUNITY_REGISTRY_ABI,
-    functionName: "setModuleAddresses",
-    args: [BigInt(communityId), modulePayload],
-  }, connectedAddress, consumeNonce(), context.onTxConfirmed);
-
-  return { txHashes, communityId };
+  return {
+    txHashes,
+    communityId: decodeCommunityId(bootstrapResult.receipt as { logs?: unknown }, beforeNextId, afterNextId),
+  };
 }
 
 async function executeConfigureAccessPermissions(
@@ -2809,16 +2732,66 @@ async function executeAdminManagedFinalization(
   return { txHashes };
 }
 
-function executeFinalizeAuthorityMode(
+/**
+ * The bootstrap coordinator is the only holder that can still finish the community wiring, and revoking it
+ * cannot be undone from the wizard: no role is revoked until the chain shows every module registered and the
+ * revenue policy set.
+ */
+async function assertCommunityWiringComplete(
+  params: FinalizeParams,
+  session: DeploymentWizardSession,
+  context: DeployContext,
+): Promise<void> {
+  if (!session.communityId) return;
+  const { publicClient } = params;
+  const runAddresses = requireRunScopedAddresses(session);
+  const sharedInfra = resolveSharedInfra(context.preflight);
+  const id = BigInt(session.communityId);
+  const expected = buildModulePayload(runAddresses, requireAddressArg(context.config.treasuryVault, "treasury vault"));
+
+  const modules = (await publicClient.readContract({
+    address: sharedInfra.communityRegistry,
+    abi: COMMUNITY_REGISTRY_ABI,
+    functionName: "getCommunityModules",
+    args: [id],
+  })) as Record<string, `0x${string}`>;
+  const missingModules = Object.entries(expected)
+    .filter(([key, address]) => isNonZeroAddress(address) && !isNonZeroAddress(modules?.[key]))
+    .map(([key]) => key);
+
+  const revenuePolicy = (await publicClient.readContract({
+    address: sharedInfra.paramController,
+    abi: PARAM_CONTROLLER_ABI,
+    functionName: "getRevenuePolicy",
+    args: [id],
+  })) as readonly unknown[];
+  const revenuePolicySet = revenuePolicy.some((value) => BigInt(value as bigint | number) !== 0n);
+
+  const gaps = [
+    ...(missingModules.length > 0 ? [`modules not registered (${missingModules.join(", ")})`] : []),
+    ...(revenuePolicySet ? [] : ["revenue policy not set"]),
+  ];
+  if (gaps.length > 0) {
+    throw new Error(
+      `Cannot finalize authority: community ${session.communityId} wiring is incomplete (${gaps.join("; ")}). No role was revoked.`,
+    );
+  }
+}
+
+async function executeFinalizeAuthorityMode(
   params: FinalizeParams,
   session: DeploymentWizardSession,
   context: DeployContext,
 ): Promise<StepExecutionResult> {
   // Always the mode persisted with the session; never a default and never the other mode.
   const mode = session.deploymentConfig?.authorityMode;
-  if (mode === "admin_managed") return executeAdminManagedFinalization(params, session, context);
-  if (mode === "governance_managed") return executeGovernanceManagedFinalization(params, session, context);
-  return Promise.reject(new Error("Cannot finalize authority without a selected authority mode."));
+  if (mode !== "admin_managed" && mode !== "governance_managed") {
+    throw new Error("Cannot finalize authority without a selected authority mode.");
+  }
+  await assertCommunityWiringComplete(params, session, context);
+  return mode === "admin_managed"
+    ? executeAdminManagedFinalization(params, session, context)
+    : executeGovernanceManagedFinalization(params, session, context);
 }
 
 export function createFactoryDeployStepExecutor(params: {

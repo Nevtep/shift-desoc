@@ -152,25 +152,23 @@ describe("registry wiring step uses the compiled CommunityRegistry/ParamControll
     expect(Object.keys((decoded.args as any)[5])).toHaveLength(26);
   });
 
-  it("falls back to the legacy path when simulation shows bootstrapCommunity is unavailable, without sending it", async () => {
-    const { writes } = await runStep3(async ({ functionName }) => {
-      if (functionName === "bootstrapCommunity") throw new Error("function selector not recognized");
-      return {};
+  it("stops with the node's reason and sends nothing when bootstrapCommunity cannot be simulated", async () => {
+    await expect(
+      runStep3(async ({ functionName }) => {
+        if (functionName === "bootstrapCommunity") throw new Error("function selector not recognized");
+        return {};
+      }),
+    ).rejects.toThrow(/function selector not recognized/);
+  });
+});
+
+describe("the wizard has exactly one way to register a community", () => {
+  it("keeps no legacy path or per-setter registry writes in lib/deploy", () => {
+    const offenders = walk(path.join(webRoot, "lib/deploy")).filter((file) => {
+      const source = fs.readFileSync(file, "utf8");
+      return /legacy/i.test(source) || /functionName:\s*"(registerCommunity|setVerifierParams|setGovernanceParams|setEligibilityParams|setRevenuePolicy|setModuleAddresses)"/.test(source);
     });
-
-    const names = writes.map((w) => w.functionName);
-    expect(names).not.toContain("bootstrapCommunity");
-    expect(names).toContain("registerCommunity");
-
-    const revenue = writes.find((w) => w.functionName === "setRevenuePolicy")!;
-    const revenueData = encodeFunctionData({ abi: revenue.abi, functionName: "setRevenuePolicy", args: revenue.args as any });
-    expect(revenueData.startsWith(selectorOf(paramControllerAbi, "setRevenuePolicy"))).toBe(true);
-    expect(selectorOf(paramControllerAbi, "setRevenuePolicy")).toBe("0xa5d3e812");
-
-    const modules = writes.find((w) => w.functionName === "setModuleAddresses")!;
-    const modulesData = encodeFunctionData({ abi: modules.abi, functionName: "setModuleAddresses", args: modules.args as any });
-    expect(modulesData.startsWith(selectorOf(registryAbi, "setModuleAddresses"))).toBe(true);
-    expect(selectorOf(registryAbi, "setModuleAddresses")).toBe("0x925291e7");
+    expect(offenders.map((file) => path.relative(webRoot, file))).toEqual([]);
   });
 });
 

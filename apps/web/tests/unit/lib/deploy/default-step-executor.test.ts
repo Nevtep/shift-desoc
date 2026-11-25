@@ -2,6 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createFactoryDeployStepExecutor } from "../../../../lib/deploy/factory-step-executor";
 
+/** What a fully wired community reads back from the registry and ParamController. */
+function wiringReads(functionName: string): unknown {
+  if (functionName === "getCommunityModules") {
+    return new Proxy({}, { get: () => "0x4000000000000000000000000000000000000001" });
+  }
+  if (functionName === "getRevenuePolicy") return [1000n, 2000n, 1n, 5000n];
+  return undefined;
+}
+
 function makeSession() {
   return {
     sessionId: "session-1",
@@ -88,7 +97,7 @@ describe("factory-step-executor strict staging guards", () => {
     ).rejects.toThrow("Strict staging mode only supports Base Sepolia");
   });
 
-  it("rejects legacy mode environment flags", async () => {
+  it("rejects unsupported mode environment flags", async () => {
     process.env.NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE = "1";
 
     const executor = createFactoryDeployStepExecutor({
@@ -102,7 +111,7 @@ describe("factory-step-executor strict staging guards", () => {
         chainId: 84532,
         preflight: {} as any
       })
-    ).rejects.toThrow("Legacy deploy modes are disabled in strict staging mode");
+    ).rejects.toThrow("Unsupported deploy modes are disabled in strict staging mode");
 
     delete process.env.NEXT_PUBLIC_SHIFT_ENABLE_MIXED_MODE;
   });
@@ -173,6 +182,8 @@ describe("factory-step-executor strict staging guards", () => {
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(1n),
       readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+        const wired = wiringReads(functionName);
+        if (wired !== undefined) return wired;
         if (functionName === "ADMIN_ROLE") return 0n;
         if (functionName === "hasRole") {
           const account = args?.[1] as string;
@@ -209,6 +220,8 @@ describe("factory-step-executor strict staging guards", () => {
     const publicClient = {
       getTransactionCount: vi.fn().mockResolvedValue(5n),
       readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+        const wired = wiringReads(functionName);
+        if (wired !== undefined) return wired;
         if (functionName === "ADMIN_ROLE") return 0n;
         if (functionName === "hasRole") {
           const account = String(args?.[1] ?? "").toLowerCase();
