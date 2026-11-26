@@ -50,9 +50,10 @@ The Manager route `/communities/[communityId]` is the canonical community-scoped
 
 - **Current stage (staging/test)**: Active on Base Sepolia; Base mainnet is the launch target. ParamController remains the policy source, no staking is used for verifiers, TreasuryAdapter guardrails stay intact, and staging deployments may choose either `Admin-managed` or `Governance-managed` post-deploy authority.
 - **Access control posture (Jul 2026)**: Deploy-complete wires per-function roles across verification, economic, and commerce modules. In `Governance-managed` communities, Timelock holds AccessManager admin and privileged mutations execute through governance. In `Admin-managed` staging communities, the deployer may temporarily retain the admin surface as the acting authority for QA and contract validation.
-- **Manager deploy state contract (Jul 2026)**: Staging deployments execute `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> FINALIZE_AUTHORITY_MODE -> VERIFY_DEPLOYMENT`; completion is blocked unless the selected authority mode and verification checks both pass.
+- **Manager deploy state contract (Jul 2026)**: Staging deployments execute `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> INITIAL_VOTING_POWER -> FINALIZE_AUTHORITY_MODE -> VERIFY_DEPLOYMENT`; completion is blocked unless the selected authority mode and verification checks both pass.
     - `DEPLOY_STACK`: bytecode deployment only through layer factories.
     - `CONFIGURE_ACCESS_PERMISSIONS`: registry + policy + module wiring + runtime role grants.
+    - `INITIAL_VOTING_POWER`: mint 1 membership token to the deployer, self-delegate it, and renounce the temporary minter role before authority moves.
     - `FINALIZE_AUTHORITY_MODE`: either hand admin rights to Timelock (`Governance-managed`) or leave the deployer in place as acting admin (`Admin-managed`).
 - **Achieved milestones**:
     - **Q3 2025**: Alpha contract suite and research completed; staging deployment to Base Sepolia.

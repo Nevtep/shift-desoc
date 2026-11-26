@@ -269,6 +269,10 @@ Run this update process whenever contracts, indexer handlers, or manager flows c
 
 ## 2026-03-09 Tactical Update (Staging Deployment Policy)
 
+## 2026-11-26 Tactical Update (SHI-175 Deployer Initial Voting Power)
+
+- Manager deploy wizard step order is now `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> INITIAL_VOTING_POWER -> FINALIZE_AUTHORITY_MODE -> VERIFY_DEPLOYMENT`. `INITIAL_VOTING_POWER` (4 txs, both authority modes) grants the deployer a temporary role 11, mints 1 membership token to it, self-delegates, and renounces the role; each tx is guarded by a chain read so resume never mints twice. Old persisted sessions restart (step list mismatch). Verification adds `INITIAL_VOTES_DEPLOYER` and `ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED`. Web only; no contract change.
+
 ## 2026-10-21 Tactical Update (SHI-101 Authority Mode Contract)
 
 - Single contract of record for the Manager deploy wizard: `PRECHECKS -> DEPLOY_STACK -> CONFIGURE_ACCESS_PERMISSIONS -> FINALIZE_AUTHORITY_MODE -> VERIFY_DEPLOYMENT`, replacing `HANDOFF_ADMIN_TO_TIMELOCK`.

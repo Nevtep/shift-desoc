@@ -488,4 +488,60 @@ describe("useDeployWizard execution flow", () => {
       expect((result.current.session as any)?.bootstrapCoordinator).toBe(ORIGINAL);
     });
   });
+
+  it("resumes INITIAL_VOTING_POWER after a failure without duplicating recorded tx hashes", async () => {
+    mockWagmiHooks({
+      connected: true,
+      address: "0xabc1230000000000000000000000000000000000",
+      chainId: 84532
+    });
+    const hash = (n: number) => `0x${n.toString(16).padStart(64, "0")}` as `0x${string}`;
+    const executed: string[] = [];
+    let votingPowerAttempts = 0;
+
+    const { result } = renderHook(
+      () =>
+        useDeployWizard({
+          stepExecutor: async (step, _session, context) => {
+            executed.push(step);
+            if (step === "DEPLOY_STACK") return { communityId: 77 };
+            if (step === "INITIAL_VOTING_POWER") {
+              votingPowerAttempts += 1;
+              if (votingPowerAttempts === 1) {
+                context.onTxConfirmed?.(hash(1));
+                context.onTxConfirmed?.(hash(2));
+                throw new Error("delegate failed");
+              }
+              // The executor resends only the missing txs; hashes already recorded are not duplicated.
+              context.onTxConfirmed?.(hash(2));
+              context.onTxConfirmed?.(hash(3));
+              context.onTxConfirmed?.(hash(4));
+            }
+            return {};
+          },
+          readVerificationSnapshot: async () => {
+            throw new Error("stop after voting power");
+          }
+        }),
+      { wrapper: TestWrapper }
+    );
+
+    await act(async () => {
+      await result.current.run(validConfig());
+    });
+    const failed = result.current.session!;
+    expect(failed.steps.find((s) => s.key === "INITIAL_VOTING_POWER")?.status).toBe("failed");
+    expect(failed.steps.find((s) => s.key === "INITIAL_VOTING_POWER")?.txHashes).toEqual([hash(1), hash(2)]);
+
+    const executedBefore = executed.length;
+    await act(async () => {
+      await result.current.run(validConfig(), failed);
+    });
+    const resumed = executed.slice(executedBefore);
+    expect(resumed[0]).toBe("INITIAL_VOTING_POWER");
+    expect(resumed).not.toContain("DEPLOY_STACK");
+    const step = result.current.session!.steps.find((s) => s.key === "INITIAL_VOTING_POWER")!;
+    expect(step.status).toBe("succeeded");
+    expect(step.txHashes).toEqual([hash(1), hash(2), hash(3), hash(4)]);
+  });
 });
