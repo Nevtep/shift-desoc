@@ -705,8 +705,7 @@ export async function deployCommunityStack(config: CommunityDeployConfig): Promi
   const governor = await deploy<any>(
     "ShiftGovernor",
     await membershipToken.getAddress(),
-    accessManagerAddress,
-    config.executionDelay,
+    await timelock.getAddress(),
   );
 
   const countingMultiChoice = await deploy<any>("CountingMultiChoice", await governor.getAddress());

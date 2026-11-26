@@ -52,7 +52,7 @@ Do not comment on wording, formatting, naming, voseo/tuteo, or alternatives that
 ### Non-negotiable constraints
 - **Governance-managed mode**: Timelock is the only authority for privileged mutations (ParamController updates, verifier power mint/burn, treasury spends, etc.).
 - **Admin-managed staging mode**: the deployer may temporarily retain the same admin surface as an acting Timelock substitute for QA/testing, but this does not introduce a broader bypass model or change canonical on-chain role wiring.
-- Preserve the staged authority lifecycle and the real GovernorTimelockAccess + AccessManager implementation detail when authority semantics matter.
+- Preserve the staged authority lifecycle and the real GovernorTimelockControl + TimelockController + AccessManager implementation detail (the community timelock is the Governor executor and the effective caller on privileged targets) when authority semantics matter.
 - **Verifier power is governance-controlled** (NO staking/bonding).
 - **CommerceDisputes is separate** from work verification; Engagements handle ValuableActions ("Claims" term reserved only for revenue claiming).
 - **TreasuryAdapter guardrails must not be bypassed**:

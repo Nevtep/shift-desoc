@@ -119,6 +119,8 @@ function _executor() internal view override returns (address) {
 
 **Execution Flow**: `Vote Passes → Timelock Queue → Delay Period → Execute`
 
+**Roles and caller identity**: the community `TimelockController` is the Governor executor, so it is the effective `msg.sender` on every target. The wizard (not the factory) grants the Governor `PROPOSER_ROLE`, `EXECUTOR_ROLE` and `CANCELLER_ROLE` on the timelock, grants the timelock AccessManager `ADMIN_ROLE`, and revokes the deployer. `getMinDelay()` is the only execution delay.
+
 **Security Benefits**: Timelock delay allows community to review and potentially cancel malicious proposals even after they pass voting.
 
 ## 🗳️ Voting System

@@ -53,7 +53,7 @@ contract GovernanceLayerFactory {
 
         deployment.governor = _deployWithArgs(
             governorCreationCode,
-            abi.encode(deployment.membershipToken, accessManager, uint32(executionDelay))
+            abi.encode(deployment.membershipToken, deployment.timelock)
         );
 
         deployment.countingMultiChoice = _deployWithArgs(

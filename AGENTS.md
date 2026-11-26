@@ -73,7 +73,7 @@ Agents must choose the narrowest validating command for the surface they change 
 
 - Preserve governance and treasury invariants: staged authority lifecycle, ParamController as policy source, no verifier staking/bonding, TreasuryAdapter guardrails, and separation of commerce disputes from work verification.
 - Do not flatten Shift into always timelock-only or always deployer-admin; preserve admin-managed staging and governance-managed handoff as distinct lifecycle phases.
-- When authority details matter, preserve the real GovernorTimelockAccess plus AccessManager wiring instead of simplifying to generic owner-only or timelock-only language.
+- When authority details matter, preserve the real GovernorTimelockControl + community TimelockController + AccessManager wiring (the timelock, not the Governor, is the effective caller on privileged targets and holds AccessManager `ADMIN_ROLE` in governance-managed mode) instead of simplifying to generic owner-only or timelock-only language.
 - Treat ParamController as shared multi-community policy infrastructure keyed by `communityId`; do not introduce module-local shadow config unless explicitly justified.
 - Preserve current Shift terminology and keep contracts, indexer projections, Manager UX, tests, and docs synchronized when behavior changes.
 - Do not bypass contract authority with indexer or app-side shadow logic.
