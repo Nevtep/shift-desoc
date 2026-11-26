@@ -43,4 +43,17 @@ describe("DeployVerificationResults", () => {
     expect(await screen.findByText("Positive check")).toBeInTheDocument();
     expect(await screen.findByText("Negative check")).toBeInTheDocument();
   });
+
+  it("renders the initial voting power rows", async () => {
+    renderWithProviders(
+      <DeployVerificationResults
+        results={[
+          { key: "INITIAL_VOTES_DEPLOYER", label: "Deployer has >= 1 token of votes, self-delegated", passed: false, failureReason: "Deployer votes below 1 token" },
+          { key: "ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED", label: "Deployer does not hold MEMBERSHIP_TOKEN_MINTER_ROLE", passed: true }
+        ]}
+      />
+    );
+    expect(await screen.findByText(/Deployer votes below 1 token/i)).toBeInTheDocument();
+    expect(screen.getByText(/Poder de voto inicial del deployer|Deployer has >= 1 token/i)).toBeInTheDocument();
+  });
 });

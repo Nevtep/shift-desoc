@@ -1,5 +1,6 @@
 import type {
   AuthorityMode,
+  InitialVotingPowerState,
   VerificationCheckResult,
   VerificationCheckKey,
   VerificationSnapshot
@@ -24,6 +25,8 @@ const CHECK_LABELS: Record<VerificationCheckKey, string> = {
   ROLE_VA_SBT_MANAGER_REGISTRY: "ValuableActionRegistry has VALUABLE_ACTION_SBT_MANAGER_ROLE",
   MARKETPLACE_COMMUNITY_ACTIVE: "Marketplace community is active",
   REVENUE_ROUTER_TREASURY_SET: "RevenueRouter treasury is configured",
+  INITIAL_VOTES_DEPLOYER: "Deployer has at least 1 membership token of votes, self-delegated",
+  ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED: "Deployer does not hold MEMBERSHIP_TOKEN_MINTER_ROLE",
   AUTHORITY_DEPLOYER_ADMIN: "Deployer wallet ADMIN_ROLE",
   AUTHORITY_TIMELOCK_ADMIN: "Timelock ADMIN_ROLE",
   AUTHORITY_BOOTSTRAP_ADMIN: "Bootstrap coordinator ADMIN_ROLE"
@@ -63,6 +66,37 @@ function evaluateAuthorityChecks(
     authorityCheck("AUTHORITY_TIMELOCK_ADMIN", "Timelock", authority?.timelock, governance),
     authorityCheck("AUTHORITY_BOOTSTRAP_ADMIN", "Bootstrap coordinator", coordinator, false)
   ];
+}
+
+/** The amount INITIAL_VOTING_POWER mints and shows the admin; `>=` so later Engagements mints cannot fail a re-verify. */
+const INITIAL_VOTING_POWER_MIN_VOTES = 10n ** 18n;
+
+function evaluateInitialVotingPowerChecks(state: InitialVotingPowerState): VerificationCheckResult[] {
+  const votesKey = "INITIAL_VOTES_DEPLOYER";
+  const minterKey = "ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED";
+  const votesCheck = ((): VerificationCheckResult => {
+    const label = CHECK_LABELS[votesKey];
+    if (state.votes === undefined || state.delegatesSelf === undefined) {
+      return { key: votesKey, label, passed: false, failureReason: "Deployer votes or delegation could not be read" };
+    }
+    if (state.votes < INITIAL_VOTING_POWER_MIN_VOTES) {
+      return { key: votesKey, label, passed: false, failureReason: "Deployer has less than 1 membership token of votes" };
+    }
+    if (!state.delegatesSelf) {
+      return { key: votesKey, label, passed: false, failureReason: "Deployer has not delegated its voting power to itself" };
+    }
+    return { key: votesKey, label, passed: true };
+  })();
+  const minterCheck: VerificationCheckResult =
+    state.deployerHoldsMinter === undefined
+      ? { key: minterKey, label: CHECK_LABELS[minterKey], passed: false, failureReason: "Deployer MEMBERSHIP_TOKEN_MINTER_ROLE could not be read" }
+      : {
+          key: minterKey,
+          label: CHECK_LABELS[minterKey],
+          passed: !state.deployerHoldsMinter,
+          failureReason: state.deployerHoldsMinter ? "Deployer still holds MEMBERSHIP_TOKEN_MINTER_ROLE" : undefined
+        };
+  return [votesCheck, minterCheck];
 }
 
 export function evaluateVerificationSnapshot(
@@ -202,7 +236,10 @@ export function evaluateVerificationSnapshot(
       failureReason: snapshot.revenueTreasurySet ? undefined : "RevenueRouter treasury is not set"
     }
   ];
-  return authorityMode ? [...baseChecks, ...evaluateAuthorityChecks(snapshot, authorityMode)] : baseChecks;
+  const checks = snapshot.initialVotingPower
+    ? [...baseChecks, ...evaluateInitialVotingPowerChecks(snapshot.initialVotingPower)]
+    : baseChecks;
+  return authorityMode ? [...checks, ...evaluateAuthorityChecks(snapshot, authorityMode)] : checks;
 }
 
 export function allVerificationChecksPassed(results: VerificationCheckResult[]): boolean {

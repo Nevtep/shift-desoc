@@ -156,3 +156,63 @@ describe("verification parity", () => {
     });
   });
 });
+
+describe("initial voting power checks", () => {
+  const snapshot = {
+    communityId: 1,
+    modules: { valuableActionRegistryMatches: true },
+    vptInitialized: true,
+    roles: {
+      rrPositionManager: true,
+      verifierManagerCallerEngagements: true,
+      rrDistributor: true,
+      commerceDisputesCaller: true,
+      cohortRevenueRouter: true,
+      housingMarketplaceCaller: true,
+      cohortInvestmentRecorder: true,
+      vaIssuerRequestHub: true,
+      vaIssuerPositionManager: true,
+      vaIssuerInvestmentCohortManager: true,
+      vaIssuerCredentialManager: true,
+      membershipMinterEngagements: true,
+      vaSbtManagerRegistry: true
+    },
+    marketplaceActive: true,
+    revenueTreasurySet: true
+  };
+  const ONE = 10n ** 18n;
+  const find = (checks: ReturnType<typeof evaluateVerificationSnapshot>, key: string) => checks.find((c) => c.key === key)!;
+
+  it("adds no checks when the snapshot carries no initial voting power data", () => {
+    expect(evaluateVerificationSnapshot(snapshot)).toHaveLength(17);
+  });
+
+  it("passes with >= 1 token of votes, self-delegation and the minter role revoked", () => {
+    const checks = evaluateVerificationSnapshot({
+      ...snapshot,
+      initialVotingPower: { votes: ONE * 2n, delegatesSelf: true, deployerHoldsMinter: false }
+    });
+    expect(checks).toHaveLength(19);
+    expect(find(checks, "INITIAL_VOTES_DEPLOYER").passed).toBe(true);
+    expect(find(checks, "ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED").passed).toBe(true);
+    expect(allVerificationChecksPassed(checks)).toBe(true);
+  });
+
+  it.each([
+    ["votes below 1 token", { votes: ONE - 1n, delegatesSelf: true, deployerHoldsMinter: false }, "INITIAL_VOTES_DEPLOYER"],
+    ["not self-delegated", { votes: ONE, delegatesSelf: false, deployerHoldsMinter: false }, "INITIAL_VOTES_DEPLOYER"],
+    ["deployer still minter", { votes: ONE, delegatesSelf: true, deployerHoldsMinter: true }, "ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED"]
+  ])("fails with a reason: %s", (_name, initialVotingPower, key) => {
+    const checks = evaluateVerificationSnapshot({ ...snapshot, initialVotingPower });
+    expect(find(checks, key)).toMatchObject({ passed: false });
+    expect(find(checks, key).failureReason).toBeTruthy();
+    expect(allVerificationChecksPassed(checks)).toBe(false);
+  });
+
+  it("fails both checks with an explicit reason when values are unreadable", () => {
+    const checks = evaluateVerificationSnapshot({ ...snapshot, initialVotingPower: {} });
+    expect(find(checks, "INITIAL_VOTES_DEPLOYER")).toMatchObject({ passed: false });
+    expect(find(checks, "INITIAL_VOTES_DEPLOYER").failureReason).toMatch(/could not be read/i);
+    expect(find(checks, "ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED").failureReason).toMatch(/could not be read/i);
+  });
+});

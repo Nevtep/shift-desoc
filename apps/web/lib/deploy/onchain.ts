@@ -6,8 +6,8 @@ import communityRegistryArtifact from "../../abis/CommunityRegistry.json" assert
 import marketplaceArtifact from "../../abis/Marketplace.json" assert { type: "json" };
 import revenueRouterArtifact from "../../abis/RevenueRouter.json" assert { type: "json" };
 import verifierPowerTokenArtifact from "../../abis/VerifierPowerToken1155.json" assert { type: "json" };
-import { ACCESS_MANAGED_AUTHORITY_ABI } from "./compiled-abis";
-import type { AuthorityAdminHolders, DeploymentRunAddresses, VerificationSnapshot } from "./types";
+import { ACCESS_MANAGED_AUTHORITY_ABI, MEMBERSHIP_TOKEN_ABI } from "./compiled-abis";
+import type { AuthorityAdminHolders, DeploymentRunAddresses, InitialVotingPowerState, VerificationSnapshot } from "./types";
 
 const communityRegistryAbi = communityRegistryArtifact.abi as Abi;
 const accessManagerAbi = accessManagerArtifact.abi as Abi;
@@ -62,6 +62,44 @@ export async function readAuthorityAdminHolders(
   return { deployer, timelock, ...(bootstrapCoordinator === undefined ? {} : { bootstrapCoordinator }) };
 }
 
+/** Reads the deployer's governance state; any read that fails stays undefined so verification fails with a reason. */
+async function readInitialVotingPower(
+  publicClient: PublicClient,
+  accessManager: `0x${string}`,
+  membershipToken: `0x${string}` | undefined,
+  deployer: `0x${string}`
+): Promise<InitialVotingPowerState> {
+  const attempt = async <T,>(read: () => Promise<T>): Promise<T | undefined> => {
+    try {
+      return await read();
+    } catch {
+      return undefined;
+    }
+  };
+  const tokenRead = (functionName: string) =>
+    membershipToken && membershipToken.toLowerCase() !== ZERO_ADDRESS
+      ? publicClient.readContract({ address: membershipToken, abi: MEMBERSHIP_TOKEN_ABI, functionName, args: [deployer] })
+      : Promise.reject(new Error("membership token address unavailable"));
+  const [votes, delegate, minter] = await Promise.all([
+    attempt(async () => (await tokenRead("getVotes")) as bigint),
+    attempt(async () => (await tokenRead("delegates")) as string),
+    attempt(async () => {
+      const raw = await publicClient.readContract({
+        address: accessManager,
+        abi: accessManagerAbi,
+        functionName: "hasRole",
+        args: [ROLES.MEMBERSHIP_TOKEN_MINTER_ROLE, deployer]
+      });
+      return Array.isArray(raw) ? Boolean(raw[0]) : Boolean(raw);
+    })
+  ]);
+  return {
+    votes,
+    delegatesSelf: delegate === undefined ? undefined : delegate.toLowerCase() === deployer.toLowerCase(),
+    deployerHoldsMinter: minter
+  };
+}
+
 export async function readVerificationSnapshot(
   publicClient: PublicClient,
   chainId: number,
@@ -85,6 +123,7 @@ export async function readVerificationSnapshot(
     verifierPowerToken: `0x${string}`;
     revenueRouter: `0x${string}`;
     marketplace: `0x${string}`;
+    membershipToken?: `0x${string}`;
   };
 
   // These modules have no run-scoped fallback: a zero entry means the registry wiring step never completed.
@@ -318,9 +357,19 @@ export async function readVerificationSnapshot(
     authority = await readAuthorityAdminHolders(publicClient, accessManager, { ...authorityProbe, timelock });
   }
 
+  const initialVotingPower = authorityProbe
+    ? await readInitialVotingPower(
+        publicClient,
+        accessManager,
+        deploymentAddresses?.membershipToken ?? modules.membershipToken,
+        authorityProbe.deployer
+      )
+    : undefined;
+
   return {
     communityId,
     ...(authority ? { authority } : {}),
+    ...(initialVotingPower ? { initialVotingPower } : {}),
     modules: {
       valuableActionRegistryMatches:
         valuableActionRegistry.toLowerCase() !== "0x0000000000000000000000000000000000000000"

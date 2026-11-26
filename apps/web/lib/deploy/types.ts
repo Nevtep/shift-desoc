@@ -34,6 +34,8 @@ export type VerificationCheckKey =
   | "ROLE_VA_SBT_MANAGER_REGISTRY"
   | "MARKETPLACE_COMMUNITY_ACTIVE"
   | "REVENUE_ROUTER_TREASURY_SET"
+  | "INITIAL_VOTES_DEPLOYER"
+  | "ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED"
   | "AUTHORITY_DEPLOYER_ADMIN"
   | "AUTHORITY_TIMELOCK_ADMIN"
   | "AUTHORITY_BOOTSTRAP_ADMIN";
@@ -155,6 +157,13 @@ export type AuthorityAdminHolders = {
   bootstrapCoordinator?: boolean;
 };
 
+/** Deployer governance state after INITIAL_VOTING_POWER; a field is undefined when it could not be read. */
+export type InitialVotingPowerState = {
+  votes?: bigint;
+  delegatesSelf?: boolean;
+  deployerHoldsMinter?: boolean;
+};
+
 export type VerificationSnapshot = {
   communityId: number;
   modules: {
@@ -180,4 +189,6 @@ export type VerificationSnapshot = {
   revenueTreasurySet: boolean;
   /** Present only when the reader was given the wallets to probe (mode-aware verification). */
   authority?: AuthorityAdminHolders;
+  /** Absent when the reader was not given a deployer to probe. */
+  initialVotingPower?: InitialVotingPowerState;
 };

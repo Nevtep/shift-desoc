@@ -21,6 +21,8 @@ const FRIENDLY_LABELS: Record<string, string> = {
   ROLE_VA_ISSUER_CREDENTIAL_MANAGER: "Rol issuer en CredentialManager",
   ROLE_MEMBERSHIP_MINTER_ENGAGEMENTS: "Rol minter de membresia en Engagements",
   ROLE_VA_SBT_MANAGER_REGISTRY: "Rol manager SBT en ValuableActionRegistry",
+  INITIAL_VOTES_DEPLOYER: "Poder de voto inicial del deployer (1 token, autodelegado)",
+  ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED: "Deployer sin rol minter de membresia",
   MARKETPLACE_COMMUNITY_ACTIVE: "Marketplace activo",
   REVENUE_ROUTER_TREASURY_SET: "Tesorería configurada"
 };
@@ -41,6 +43,8 @@ const VERIFY_CHECK_KEYS = [
   "ROLE_VA_ISSUER_CREDENTIAL_MANAGER",
   "ROLE_MEMBERSHIP_MINTER_ENGAGEMENTS",
   "ROLE_VA_SBT_MANAGER_REGISTRY",
+  "INITIAL_VOTES_DEPLOYER",
+  "ROLE_MEMBERSHIP_MINTER_DEPLOYER_REVOKED",
   "MARKETPLACE_COMMUNITY_ACTIVE",
   "REVENUE_ROUTER_TREASURY_SET"
 ] as const;

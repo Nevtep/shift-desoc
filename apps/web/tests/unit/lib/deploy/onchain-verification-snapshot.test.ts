@@ -90,3 +90,51 @@ describe("readVerificationSnapshot registry module checks", () => {
     expect(snapshot.marketplaceActive).toBe(true);
   });
 });
+
+describe("readVerificationSnapshot initial voting power", () => {
+  const DEPLOYER = addr(0xde);
+  const TOKEN = addr(0x77);
+  beforeEach(() => vi.stubEnv("NEXT_PUBLIC_COMMUNITY_REGISTRY", REGISTRY));
+  afterEach(() => vi.unstubAllEnvs());
+
+  function votingClient(overrides: Record<string, unknown> = {}) {
+    const base = client({ ...FULL_MODULES, membershipToken: TOKEN });
+    return {
+      readContract: vi.fn(async (call: any) => {
+        if (overrides.throwOn === call.functionName) throw new Error("revert");
+        if (call.functionName === "getVotes") return overrides.getVotes ?? 10n ** 18n;
+        if (call.functionName === "delegates") return overrides.delegates ?? DEPLOYER;
+        if (call.functionName === "hasRole" && call.args[0] === 11n && call.args[1] === DEPLOYER) {
+          return [overrides.minter ?? false, 0];
+        }
+        if (overrides.throwOn === call.functionName) throw new Error("revert");
+        return base.readContract(call);
+      })
+    } as any;
+  }
+
+  it("reads votes, delegation and the deployer minter role with the compiled ABIs", async () => {
+    const publicClient = votingClient();
+    const snapshot = await readVerificationSnapshot(publicClient, 84532, 9, { membershipToken: TOKEN } as any, {
+      deployer: DEPLOYER,
+      timelock: addr(0x55)
+    });
+    expect(snapshot.initialVotingPower).toEqual({ votes: 10n ** 18n, delegatesSelf: true, deployerHoldsMinter: false });
+    const reads = publicClient.readContract.mock.calls.map(([c]: any[]) => [c.functionName, c.address]);
+    expect(reads).toContainEqual(["getVotes", TOKEN]);
+    expect(reads).toContainEqual(["delegates", TOKEN]);
+  });
+
+  it("marks values unreadable instead of throwing when a read reverts", async () => {
+    const snapshot = await readVerificationSnapshot(votingClient({ throwOn: "getVotes" }), 84532, 9, { membershipToken: TOKEN } as any, {
+      deployer: DEPLOYER,
+      timelock: addr(0x55)
+    });
+    expect(snapshot.initialVotingPower?.votes).toBeUndefined();
+  });
+
+  it("omits initialVotingPower when no deployer probe is given (previous behavior)", async () => {
+    const snapshot = await readVerificationSnapshot(votingClient(), 84532, 9, { membershipToken: TOKEN } as any);
+    expect(snapshot.initialVotingPower).toBeUndefined();
+  });
+});

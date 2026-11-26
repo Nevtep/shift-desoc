@@ -20,8 +20,9 @@ For Base Sepolia staging, community deployment follows one shared state machine 
 1. `PRECHECKS`
 2. `DEPLOY_STACK`
 3. `CONFIGURE_ACCESS_PERMISSIONS`
-4. `FINALIZE_AUTHORITY_MODE`
-5. `VERIFY_DEPLOYMENT`
+4. `INITIAL_VOTING_POWER` (mints and self-delegates 1 membership token to the deployer, then renounces the temporary minter role)
+5. `FINALIZE_AUTHORITY_MODE`
+6. `VERIFY_DEPLOYMENT`
 
 Completion is blocked unless the selected authority mode is confirmed and verification checks pass.
 

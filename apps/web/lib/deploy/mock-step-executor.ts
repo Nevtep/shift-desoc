@@ -105,7 +105,8 @@ export async function mockReadVerificationSnapshot(
       vaSbtManagerRegistry: true
     },
     marketplaceActive: true,
-    revenueTreasurySet: true
+    revenueTreasurySet: true,
+    initialVotingPower: { votes: 10n ** 18n, delegatesSelf: true, deployerHoldsMinter: false }
   };
 }
 

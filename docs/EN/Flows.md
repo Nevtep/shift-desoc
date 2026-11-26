@@ -450,12 +450,13 @@ Creating a new Shift community involves deploying a complete suite of contracts 
 
 **Configuration and Wiring**: After factory deployment, the wizard registers the community in CommunityRegistry with metadata, initializes ParamController governance/eligibility/economic policy, wires module addresses, and applies AccessManager role grants. These initial settings bootstrap the community but can be changed through governance later.
 
-**Deploy Wizard State Contract (staging)**: The Manager deploy flow follows a strict five-state sequence with no proposal-driven bootstrap branch:
+**Deploy Wizard State Contract (staging)**: The Manager deploy flow follows a strict six-state sequence with no proposal-driven bootstrap branch:
 1. `PRECHECKS`
 2. `DEPLOY_STACK`
 3. `CONFIGURE_ACCESS_PERMISSIONS`
-4. `FINALIZE_AUTHORITY_MODE`
-5. `VERIFY_DEPLOYMENT`
+4. `INITIAL_VOTING_POWER`
+5. `FINALIZE_AUTHORITY_MODE`
+6. `VERIFY_DEPLOYMENT`
 
 The run is considered successful only after the selected authority mode is confirmed and verification checks pass.
 
@@ -463,8 +464,9 @@ Step semantics:
 1. `PRECHECKS`: validate signer/network/shared infra/funding.
 2. `DEPLOY_STACK`: deploy contract bytecode through Governance/Verification/Economic/Commerce/Coordination layer factories.
 3. `CONFIGURE_ACCESS_PERMISSIONS`: execute registry + ParamController + module wiring + role grants.
-4. `FINALIZE_AUTHORITY_MODE`: either transfer admin rights to Timelock governance (`Governance-managed`) or leave the deployer as acting admin for staging (`Admin-managed`).
-5. `VERIFY_DEPLOYMENT`: parity checks against the expected staged deployment state for the selected authority mode.
+4. `INITIAL_VOTING_POWER`: while the deployer still holds ADMIN, grant itself a temporary `MEMBERSHIP_TOKEN_MINTER_ROLE`, mint 1 membership token to itself, self-delegate it (ERC20Votes only counts delegated balance) and renounce the minter role (4 transactions; each is skipped when chain state shows it already happened, so a resume never mints twice).
+5. `FINALIZE_AUTHORITY_MODE`: either transfer admin rights to Timelock governance (`Governance-managed`) or leave the deployer as acting admin for staging (`Admin-managed`).
+6. `VERIFY_DEPLOYMENT`: parity checks against the expected staged deployment state for the selected authority mode, including that the deployer holds at least 1 token of votes, is self-delegated and no longer holds the minter role.
 
 **Founder Token Distribution**: To enable initial decision-making, the deployment process mints MembershipTokens to the founding members. This gives them the voting power to begin governance operations, elect initial verifiers, and define the community's first ValuableActions. Over time, as more members contribute verified work, governance power naturally distributes more broadly.
 
