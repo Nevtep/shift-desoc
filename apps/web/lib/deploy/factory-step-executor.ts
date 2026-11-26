@@ -8,6 +8,7 @@ import {
   BOOTSTRAP_COORDINATOR_ABI,
   COMMUNITY_REGISTRY_ABI,
   MARKETPLACE_ABI,
+  MEMBERSHIP_TOKEN_ABI,
   PARAM_CONTROLLER_ABI,
   REVENUE_ROUTER_ABI,
   SHIFT_ACCESS_MANAGER_ABI,
@@ -2647,6 +2648,111 @@ async function executeGovernanceManagedFinalization(
   return { txHashes };
 }
 
+const INITIAL_VOTING_POWER_AMOUNT = 10n ** 18n;
+const INITIAL_VOTING_POWER_REASON = "Initial deployer voting power";
+
+/**
+ * Gives the deployer governance votes before authority moves: a just-in-time minter grant to the
+ * deployer itself, a mint of 1 token, self-delegation (ERC20Votes only counts delegated balance),
+ * and renouncing the grant. Each tx is guarded by a chain read so a resume sends only what is missing.
+ */
+async function executeInitialVotingPower(
+  params: { publicClient: PublicClient; writeContractAsync: WriteContractAsync; connectedAddress?: `0x${string}` },
+  session: DeploymentWizardSession,
+  context: DeployContext,
+): Promise<StepExecutionResult> {
+  const txHashes: `0x${string}`[] = [];
+  const { publicClient, writeContractAsync, connectedAddress } = params;
+  const runAddresses = requireRunScopedAddresses(session);
+  const accessManager = runAddresses.accessManager;
+  const membershipToken = runAddresses.membershipToken;
+  if (!membershipToken) {
+    throw new Error("Cannot grant initial voting power: run membership token address is missing. Re-run DEPLOY_STACK to refresh addresses.");
+  }
+  if (!accessManager) {
+    throw new Error("Cannot grant initial voting power: run AccessManager address is missing. Re-run DEPLOY_STACK to refresh addresses.");
+  }
+  const deployer = connectedAddress ?? session.deployerAddress;
+  const minterRole = ROLES.MEMBERSHIP_TOKEN_MINTER_ROLE;
+
+  const readMinter = async () =>
+    ((await publicClient.readContract({
+      address: accessManager,
+      abi: SHIFT_ACCESS_MANAGER_ABI,
+      functionName: "hasRole",
+      args: [minterRole, deployer],
+    })) as readonly [boolean, number])[0];
+  const readBalance = async () =>
+    (await publicClient.readContract({
+      address: membershipToken,
+      abi: MEMBERSHIP_TOKEN_ABI,
+      functionName: "balanceOf",
+      args: [deployer],
+    })) as bigint;
+  const readDelegate = async () =>
+    (await publicClient.readContract({
+      address: membershipToken,
+      abi: MEMBERSHIP_TOKEN_ABI,
+      functionName: "delegates",
+      args: [deployer],
+    })) as `0x${string}`;
+  const isDeployer = (value: string) => value.toLowerCase() === deployer.toLowerCase();
+
+  let nextNonce = await initializeNonceCursor(publicClient, connectedAddress);
+  const send = async (action: { address: `0x${string}`; abi: Abi; functionName: string; args: readonly unknown[] }) => {
+    const nonce = typeof nextNonce === "bigint" ? nextNonce : undefined;
+    if (typeof nextNonce === "bigint") nextNonce += 1n;
+    await writeAndConfirm(writeContractAsync, publicClient, txHashes, action, connectedAddress, nonce, context.onTxConfirmed);
+  };
+
+  let holdsMinter = await readMinter();
+  if ((await readBalance()) < INITIAL_VOTING_POWER_AMOUNT) {
+    if (!holdsMinter) {
+      const adminRole = await readAccessManagerAdminRoleWithRetry(publicClient, accessManager).catch(() => {
+        throw new Error(
+          `Invalid AccessManager at ${accessManager}. The stored run address is stale, unavailable on RPC, or not a ShiftAccessManager. Re-run DEPLOY_STACK to refresh addresses.`
+        );
+      });
+      const deployerIsAdmin = ((await publicClient.readContract({
+        address: accessManager,
+        abi: SHIFT_ACCESS_MANAGER_ABI,
+        functionName: "hasRole",
+        args: [adminRole, deployer],
+      })) as readonly [boolean, number])[0];
+      if (!deployerIsAdmin) {
+        throw new Error("Initial voting power failed: deployer wallet must hold AccessManager ADMIN to grant itself the temporary minter role.");
+      }
+      await send({ address: accessManager, abi: SHIFT_ACCESS_MANAGER_ABI, functionName: "grantRole", args: [minterRole, deployer, 0] });
+      holdsMinter = true;
+    }
+    await send({
+      address: membershipToken,
+      abi: MEMBERSHIP_TOKEN_ABI,
+      functionName: "mint",
+      args: [deployer, INITIAL_VOTING_POWER_AMOUNT, INITIAL_VOTING_POWER_REASON],
+    });
+  }
+
+  if (!isDeployer(await readDelegate())) {
+    await send({ address: membershipToken, abi: MEMBERSHIP_TOKEN_ABI, functionName: "delegate", args: [deployer] });
+  }
+  if (holdsMinter) {
+    await send({ address: accessManager, abi: SHIFT_ACCESS_MANAGER_ABI, functionName: "renounceRole", args: [minterRole, deployer] });
+  }
+
+  if ((await readBalance()) < INITIAL_VOTING_POWER_AMOUNT) {
+    throw new Error("Initial voting power failed: deployer membership token balance is below 1 token after minting.");
+  }
+  if (!isDeployer(await readDelegate())) {
+    throw new Error("Initial voting power failed: deployer is not self-delegated after delegation.");
+  }
+  if (await readMinter()) {
+    throw new Error("Initial voting power failed: deployer still holds the temporary minter role after renouncing.");
+  }
+
+  return { txHashes };
+}
+
 type FinalizeParams = {
   publicClient: PublicClient;
   writeContractAsync: WriteContractAsync;
@@ -2813,6 +2919,8 @@ export function createFactoryDeployStepExecutor(params: {
             configureResult.deploymentAddresses ?? syntheticSession.deploymentAddresses ?? session.deploymentAddresses,
         };
       }
+      case "INITIAL_VOTING_POWER":
+        return executeInitialVotingPower(params, session, context);
       case "FINALIZE_AUTHORITY_MODE":
         return executeFinalizeAuthorityMode(params, session, context);
       default:

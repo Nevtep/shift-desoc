@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { encodeAbiParameters, encodeEventTopics } from "viem";
+import { decodeFunctionData, encodeAbiParameters, encodeEventTopics, encodeFunctionData, type Abi } from "viem";
 
 import communityRegistryArtifact from "../../../../abis/CommunityRegistry.json";
+import membershipTokenArtifact from "../../../../abis/MembershipTokenERC20Votes.json";
+import shiftAccessManagerArtifact from "../../../../abis/ShiftAccessManager.json";
 import { createFactoryDeployStepExecutor } from "../../../../lib/deploy/factory-step-executor";
 
 /** The module addresses this deployment expects the registry to hold (same mapping as the executor's payload). */
@@ -892,5 +894,155 @@ describe("SHI-182: one registration path, community id only from this session's 
         expect(writeContractAsync).not.toHaveBeenCalled();
       });
     }
+  });
+});
+
+describe("INITIAL_VOTING_POWER step", () => {
+  const ACCESS_MANAGER = "0x1000000000000000000000000000000000000003";
+  const TOKEN = "0x1000000000000000000000000000000000000019";
+  const DEPLOYER = "0xabc1230000000000000000000000000000000000";
+  const ONE = 10n ** 18n;
+  const managerAbi = shiftAccessManagerArtifact.abi as Abi;
+  const tokenAbi = membershipTokenArtifact.abi as Abi;
+
+  function sessionFor(mode: string) {
+    const session = makeSession();
+    session.deploymentConfig = { authorityMode: mode };
+    return session;
+  }
+
+  /** Chain state is mutated by the writes so post-state checks see the effect of each tx. */
+  function setup(initial: { admin?: boolean; minter?: boolean; balance?: bigint; delegate?: string; skipEffects?: string[] }) {
+    const state = {
+      admin: initial.admin ?? true,
+      minter: initial.minter ?? false,
+      balance: initial.balance ?? 0n,
+      delegate: initial.delegate ?? "0x0000000000000000000000000000000000000000"
+    };
+    const skip = new Set(initial.skipEffects ?? []);
+    const publicClient = {
+      getTransactionCount: vi.fn().mockResolvedValue(5n),
+      readContract: vi.fn(async ({ functionName, args }: { functionName: string; args?: unknown[] }) => {
+        if (functionName === "ADMIN_ROLE") return 0n;
+        if (functionName === "hasRole") return [args?.[0] === 0n ? state.admin : state.minter, 0];
+        if (functionName === "balanceOf") return state.balance;
+        if (functionName === "delegates") return state.delegate;
+        throw new Error(`unexpected read ${functionName}`);
+      }),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      simulateContract: vi.fn().mockResolvedValue({}),
+      estimateContractGas: vi.fn().mockResolvedValue(21000n),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: "success" })
+    } as any;
+    const writeContractAsync = vi.fn(async (call: any) => {
+      if (!skip.has(call.functionName)) {
+        if (call.functionName === "grantRole") state.minter = true;
+        if (call.functionName === "renounceRole") state.minter = false;
+        if (call.functionName === "mint") state.balance += call.args[1];
+        if (call.functionName === "delegate") state.delegate = call.args[0];
+      }
+      return `0x${writeContractAsync.mock.calls.length.toString(16).padStart(64, "0")}`;
+    });
+    const executor = createFactoryDeployStepExecutor({
+      publicClient,
+      writeContractAsync: writeContractAsync as any,
+      connectedAddress: DEPLOYER
+    });
+    return { executor, writeContractAsync, publicClient };
+  }
+
+  const names = (fn: { mock: { calls: any[][] } }) => fn.mock.calls.map(([c]) => c.functionName);
+
+  it.each(["admin_managed", "governance_managed"])(
+    "%s: sends grantRole -> mint -> delegate -> renounceRole with compiled-ABI calldata",
+    async (mode) => {
+      const { executor, writeContractAsync } = setup({});
+      const result = await executor("INITIAL_VOTING_POWER", sessionFor(mode), makeContext());
+      expect(result.txHashes).toHaveLength(4);
+      expect(names(writeContractAsync)).toEqual(["grantRole", "mint", "delegate", "renounceRole"]);
+      const [grant, mint, delegate, renounce] = writeContractAsync.mock.calls.map(([c]) => c);
+      for (const call of [grant, renounce]) expect(call.address).toBe(ACCESS_MANAGER);
+      for (const call of [mint, delegate]) expect(call.address).toBe(TOKEN);
+      const decoded = (call: any, abi: Abi) => {
+        const { args } = decodeFunctionData({ abi, data: encodeFunctionData({ abi, functionName: call.functionName, args: call.args }) });
+        return { args: (args ?? []).map((a) => (typeof a === "string" && a.startsWith("0x") ? a.toLowerCase() : a)) };
+      };
+      expect(decoded(grant, managerAbi).args).toEqual([11n, DEPLOYER, 0]);
+      expect(decoded(mint, tokenAbi).args).toEqual([DEPLOYER, ONE, "Initial deployer voting power"]);
+      expect(decoded(delegate, tokenAbi).args).toEqual([DEPLOYER]);
+      expect(decoded(renounce, managerAbi).args).toEqual([11n, DEPLOYER]);
+    }
+  );
+
+  it("never grants role 11 to an account other than the deployer", async () => {
+    const { executor, writeContractAsync } = setup({});
+    await executor("INITIAL_VOTING_POWER", sessionFor("admin_managed"), makeContext());
+    for (const [call] of writeContractAsync.mock.calls) {
+      if (call.functionName === "grantRole") expect(String(call.args[1]).toLowerCase()).toBe(DEPLOYER);
+    }
+  });
+
+  it("resume: balance already minted sends no mint", async () => {
+    const { executor, writeContractAsync } = setup({ minter: true, balance: ONE });
+    await executor("INITIAL_VOTING_POWER", sessionFor("admin_managed"), makeContext());
+    expect(names(writeContractAsync)).toEqual(["delegate", "renounceRole"]);
+  });
+
+  it("resume: already delegated and role renounced sends only the missing txs", async () => {
+    const { executor, writeContractAsync } = setup({ balance: ONE });
+    await executor("INITIAL_VOTING_POWER", sessionFor("admin_managed"), makeContext());
+    expect(names(writeContractAsync)).toEqual(["delegate"]);
+  });
+
+  it("resume: fully complete sends 0 txs and never mints twice", async () => {
+    const { executor, writeContractAsync } = setup({ balance: ONE, delegate: DEPLOYER });
+    const result = await executor("INITIAL_VOTING_POWER", sessionFor("governance_managed"), makeContext());
+    expect(result.txHashes ?? []).toHaveLength(0);
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("resume: leftover minter role is renounced without a second grant", async () => {
+    const { executor, writeContractAsync } = setup({ minter: true, balance: ONE, delegate: DEPLOYER });
+    await executor("INITIAL_VOTING_POWER", sessionFor("admin_managed"), makeContext());
+    expect(names(writeContractAsync)).toEqual(["renounceRole"]);
+  });
+
+  it("fails closed when the membership token address is missing", async () => {
+    const { executor, writeContractAsync } = setup({});
+    const session = sessionFor("admin_managed");
+    delete session.deploymentAddresses.membershipToken;
+    await expect(executor("INITIAL_VOTING_POWER", session, makeContext())).rejects.toThrow(/membership token/i);
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the run AccessManager is missing", async () => {
+    const { executor, writeContractAsync } = setup({});
+    const session = sessionFor("admin_managed");
+    delete session.deploymentAddresses.accessManager;
+    await expect(executor("INITIAL_VOTING_POWER", session, makeContext())).rejects.toThrow(/AccessManager/i);
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the deployer lacks ADMIN and needs the minter grant", async () => {
+    const { executor, writeContractAsync } = setup({ admin: false });
+    await expect(executor("INITIAL_VOTING_POWER", sessionFor("admin_managed"), makeContext())).rejects.toThrow(
+      /deployer wallet must hold AccessManager ADMIN/i
+    );
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the post-state is wrong", async () => {
+    const noMint = setup({ skipEffects: ["mint"] });
+    await expect(noMint.executor("INITIAL_VOTING_POWER", sessionFor("admin_managed"), makeContext())).rejects.toThrow(
+      /balance/i
+    );
+    const noDelegate = setup({ skipEffects: ["delegate"] });
+    await expect(noDelegate.executor("INITIAL_VOTING_POWER", sessionFor("admin_managed"), makeContext())).rejects.toThrow(
+      /delegat/i
+    );
+    const noRenounce = setup({ skipEffects: ["renounceRole"] });
+    await expect(noRenounce.executor("INITIAL_VOTING_POWER", sessionFor("admin_managed"), makeContext())).rejects.toThrow(
+      /minter role/i
+    );
   });
 });
