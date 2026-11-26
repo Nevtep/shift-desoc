@@ -25,3 +25,14 @@ describe("mock step executor FINALIZE_AUTHORITY_MODE", () => {
     expect(await finalizeTxCount("admin_managed")).toBe(0);
   });
 });
+
+describe("mock step executor INITIAL_VOTING_POWER", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("emits the 4 initial voting power transactions", async () => {
+    const promise = createMockStepExecutor()("INITIAL_VOTING_POWER", {} as any, {} as any);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect((await promise).txHashes).toHaveLength(4);
+  });
+});

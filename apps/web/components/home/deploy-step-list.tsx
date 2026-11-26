@@ -32,6 +32,7 @@ function TxItem({
     PRECHECKS: t.preflight,
     DEPLOY_STACK: t.deployLayers,
     CONFIGURE_ACCESS_PERMISSIONS: t.wireRegistry,
+    INITIAL_VOTING_POWER: t.votingPower,
     FINALIZE_AUTHORITY_MODE: t.handoff,
     VERIFY_DEPLOYMENT: t.verify
   };
@@ -44,6 +45,7 @@ function TxItem({
   // Admin-managed only revokes the bootstrap coordinator; Governance-managed grants, then revokes.
   const HANDOFF_LABELS =
     authorityMode === "admin_managed" ? [t.revokeBootstrap] : [t.grantTimelock, t.revokeDeployer, t.revokeBootstrap];
+  const VOTING_POWER_LABELS = [t.grantMinter, t.mintInitialToken, t.selfDelegate, t.renounceMinter];
   const done = index < confirmed;
   const inProgress = isCurrent && index === confirmed;
   const baseLabel =
@@ -51,6 +53,8 @@ function TxItem({
       ? TX_LABELS[stepKey] ?? t.transaction
       : stepKey === "CONFIGURE_ACCESS_PERMISSIONS"
         ? ACCESS_WIRING_LABELS[Math.min(index, ACCESS_WIRING_LABELS.length - 1)] ?? TX_LABELS[stepKey] ?? t.transaction
+        : stepKey === "INITIAL_VOTING_POWER"
+          ? VOTING_POWER_LABELS[index] ?? t.transaction
         : stepKey === "FINALIZE_AUTHORITY_MODE"
           ? HANDOFF_LABELS[index] ?? TX_LABELS[stepKey] ?? t.transaction
       : TX_LABELS[stepKey] ?? t.transaction;

@@ -161,6 +161,7 @@ export const fixtures = {
       { key: "PRECHECKS", status: "succeeded" },
       { key: "DEPLOY_STACK", status: "running" },
       { key: "CONFIGURE_ACCESS_PERMISSIONS", status: "pending" },
+      { key: "INITIAL_VOTING_POWER", status: "pending" },
       { key: "FINALIZE_AUTHORITY_MODE", status: "pending" },
       { key: "VERIFY_DEPLOYMENT", status: "pending" }
     ]

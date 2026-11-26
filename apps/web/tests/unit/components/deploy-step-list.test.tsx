@@ -9,7 +9,7 @@ import { renderWithProviders } from "../utils";
 function finalizeRunning(mode: AuthorityMode) {
   let steps = createInitialSteps(mode);
   steps = applyAuthorityModeToSteps(steps, mode);
-  for (const key of ["PRECHECKS", "DEPLOY_STACK", "CONFIGURE_ACCESS_PERMISSIONS"] as const) {
+  for (const key of ["PRECHECKS", "DEPLOY_STACK", "CONFIGURE_ACCESS_PERMISSIONS", "INITIAL_VOTING_POWER"] as const) {
     steps = transitionStep(steps, key, "succeeded");
   }
   return transitionStep(steps, "FINALIZE_AUTHORITY_MODE", "running");
@@ -29,5 +29,21 @@ describe("DeployStepList finalize rows", () => {
 
     expect(await screen.findByText(/Grant timelock admin role 1 of 2/i)).toBeInTheDocument();
     expect(screen.getByText(/Revoke deployer admin role 2 of 2/i)).toBeInTheDocument();
+  });
+});
+
+describe("DeployStepList initial voting power rows", () => {
+  it("shows the four labelled rows including the amount", async () => {
+    let steps = createInitialSteps("admin_managed");
+    for (const key of ["PRECHECKS", "DEPLOY_STACK", "CONFIGURE_ACCESS_PERMISSIONS"] as const) {
+      steps = transitionStep(steps, key, "succeeded");
+    }
+    steps = transitionStep(steps, "INITIAL_VOTING_POWER", "running");
+    renderWithProviders(<DeployStepList steps={steps} authorityMode="admin_managed" />);
+
+    expect(await screen.findByText(/Grant temporary minter role 1 of 4/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mint 1 membership token 2 of 4/i)).toBeInTheDocument();
+    expect(screen.getByText(/Self-delegate voting power 3 of 4/i)).toBeInTheDocument();
+    expect(screen.getByText(/Renounce temporary minter role 4 of 4/i)).toBeInTheDocument();
   });
 });

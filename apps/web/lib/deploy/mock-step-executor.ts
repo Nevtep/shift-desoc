@@ -54,6 +54,13 @@ export function createMockStepExecutor(): (
       return { txHashes };
     }
 
+    if (step === "INITIAL_VOTING_POWER") {
+      const txHashes = Array.from({ length: STEP_META.INITIAL_VOTING_POWER.expectedTxCount }, (_, i) =>
+        fakeTxHash("INITIAL_VOTING_POWER", i)
+      );
+      return { txHashes };
+    }
+
     if (step === "FINALIZE_AUTHORITY_MODE") {
       const expectedTxCount = getStepMeta("FINALIZE_AUTHORITY_MODE", session.deploymentConfig?.authorityMode).expectedTxCount;
       const txHashes = Array.from({ length: expectedTxCount }, (_, i) =>

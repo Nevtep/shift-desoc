@@ -36,6 +36,14 @@ describe("compiled ABIs are the only ABI source in apps/web", () => {
   });
 });
 
+describe("membership token ABI export", () => {
+  it("exports the compiled MembershipTokenERC20Votes ABI", async () => {
+    const { MEMBERSHIP_TOKEN_ABI } = await import("../../../../lib/deploy/compiled-abis");
+    const names = (MEMBERSHIP_TOKEN_ABI as Abi).map((e) => ("name" in e ? e.name : ""));
+    expect(names).toEqual(expect.arrayContaining(["mint", "delegate", "delegates", "getVotes", "balanceOf"]));
+  });
+});
+
 const registryAbi = communityRegistryArtifact.abi as Abi;
 const paramControllerAbi = paramControllerArtifact.abi as Abi;
 

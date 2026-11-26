@@ -18,9 +18,18 @@ describe("wizard-machine", () => {
       "PRECHECKS",
       "DEPLOY_STACK",
       "CONFIGURE_ACCESS_PERMISSIONS",
+      "INITIAL_VOTING_POWER",
       "FINALIZE_AUTHORITY_MODE",
       "VERIFY_DEPLOYMENT"
     ]);
+  });
+
+  it("sizes INITIAL_VOTING_POWER at 4 txs and states the amount", () => {
+    const step = createInitialSteps("admin_managed").find((s) => s.key === "INITIAL_VOTING_POWER")!;
+    expect(step.expectedTxCount).toBe(4);
+    expect(step.name).toContain("1 membership token");
+    expect(step.purpose).toMatch(/temporary minter/i);
+    expect(createInitialSteps("governance_managed").find((s) => s.key === "INITIAL_VOTING_POWER")!.expectedTxCount).toBe(4);
   });
 
   it("sizes FINALIZE_AUTHORITY_MODE for the selected authority mode", () => {

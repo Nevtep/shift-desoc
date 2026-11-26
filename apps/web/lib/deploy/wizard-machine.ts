@@ -4,6 +4,7 @@ export const WIZARD_STEP_ORDER: StepKey[] = [
   "PRECHECKS",
   "DEPLOY_STACK",
   "CONFIGURE_ACCESS_PERMISSIONS",
+  "INITIAL_VOTING_POWER",
   "FINALIZE_AUTHORITY_MODE",
   "VERIFY_DEPLOYMENT"
 ];
@@ -23,6 +24,11 @@ export const STEP_META: Record<StepKey, { name: string; purpose: string; expecte
     name: "Wire Registry And Permissions",
     purpose: "Bootstrap registry wiring and apply access roles. Additional setup transactions may run if defaults are missing.",
     expectedTxCount: 2
+  },
+  INITIAL_VOTING_POWER: {
+    name: "Initial Voting Power (1 membership token)",
+    purpose: "Sign a temporary minter role grant, mint 1 membership token to the deployer, self-delegate it, and renounce the minter role, so the deployer holds governance votes before authority is finalized.",
+    expectedTxCount: 4
   },
   FINALIZE_AUTHORITY_MODE: {
     name: "Handoff Admin To Timelock",
