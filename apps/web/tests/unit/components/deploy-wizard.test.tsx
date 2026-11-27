@@ -1,9 +1,9 @@
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { DeployWizard } from "../../../components/home/deploy-wizard";
-import { mockWagmiHooks, renderWithProviders } from "../utils";
+import { TestWrapper, mockWagmiHooks, renderWithProviders } from "../utils";
 
 vi.mock("../../../hooks/useMyDeployedCommunities", () => ({
   useMyDeployedCommunities: () => ({
@@ -186,5 +186,29 @@ describe("DeployWizard", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /^Next$/i }));
     expect(await screen.findByText(/Authority mode: Admin-managed/i)).toBeInTheDocument();
+  });
+  it("returns to the first sub-step with an empty usable form when the connected account changes", async () => {
+    window.localStorage.clear();
+    mockWagmiHooks({ connected: true, address: "0xabc1230000000000000000000000000000000000", chainId: 84532 });
+    const renderUi = () => (
+      <TestWrapper>
+        <DeployWizard />
+      </TestWrapper>
+    );
+    const { rerender } = render(renderUi());
+
+    await openWizard();
+    await userEvent.type(await screen.findByLabelText(/Community name/i), "Shift Builders");
+    await userEvent.click(screen.getByRole("button", { name: /^Next$/i }));
+    expect(screen.queryByLabelText(/Community name/i)).not.toBeInTheDocument();
+
+    mockWagmiHooks({ connected: true, address: "0xdef4560000000000000000000000000000000000", chainId: 84532 });
+    rerender(renderUi());
+
+    const name = await screen.findByLabelText(/Community name/i);
+    expect(name).toHaveValue("");
+    expect(screen.getByRole("button", { name: /^Next$/i })).toBeDisabled();
+    await userEvent.type(name, "Other Wallet");
+    expect(screen.getByRole("button", { name: /^Next$/i })).toBeEnabled();
   });
 });
