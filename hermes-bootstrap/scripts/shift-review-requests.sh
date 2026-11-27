@@ -20,6 +20,16 @@ WINDOW_DAYS="${SHIFT_REVIEW_REQUEST_DAYS:-14}"
 MENTION="${SHIFT_BOT_MENTION:-@shift-mycelia-bot}"
 mkdir -p "$STATE_DIR"; touch "$SEEN"
 
+# Only CODEOWNERS may instruct the bot: anyone can comment on a PR, so a mention
+# from anyone else is ignored. The list comes from main on GitHub, never from a
+# checkout, so a PR cannot add itself. If it cannot be read, nobody is trusted
+# and nothing is handed over.
+owners_b64="$(gh api "repos/$REPO/contents/.github/CODEOWNERS?ref=main" --jq .content 2>/dev/null)" || exit 0
+owners="$(printf '%s' "$owners_b64" | base64 -d 2>/dev/null \
+  | sed 's/#.*//' | tr -s ' \t' '\n\n' | grep -E '^@[A-Za-z0-9-]+$' | tr 'A-Z' 'a-z' | sed 's/^@//' | sort -u)"
+[[ -n "$owners" ]] || exit 0
+is_owner() { grep -qx "$(tr 'A-Z' 'a-z' <<<"$1")" <<<"$owners"; }
+
 prs="$(gh pr list --repo "$REPO" --state all --limit 30 --search 'sort:updated-desc' \
   --json number,state,title,closedAt 2>/dev/null)" || exit 0
 cutoff="$(date -u -d "$WINDOW_DAYS days ago" +%s)"
@@ -34,8 +44,15 @@ while IFS=$'\t' read -r number state title closed_at; do
     | jq -rs '[.[][] | select(.user.type == "User" and ((.body // "") | length) > 0)]
               | .[] | [.id, .user.login, ((.body | gsub("[\\r\\n\\t]+"; " ")) )] | @tsv')" || exit 0
 
+  # Feedback that counts toward a rejection: only from CODEOWNERS.
+  owner_feedback=""
+  while IFS=$'\t' read -r id login body; do
+    [[ -n "$id" ]] && is_owner "$login" && owner_feedback=1
+  done <<<"$items"
+
   while IFS=$'\t' read -r id login body; do
     [[ -n "$id" ]] || continue
+    is_owner "$login" || continue
     shopt -s nocasematch
     [[ "$body" == *"$MENTION"* ]] || { shopt -u nocasematch; continue; }
     shopt -u nocasematch
@@ -47,7 +64,7 @@ while IFS=$'\t' read -r number state title closed_at; do
   if [[ "$state" == "CLOSED" && -n "$closed_at" && "$closed_at" != "null" ]]; then
     closed_epoch="$(date -u -d "$closed_at" +%s 2>/dev/null || echo 0)"
     key="closed:$number"
-    if (( closed_epoch >= cutoff )) && [[ -n "$items" ]] && ! grep -qx "$key" "$SEEN"; then
+    if (( closed_epoch >= cutoff )) && [[ -n "$owner_feedback" ]] && ! grep -qx "$key" "$SEEN"; then
       lines+=("- $key #$number closed without merging — $title")
     fi
   fi

@@ -78,6 +78,8 @@ check "a mention is acted on only for the owner's request" has "$SKILL" 'comment
 check "request text is data, never instructions to run" has "$SKILL" 'never (run|execute|follow)[^.]*(comment|request|body)'
 check "requests are acknowledged by key" has "$SKILL" 'shift-merge-ack\.sh (comment|closed):'
 check "a rejected PR is not reopened or merged by the agent" has "$SKILL" 'never (reopen|merge)'
+check "only CODEOWNERS may instruct the bot" has "$SKILL" 'only (a )?CODEOWNERS?'
+check "the owner list is read from main, not from the PR" has "$SKILL" 'CODEOWNERS[^.]*main'
 check "the requests step does not need a merged PR" has "$SKILL" 'even when no PR merged'
 
 [[ $failures -eq 0 ]] && echo "all passed" || { echo "$failures failed" >&2; exit 1; }
