@@ -56,16 +56,24 @@ while IFS=$'\t' read -r number sha branch title; do
   new_lines+=("$number"$'\t'"$sha"$'\t'"$branch"$'\t'"$title")
 done <<<"$merged"
 
+# Owner instructions that do not come with a merge: a comment that mentions the
+# bot, or a PR closed without merging that has human feedback. Empty (and so
+# silent) when there are none or when gh fails; acknowledged by key.
+requests_out="$(SHIFT_STATE_DIR="$STATE_DIR" bash "$(dirname "${BASH_SOURCE[0]}")/shift-review-requests.sh" 2>/dev/null || true)"
+
 echo "STATUS=OK"
 [[ -n "$persist_out" ]] && echo "$persist_out"
 echo "PENDING_MERGED_PRS:"
 if [[ ${#new_lines[@]} -eq 0 ]]; then
   echo "- (none)"
+  [[ -n "$requests_out" ]] && echo "$requests_out"
   exit 0
 fi
 printf '%s\n' "${new_lines[@]}" | sort -n | while IFS=$'\t' read -r number sha branch title; do
   echo "- #$number $sha $branch — $title"
 done
+
+[[ -n "$requests_out" ]] && echo "$requests_out"
 
 oldest="$(sort -n -k2 "$PENDING" | head -1 | cut -f2)"
 round=$(( (now - oldest) / 3600 ))

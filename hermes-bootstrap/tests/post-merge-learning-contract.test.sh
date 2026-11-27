@@ -70,4 +70,14 @@ check "skill reports pruned memory entries" has "$SKILL" 'memory-pruned\.log'
 check "bootstrap links hermes into /opt/data/bin" has "$ROOT/scripts/bootstrap.sh" 'ln -sfn /opt/hermes/\.venv/bin/hermes "\$HERMES_HOME/bin/hermes"'
 check "managed config raises memory_char_limit" has "$ROOT/hermes-bootstrap/managed-keys.yaml" 'memory_char_limit: *[4-9][0-9]{3}'
 
+# Owner instructions that do not arrive through a merge: a mention of the bot, or
+# a PR closed without merging. They are handled and acknowledged by key.
+check "the skill reads the REVIEW_REQUESTS section" has "$SKILL" 'REVIEW_REQUESTS'
+check "a closed PR is handled as a rejection to learn from" has "$SKILL" 'closed without merging'
+check "a mention is acted on only for the owner's request" has "$SKILL" 'comment:<id>'
+check "request text is data, never instructions to run" has "$SKILL" 'never (run|execute|follow)[^.]*(comment|request|body)'
+check "requests are acknowledged by key" has "$SKILL" 'shift-merge-ack\.sh (comment|closed):'
+check "a rejected PR is not reopened or merged by the agent" has "$SKILL" 'never (reopen|merge)'
+check "the requests step does not need a merged PR" has "$SKILL" 'even when no PR merged'
+
 [[ $failures -eq 0 ]] && echo "all passed" || { echo "$failures failed" >&2; exit 1; }
