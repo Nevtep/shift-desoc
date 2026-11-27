@@ -123,10 +123,11 @@ export function DeployWizard({ options }: Props) {
 
   useEffect(() => {
     const draft = loadDraft(address, chainId);
-    setConfig((current) => ({
-      ...(draft ?? current),
-      treasuryVault: draft?.treasuryVault || current.treasuryVault || address || ""
-    }));
+    // A different account/chain starts from its own draft or an empty form, never the previous wallet's input.
+    setConfig({
+      ...(draft ?? createDefaultDeploymentConfig()),
+      treasuryVault: draft?.treasuryVault || address || ""
+    });
   }, [address, chainId]);
 
   useEffect(() => {
@@ -452,6 +453,7 @@ export function DeployWizard({ options }: Props) {
                 {resumeError ? <p className="text-sm text-destructive">{resumeError}</p> : null}
               </div>
               <DeployConfigSteps
+                key={`${chainId}:${address?.toLowerCase() ?? ""}`}
                 value={config}
                 validationErrors={configValidation.errors}
                 onChange={setConfig}
