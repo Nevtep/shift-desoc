@@ -894,3 +894,76 @@ describe("SHI-182: one registration path, community id only from this session's 
     }
   });
 });
+
+describe("SHI-170: a reverting gas estimate stops the step before signing", () => {
+  const DEPLOYER = "0xabc1230000000000000000000000000000000000";
+
+  function chain(estimate: (functionName: string) => Promise<bigint>) {
+    const publicClient = {
+      getTransactionCount: vi.fn().mockResolvedValue(1n),
+      getBytecode: vi.fn().mockResolvedValue("0x1234"),
+      readContract: vi.fn(async ({ functionName }: { functionName: string }) => {
+        const wired = wiringReads(functionName);
+        if (wired !== undefined) return wired;
+        if (functionName === "ADMIN_ROLE") return 0n;
+        if (functionName === "authority") return "0x1000000000000000000000000000000000000003";
+        if (functionName === "hasRole") return [true, 0];
+        return true;
+      }),
+      simulateContract: vi.fn().mockResolvedValue({}),
+      estimateContractGas: vi.fn(async ({ functionName }: { functionName: string }) => estimate(functionName)),
+      waitForTransactionReceipt: vi.fn().mockResolvedValue(registrationReceipt(1n)),
+    } as any;
+    const writeContractAsync = vi.fn().mockResolvedValue("0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee");
+    const executor = createFactoryDeployStepExecutor({ publicClient, writeContractAsync, connectedAddress: DEPLOYER });
+    return { executor, writeContractAsync };
+  }
+
+  const run = (executor: ReturnType<typeof chain>["executor"]) =>
+    executor("CONFIGURE_ACCESS_PERMISSIONS", makeSession(), makeContext());
+
+  it("names the function and says 'function not found' when the call returns no data, and sends nothing", async () => {
+    const { executor, writeContractAsync } = chain(async () => {
+      throw new Error('The contract function "bootstrapCommunity" returned no data ("0x").');
+    });
+
+    await expect(run(executor)).rejects.toThrow(/bootstrapCommunity.*function not found on 0x[0-9a-fA-F]{40}/);
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("surfaces the decoded revert name and sends nothing", async () => {
+    const { executor, writeContractAsync } = chain(async () => {
+      throw new Error('The contract function "bootstrapCommunity" reverted with the following reason: InvalidVerifierParams');
+    });
+
+    await expect(run(executor)).rejects.toThrow(/bootstrapCommunity.*InvalidVerifierParams/);
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("stops on a non-revert estimate failure too (no legacy fallback gas) and sends nothing", async () => {
+    const { executor, writeContractAsync } = chain(async () => {
+      throw new Error("HTTP request failed");
+    });
+
+    await expect(run(executor)).rejects.toThrow(/bootstrapCommunity.*HTTP request failed/);
+    expect(writeContractAsync).not.toHaveBeenCalled();
+  });
+
+  it("keeps the +20% margin on a normal estimate", async () => {
+    const { executor, writeContractAsync } = chain(async () => 100_000n);
+
+    await run(executor);
+
+    const call = writeContractAsync.mock.calls.find(([a]) => a?.functionName === "bootstrapCommunity")?.[0];
+    expect(call.gas).toBe(120_000n);
+  });
+
+  it("never exceeds the per-transaction gas cap", async () => {
+    const { executor, writeContractAsync } = chain(async () => 20_000_000n);
+
+    await run(executor);
+
+    const call = writeContractAsync.mock.calls.find(([a]) => a?.functionName === "bootstrapCommunity")?.[0];
+    expect(call.gas).toBe(16_777_216n);
+  });
+});

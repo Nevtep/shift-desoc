@@ -106,7 +106,6 @@ const ROLES = {
 } as const;
 
 const BASE_DEPLOY_FALLBACK_GAS = 900000n;
-const DEPLOY_LAYER_FALLBACK_GAS = 6000000n;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const WIZARD_REQUIRED_CONFIRMATIONS = 3;
 const GAS_FALLBACK_BY_FUNCTION: Record<string, bigint> = {
@@ -672,6 +671,31 @@ async function initializeNonceCursor(
   return BigInt(pendingNonce);
 }
 
+/** Per-transaction gas ceiling (EIP-7825); the +20% margin never pushes a limit past it. */
+const MAX_TX_GAS = 16_777_216n;
+
+function withGasMargin(estimated: bigint): bigint {
+  const padded = (estimated * 12n) / 10n;
+  return padded > MAX_TX_GAS ? MAX_TX_GAS : padded;
+}
+
+/** First line of an estimate failure that names the revert reason or the transport error. */
+function estimateFailureReason(error: unknown): string {
+  const record = error as { shortMessage?: unknown; message?: unknown } | undefined;
+  const raw = String(record?.shortMessage ?? record?.message ?? error ?? "");
+  return raw.split("\n")[0].trim() || "unknown error";
+}
+
+function isNoDataRevert(error: unknown): boolean {
+  const raw = String((error as { message?: unknown } | undefined)?.message ?? error ?? "");
+  return /returned no data|AbiFunctionNotFound|function selector was not recognized/i.test(raw);
+}
+
+/**
+ * Gas for a contract write. Only the documented stale-RPC case (AccessManagedUnauthorized right after role
+ * wiring, for bootstrapAccessAndRuntime/configureAccessManager) keeps a fixed fallback gas. Any other estimate
+ * failure stops the step before signing, with the decoded reason in the message.
+ */
 async function resolveGasLimit(
   publicClient: PublicClient,
   args: {
@@ -687,7 +711,7 @@ async function resolveGasLimit(
       ...args,
       account,
     } as never)) as bigint;
-    return (estimated * 12n) / 10n;
+    return withGasMargin(estimated);
   } catch (error) {
     const rawError = String(error ?? "");
     if (
@@ -704,10 +728,10 @@ async function resolveGasLimit(
       );
     }
 
-    if (args.functionName === "deployLayer") {
-      return DEPLOY_LAYER_FALLBACK_GAS;
+    if (isNoDataRevert(error)) {
+      throw new Error(`Gas estimation failed for ${args.functionName}: function not found on ${args.address}.`);
     }
-    return GAS_FALLBACK_BY_FUNCTION[args.functionName] ?? BASE_DEPLOY_FALLBACK_GAS;
+    throw new Error(`Gas estimation failed for ${args.functionName}: ${estimateFailureReason(error)}`);
   }
 }
 
@@ -772,8 +796,6 @@ type DeployContractAsync = (args: {
   nonce?: bigint;
 }) => Promise<`0x${string}`>;
 
-const BASE_CREATE_FALLBACK_GAS = 1_500_000n;
-
 async function resolveCreateGasLimit(
   publicClient: PublicClient,
   args: {
@@ -790,9 +812,9 @@ async function resolveCreateGasLimit(
       args: args.args,
     });
     const estimated = await publicClient.estimateGas({ account, data });
-    return (estimated * 12n) / 10n;
-  } catch {
-    return BASE_CREATE_FALLBACK_GAS;
+    return withGasMargin(estimated);
+  } catch (error) {
+    throw new Error(`Gas estimation failed for contract deployment: ${estimateFailureReason(error)}`);
   }
 }
 
